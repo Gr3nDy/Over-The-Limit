@@ -53,7 +53,7 @@ final class SkinFace {
     /** Reads the bound texture with GL and samples each face texel at its centre. */
     private static int[] readGl(ResourceLocation texture,boolean facePlane){
         try{
-            Minecraft mc=Minecraft.getMinecraft();
+            Minecraft mc=MinecraftAccess.get();
             ITextureObject t=mc.getTextureManager().getTexture(texture);
             if(t==null)return new int[0];
             int previous=GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
@@ -88,7 +88,7 @@ final class SkinFace {
     /** Fallback for machines or states where the GL texture cannot be read back. */
     private static int[] readImage(ResourceLocation texture,boolean facePlane){
         try{
-            ITextureObject t=Minecraft.getMinecraft().getTextureManager().getTexture(texture);
+            ITextureObject t=MinecraftAccess.get().getTextureManager().getTexture(texture);
             if(t==null)return new int[0];
             Field field=ReflectionHelper.findField(t.getClass(),"bufferedImage","field_110560_d");
             field.setAccessible(true);

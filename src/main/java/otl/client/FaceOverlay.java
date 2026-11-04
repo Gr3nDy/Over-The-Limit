@@ -39,7 +39,7 @@ public final class FaceOverlay implements LayerRenderer<AbstractClientPlayer> {
     public boolean shouldCombineTextures(){return false;}
 
     public void doRenderLayer(AbstractClientPlayer p,float swing,float swingAmount,float partial,float age,float yaw,float pitch,float scale){
-        Minecraft mc=Minecraft.getMinecraft();
+        Minecraft mc=MinecraftAccess.get();
         boolean own=p==mc.thePlayer;
         boolean preview=FaceDoll.preview;
         if(!preview&&p.isSneaking())return;

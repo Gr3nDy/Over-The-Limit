@@ -1,4 +1,4 @@
-name: Build beta release
+name: Build release artifacts
 
 on:
   workflow_dispatch:
@@ -8,7 +8,7 @@ permissions:
 
 jobs:
   release:
-    name: Build and publish beta
+    name: Build release artifacts
     runs-on: ubuntu-latest
 
     steps:
@@ -31,7 +31,7 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: OTL-beta-jars
+          name: OTL-jars
           path: |
-            build/libs/OTL-0.3.0.jar
-            build/libs/OTL-0.3.0-sources.jar
+            build/libs/OTL.jar
+            build/libs/OTL-source.jar

@@ -25,7 +25,7 @@ final class FaceDoll {
 
     static void head(int x, int y, int size, AbstractClientPlayer player) {
         if(player==null||size<=0)return;
-        Minecraft mc=Minecraft.getMinecraft();
+        Minecraft mc=MinecraftAccess.get();
         RenderPlayer renderer=(RenderPlayer)mc.getRenderManager().<AbstractClientPlayer>getEntityRenderObject(player);
         ModelPlayer model=renderer.getMainModel();
         ModelRenderer head=model.bipedHead,wear=model.bipedHeadwear;
@@ -54,7 +54,7 @@ final class FaceDoll {
 
     static void draw(int x, int y, int scale, float mouseX, float mouseY, AbstractClientPlayer player) {
         if (player == null || scale <= 0) return;
-        Minecraft client = Minecraft.getMinecraft();
+        Minecraft client = MinecraftAccess.get();
         RenderManager manager = client.getRenderManager();
         float yawOffset = player.renderYawOffset;
         float yaw = player.rotationYaw;

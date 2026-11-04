@@ -13,7 +13,7 @@ import net.minecraft.client.renderer.entity.RenderPlayer;
 import net.minecraft.client.resources.*;
 import org.lwjgl.input.Keyboard;
 
-@Mod(modid="otl",name="Over The Limit",version="0.3.0",clientSideOnly=true,acceptedMinecraftVersions="[1.8.9]",acceptableRemoteVersions="*")
+@Mod(modid="otl",name="Over The Limit",version="0.3.1",clientSideOnly=true,acceptedMinecraftVersions="[1.8.9]",acceptableRemoteVersions="*")
 public final class Otl {
     private final KeyBinding menu=new KeyBinding("key.otl.menu",Keyboard.KEY_J,"key.categories.otl");
     private final KeyBinding modules=new KeyBinding("key.otl.modules",Keyboard.KEY_P,"key.categories.otl");
@@ -27,8 +27,8 @@ public final class Otl {
         MinecraftForge.EVENT_BUS.register(TeamBubbles.INSTANCE);
         FMLCommonHandler.instance().bus().register(TeamBubbles.INSTANCE);
         FMLCommonHandler.instance().bus().register(this);MinecraftForge.EVENT_BUS.register(this);
-        for(RenderPlayer renderer:Minecraft.getMinecraft().getRenderManager().getSkinMap().values())renderer.addLayer(new FaceOverlay(renderer));
-        ((IReloadableResourceManager)Minecraft.getMinecraft().getResourceManager()).registerReloadListener(resources->{SkinFace.clear();FaceMarks.clearCache();});
+        for(RenderPlayer renderer:MinecraftAccess.get().getRenderManager().getSkinMap().values())renderer.addLayer(new FaceOverlay(renderer));
+        ((IReloadableResourceManager)MinecraftAccess.get().getResourceManager()).registerReloadListener(resources->{SkinFace.clear();FaceMarks.clearCache();});
     }
     @SubscribeEvent public void key(InputEvent.KeyInputEvent event){
         if(Keyboard.getEventKeyState()&&Keyboard.getEventKey()==Keyboard.KEY_Y){ReliableChat.openChannel(ChatRules.TEAM);return;}
@@ -37,13 +37,13 @@ public final class Otl {
     }
     @SubscribeEvent public void mouse(InputEvent.MouseInputEvent event){openMenu();}
     private void openMenu(){
-        Minecraft mc=Minecraft.getMinecraft();
+        Minecraft mc=MinecraftAccess.get();
         if(mc.thePlayer==null || mc.currentScreen!=null)return;
         if(modules.isPressed())mc.displayGuiScreen(new UtilityScreen());
         else if(menu.isPressed())mc.displayGuiScreen(new FaceScreen());
     }
     @SubscribeEvent public void tick(net.minecraftforge.fml.common.gameevent.TickEvent.ClientTickEvent event){
-        Minecraft mc=Minecraft.getMinecraft();
+        Minecraft mc=MinecraftAccess.get();
         if(event.phase!=net.minecraftforge.fml.common.gameevent.TickEvent.Phase.END||mc.theWorld==null)return;
         for(net.minecraft.entity.player.EntityPlayer p:new java.util.ArrayList<net.minecraft.entity.player.EntityPlayer>(mc.theWorld.playerEntities))PlayerSignals.tick(p);
     }

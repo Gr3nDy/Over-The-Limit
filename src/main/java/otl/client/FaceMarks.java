@@ -45,7 +45,7 @@ final class FaceMarks {
     static void clear(ResourceLocation texture){replace(texture,null,true);}
     static void clearCache(){PAINTED.clear();AUTO.clear();}
 
-    private static Path file(String key){return Minecraft.getMinecraft().mcDataDir.toPath().resolve("config/otl/marks/"+sanitize(key)+".txt");}
+    private static Path file(String key){return MinecraftAccess.get().mcDataDir.toPath().resolve("config/otl/marks/"+sanitize(key)+".txt");}
     private static String sanitize(String key){return key.replaceAll("[^A-Za-z0-9._-]","_");}
 
     private static int[] load(String k){

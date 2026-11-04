@@ -13,6 +13,6 @@ final class ServerScope {
         if(h.endsWith("."))h=h.substring(0,h.length()-1);
         return h.equals("play.oc.tc")||h.equals("vanish.oc.tc")?h:"";
     }
-    static String current(){Minecraft mc=Minecraft.getMinecraft();ServerData s=mc.getCurrentServerData();return mc.theWorld==null||s==null?"":host(s.serverIP);}
+    static String current(){Minecraft mc=MinecraftAccess.get();ServerData s=mc.getCurrentServerData();return mc.theWorld==null||s==null?"":host(s.serverIP);}
     static boolean active(){return !current().isEmpty();}
 }

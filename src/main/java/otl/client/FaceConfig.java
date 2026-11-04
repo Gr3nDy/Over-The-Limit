@@ -13,7 +13,7 @@ final class FaceConfig {
     private static boolean loaded;
     static String label(int scope){return new String[]{"Only me","All","None"}[scope];}
     static boolean allows(int scope,boolean own){return scope==1||scope==0&&own;}
-    private static Path path(){return Minecraft.getMinecraft().mcDataDir.toPath().resolve("config/otl/face.json");}
+    private static Path path(){return MinecraftAccess.get().mcDataDir.toPath().resolve("config/otl/face.json");}
     static void load(){
         if(loaded)return;loaded=true;
         try{

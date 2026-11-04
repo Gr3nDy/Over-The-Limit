@@ -39,7 +39,7 @@ final class ReliableChatScreen extends GuiChat {
         if(boundView==view)return false;
         if(boundView!=null)storeDraft();restoreDraft();view.unread=0;return true;
     }
-    @Override public void onGuiClosed(){if(inputField!=null&&ReliableChat.active())storeDraft();super.onGuiClosed();}
+    @Override public void onGuiClosed(){if(inputField!=null&&ReliableChat.active())storeDraft();super.onGuiClosed();ReliableChat.restoreTemporaryChannel();}
     @Override public void sendChatMessage(String msg,boolean addToChat){
         if(!ReliableChat.active()){super.sendChatMessage(msg,addToChat);return;}
         // A transfer may happen between reading the input and sending it. Never publish a stale PM draft.
@@ -50,6 +50,7 @@ final class ReliableChatScreen extends GuiChat {
         String routed=ReliableChat.send(msg);
         if(sendingContext!=ReliableChat.contextVersion()){syncView();return;}
         if(net.minecraftforge.client.ClientCommandHandler.instance.executeCommand(mc.thePlayer,routed)==0)mc.thePlayer.sendChatMessage(routed);
+        ReliableChat.restoreTemporaryChannel();
         if(inputField!=null){if(addToChat){ReliableChat.currentView().draft="";inputField.setText("");}else if(before!=ReliableChat.currentView())inputField.setText(ReliableChat.currentView().draft);boundView=ReliableChat.currentView();boundContext=ReliableChat.contextVersion();}
     }
     private void select(String key){
