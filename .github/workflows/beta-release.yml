@@ -25,6 +25,9 @@ jobs:
           java-version: '8'
           cache: gradle
 
+      - name: Make Gradle wrapper executable
+        run: chmod +x gradlew
+
       - name: Build release jars
         run: ./gradlew clean build --no-daemon --refresh-dependencies
 
