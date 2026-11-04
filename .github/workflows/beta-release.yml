@@ -2,6 +2,9 @@ name: Build release artifacts
 
 on:
   workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
 
 permissions:
   contents: write
@@ -33,5 +36,14 @@ jobs:
         with:
           name: OTL-jars
           path: |
+            build/libs/OTL.jar
+            build/libs/OTL-source.jar
+      - name: Publish GitHub release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: OTL ${{ github.ref_name }}
+          body_path: CHANGELOG.md
+          files: |
             build/libs/OTL.jar
             build/libs/OTL-source.jar
