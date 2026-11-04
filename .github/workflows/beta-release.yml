@@ -1,9 +1,6 @@
 name: Build beta release
 
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
 
 permissions:
@@ -31,11 +28,10 @@ jobs:
       - name: Build release jars
         run: ./gradlew clean build --no-daemon --refresh-dependencies
 
-      - name: Publish GitHub prerelease
-        uses: softprops/action-gh-release@v2
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
         with:
-          prerelease: true
-          generate_release_notes: true
-          files: |
+          name: OTL-beta-jars
+          path: |
             build/libs/OTL-0.3.0.jar
             build/libs/OTL-0.3.0-sources.jar

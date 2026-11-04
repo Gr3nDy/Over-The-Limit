@@ -31,7 +31,9 @@ final class FaceMarks {
         if(AUTO.containsKey(k))return AUTO.get(k).length==0?null:AUTO.get(k);
         if(!SkinFace.loaded(texture))return null;
         int[] detected=EyeDetector.detect(SkinFace.facePixels(texture),SkinFace.hatPixels(texture));
-        AUTO.put(k,detected==null?NONE:(int[])detected.clone());
+        // Do not permanently cache a miss: another player's skin may still be uploading.
+        if(detected==null)return null;
+        AUTO.put(k,(int[])detected.clone());
         return detected;
     }
     /** Editor entry point: swap the painted marks for a skin; persist only on save. */

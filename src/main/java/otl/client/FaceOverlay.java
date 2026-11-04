@@ -206,7 +206,6 @@ public final class FaceOverlay implements LayerRenderer<AbstractClientPlayer> {
 
     private void drawLids(WorldRenderer wr,float s,int[] marks,int[] face,int[] hat,List<Group> groups,FacePose pose,boolean overHat){
         float open=Math.max(0,Math.min(1,pose.lid-0.12f*pose.wide));
-        int sharedSkin=sharedSkinCell(groups,marks,face);
         int sharedRows=0;
         for(Group g:groups)sharedRows=Math.max(sharedRows,g.maxR-g.minR+1);
         float sharedUpper=Math.round(Math.min(1,open)*sharedRows*2)/2f;
@@ -220,7 +219,8 @@ public final class FaceOverlay implements LayerRenderer<AbstractClientPlayer> {
             upper=Math.min(upper,g.maxR-g.minR+1); // keep the lid within this eye
             if(upper<=0.01f)continue;
             int skin=manualLidCell(g,marks,face);
-            if(skin<0)skin=sharedSkin;
+            if(skin<0)skin=underPupilCell(g,marks,face,hat);
+            if(skin<0)skin=sharedSkinCell(Collections.singletonList(g),marks,face);
             int col=srcCol(face,hat,skin),row=skin/8;
             float x0=plane.left+g.minC*t,x1=plane.left+(g.maxC+1)*t;
             float y0=plane.top+g.minR*t,y1=y0+upper*t;
@@ -296,6 +296,25 @@ public final class FaceOverlay implements LayerRenderer<AbstractClientPlayer> {
             int c=i%8,r=i/8,d=(2*c-cx)*(2*c-cx)+(2*r-cy)*(2*r-cy);
             if((c<4)!=(g.minC+g.maxC<7))continue;
             if(d<bestD){bestD=d;best=i;}
+        }
+        return best;
+    }
+
+    /** Prefer the player's own skin pixel immediately below the pupil columns. */
+    private static int underPupilCell(Group g,int[] marks,int[] face,int[] hat){
+        boolean[] pupils=pupilMask(g,marks,face,hat);
+        int best=-1,bestScore=Integer.MAX_VALUE;
+        for(int[] cell:g.cells){
+            int source=cell[1]*8+cell[0];
+            if(!pupils[source])continue;
+            int c=cell[0];
+            for(int r=g.maxR+1;r<8;r++){
+                int i=r*8+c,p=face[i];
+                if(marks[i]!=0||(p>>>24)<200)continue;
+                int score=(r-g.maxR)*100+colourDistance(p,skinTone(face));
+                if(score<bestScore){bestScore=score;best=i;}
+                break;
+            }
         }
         return best;
     }
