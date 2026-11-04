@@ -64,7 +64,7 @@ final class UtilityScreen extends GuiScreen {
         drawString(fontRendererObj,chatSettings?"Reliable Chat":"Over The Limit 0.3.0",x+14,y+12,0xFFEAEAEA);
         drawString(fontRendererObj,ServerScope.active()?ServerScope.current()+(ReliableChat.fullChat()?" | Full chat":" | All-only chat"):"Inactive here - settings remain editable",x+14,y+27,0xFFAAAAAA);
         if(chatSettings){
-            if(page==0)drawString(fontRendererObj,UtilitySettings.unlimitedHistory?"Unlimited history uses more memory.":"100 messages per view. History is session-only.",x+14,y+173,0xFFAAAAAA);
+            if(page==0)drawString(fontRendererObj,UtilitySettings.unlimitedHistory?"Unlimited history uses more memory.":"100 messages per view. History is session-only.",x+14,y+197,0xFFAAAAAA);
             else if(page==1){
                 drawString(fontRendererObj,"Two lines, above names, never through walls.",x+14,y+132,0xFFAAAAAA);
                 drawString(fontRendererObj,"Shift-click reduces duration or text limit.",x+14,y+145,0xFFAAAAAA);

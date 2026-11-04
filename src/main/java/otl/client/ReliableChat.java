@@ -251,6 +251,9 @@ final class ReliableChat {
     }
     @SubscribeEvent public void open(GuiOpenEvent e){
         if(active()&&e.gui!=null&&e.gui.getClass()==GuiChat.class){
+            // Vanilla's configurable Chat key always starts in All, regardless of the
+            // channel that was previously selected.
+            session().select(ChatRules.ALL);
             String initial=ReflectionHelper.getPrivateValue(GuiChat.class,(GuiChat)e.gui,"defaultInputFieldText","field_146409_v");e.gui=new ReliableChatScreen(initial);
         }
     }
@@ -277,11 +280,14 @@ final class ReliableChat {
             int left=2,top=sr.getScaledHeight()-18,width=52;
             for(String key:tabKeys()){
                 View v=s.views.get(key);if(v==null)continue;
-                int w=key.startsWith("pm:")?Math.min(96,width+font(mc,v.name)+12):width;
+                String label=v.name+(v.unread>0?" "+v.unread:"");
+                int w=key.startsWith("pm:")?Math.min(110,Math.max(width,font(mc,label)+12)):width;
                 Gui.drawRect(left,top,left+w-2,top+16,key.equals(s.selected)?0xEE404040:0xCC202020);
-                mc.fontRendererObj.drawStringWithShadow(mc.fontRendererObj.trimStringToWidth(v.name,w-8),left+4,top+4,0xFFFFFFFF);
+                mc.fontRendererObj.drawStringWithShadow(mc.fontRendererObj.trimStringToWidth(label,w-8),left+4,top+4,0xFFFFFFFF);
                 left+=w;if(left>=sr.getScaledWidth()-20)break;
             }
+            View current=s.view();
+            if(current.newBelow>0)mc.fontRendererObj.drawStringWithShadow("New messages",2,top-12,0xFFFFFF55);
         }
         private int font(Minecraft mc,String s){return mc.fontRendererObj.getStringWidth(s);}
         void drawAt(long now){
