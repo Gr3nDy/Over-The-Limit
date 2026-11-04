@@ -24,7 +24,7 @@ import org.lwjgl.opengl.GL11;
  * each eye, mirrored outward on both cheeks. Sneaking hides the rig for that player.
  */
 public final class FaceOverlay implements LayerRenderer<AbstractClientPlayer> {
-    private static final int EYE=1,PUPIL=2,BROW=3;
+    private static final int EYE=1,PUPIL=2,BROW=3,LID=4;
     private static final float HAT_SCALE=9f/8f;
     private static final float PUPIL_RANGE=0.5f;
     private static final int BROW_TINT=0xFF7A6758;
@@ -219,7 +219,9 @@ public final class FaceOverlay implements LayerRenderer<AbstractClientPlayer> {
             if(lid>open)upper=Math.round(Math.min(1,lid)*sharedRows*2)/2f;
             upper=Math.min(upper,g.maxR-g.minR+1); // keep the lid within this eye
             if(upper<=0.01f)continue;
-            int col=srcCol(face,hat,sharedSkin),row=sharedSkin/8;
+            int skin=manualLidCell(g,marks,face);
+            if(skin<0)skin=sharedSkin;
+            int col=srcCol(face,hat,skin),row=skin/8;
             float x0=plane.left+g.minC*t,x1=plane.left+(g.maxC+1)*t;
             float y0=plane.top+g.minR*t,y1=y0+upper*t;
             float u=col/64f,v=(8+row)/64f;
@@ -284,6 +286,18 @@ public final class FaceOverlay implements LayerRenderer<AbstractClientPlayer> {
         }
         if(best>=0)return best;
         return Math.max(0,Math.min(63,groups.get(0).maxR*8+groups.get(0).minC));
+    }
+
+    /** A manually painted Lid mark selects the exact skin pixel used for that eye. */
+    private static int manualLidCell(Group g,int[] marks,int[] face){
+        int best=-1,bestD=Integer.MAX_VALUE;
+        int cx=g.minC+g.maxC,cy=g.minR+g.maxR;
+        for(int i=0;i<64;i++)if(marks[i]==LID&&(face[i]>>>24)>=64){
+            int c=i%8,r=i/8,d=(2*c-cx)*(2*c-cx)+(2*r-cy)*(2*r-cy);
+            if((c<4)!=(g.minC+g.maxC<7))continue;
+            if(d<bestD){bestD=d;best=i;}
+        }
+        return best;
     }
 
     private static int skinTone(int[] plane){

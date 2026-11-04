@@ -27,7 +27,7 @@ public final class FaceScreen extends CompactScreen {
         buttonList.clear();button(1,width-132,8,120,"Fullscreen: "+on(UtilitySettings.fullscreen));
         if(editing){
             cell=Math.max(6,Math.min(20,(height-125)/8));gx=12;gy=50;
-            for(int i=0;i<4;i++){button(20+i,gx+cell*8+8,gy+i*22,Math.max(54,leftWidth-cell*8-8),(tool==i?"> ":"")+new String[]{"Erase","Eye","Pupil","Brow"}[i]);}
+            for(int i=0;i<5;i++){button(20+i,gx+cell*8+8,gy+i*22,Math.max(54,leftWidth-cell*8-8),(tool==i?"> ":"")+new String[]{"Erase","Eye","Pupil","Brow","Lid"}[i]);}
             button(24,12,height-68,70,"Undo");button(25,86,height-68,Math.max(90,leftWidth-74),"Reset edits");
             button(26,12,height-42,leftWidth/2-2,"Save");button(27,14+leftWidth/2,height-42,leftWidth/2-2,"Cancel");
         }else{
@@ -64,7 +64,7 @@ public final class FaceScreen extends CompactScreen {
             case 25: mc.displayGuiScreen(new GuiYesNo((yes,id)->{if(yes){undo.push(working.clone());int[] auto=FaceMarks.auto(skin());working=auto==null?new int[64]:auto.clone();updateEdits();}mc.displayGuiScreen(this);},"Reset painted face edits?","Save to keep the reset, or Cancel to undo it.",0));return;
             case 26: FaceMarks.replace(skin(),working,true);if(FaceMarks.lastSaveOk){editing=false;dirty=false;status="Face saved";}else status="Could not save face";break;
             case 27: cancel();break;
-            default: if(b.id>=20&&b.id<=23)tool=b.id-20;
+            default: if(b.id>=20&&b.id<=24)tool=b.id-20;
         }
         FaceConfig.save();rebuild();
     }
@@ -90,7 +90,7 @@ public final class FaceScreen extends CompactScreen {
             drawString(fontRendererObj,dirty?"Unsaved edits":"Select a tool, then paint",12,34,0xCCCCCC);
             int[] face=SkinFace.facePixels(skin()),hat=SkinFace.hatPixels(skin());
             int[] shown=face.length==64?face:hat;
-            int[] colors={0,0xFF66CCFF,0xFFFFCC66,0xFFEE99CC};
+            int[] colors={0,0xFF66CCFF,0xFFFFCC66,0xFFEE99CC,0xFFFFB6C1};
             if(shown.length==64)for(int r=0;r<8;r++)for(int c=0;c<8;c++){
                 int x=gx+c*cell,y=gy+r*cell,rgb=shown[r*8+c];
                 drawRect(x,y,x+cell-1,y+cell-1,0xFF000000|rgb);

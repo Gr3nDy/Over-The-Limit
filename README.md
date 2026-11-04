@@ -40,7 +40,8 @@ keys can be rebound in Minecraft Controls under **Over The Limit**.
 - Sneaking temporarily hides the entire face rig for that player.
 - Glances and blinking default to **All**; the blink interval defaults to 3.6 seconds.
 - Over-hat rendering, blush, and glowing eyes default to **None**.
-- The editor supports Eye, Pupil, Brow, and Erase marks with undo, save, cancel, and reset.
+- The editor supports Eye, Pupil, Brow, Lid, and Erase marks with undo, save, cancel, and reset.
+- A manual Lid mark selects the exact skin pixel used for that eyelid; automatic sampling remains the fallback.
 - The preview shows the complete head, including hair and hats.
 
 Face settings are stored in `config/otl/face.json`; painted marks are stored in

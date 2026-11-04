@@ -56,7 +56,7 @@ final class FaceMarks {
                 if(sep<=0)continue;
                 int cell=Integer.parseInt(line.substring(0,sep).trim());
                 int kind=Integer.parseInt(line.substring(sep+1).trim());
-                if(cell>=0&&cell<64&&kind>=1&&kind<=3){marks[cell]=kind;count++;}
+                if(cell>=0&&cell<64&&kind>=1&&kind<=4){marks[cell]=kind;count++;}
             }
             return count==0?NONE:marks;
         }catch(Exception e){return NONE;}
