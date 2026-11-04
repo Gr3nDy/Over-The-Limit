@@ -219,7 +219,7 @@ public final class FaceOverlay implements LayerRenderer<AbstractClientPlayer> {
             upper=Math.min(upper,g.maxR-g.minR+1); // keep the lid within this eye
             if(upper<=0.01f)continue;
             int skin=manualLidCell(g,marks,face);
-            if(skin<0)skin=underPupilCell(g,marks,face,hat);
+            if(skin<0)skin=referenceLidCell(g,marks,face);
             if(skin<0)skin=sharedSkinCell(Collections.singletonList(g),marks,face);
             int col=srcCol(face,hat,skin),row=skin/8;
             float x0=plane.left+g.minC*t,x1=plane.left+(g.maxC+1)*t;
@@ -300,23 +300,19 @@ public final class FaceOverlay implements LayerRenderer<AbstractClientPlayer> {
         return best;
     }
 
-    /** Prefer the player's own skin pixel immediately below the pupil columns. */
-    private static int underPupilCell(Group g,int[] marks,int[] face,int[] hat){
-        boolean[] pupils=pupilMask(g,marks,face,hat);
-        int best=-1,bestScore=Integer.MAX_VALUE;
-        for(int[] cell:g.cells){
-            int source=cell[1]*8+cell[0];
-            if(!pupils[source])continue;
-            int c=cell[0];
-            for(int r=g.maxR+1;r<8;r++){
+    /** Reference-style automatic lid source: nearest validated skin pixel above the eye. */
+    private static int referenceLidCell(Group g,int[] marks,int[] face){
+        int tone=skinTone(face),center=g.minC+g.maxC,best=-1,bestScore=Integer.MAX_VALUE;
+        for(int r=g.minR-1;r>=0;r--){
+            for(int c=g.minC;c<=g.maxC;c++){
                 int i=r*8+c,p=face[i];
-                if(marks[i]!=0||(p>>>24)<200)continue;
-                int score=(r-g.maxR)*100+colourDistance(p,skinTone(face));
+                if(marks[i]!=0||(p>>>24)<200||colourDistance(p,tone)>40)continue;
+                int score=Math.abs(2*c-center)*2+colourDistance(p,tone);
                 if(score<bestScore){bestScore=score;best=i;}
-                break;
             }
+            if(best>=0)return best;
         }
-        return best;
+        return -1;
     }
 
     private static int skinTone(int[] plane){
