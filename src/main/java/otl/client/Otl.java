@@ -17,9 +17,11 @@ import org.lwjgl.input.Keyboard;
 public final class Otl {
     private final KeyBinding menu=new KeyBinding("key.otl.menu",Keyboard.KEY_J,"key.categories.otl");
     private final KeyBinding modules=new KeyBinding("key.otl.modules",Keyboard.KEY_P,"key.categories.otl");
+    private final KeyBinding partyChat=new KeyBinding("key.otl.party_chat",Keyboard.KEY_NONE,"key.categories.otl");
     @Mod.EventHandler public void init(FMLInitializationEvent event) {
         ClientRegistry.registerKeyBinding(menu);
         ClientRegistry.registerKeyBinding(modules);
+        ClientRegistry.registerKeyBinding(partyChat);
         MinecraftForge.EVENT_BUS.register(ReliableChat.INSTANCE);
         FMLCommonHandler.instance().bus().register(ReliableChat.INSTANCE);
         MinecraftForge.EVENT_BUS.register(TeamBubbles.INSTANCE);
@@ -29,6 +31,8 @@ public final class Otl {
         ((IReloadableResourceManager)Minecraft.getMinecraft().getResourceManager()).registerReloadListener(resources->{SkinFace.clear();FaceMarks.clearCache();});
     }
     @SubscribeEvent public void key(InputEvent.KeyInputEvent event){
+        if(Keyboard.getEventKeyState()&&Keyboard.getEventKey()==Keyboard.KEY_Y){ReliableChat.openChannel(ChatRules.TEAM);return;}
+        if(partyChat.isPressed()){ReliableChat.openChannel(ChatRules.PARTY);return;}
         openMenu();
     }
     @SubscribeEvent public void mouse(InputEvent.MouseInputEvent event){openMenu();}

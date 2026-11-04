@@ -36,9 +36,9 @@ public final class OtlSmoke {
                 mc.displayGuiScreen(new GuiChat());ReliableChatScreen ui=(ReliableChatScreen)mc.currentScreen;ui.drawScreen(0,0,0);ui.mouseClicked(10,ui.height-27,0);ui.cycleNext();ui.sendChatMessage("lobby text",true);
             }else if(state==1){
                 require(packets.equals(Arrays.asList("lobby text")),"Lobby commands: "+packets);
-                MinecraftForge.EVENT_BUS.post(new net.minecraftforge.event.world.WorldEvent.Load(mc.theWorld));line("Created by MapMaker");require(ReliableChat.fullChat()&&ReliableChat.session().selected.equals("team"),"Created by detection");
+                MinecraftForge.EVENT_BUS.post(new net.minecraftforge.event.world.WorldEvent.Load(mc.theWorld));line("Created by MapMaker");require(ReliableChat.fullChat()&&ReliableChat.session().selected.equals("all"),"Created by detection");
             }else if(state==2){
-                require(count("/t")==1,"Initial /t count");ReliableChatScreen ui=(ReliableChatScreen)mc.currentScreen;ui.updateScreen();ui.sendChatMessage("team message",true);
+                require(count("/t")==0,"Unexpected automatic /t count");ReliableChatScreen ui=(ReliableChatScreen)mc.currentScreen;ReliableChat.session().select("team");ui.updateScreen();ui.sendChatMessage("team message",true);
                 ReliableChat.session().select("all");ui.updateScreen();ui.sendChatMessage("global message",true);
                 ReliableChat.session().select("party");ui.updateScreen();ui.sendChatMessage("party message",true);
                 ui.cycleNext();ui.drawScreen(0,0,0);ui.mouseClicked(10,ui.height-27,0);
@@ -46,7 +46,7 @@ public final class OtlSmoke {
                 line("\u00a79\u00a7oto your monument!");require(!ReliableChat.session().views.containsKey("pm:your"),"False PM tab");require(ReliableChat.session().views.containsKey("pm:bob"),"Missing /r PM");
                 MinecraftForge.EVENT_BUS.post(new net.minecraftforge.event.world.WorldEvent.Load(mc.theWorld));require(ReliableChat.fullChat(),"World change hid tabs");line("Created by OtherMaker");
             }else if(state==3){
-                require(count("/t")==1&&count("/g")==0&&count("/party chat")==0,"Tab/map sent bare command: "+packets);
+                require(count("/t")==0&&count("/g")==0&&count("/party chat")==0,"Tab/map sent bare command: "+packets);
                 require(packets.containsAll(Arrays.asList("/t team message","/g global message","/party chat party message","/msg Alice hello","/r reply")),"Missing routed sends: "+packets);
                 ReliableChat.session().clear("party");ReliableChat.session().clear("all");ReliableChat.session().select("team");ReliableChat.noteSend(null);
                 line("\u00a7cYou are not in a party.");
@@ -68,7 +68,7 @@ public final class OtlSmoke {
                 mc.displayGuiScreen(new UtilityScreen());
             }else if(state==6){
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-menu.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
-                require(count("/t")==2,"Game re-entry /t missing");require(org.lwjgl.opengl.GL11.glGetError()==0,"GL error");
+                 require(count("/t")==0,"Unexpected game re-entry /t");require(org.lwjgl.opengl.GL11.glGetError()==0,"GL error");
                 channel.pipeline().remove("otl_packets");System.out.println("OTL_SMOKE: PASS - lobby/direct/map transitions; packet routing; tabs send no commands; PM confirmations; phantom PM rejected; vanilla menus/editor/cancel rendered");mc.shutdown();
             }
             state++;

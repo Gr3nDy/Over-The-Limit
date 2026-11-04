@@ -37,13 +37,12 @@ final class ReliableChat {
         if(changed)welcomeGate.reset();else welcomeGate.worldChanged();
         contextDirty=false;contextVersion++;pending.clear();recentSend=null;
         observedWorld=mc.theWorld;observedConnection=connection;observedHost=host;
-        Session next=sessions.get(host);if(next!=null&&changed)next.selected=ChatRules.TEAM;
+        Session next=sessions.get(host);if(next!=null&&changed)next.selected=ChatRules.ALL;
     }
     private static void observeWelcome(IChatComponent message){
         observeContext();if(!ServerScope.active()||!welcomeGate.accept(message.getFormattedText()))return;
         contextVersion++;Session s=session();
-        s.selected=welcomeGate.enabled()?ChatRules.TEAM:ChatRules.ALL;s.view().unread=0;
-        UtilitySettings.load();if(welcomeGate.enabled()&&UtilitySettings.chat&&Minecraft.getMinecraft().thePlayer!=null)Minecraft.getMinecraft().thePlayer.sendChatMessage("/t");
+        s.selected=ChatRules.ALL;s.view().unread=0;
     }
     static List<String> tabKeys(){List<String> keys=new ArrayList<>();keys.add(ChatRules.ALL);if(fullChat()){keys.add(ChatRules.TEAM);keys.add(ChatRules.PARTY);keys.addAll(session().visible);}return keys;}
     static String channelCommand(String key){return null;}
@@ -136,7 +135,7 @@ final class ReliableChat {
         Session(String host){
             views.put(ChatRules.ALL,new View(ChatRules.ALL,"All"));views.put(ChatRules.TEAM,new View(ChatRules.TEAM,"Team"));views.put(ChatRules.PARTY,new View(ChatRules.PARTY,"Party"));
             restoreSelection=UtilitySettings.selected.getOrDefault(host,ChatRules.ALL);
-            selected=welcomeGate.enabled()?ChatRules.TEAM:ChatRules.ALL;
+            selected=ChatRules.ALL;
         }
         View view(){return views.get(selected);}
         View pm(String key,String name){
@@ -167,6 +166,12 @@ final class ReliableChat {
     }
     static Session session(){UtilitySettings.load();observeContext();return sessions.computeIfAbsent(ServerScope.current(),Session::new);}
     static View currentView(){return session().view();}
+    static void openChannel(String key){
+        if(!active()||!fullChat())return;
+        session().select(key);
+        Minecraft mc=Minecraft.getMinecraft();
+        if(mc.currentScreen==null)mc.displayGuiScreen(new ReliableChatScreen(""));
+    }
     static void applyPreferences(){
         for(Session s:sessions.values())for(View v:s.views.values()){if(!UtilitySettings.rememberDrafts)v.draft="";v.hud.refreshChat();}
         if(!UtilitySettings.bubbles)TeamBubbles.clearBubbles();
@@ -262,8 +267,23 @@ final class ReliableChat {
         RoutingHud(Minecraft mc,GuiNewChat original){super(mc);this.original=original;}
         GuiNewChat target(){return active()?currentView().hud:original;}
         @Override public void drawChat(int ticks){
-            if(active())drawAt(System.nanoTime());else original.drawChat(ticks);
+            if(active()){
+                drawAt(System.nanoTime());
+                if(UtilitySettings.showTabChat&&!(Minecraft.getMinecraft().currentScreen instanceof ReliableChatScreen))drawTabs();
+            }else original.drawChat(ticks);
         }
+        private void drawTabs(){
+            Minecraft mc=Minecraft.getMinecraft();ScaledResolution sr=new ScaledResolution(mc);Session s=session();
+            int left=2,top=sr.getScaledHeight()-18,width=52;
+            for(String key:tabKeys()){
+                View v=s.views.get(key);if(v==null)continue;
+                int w=key.startsWith("pm:")?Math.min(96,width+font(mc,v.name)+12):width;
+                Gui.drawRect(left,top,left+w-2,top+16,key.equals(s.selected)?0xEE404040:0xCC202020);
+                mc.fontRendererObj.drawStringWithShadow(mc.fontRendererObj.trimStringToWidth(v.name,w-8),left+4,top+4,0xFFFFFFFF);
+                left+=w;if(left>=sr.getScaledWidth()-20)break;
+            }
+        }
+        private int font(Minecraft mc,String s){return mc.fontRendererObj.getStringWidth(s);}
         void drawAt(long now){
             GlStateManager.pushMatrix();
             try{if(Minecraft.getMinecraft().currentScreen instanceof ReliableChatScreen)GlStateManager.translate(0,-18,0);((QuietChat)currentView().hud).drawAt(now);}

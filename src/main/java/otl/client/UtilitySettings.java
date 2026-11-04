@@ -9,7 +9,7 @@ import net.minecraft.client.Minecraft;
 /** Preferences only. Chat content, private names and drafts are never serialized. */
 final class UtilitySettings {
     private static boolean loaded;
-    static boolean chat=true, counts=true, fullscreen=false, otherFaces=true;
+    static boolean chat=true, counts=true, fullscreen=false, otherFaces=true, showTabChat=true;
     static boolean faceRig=false;
     static boolean rememberDrafts=false, unlimitedHistory=false, cycleTabs=true, bubbles=false;
     static int bubbleCharacters=80, bubbleSeconds=4;
@@ -26,6 +26,7 @@ final class UtilitySettings {
             if(j.has("unread_counts"))counts=j.get("unread_counts").getAsBoolean();
             if(j.has("fullscreen_menu"))fullscreen=j.get("fullscreen_menu").getAsBoolean();
             if(j.has("other_faces"))otherFaces=j.get("other_faces").getAsBoolean();
+            if(j.has("show_tab_chat"))showTabChat=j.get("show_tab_chat").getAsBoolean();
             if(j.has("remember_drafts"))rememberDrafts=j.get("remember_drafts").getAsBoolean();
             if(j.has("unlimited_history"))unlimitedHistory=j.get("unlimited_history").getAsBoolean();
             if(j.has("shift_tab"))cycleTabs=j.get("shift_tab").getAsBoolean();
@@ -40,7 +41,7 @@ final class UtilitySettings {
     }
     static void save(){
         load();try{
-            JsonObject j=new JsonObject();j.addProperty("reliable_chat",chat);j.addProperty("unread_counts",counts);j.addProperty("fullscreen_menu",fullscreen);j.addProperty("other_faces",otherFaces);
+            JsonObject j=new JsonObject();j.addProperty("reliable_chat",chat);j.addProperty("unread_counts",counts);j.addProperty("fullscreen_menu",fullscreen);j.addProperty("other_faces",otherFaces);j.addProperty("show_tab_chat",showTabChat);
             j.addProperty("face_rig",faceRig);
             j.addProperty("remember_drafts",rememberDrafts);j.addProperty("unlimited_history",unlimitedHistory);j.addProperty("shift_tab",cycleTabs);j.addProperty("team_bubbles",bubbles);j.addProperty("bubble_characters",bubbleCharacters);j.addProperty("bubble_seconds",bubbleSeconds);
             j.addProperty("chat_background_opacity",chatBackground);

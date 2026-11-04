@@ -18,7 +18,7 @@ final class UtilityScreen extends GuiScreen {
             for(int i=0;i<3;i++)buttonList.add(new NeutralButton(10+i,x+14+i*(tabWidth+4),y+42,tabWidth,16,new String[]{"General","Team bubbles","Appearance"}[i],page==i));
             if(page==0){
                 button(0,0,"Reliable Chat: "+state(UtilitySettings.chat));button(1,1,"Unread counts: "+state(UtilitySettings.counts));
-                button(4,2,"Remember drafts: "+state(UtilitySettings.rememberDrafts));button(5,3,"Unlimited history: "+state(UtilitySettings.unlimitedHistory));button(6,4,"Shift + Tab cycling: "+state(UtilitySettings.cycleTabs));
+                button(4,2,"Remember drafts: "+state(UtilitySettings.rememberDrafts));button(5,3,"Unlimited history: "+state(UtilitySettings.unlimitedHistory));button(6,4,"Shift + Tab cycling: "+state(UtilitySettings.cycleTabs));button(14,5,"Show Tab Chat: "+state(UtilitySettings.showTabChat));
             }else if(page==1){
                 button(7,0,"Team speech bubbles: "+state(UtilitySettings.bubbles));button(8,1,"Text limit: "+UtilitySettings.bubbleCharacters+" characters");button(9,2,"Duration: "+UtilitySettings.bubbleSeconds+" seconds");
             }else{
@@ -51,11 +51,12 @@ final class UtilityScreen extends GuiScreen {
         if(b.id==4)UtilitySettings.rememberDrafts=!UtilitySettings.rememberDrafts;
         if(b.id==5)UtilitySettings.unlimitedHistory=!UtilitySettings.unlimitedHistory;
         if(b.id==6)UtilitySettings.cycleTabs=!UtilitySettings.cycleTabs;
+        if(b.id==14)UtilitySettings.showTabChat=!UtilitySettings.showTabChat;
         if(b.id==7)UtilitySettings.bubbles=!UtilitySettings.bubbles;
         if(b.id==8){int n=UtilitySettings.bubbleCharacters+(isShiftKeyDown()?-20:20);UtilitySettings.bubbleCharacters=n>200?20:n<20?200:n;}
         if(b.id==9)UtilitySettings.bubbleSeconds=1+Math.floorMod(UtilitySettings.bubbleSeconds-1+(isShiftKeyDown()?-1:1),15);
         if(b.id==13){int n=UtilitySettings.chatBackground+(isShiftKeyDown()?-10:10);UtilitySettings.chatBackground=n>100?0:n<0?100:n;}
-        if(b.id==2){UtilitySettings.chat=true;UtilitySettings.counts=true;UtilitySettings.rememberDrafts=false;UtilitySettings.unlimitedHistory=false;UtilitySettings.cycleTabs=true;UtilitySettings.bubbles=false;UtilitySettings.bubbleCharacters=80;UtilitySettings.bubbleSeconds=4;UtilitySettings.chatBackground=0;}
+        if(b.id==2){UtilitySettings.chat=true;UtilitySettings.counts=true;UtilitySettings.rememberDrafts=false;UtilitySettings.unlimitedHistory=false;UtilitySettings.cycleTabs=true;UtilitySettings.showTabChat=true;UtilitySettings.bubbles=false;UtilitySettings.bubbleCharacters=80;UtilitySettings.bubbleSeconds=4;UtilitySettings.chatBackground=0;}
         UtilitySettings.save();ReliableChat.applyPreferences();initGui();
     }
     public void drawScreen(int mx,int my,float partial){
