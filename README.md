@@ -30,7 +30,9 @@ The result is `build/libs/OTL-0.3.0.jar`. Rename it to `OTL.jar` if desired.
 Press **P** to open the OTL menu. Press **J** to open the Face Rig directly. Both
 keys can be rebound in Minecraft Controls under **Over The Limit**.
 
-## Face Rig
+## Mods
+
+### Face Rig
 
 - Face Rig is **OFF by default**; Reliable Chat is **ON by default**.
 - Eyes, pupils, brows, and eyelids use the player's own skin pixels.
@@ -44,7 +46,7 @@ keys can be rebound in Minecraft Controls under **Over The Limit**.
 Face settings are stored in `config/otl/face.json`; painted marks are stored in
 `config/otl/marks/`.
 
-## Reliable Chat
+### Reliable Chat
 
 Reliable Chat is designed for `play.oc.tc`.
 
