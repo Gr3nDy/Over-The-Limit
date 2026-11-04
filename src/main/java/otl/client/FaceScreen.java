@@ -28,8 +28,8 @@ public final class FaceScreen extends CompactScreen {
         if(editing){
             cell=Math.max(6,Math.min(20,(height-125)/8));gx=12;gy=50;
             for(int i=0;i<5;i++){button(20+i,gx+cell*8+8,gy+i*22,Math.max(54,leftWidth-cell*8-8),(tool==i?"> ":"")+new String[]{"Erase","Eye","Pupil","Brow","Lid"}[i]);}
-            button(24,12,height-68,70,"Undo");button(25,86,height-68,Math.max(90,leftWidth-74),"Reset edits");
-            button(26,12,height-42,leftWidth/2-2,"Save");button(27,14+leftWidth/2,height-42,leftWidth/2-2,"Cancel");
+            button(25,12,height-68,70,"Undo");button(26,86,height-68,Math.max(90,leftWidth-74),"Reset edits");
+            button(27,12,height-42,leftWidth/2-2,"Save");button(28,14+leftWidth/2,height-42,leftWidth/2-2,"Cancel");
         }else{
             row(2,42,"FaceRig: "+on(UtilitySettings.faceRig));
             row(3,64,"Other Player's FaceRig: "+on(UtilitySettings.otherFaces));
@@ -60,10 +60,10 @@ public final class FaceScreen extends CompactScreen {
             case 10: FaceConfig.blinkSeconds=Math.max(1.5f,Math.min(8,FaceConfig.blinkSeconds+(isShiftKeyDown()?-.1f:.1f)));break;
             case 11: begin();break;
             case 12: mc.displayGuiScreen(new GuiYesNo((yes,id)->{if(yes){FaceConfig.reset();UtilitySettings.otherFaces=true;UtilitySettings.save();status="Settings reset";}mc.displayGuiScreen(this);},"Reset Face Rig settings?","Painted face edits are kept.",0));return;
-            case 24: if(!undo.isEmpty()){working=undo.pop();updateEdits();}break;
-            case 25: mc.displayGuiScreen(new GuiYesNo((yes,id)->{if(yes){undo.push(working.clone());int[] auto=FaceMarks.auto(skin());working=auto==null?new int[64]:auto.clone();updateEdits();}mc.displayGuiScreen(this);},"Reset painted face edits?","Save to keep the reset, or Cancel to undo it.",0));return;
-            case 26: FaceMarks.replace(skin(),working,true);if(FaceMarks.lastSaveOk){editing=false;dirty=false;status="Face saved";}else status="Could not save face";break;
-            case 27: cancel();break;
+            case 25: if(!undo.isEmpty()){working=undo.pop();updateEdits();}break;
+            case 26: mc.displayGuiScreen(new GuiYesNo((yes,id)->{if(yes){undo.push(working.clone());int[] auto=FaceMarks.auto(skin());working=auto==null?new int[64]:auto.clone();updateEdits();}mc.displayGuiScreen(this);},"Reset painted face edits?","Save to keep the reset, or Cancel to undo it.",0));return;
+            case 27: FaceMarks.replace(skin(),working,true);if(FaceMarks.lastSaveOk){editing=false;dirty=false;status="Face saved";}else status="Could not save face";break;
+            case 28: cancel();break;
             default: if(b.id>=20&&b.id<=24)tool=b.id-20;
         }
         FaceConfig.save();rebuild();
