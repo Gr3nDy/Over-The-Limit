@@ -1,0 +1,11 @@
+# Local-only artifacts; never part of the GPL source release
+build/
+.gradle/
+run/
+inspection/
+*.log
+*.blend
+*.blend1
+port_core.py
+OTL.jar
+HavenRig.jar
