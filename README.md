@@ -26,7 +26,6 @@ The result is `build/libs/OTL-0.3.0.jar`. Rename it to `OTL.jar` if desired.
 
 1. Close Minecraft.
 2. Place `OTL.jar` in `.minecraft/mods`.
-3. Remove any older face-rig mod before launching.
 
 Press **P** to open the OTL menu. Press **J** to open the Face Rig directly. Both
 keys can be rebound in Minecraft Controls under **Over The Limit**.
@@ -47,7 +46,7 @@ Face settings are stored in `config/otl/face.json`; painted marks are stored in
 
 ## Reliable Chat
 
-Reliable Chat is designed for `play.oc.tc` and `vanish.oc.tc`.
+Reliable Chat is designed for `play.oc.tc`.
 
 - Detects lobby and game transitions and selects the appropriate chat tabs.
 - Routes All, Team, Party, and private messages to their correct channels.
@@ -58,12 +57,6 @@ Reliable Chat is designed for `play.oc.tc` and `vanish.oc.tc`.
 Settings are stored in `config/overcast_util/settings.json`. Settings remain editable
 outside supported servers, but server-specific features activate only on supported
 hosts.
-
-## Upgrading from 0.2.x
-
-- The mod ID is now `otl`; rebind **P** and **J** once if necessary.
-- Face settings moved to `config/otl/` and old painted marks must be repainted.
-- Reliable Chat settings remain in `config/overcast_util/settings.json`.
 
 ## License and source
 
