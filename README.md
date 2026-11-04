@@ -2,6 +2,26 @@
 
 Client-side Forge 1.8.9 mod combining a skin-based Face Rig with Reliable Chat.
 
+## Get the JAR
+
+For a published beta binary, open the repository's **Releases** page:
+
+<https://github.com/Gr3nDy/Over-The-Limit/releases>
+
+Download `OTL.jar` from the latest beta release and place it in your
+`.minecraft/mods` folder. The `beta` branch is the source branch; it does not
+contain the binary JAR itself.
+
+To build the JAR yourself from `beta`, install JDK 8, clone the repository, and run:
+
+```text
+git clone -b beta https://github.com/Gr3nDy/Over-The-Limit.git
+cd Over-The-Limit
+gradlew.bat clean build --offline --no-daemon
+```
+
+The result is `build/libs/OTL-0.3.0.jar`. Rename it to `OTL.jar` if desired.
+
 ## Installation
 
 1. Close Minecraft.
