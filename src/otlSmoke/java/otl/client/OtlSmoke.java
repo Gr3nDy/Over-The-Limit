@@ -3,6 +3,8 @@ package otl.client;
 import java.util.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.*;
+import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.*;
 import net.minecraft.util.*;
 import net.minecraft.world.*;
 import net.minecraftforge.common.MinecraftForge;
@@ -14,7 +16,7 @@ import net.minecraftforge.fml.relauncher.ReflectionHelper;
 
 @Mod(modid="otl_smoke",version="1",clientSideOnly=true)
 public final class OtlSmoke {
-    boolean started;int ticks,state;FaceScreen face;io.netty.channel.Channel channel;
+    boolean started;int ticks,state;FaceScreen face;GuiScreenBook bookScreen;io.netty.channel.Channel channel;
     final List<String> packets=Collections.synchronizedList(new ArrayList<String>());
     @Mod.EventHandler public void init(FMLInitializationEvent e){FMLCommonHandler.instance().bus().register(this);}
     void require(boolean ok,String message){if(!ok)throw new AssertionError(message);}
@@ -73,9 +75,24 @@ public final class OtlSmoke {
                 require(find(menu,"Face Rig: OFF")!=null,"Module list did not refresh");
                 menu.actionPerformed(find(menu,"Face Rig: OFF"));require(UtilitySettings.faceRig,"Module toggle did not revert");
                 require(find(menu,"Reliable Chat: ON")!=null,"Second module missing from list");
+                require(find(menu,"Map Preview: ON")!=null,"Map Preview module missing from list");
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-menu.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+            }else if(state==7){
+                ItemStack book=new ItemStack(net.minecraft.init.Items.written_book);
+                NBTTagCompound nbt=new NBTTagCompound();
+                nbt.setString("title","Vote");nbt.setString("author","Server");
+                NBTTagList pages=new NBTTagList();pages.appendTag(new NBTTagString("{\"text\":\"Allure\"}"));nbt.setTag("pages",pages);
+                book.setTagCompound(nbt);
+                bookScreen=new GuiScreenBook(mc.thePlayer,book,false);
+                mc.displayGuiScreen(bookScreen);
+            }else if(state==8){
+                int left=(bookScreen.width-192)/2+36;
+                bookScreen.drawScreen(left+2,36,0);
+                MapPreview.Hover hit=MapPreview.INSTANCE.hover(bookScreen,left+2,36);
+                require(hit!=null&&"Allure".equalsIgnoreCase(hit.label),"Map hover did not resolve the map name: "+hit);
+                require(MapPreview.INSTANCE.hover(bookScreen,left+300,36)==null,"Map hover matched outside the map name");
                  require(count("/t")==0,"Unexpected game re-entry /t");require(org.lwjgl.opengl.GL11.glGetError()==0,"GL error");
-                channel.pipeline().remove("otl_packets");System.out.println("OTL_SMOKE: PASS - lobby/direct/map transitions; packet routing; tabs send no commands; PM confirmations; phantom PM rejected; vanilla menus/editor/cancel rendered");mc.shutdown();
+                channel.pipeline().remove("otl_packets");System.out.println("OTL_SMOKE: PASS - lobby/direct/map transitions; packet routing; tabs send no commands; PM confirmations; phantom PM rejected; vanilla menus/editor/cancel rendered; module list toggles; map hover resolves the map name");mc.shutdown();
             }
             state++;
         }catch(Throwable t){t.printStackTrace();System.out.println("OTL_SMOKE: FAIL");mc.shutdown();}

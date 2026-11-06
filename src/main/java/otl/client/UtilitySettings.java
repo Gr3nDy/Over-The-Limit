@@ -9,7 +9,7 @@ import net.minecraft.client.Minecraft;
 /** Preferences only. Chat content, private names and drafts are never serialized. */
 final class UtilitySettings {
     private static boolean loaded;
-    static boolean chat=true, counts=true, fullscreen=false, otherFaces=true, showTabChat=true;
+    static boolean chat=true, counts=true, fullscreen=false, otherFaces=true, showTabChat=true, mapPreview=true;
     static int tabChatPosition=0;
     static String tabPositionLabel(){
         return new String[]{"Bottom Left","Bottom Right","Top Left","Top Right"}[Math.max(0,Math.min(3,tabChatPosition))];
@@ -31,6 +31,7 @@ final class UtilitySettings {
             if(j.has("fullscreen_menu"))fullscreen=j.get("fullscreen_menu").getAsBoolean();
             if(j.has("other_faces"))otherFaces=j.get("other_faces").getAsBoolean();
             if(j.has("show_tab_chat"))showTabChat=j.get("show_tab_chat").getAsBoolean();
+            if(j.has("map_preview"))mapPreview=j.get("map_preview").getAsBoolean();
             if(j.has("tab_chat_position"))tabChatPosition=Math.max(0,Math.min(3,j.get("tab_chat_position").getAsInt()));
             if(j.has("remember_drafts"))rememberDrafts=j.get("remember_drafts").getAsBoolean();
             if(j.has("unlimited_history"))unlimitedHistory=j.get("unlimited_history").getAsBoolean();
@@ -46,7 +47,7 @@ final class UtilitySettings {
     }
     static void save(){
         load();try{
-            JsonObject j=new JsonObject();j.addProperty("schema_version",1);j.addProperty("reliable_chat",chat);j.addProperty("unread_counts",counts);j.addProperty("fullscreen_menu",fullscreen);j.addProperty("other_faces",otherFaces);j.addProperty("show_tab_chat",showTabChat);j.addProperty("tab_chat_position",tabChatPosition);
+            JsonObject j=new JsonObject();j.addProperty("schema_version",1);j.addProperty("reliable_chat",chat);j.addProperty("unread_counts",counts);j.addProperty("fullscreen_menu",fullscreen);j.addProperty("other_faces",otherFaces);j.addProperty("show_tab_chat",showTabChat);j.addProperty("map_preview",mapPreview);j.addProperty("tab_chat_position",tabChatPosition);
             j.addProperty("face_rig",faceRig);
             j.addProperty("remember_drafts",rememberDrafts);j.addProperty("unlimited_history",unlimitedHistory);j.addProperty("shift_tab",cycleTabs);j.addProperty("team_bubbles",bubbles);j.addProperty("bubble_characters",bubbleCharacters);j.addProperty("bubble_seconds",bubbleSeconds);
             j.addProperty("chat_background_opacity",chatBackground);

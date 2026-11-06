@@ -23,6 +23,7 @@ public final class Otl {
         ClientRegistry.registerKeyBinding(modules);
         ClientRegistry.registerKeyBinding(partyChat);
         MinecraftForge.EVENT_BUS.register(ReliableChat.INSTANCE);
+        MinecraftForge.EVENT_BUS.register(MapPreview.INSTANCE);
         FMLCommonHandler.instance().bus().register(ReliableChat.INSTANCE);
         MinecraftForge.EVENT_BUS.register(TeamBubbles.INSTANCE);
         FMLCommonHandler.instance().bus().register(TeamBubbles.INSTANCE);

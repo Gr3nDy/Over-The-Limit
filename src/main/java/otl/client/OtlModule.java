@@ -40,6 +40,11 @@ abstract class OtlModule {
                 boolean enabled() { return UtilitySettings.chat; }
                 void setEnabled(boolean on) { UtilitySettings.chat = on; ReliableChat.applyPreferences(); }
                 GuiScreen settings(GuiScreen back) { return new UtilityScreen(true); }
+            },
+            new OtlModule("map_preview", "Map Preview") {
+                boolean enabled() { return UtilitySettings.mapPreview; }
+                void setEnabled(boolean on) { UtilitySettings.mapPreview = on; }
+                GuiScreen settings(GuiScreen back) { return new MapPreviewSettings(back); }
             }
     );
 }

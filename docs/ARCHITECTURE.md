@@ -22,6 +22,7 @@ One Forge 1.8.9 mod, many modules, one server family (`play.oc.tc`, `vanish.oc.t
               ┌────────────────────────── Modules ───────────────────────────┐
               │ Face Rig (FaceOverlay, EyeDetector, SkinFace)                │
               │ Reliable Chat (ReliableChat, ChatRules, TeamBubbles)         │
+              │ Map Preview (MapPreview, MapPreviewIndex, gallery)           │
               └──────────────────────────────▲──────────────────────────────┘
                                              │ OtlModule contract
               ┌───────────────────────────── Core ───────────────────────────┐
@@ -85,6 +86,8 @@ There is no database, and adding one would be wrong: this is a single-process de
   "bubble_characters": 80,      // 20..200
   "bubble_seconds": 4,          // 1..15
 
+  "map_preview": true,          // bool, module: Map Preview (book hover + gallery)
+
   "selected_channels": {        // view id -> channel key, validated against ChatRules on load
     "ALL": "all",
     "TEAM": "team",
@@ -111,7 +114,8 @@ Escape ─┬─ FaceScreen            (J)   face rig sliders/toggles
               ├─ module row  → toggle, persisted immediately
               ├─ Settings    → module.settings(this)
               │     ├─ FaceScreen        (back returns here)
-              │     └─ UtilityScreen(true): General │ Team bubbles │ Appearance
+              │     ├─ UtilityScreen(true): General │ Team bubbles │ Appearance
+              │     └─ MapPreviewSettings → MapGalleryScreen
               └─ Done
 ```
 
@@ -145,6 +149,7 @@ otl/                         (repo root: Over The Limit)
    │  ├─ FaceOverlay.java      RenderPlayer layer
    │  ├─ ReliableChat / ReliableChatScreen / ChatRules / ChatAppearance / ChatWarnings / ChatWelcomeGate
    │  ├─ TeamBubbles / TeamBubbleRules
+   │  ├─ MapPreview / MapPreviewSettings / MapGalleryScreen / MapPreviewIndex (generated)
    │  ├─ PlayerSignals / CompactScreen / NeutralButton
    │  └─ (ui kit: CompactScreen, NeutralButton shared by every screen)
    ├─ main/resources/          mcmod.info, assets (fonts, map data)
@@ -165,4 +170,4 @@ otl/                         (repo root: Over The Limit)
 - Module list is a static `Arrays.asList` — compile-time only, no dynamic loading. Fine while everything ships in one JAR; a service loader only pays off when modules become separate artifacts.
 - 4 visible module rows, no scrolling.
 - No per-server or per-profile config sets.
-- Map preview assets (1.6k files) are what make the JAR large; they belong in a separate optional resource pack, not in the mod, if size becomes a complaint.
+- Map preview assets: 880 PNG previews + XML (1,661 files, ~84 MB, ~97% of the JAR) belong in a separate optional resource pack if size becomes a complaint. `MapPreviewIndex` is generated from that folder and must be regenerated whenever assets change.
