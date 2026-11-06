@@ -77,6 +77,12 @@ public final class OtlSmoke {
                 menu.actionPerformed(find(menu,"Face Rig: OFF"));require(UtilitySettings.faceRig,"Module toggle did not revert");
                 require(find(menu,"Reliable Chat: ON")!=null,"Second module missing from list");
                 require(find(menu,"Map Preview: ON")!=null,"Map Preview module missing from list");
+                UtilitySettings.devHosts.add("localhost");
+                require("localhost".equals(ServerScope.host("localhost:25565")),"dev host allowlist");
+                UtilitySettings.devHosts.remove("localhost");
+                require("".equals(ServerScope.host("localhost:25565")),"dev host not removed");
+                require("".equals(ServerScope.host("play.oc.tc.example.com")),"Scope suffix bypass");
+                require("".equals(ServerScope.host("localhost:abc")),"Scope bad port");
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-menu.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
             }else if(state==7){
                 ItemStack book=new ItemStack(net.minecraft.init.Items.written_book);
@@ -113,6 +119,6 @@ public final class OtlSmoke {
                 channel.pipeline().remove("otl_packets");System.out.println("OTL_SMOKE: PASS - lobby/direct/map transitions; packet routing; tabs send no commands; PM confirmations; phantom PM rejected; vanilla menus/editor/cancel rendered; module list toggles; map hover resolves the map name; map card renders");mc.shutdown();
             }
             state++;
-        }catch(Throwable t){t.printStackTrace();System.out.println("OTL_SMOKE: FAIL");mc.shutdown();}
+        }catch(Throwable t){t.printStackTrace();System.out.println("OTL_SMOKE: FAIL - "+t);mc.shutdown();}
     }
 }

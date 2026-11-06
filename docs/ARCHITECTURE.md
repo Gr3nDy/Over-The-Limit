@@ -86,6 +86,8 @@ There is no database, and adding one would be wrong: this is a single-process de
   "bubble_characters": 80,      // 20..200
   "bubble_seconds": 4,          // 1..15
 
+  "dev_hosts": [],              // extra hosts where modules also run (local test server)
+
   "map_preview": true,          // bool, module: Map Preview (book hover + gallery)
 
   "selected_channels": {        // view id -> channel key, validated against ChatRules on load
@@ -104,7 +106,7 @@ If a hosted backend ever exists (leaderboards, cross-device settings), that is w
 
 ## 5. UI architecture
 
-**Server scoping.** `ServerScope.host()` normalizes the address and returns a non-empty string only for approved hosts. Every gameplay effect is gated on `ServerScope.active()`; screens stay open off-server so users can configure while in a lobby.
+**Server scoping.** `ServerScope.host()` normalizes the address and returns a non-empty string only for approved hosts. Every gameplay effect is gated on `ServerScope.active()`; screens stay open off-server so users can configure while in a lobby. `dev_hosts` in the settings allows a local server for testing without changing code (`docs/LOCAL_TESTING.md`).
 
 **Screen tree**
 

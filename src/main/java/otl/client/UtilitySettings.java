@@ -19,6 +19,8 @@ final class UtilitySettings {
     static int bubbleCharacters=80, bubbleSeconds=4;
     static int chatBackground=0;
     static final Map<String,String> selected=new HashMap<>();
+    /** Extra hosts allowed in addition to oc.tc, for a local test server. */
+    static final Set<String> devHosts=new LinkedHashSet<>();
     private static Path path(){return MinecraftAccess.get().mcDataDir.toPath().resolve("config/overcast_util/settings.json");}
     static void load(){
         if(loaded)return;loaded=true;
@@ -43,6 +45,9 @@ final class UtilitySettings {
             if(j.has("selected_channels"))for(Map.Entry<String,JsonElement> e:j.getAsJsonObject("selected_channels").entrySet()){
                 String v=e.getValue().getAsString();if(ChatRules.channel(v)!=null)selected.put(e.getKey(),v);
             }
+            if(j.has("dev_hosts"))for(JsonElement e:j.getAsJsonArray("dev_hosts")){
+                String v=e.getAsString().trim().toLowerCase(java.util.Locale.ROOT);if(!v.isEmpty())devHosts.add(v);
+            }
         }catch(Exception e){System.err.println("Overcast Utilities: could not load settings: "+e.getMessage());}
     }
     static void save(){
@@ -52,6 +57,7 @@ final class UtilitySettings {
             j.addProperty("remember_drafts",rememberDrafts);j.addProperty("unlimited_history",unlimitedHistory);j.addProperty("shift_tab",cycleTabs);j.addProperty("team_bubbles",bubbles);j.addProperty("bubble_characters",bubbleCharacters);j.addProperty("bubble_seconds",bubbleSeconds);
             j.addProperty("chat_background_opacity",chatBackground);
             JsonObject channels=new JsonObject();selected.forEach(channels::addProperty);j.add("selected_channels",channels);
+            JsonArray hosts=new JsonArray();for(String h:devHosts)hosts.add(new JsonPrimitive(h));j.add("dev_hosts",hosts);
             Files.createDirectories(path().getParent());Files.write(path(),new GsonBuilder().setPrettyPrinting().create().toJson(j).getBytes(StandardCharsets.UTF_8));
         }catch(Exception e){System.err.println("Overcast Utilities: could not save settings: "+e.getMessage());}
     }
