@@ -1,0 +1,45 @@
+package otl.client;
+
+import java.util.Arrays;
+import java.util.List;
+import net.minecraft.client.gui.GuiScreen;
+
+/**
+ * One product feature. Adding an entry to ALL is all it takes for the module to
+ * show up in the modules screen and be toggleable.
+ *
+ * Rules for implementations:
+ * - enabled() reads the flag at the point of use, so toggling needs no lifecycle calls.
+ * - setEnabled() saves nothing; the caller persists once, after the toggle.
+ * - Toggling must be safe mid-game (no leaked GL state, no unregistered listeners).
+ */
+abstract class OtlModule {
+    final String id, name;
+
+    OtlModule(String id, String name) {
+        this.id = id;
+        this.name = name;
+    }
+
+    abstract boolean enabled();
+
+    abstract void setEnabled(boolean on);
+
+    /** Options screen for this module, or null when it has none. */
+    GuiScreen settings(GuiScreen back) {
+        return null;
+    }
+
+    static final List<OtlModule> ALL = Arrays.asList(
+            new OtlModule("face_rig", "Face Rig") {
+                boolean enabled() { return UtilitySettings.faceRig; }
+                void setEnabled(boolean on) { UtilitySettings.faceRig = on; }
+                GuiScreen settings(GuiScreen back) { return new FaceScreen(back); }
+            },
+            new OtlModule("reliable_chat", "Reliable Chat") {
+                boolean enabled() { return UtilitySettings.chat; }
+                void setEnabled(boolean on) { UtilitySettings.chat = on; ReliableChat.applyPreferences(); }
+                GuiScreen settings(GuiScreen back) { return new UtilityScreen(true); }
+            }
+    );
+}

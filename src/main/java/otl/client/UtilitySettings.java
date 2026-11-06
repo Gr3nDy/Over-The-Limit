@@ -46,7 +46,7 @@ final class UtilitySettings {
     }
     static void save(){
         load();try{
-            JsonObject j=new JsonObject();j.addProperty("reliable_chat",chat);j.addProperty("unread_counts",counts);j.addProperty("fullscreen_menu",fullscreen);j.addProperty("other_faces",otherFaces);j.addProperty("show_tab_chat",showTabChat);j.addProperty("tab_chat_position",tabChatPosition);
+            JsonObject j=new JsonObject();j.addProperty("schema_version",1);j.addProperty("reliable_chat",chat);j.addProperty("unread_counts",counts);j.addProperty("fullscreen_menu",fullscreen);j.addProperty("other_faces",otherFaces);j.addProperty("show_tab_chat",showTabChat);j.addProperty("tab_chat_position",tabChatPosition);
             j.addProperty("face_rig",faceRig);
             j.addProperty("remember_drafts",rememberDrafts);j.addProperty("unlimited_history",unlimitedHistory);j.addProperty("shift_tab",cycleTabs);j.addProperty("team_bubbles",bubbles);j.addProperty("bubble_characters",bubbleCharacters);j.addProperty("bubble_seconds",bubbleSeconds);
             j.addProperty("chat_background_opacity",chatBackground);

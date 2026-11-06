@@ -26,22 +26,25 @@ final class UtilityScreen extends GuiScreen {
             }
             buttonList.add(new NeutralButton(2,x+14,y+h-27,106,19,"Reset chat options",false));
         }else{
-            buttonList.add(new NeutralButton(20,x+14,y+64,w-112,20,"Face Rig: "+state(UtilitySettings.faceRig),false));
-            buttonList.add(new NeutralButton(0,x+w-94,y+64,80,20,"Settings",false));
-            buttonList.add(new NeutralButton(21,x+14,y+106,w-112,20,"Reliable Chat: "+state(UtilitySettings.chat),false));
-            buttonList.add(new NeutralButton(1,x+w-94,y+106,80,20,"Settings",false));
+            // shortcut: 4 rows fit above Done, add paging when ALL grows past that
+            for(int i=0;i<OtlModule.ALL.size()&&i<4;i++){
+                OtlModule m=OtlModule.ALL.get(i);
+                buttonList.add(new NeutralButton(20+i,x+14,y+64+i*42,w-112,20,m.name+": "+state(m.enabled()),false));
+                buttonList.add(new NeutralButton(40+i,x+w-94,y+64+i*42,80,20,"Settings",false));
+            }
         }
         buttonList.add(new NeutralButton(3,x+w-94,y+h-27,80,19,chatSettings?"Back":"Done",false));
     }
     protected void actionPerformed(GuiButton b){
         if(b.id==3){mc.displayGuiScreen(chatSettings?new UtilityScreen():null);return;}
         if(!chatSettings){
-            if(b.id==0)mc.displayGuiScreen(new FaceScreen(this));
-            else if(b.id==1)mc.displayGuiScreen(new UtilityScreen(true));
-            else if(b.id==20||b.id==21){
-                if(b.id==20)UtilitySettings.faceRig=!UtilitySettings.faceRig;
-                else{UtilitySettings.chat=!UtilitySettings.chat;ReliableChat.applyPreferences();}
-                UtilitySettings.save();initGui();
+            int n=OtlModule.ALL.size();
+            if(b.id>=20&&b.id<20+n){
+                OtlModule m=OtlModule.ALL.get(b.id-20);
+                m.setEnabled(!m.enabled());UtilitySettings.save();initGui();
+            }else if(b.id>=40&&b.id<40+n){
+                GuiScreen s=OtlModule.ALL.get(b.id-40).settings(this);
+                if(s!=null)mc.displayGuiScreen(s);
             }
             return;
         }
