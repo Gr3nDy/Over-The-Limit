@@ -17,6 +17,7 @@ import net.minecraftforge.fml.relauncher.ReflectionHelper;
 @Mod(modid="otl_smoke",version="1",clientSideOnly=true)
 public final class OtlSmoke {
     boolean started;int ticks,state;FaceScreen face;GuiScreenBook bookScreen;io.netty.channel.Channel channel;
+    final MapInfo[] remote=new MapInfo[1];final boolean[] remoteDone={false};
     final List<String> packets=Collections.synchronizedList(new ArrayList<String>());
     @Mod.EventHandler public void init(FMLInitializationEvent e){FMLCommonHandler.instance().bus().register(this);}
     void require(boolean ok,String message){if(!ok)throw new AssertionError(message);}
@@ -91,8 +92,25 @@ public final class OtlSmoke {
                 MapPreview.Hover hit=MapPreview.INSTANCE.hover(bookScreen,left+2,36);
                 require(hit!=null&&"Allure".equalsIgnoreCase(hit.label),"Map hover did not resolve the map name: "+hit);
                 require(MapPreview.INSTANCE.hover(bookScreen,left+300,36)==null,"Map hover matched outside the map name");
+                MapInfo cached=MapInfo.findLocal("Allure");
+                require(cached!=null&&"Allure".equals(cached.name)&&cached.objective.contains("wool")&&cached.players==24,"Local map info: "+cached);
+                require(!"".equals(cached.authors)&&!"".equals(cached.contributors),"Missing author credits");
+                require("100rooms".equals(MapInfo.norm("100 Rooms")),"Map name normalization");
+                MapInfoScreen card=new MapInfoScreen("Allure","/map Allure");
+                mc.displayGuiScreen(card);card.drawScreen(0,0,0);
+            }else if(state==9){
+                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-map-card.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+                MapRemote.lookup("100 Rooms",m->{remote[0]=m;remoteDone[0]=true;});
+            }else if(state==10||state==11){
+            }else if(state==12){
+                if(remoteDone[0]&&remote[0]!=null){
+                    System.out.println("OTL_SMOKE: remote lookup -> "+remote[0].name+" ("+remote[0].dir+")");
+                    mc.displayGuiScreen(new MapInfoScreen("100 Rooms","/map 100 Rooms"));
+                }else System.out.println("OTL_SMOKE: remote lookup skipped (offline or slow)");
+            }else if(state==13){
+                if(remoteDone[0]&&remote[0]!=null)ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-map-remote.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
                  require(count("/t")==0,"Unexpected game re-entry /t");require(org.lwjgl.opengl.GL11.glGetError()==0,"GL error");
-                channel.pipeline().remove("otl_packets");System.out.println("OTL_SMOKE: PASS - lobby/direct/map transitions; packet routing; tabs send no commands; PM confirmations; phantom PM rejected; vanilla menus/editor/cancel rendered; module list toggles; map hover resolves the map name");mc.shutdown();
+                channel.pipeline().remove("otl_packets");System.out.println("OTL_SMOKE: PASS - lobby/direct/map transitions; packet routing; tabs send no commands; PM confirmations; phantom PM rejected; vanilla menus/editor/cancel rendered; module list toggles; map hover resolves the map name; map card renders");mc.shutdown();
             }
             state++;
         }catch(Throwable t){t.printStackTrace();System.out.println("OTL_SMOKE: FAIL");mc.shutdown();}

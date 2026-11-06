@@ -1,6 +1,7 @@
 package otl.client;
 
 import java.awt.image.BufferedImage;
+import java.io.File;
 import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.util.*;
@@ -15,6 +16,7 @@ import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.network.FMLNetworkEvent;
+import org.lwjgl.input.Keyboard;
 
 /**
  * Bundled CommunityMaps previews for map voting books.
@@ -28,6 +30,8 @@ final class MapPreview {
     private static final Map<String,ResourceLocation> galleryTextures=new ConcurrentHashMap<>();
     private static final Map<String,int[]> gallerySizes=new ConcurrentHashMap<>();
     private static final Map<String,String> nameCache=new ConcurrentHashMap<>();
+    private static final Map<String,ResourceLocation> fileTextures=new ConcurrentHashMap<>();
+    static volatile boolean namesReady;
     private final ExecutorService worker=Executors.newSingleThreadExecutor(r->{Thread t=new Thread(r,"OTL Map Names");t.setDaemon(true);return t;});
     private final List<Entry> all=new ArrayList<>();
     static final MapPreview INSTANCE=new MapPreview();
@@ -51,6 +55,7 @@ final class MapPreview {
             e.displayName=name;
             e.lowerName=name==null?null:name.toLowerCase(Locale.ROOT);
         }
+        namesReady=true;
     }
 
     private static String readMapName(String dir){
@@ -95,7 +100,55 @@ final class MapPreview {
         gallerySizes.clear();
     }
 
+    /** "/map <name>" opens the OTL card instead of the server's book page. */
+    @SubscribeEvent public void chatKey(GuiScreenEvent.KeyboardInputEvent.Pre e){
+        if(!UtilitySettings.mapPreview||!ServerScope.active())return;
+        if(!(e.gui instanceof GuiChat))return;
+        if(!Keyboard.getEventKeyState())return;
+        int key=Keyboard.getEventKey();
+        if(key!=Keyboard.KEY_RETURN&&key!=Keyboard.KEY_NUMPADENTER)return;
+        String text=chatText(e.gui);
+        if(text==null)return;
+        text=text.trim();
+        if(text.length()<6||!text.regionMatches(true,0,"/map ",0,5))return;
+        String query=text.substring(5).trim();
+        if(query.isEmpty())return;
+        e.setCanceled(true);
+        MinecraftAccess.get().displayGuiScreen(new MapInfoScreen(query,text));
+    }
+
+    /** The chat input lives in a GuiTextField whose name is remapped on Lunar. */
+    private static String chatText(GuiScreen screen){
+        for(Class<?> c=screen.getClass();c!=null&&c!=Object.class;c=c.getSuperclass()){
+            Field[] fields;
+            try{fields=c.getDeclaredFields();}catch(Exception ignored){continue;}
+            for(Field f:fields){
+                if(!GuiTextField.class.isAssignableFrom(f.getType()))continue;
+                try{
+                    f.setAccessible(true);
+                    Object value=f.get(screen);
+                    if(value instanceof GuiTextField)return ((GuiTextField)value).getText();
+                }catch(Exception ignored){}
+            }
+        }
+        return null;
+    }
+
     static int[] gallerySize(String path){return gallerySizes.get(path);}
+
+    /** Preview texture for a downloaded (non-bundled) map. */
+    static ResourceLocation fileTexture(String key,File file){
+        ResourceLocation ready=fileTextures.get(key);
+        if(ready!=null)return ready;
+        try(InputStream in=new java.io.FileInputStream(file)){
+            BufferedImage image=ImageIO.read(in);
+            if(image==null)return null;
+            ResourceLocation r=MinecraftAccess.get().getTextureManager().getDynamicTextureLocation("otl_"+key,new DynamicTexture(image));
+            fileTextures.put(key,r);
+            return r;
+        }catch(Exception ignored){return null;}
+    }
+
     static ResourceLocation galleryTexture(String path){
         ResourceLocation ready=galleryTextures.get(path);
         if(ready!=null)return ready;

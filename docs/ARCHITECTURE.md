@@ -22,7 +22,7 @@ One Forge 1.8.9 mod, many modules, one server family (`play.oc.tc`, `vanish.oc.t
               ┌────────────────────────── Modules ───────────────────────────┐
               │ Face Rig (FaceOverlay, EyeDetector, SkinFace)                │
               │ Reliable Chat (ReliableChat, ChatRules, TeamBubbles)         │
-              │ Map Preview (MapPreview, MapPreviewIndex, gallery)           │
+              │ Map Preview (MapPreview, MapPreviewIndex, MapInfo card)
               └──────────────────────────────▲──────────────────────────────┘
                                              │ OtlModule contract
               ┌───────────────────────────── Core ───────────────────────────┐
@@ -131,6 +131,13 @@ Input is centralized in `Otl`: `J` menu, `P` modules, `Y` team chat, vanilla `T`
 
 **Lunar safety pattern.** When the vanilla field name is not trustworthy (`GuiScreenBook` pages on Lunar), find the field by **type**: walk `GuiScreen` fields, take the `List` whose first element is an `IChatComponent`. This survives obfuscation because runtime types can't be renamed.
 
+**`/map` map card.** Typing `/map <name>` on an approved server is intercepted in `GuiScreenEvent.KeyboardInputEvent.Pre` (the only pre-send hook 1.8.9 exposes — Forge has no `ClientChatEvent` here). The chat text is read from the `GuiTextField` found by type, so it also works on Lunar and from `ReliableChatScreen`. The command is not sent; `MapInfoScreen` opens immediately.
+
+- Resolution order: bundled `map.xml` under `assets/otl/maps` → `OvercastCommunity/PublicMaps` raw files.
+- Remote work is off-thread (`MapRemote.lookup`); the screen is already on screen and swaps in the result. Downloads land in `config/overcast_util/map_cache/<gamemode>_<map>/` and the repo tree is cached for 6h, so a map is fetched at most once.
+- Nothing is sent anywhere except those two GETs; no query text, no player data. Cancel by closing the screen.
+- The "Server book" button re-sends the original command for the authoritative in-game preview.
+
 ## 6. File structure
 
 ```
@@ -150,6 +157,7 @@ otl/                         (repo root: Over The Limit)
    │  ├─ ReliableChat / ReliableChatScreen / ChatRules / ChatAppearance / ChatWarnings / ChatWelcomeGate
    │  ├─ TeamBubbles / TeamBubbleRules
    │  ├─ MapPreview / MapPreviewSettings / MapGalleryScreen / MapPreviewIndex (generated)
+   │  ├─ MapInfo / MapRemote / MapInfoScreen   (/map card + public repo fallback)
    │  ├─ PlayerSignals / CompactScreen / NeutralButton
    │  └─ (ui kit: CompactScreen, NeutralButton shared by every screen)
    ├─ main/resources/          mcmod.info, assets (fonts, map data)
@@ -168,6 +176,7 @@ otl/                         (repo root: Over The Limit)
 ## 8. Known debt and the next scale step
 
 - Module list is a static `Arrays.asList` — compile-time only, no dynamic loading. Fine while everything ships in one JAR; a service loader only pays off when modules become separate artifacts.
+- Public-repo lookup uses unauthenticated GitHub API (60 requests/hour) and slug-only matching, so a badly spelled name falls back to "Server book".
 - 4 visible module rows, no scrolling.
 - No per-server or per-profile config sets.
 - Map preview assets: 880 PNG previews + XML (1,661 files, ~84 MB, ~97% of the JAR) belong in a separate optional resource pack if size becomes a complaint. `MapPreviewIndex` is generated from that folder and must be regenerated whenever assets change.
