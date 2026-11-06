@@ -21,6 +21,7 @@ public final class OtlSmoke {
     void line(String text){MinecraftForge.EVENT_BUS.post(new net.minecraftforge.client.event.ClientChatReceivedEvent((byte)1,new ChatComponentText(text)));}
     List<GuiButton> buttons(GuiScreen screen){return ReflectionHelper.getPrivateValue(GuiScreen.class,screen,"buttonList","field_146292_n");}
     void click(int id){for(GuiButton b:buttons(face))if(b.id==id){face.actionPerformed(b);return;}throw new AssertionError("Missing button "+id);}
+    GuiButton find(GuiScreen s,String label){for(GuiButton b:buttons(s))if(b.displayString.equals(label))return b;throw new AssertionError("Missing button "+label);}
     int count(String command){int count=0;synchronized(packets){for(String s:packets)if(s.equals(command))count++;}return count;}
     @SubscribeEvent public void tick(TickEvent.ClientTickEvent e){
         if(e.phase!=TickEvent.Phase.END)return;Minecraft mc=Minecraft.getMinecraft();
@@ -67,6 +68,11 @@ public final class OtlSmoke {
                 require(Arrays.equals(original,FaceMarks.marks(mc.thePlayer.getLocationSkin())),"Cancel changed marks");
                 mc.displayGuiScreen(new UtilityScreen());
             }else if(state==6){
+                UtilityScreen menu=(UtilityScreen)mc.currentScreen;
+                menu.actionPerformed(find(menu,"Face Rig: ON"));require(!UtilitySettings.faceRig,"Module toggle did not apply");
+                require(find(menu,"Face Rig: OFF")!=null,"Module list did not refresh");
+                menu.actionPerformed(find(menu,"Face Rig: OFF"));require(UtilitySettings.faceRig,"Module toggle did not revert");
+                require(find(menu,"Reliable Chat: ON")!=null,"Second module missing from list");
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-menu.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
                  require(count("/t")==0,"Unexpected game re-entry /t");require(org.lwjgl.opengl.GL11.glGetError()==0,"GL error");
                 channel.pipeline().remove("otl_packets");System.out.println("OTL_SMOKE: PASS - lobby/direct/map transitions; packet routing; tabs send no commands; PM confirmations; phantom PM rejected; vanilla menus/editor/cancel rendered");mc.shutdown();
