@@ -1,0 +1,124 @@
+<map proto="1.5.0">
+<name>Santa Clauses</name>
+<version>1.0.3</version>
+<objective>Capture the enemy team's wool.</objective>
+<include id="gapple-kill-reward"/>
+<authors>
+    <author uuid="1174bba9-3e98-4d86-93aa-c6a44764cf52"/> <!-- Akinakumushi -->
+</authors>
+<teams>
+    <team id="green-team" color="green" max="12" max-overfill="16">Green</team>
+    <team id="red-team" color="dark red" max="12" max-overfill="16">Red</team>
+</teams>
+<kits>
+    <kit id="spawn-kit" force="true">
+        <item slot="0" unbreakable="true" material="stone sword"/>
+        <item slot="1" unbreakable="true" material="bow"/>
+        <item slot="2" unbreakable="true" material="iron pickaxe"/>
+        <item slot="3" unbreakable="true" material="iron axe"/>
+        <item slot="4" amount="32" material="arrow"/>
+        <item slot="5" material="golden apple"/>
+        <item slot="6" amount="24" material="cooked fish"/>
+        <item slot="7" amount="24" damage="4" material="stained clay"/>
+        <item slot="8" amount="48" damage="1" material="wood"/>
+        <helmet team-color="true" unbreakable="true" material="leather helmet"/>
+        <chestplate unbreakable="true" material="chainmail chestplate"/>
+        <boots team-color="true" unbreakable="true" material="leather boots"/>
+        <effect duration="4" amplifier="5">resistance</effect>
+    </kit>
+</kits>
+<spawns>
+    <spawn team="green-team" kit="spawn-kit" yaw="90">
+        <region>
+            <point>47.5,26.0,-8.5</point>
+        </region>
+    </spawn>
+    <spawn team="red-team" kit="spawn-kit" yaw="-90">
+        <region>
+            <point>-46.5,26.0,9.5</point>
+        </region>
+    </spawn>
+    <default>
+        <region>
+            <cuboid min="1.5,50,-72.5" max="-0.5,50,-74.5"/>
+        </region>
+    </default>
+</spawns>
+<filters>
+    <all id="deny-chest-green">
+        <team id="only-green">green-team</team>
+        <deny>
+            <material>chest</material>
+        </deny>
+    </all>
+    <all id="deny-chest-red">
+        <team id="only-red">red-team</team>
+        <deny>
+            <material>chest</material>
+        </deny>
+    </all>
+</filters>
+<regions>
+    <complement id="spawns">
+        <union>
+            <circle id="green-spawn" center="46.5,-8.5" radius="7"/>
+            <circle id="red-spawn" center="-45.5,9.5" radius="7"/>
+        </union>
+        <union>
+            <point>49,27,-9</point>
+            <point>-49,27,9</point>
+        </union>
+    </complement>
+    <union id="chest-protect">
+        <rectangle id="orange-woolroom" min="-68.5,35.5" max="-84.5,17.5"/>
+        <rectangle id="cyan-woolroom" min="85.5,-16.5" max="69.5,-34.5"/>
+    </union>
+    <apply block="never" region="spawns" message="You may not modify the base."/>
+    <apply enter="only-green" region="green-spawn" message="You may not enter enemy base."/>
+    <apply enter="only-red" region="red-spawn" message="You may not enter enemy base."/>
+    <apply block="deny-chest-green" region="orange-woolroom" message="You may not modify your own wool room."/>
+    <apply enter="only-green" region="orange-woolroom" message="You may not enter your own wool room."/>
+    <apply block="deny-chest-red" region="cyan-woolroom" message="You may not modify your own wool room."/>
+    <apply enter="only-red" region="cyan-woolroom" message="You may not enter your own wool room."/>
+    <apply block-place="deny(void)" message="You may not modify void."/>
+</regions>
+<wools>
+    <wool team="green-team" color="cyan" location="-75.5,29,24.5">
+        <monument>
+            <block>49,27,-9</block>
+        </monument>
+    </wool>
+    <wool team="red-team" color="orange" location="76.5,29,-23.5">
+        <monument>
+            <block>-49,27,9</block>
+        </monument>
+    </wool>
+</wools>
+<kill-rewards>
+    <kill-reward>
+        <item amount="8" material="arrow"/>
+    </kill-reward>
+</kill-rewards>
+<toolrepair>
+    <tool>stone sword</tool>
+    <tool>bow</tool>
+    <tool>iron pickaxe</tool>
+    <tool>iron axe</tool>
+</toolrepair>
+<itemremove>
+    <item>arrow</item>
+    <item>golden apple</item>
+    <item>cooked fish</item>
+    <item>glass</item>
+    <item>wood</item>
+    <item>stained clay</item>
+    <item>leather helmet</item>
+    <item>chainmail chestplate</item>
+    <item>leather boots</item>
+    <!-- Wool room gear, might want to keep in? -->
+    <item>iron boots</item>
+    <item>potion</item>
+    <item>stained glass</item>
+</itemremove>
+<maxbuildheight>35</maxbuildheight>
+</map>

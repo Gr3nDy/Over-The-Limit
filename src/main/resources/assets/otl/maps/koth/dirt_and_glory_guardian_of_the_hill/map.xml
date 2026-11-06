@@ -1,0 +1,178 @@
+<map proto="1.5.0">
+<name>Dirt &#38; Glory: Guardian of the Hill</name>
+<version>1.0.8</version>
+<objective>Be the first team to reach 500 points under 10 minutes, or the Guardians will win.</objective>
+<created>2024-09-18</created>
+<gamemode>koth</gamemode>
+<authors>
+    <author uuid="2ca8072f-74be-4798-85b8-bbce03aa91af"/> <!-- Tywnis -->
+</authors>
+<teams>
+    <team id="blue" color="blue" max="9">Blue</team>
+    <team id="red" color="dark red" max="9">Red</team>
+    <team id="green" color="green" max="1" max-overfill="2">Guardian</team>
+</teams>
+<kits>
+    <kit id="spawn-kit">
+        <clear/>
+        <item slot="0" unbreakable="true" material="stone sword"/>
+        <item slot="1" unbreakable="true" material="bow"/>
+        <item slot="2" unbreakable="true" enchantment="dig speed" material="iron pickaxe"/>
+        <item slot="3" amount="5" team-color="true" material="stained clay"/>
+        <item slot="4" material="golden apple"/>
+        <item slot="8" amount="8" material="arrow"/>
+        <helmet unbreakable="true" team-color="true" material="leather helmet"/>
+        <chestplate unbreakable="true" team-color="true" material="leather chestplate"/>
+        <leggings unbreakable="true" material="iron leggings"/>
+        <boots unbreakable="true" team-color="true" material="leather boots"/>
+        <effect duration="4s" amplifier="255">resistance</effect>
+    </kit>
+    <kit id="guardian-kit">
+        <clear/>
+        <item slot="0" unbreakable="true" material="stone sword">
+            <enchantment level="3">sharpness</enchantment>
+        </item>
+        <item slot="1" unbreakable="true" material="bow">
+            <enchantment level="2">power</enchantment>
+        </item>        
+        <item slot="2" unbreakable="true" enchantment="dig speed" material="iron pickaxe"/>
+        <item slot="3" material="golden apple"/>
+        <item slot="8" amount="8" material="arrow"/>
+        <helmet unbreakable="true" material="iron helmet"/>
+        <chestplate unbreakable="true" team-color="true" material="leather chestplate"/>
+        <leggings unbreakable="true" material="iron leggings"/>
+        <boots unbreakable="true" material="iron boots"/>
+        <effect duration="2s" amplifier="255">resistance</effect>
+        <walk-speed>0.6</walk-speed>
+        <knockback-reduction>0.7</knockback-reduction>
+        <shield health="10" delay="3s"/>
+        <effect ambient="true">slow</effect>
+    </kit>
+</kits>
+<spawns>
+    <default yaw="45">
+        <region>
+            <block>54.5,50,-120.5</block>
+        </region>
+    </default>
+    <spawn team="blue" kit="spawn-kit" yaw="180">
+        <region>
+            <block>4.5,16,-14.5</block>
+        </region>
+    </spawn>
+    <spawn team="red" kit="spawn-kit" yaw="-90">
+        <region>
+            <block>-51.5,16,-70.5</block>
+        </region>
+    </spawn>
+    <spawn team="green" kit="guardian-kit" yaw="45">
+        <region>
+            <block>41.5,44,-107.5</block>
+        </region>
+    </spawn>
+</spawns>
+<disabledamage>
+    <damage>fall</damage>
+</disabledamage>
+<filters>
+    <team id="only-green">green</team>
+    <any id="both-teams">
+        <team id="only-blue">blue</team>
+        <team id="only-red">red</team>
+    </any>
+    <any id="blocks">
+        <material>stained clay:11</material>
+        <material>stained clay:14</material>
+        <material>long grass</material>
+        <material>dead bush</material>
+        <material>water lily</material>
+        <material>stationary water</material>
+        <material>water</material>
+        <material>leaves</material>
+    </any>
+</filters>
+<regions>
+    <union id="spawns">
+        <cylinder id="blue-spawn-protection" base="4.5,14,-14.5" radius="12" height="7"/>
+        <cylinder id="red-spawn-protection" base="-51.5,14,-70.5" radius="12" height="7"/>
+        <cylinder id="hill-zone-protection" base="31.5,4,-97.5" radius="6" height="6"/>
+    </union>
+    <union id="larger-hill">
+        <cylinder id="larger-hill-cylinder" base="31.5,0,-97.5" radius="20" height="100"/>
+        <cylinder id="largest-cylinder" base="54.5,0,-120.5" radius="48" height="100"/>
+        <rectangle id="first-rectangle" min="13,-87" max="63,-129"/>
+        <rectangle id="second-rectangle" min="21,-79" max="63,-129"/>
+    </union>
+    <negative id="outside-game-area">
+        <rectangle id="game-area" min="-65,0" max="55,-120"/>
+    </negative>
+    <apply block-break="never" block-place="never" message="You may not modify this area." region="spawns"/>
+    <apply block="deny(void)" message="You may not build here."/>
+    <apply block-place="blocks" block-break="blocks" region="game-area"/>
+    <apply region="red-spawn-protection" enter="only-red" message="You may not enter the enemy's base"/>
+    <apply region="blue-spawn-protection" enter="only-blue" message="You may not enter the enemy's base"/>
+    <apply region="larger-hill" leave="both-teams" message="You may not leave the Hill area"/>
+</regions>
+<!-- TODO: convert this to control points module with similar settings -->
+<king>
+    <hills required="false" capture-time="0.2s" points="2" time-multiplier="1" show-progress="true" neutral-state="false" recovery="1" decay="1" permanent="false">
+        <hill name="Hill">
+            <capture>
+                <cylinder base="31.5,4,-97.5" radius="6" height="6"/>
+            </capture>
+            <progress>
+                <cylinder base="31.5,4,-97.5" radius="6" height="6"/>
+            </progress>
+            <captured>
+                <cylinder base="31.5,4,-97.5" radius="6" height="6"/>
+            </captured>
+        </hill>
+    </hills>
+</king>
+<score>
+    <limit>500</limit>
+</score>
+<time result="green">10m</time>
+<maxbuildheight>22</maxbuildheight>
+<toolrepair>
+    <tool>stone sword</tool>
+    <tool>bow</tool>
+</toolrepair>
+<itemremove>
+    <item>leather helmet</item>
+    <item>iron helmet</item>
+    <item>leather chestplate</item>
+    <item>iron leggings</item>
+    <item>leather leggings</item>
+    <item>leather boots</item>
+    <item>iron boots</item>
+    <item>stained clay</item>
+    <item>iron pickaxe</item>
+    <item>long grass</item>
+    <item>dead bush</item>
+    <item>water lily</item>
+    <item>stone sword</item>
+    <item>bow</item>
+</itemremove>
+<itemkeep>
+    <item>golden apple</item>
+    <item>arrow</item>
+</itemkeep>
+<kill-rewards>
+    <kill-reward filter="both-teams">
+        <item amount="2" team-color="true" material="stained clay"/>
+        <item amount="3" material="arrow"/>
+    </kill-reward>
+    <kill-reward filter="only-green">
+        <item amount="3" material="arrow"/>
+    </kill-reward>
+</kill-rewards>
+<hunger>
+    <depletion>off</depletion>
+</hunger>
+<timelock>on</timelock>
+<respawns>
+    <respawn delay="2s" filter="both-teams"/>
+    <respawn delay="10s" filter="only-green"/>
+</respawns>
+</map>

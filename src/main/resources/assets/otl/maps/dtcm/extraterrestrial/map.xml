@@ -1,0 +1,608 @@
+<map proto="1.5.0">
+<name>Extraterrestrial</name>
+<include id="gapple-kill-reward"/>
+<variant id="christmas" world="christmas">Sub-Zero</variant>
+<objective>Leak the enemy's core!</objective>
+<version>1.1.8</version>
+<gamemode>dtc</gamemode>
+<if variant="default">
+    <created>2023-06-21</created>
+</if>
+<if variant="christmas">
+    <created>2023-11-11</created>
+</if>
+<authors>
+    <author uuid="1aad55f7-2dea-4f22-85ca-ad9de3a78609" contribution="Map author and creator"/> <!-- Technodono -->
+</authors>
+<teams>
+    <team id="blue" color="blue" max="12">Blue</team>
+    <team id="red" color="red" max="12">Red</team>
+</teams>
+<broadcasts>
+    <tip after="0m" every="3m">`e⚠  `7Remember to use your gold nuggets and emeralds to purchase items in the shop!</tip>
+    <tip after="1m" every="3m">`e⚠  `7Getting a killstreak of `63 `7will reward you with an `aemerald`7!</tip>
+</broadcasts>
+<kits>
+    <kit id="spawn-kit">
+        <item slot="0" name="`6Energy blade" unbreakable="true" material="iron sword"/>
+        <item slot="1" unbreakable="true" material="bow">
+            <enchantment>infinity</enchantment>
+        </item> 
+        <item slot="2" unbreakable="true" material="diamond pickaxe"/>
+        <item slot="3" name="`rIron Chopper" unbreakable="true" material="iron axe"/>
+        <item slot="4" amount="64" damage="2" material="sandstone"/>
+        <item slot="5" amount="16" team-color="true" material="stained glass"/>
+        <item slot="17" material="arrow"/>
+        <item slot="6" material="golden apple"/>
+        <effect duration="2" amplifier="25">heal</effect>
+        <effect duration="2" amplifier="25">damage resistance</effect>
+        <helmet team-color="true" unbreakable="true" locked="true" material="leather helmet"/>
+        <leggings unbreakable="true" locked="true" material="chainmail leggings"/>
+        <chestplate color="4C4C4C" unbreakable="true" locked="true" material="leather chestplate"/>
+        <boots color="4C4C4C" unbreakable="true" locked="true" material="leather boots"/>
+        <!-- Important! gamemode -->
+        <game-mode>survival</game-mode>
+    </kit>
+     <!-- Upgrades -->
+    <lend filter="apply-haste-1">
+        <kit>
+            <effect>fast digging</effect>
+        </kit>
+    </lend>
+    <lend filter="apply-haste-2">
+        <kit>
+            <effect amplifier="2">fast digging</effect>
+        </kit>
+    </lend>
+    <give filter="apply-speed-1">
+        <kit>
+            <effect>speed</effect>
+        </kit>
+    </give>
+    <give filter="apply-speed-2">
+        <kit>
+            <effect amplifier="2">speed</effect>
+        </kit>
+    </give>
+    <!-- Weapon Upgrades -->
+    <kit id="powerinfinitybow" deduct-tools="false">
+        <action>
+            <replace-item>
+                <find material="bow" unbreakable="true"/>
+                <replace material="air"/>
+            </replace-item>
+        </action>
+        <item material="bow" enchantment="power:1;infinity" unbreakable="true"/>
+    </kit>
+</kits>
+<spawns>
+    <spawn team="blue" kit="spawn-kit" yaw="-90">
+        <region>
+            <point>-8.5,8,-155.5</point>
+        </region>
+    </spawn>
+    <spawn team="red" kit="spawn-kit" yaw="90">
+        <region>
+            <point>3.5,8,12.5</point>
+        </region>
+    </spawn>
+    <default>
+        <region>
+            <point>-2,40,-71</point>
+        </region>
+    </default>
+</spawns>
+<actions>
+    <!-- Upgrade variables -->
+    <set id="haste-dummy-1" var="haste_variable" value="1" scope="player"/>
+    <set id="haste-dummy-2" var="haste_variable" value="2" scope="player"/>
+    <set id="speed-dummy-1" var="speed_variable" value="1" scope="player"/>
+    <set id="speed-dummy-2" var="speed_variable" value="2" scope="player"/>
+    <set id="sharpness-dummy" var="sharpness_variable" value="1" scope="player"/>
+    <set id="power-dummy" var="power_variable" value="1" scope="player"/>
+    <set id="protection-dummy-1" var="protection_variable" value="1" scope="player"/>
+    <set id="protection-dummy-2" var="protection_variable" value="2" scope="player"/>
+    <set id="protection-dummy-3" var="protection_variable" value="3" scope="player"/>
+    <set id="protection-dummy-4" var="protection_variable" value="4" scope="player"/>
+    <set id="aqua-affinity-dummy" var="aqua_affinity_variable" value="1" scope="player"/>
+    <set id="depth-strider-dummy-1" var="depth_strider_variable" value="1" scope="player"/>
+    <set id="depth-strider-dummy-2" var="depth_strider_variable" value="2" scope="player"/>
+    <set id="depth-strider-dummy-3" var="depth_strider_variable" value="3" scope="player"/>
+    <set id="generator-dummy" var="generator_variable" value="1" scope="player"/>
+    <!-- Sharpness replacements -->
+    <action id="sharpness-replacements" scope="player">
+        <replace-item ignore-metadata="true">
+            <find material="iron sword"/>
+            <replace material="iron sword" unbreakable="true" name="`6Energy blade" enchantment="sharpness"/>
+        </replace-item>
+    </action>
+    <!-- Bow replacements -->
+    <action id="power-replacements" scope="player">
+        <replace-item ignore-metadata="true">
+            <find material="bow"/>
+            <replace material="bow" unbreakable="true" enchantment="power:1;infinity"/>
+        </replace-item>
+    </action>
+    <!-- Helmet replacements -->
+    <action id="aqua-affinity-replacements" scope="player">
+        <replace-item ignore-metadata="true">
+            <find material="leather helmet"/>
+            <replace material="leather helmet" team-color="true" unbreakable="true" enchantment="aqua_affinity;respiration"/>
+        </replace-item>
+    </action>
+    <!-- Boot replacements -->
+    <action id="depth-strider-replacement-1" scope="player">
+        <replace-item ignore-metadata="true">
+            <find material="leather boots"/>
+            <replace material="leather boots" color="4C4C4C" unbreakable="true" enchantment="depth_strider:1" locked="true"/>
+        </replace-item>
+    </action>
+    <action id="depth-strider-replacement-2" scope="player">
+        <replace-item ignore-metadata="true">
+            <find material="leather boots"/>
+            <replace material="leather boots" color="4C4C4C" unbreakable="true" enchantment="depth_strider:2" locked="true"/>
+        </replace-item>
+    </action>
+    <action id="depth-strider-replacement-3" scope="player">
+        <replace-item ignore-metadata="true">
+            <find material="leather boots"/>
+            <replace material="leather boots" color="4C4C4C" unbreakable="true" enchantment="depth_strider:3" locked="true"/>
+        </replace-item>
+    </action>
+    <!-- Protection replacements -->
+    <action id="protection-replacement-1" scope="player">
+        <replace-item ignore-metadata="true">
+            <find material="chainmail leggings"/>
+            <replace material="chainmail leggings" unbreakable="true" enchantment="protection:1" locked="true"/>
+        </replace-item>
+        <replace-item ignore-metadata="true">
+            <find material="leather chestplate"/>
+            <replace material="leather chestplate" color="4C4C4C" unbreakable="true" enchantment="protection:1" locked="true"/>
+        </replace-item>
+    </action>
+    <action id="protection-replacement-2" scope="player">
+        <replace-item ignore-metadata="true">
+            <find material="chainmail leggings"/>
+            <replace material="chainmail leggings" unbreakable="true" enchantment="protection:2" locked="true"/>
+        </replace-item>
+        <replace-item ignore-metadata="true">
+            <find material="leather chestplate"/>
+            <replace material="leather chestplate" color="4C4C4C" unbreakable="true" enchantment="protection:2" locked="true"/>
+        </replace-item>
+    </action>
+    <action id="protection-replacement-3" scope="player">
+        <replace-item ignore-metadata="true">
+            <find material="chainmail leggings"/>
+            <replace material="chainmail leggings" unbreakable="true" enchantment="protection:3" locked="true"/>
+        </replace-item>
+        <replace-item ignore-metadata="true">
+            <find material="leather chestplate"/>
+            <replace material="leather chestplate" color="4C4C4C" unbreakable="true" enchantment="protection:3" locked="true"/>
+        </replace-item>
+    </action>
+    <action id="protection-replacement-4" scope="player">
+        <replace-item ignore-metadata="true">
+            <find material="chainmail leggings"/>
+            <replace material="chainmail leggings" unbreakable="true" enchantment="protection:4" locked="true"/>
+        </replace-item>
+        <replace-item ignore-metadata="true">
+            <find material="leather chestplate"/>
+            <replace material="leather chestplate" color="4C4C4C" unbreakable="true" enchantment="protection:4" locked="true"/>
+        </replace-item>
+    </action>
+    <!-- Upgrade alerts -->
+    <message id="sharpness-alert-1" text="`bYour sword has been upgraded to `4`lSharpness I`r`b!"/>
+    <trigger filter="sharpness-1" trigger="sharpness-alert-1" scope="player"/>
+    <message id="protection-alert-1" text="`bYour armour has been upgraded to `9`lProtection I`r`b!"/>
+    <trigger filter="protection-1" trigger="protection-alert-1" scope="player"/>
+    <message id="protection-alert-2" text="`bYour armour has been upgraded to `9`lProtection II`r`b!"/>
+    <trigger filter="protection-2" trigger="protection-alert-2" scope="player"/>
+    <message id="protection-alert-3" text="`bYour armour has been upgraded to `9`lProtection III`r`b!"/>
+    <trigger filter="protection-3" trigger="protection-alert-3" scope="player"/>
+    <message id="protection-alert-4" text="`bYour armour has been upgraded to `9`lProtection IV`r`b!"/>
+    <trigger filter="protection-4" trigger="protection-alert-4" scope="player"/>
+    <message id="power-alert-1" text="`bYour bow has been upgraded to `9`lPower I`r`b!"/>
+    <trigger filter="power-1" trigger="power-alert-1" scope="player"/>
+    <message id="haste-alert-1" text="`bYour team now has `e`lHaste I`r`b!"/>
+    <trigger filter="haste-1" trigger="haste-alert-1" scope="player"/>
+    <message id="haste-alert-2" text="`bYour team now has `e`lHaste II`r`b!"/>
+    <trigger filter="haste-2" trigger="haste-alert-2" scope="player"/>
+    <message id="speed-alert-1" text="`bYour team now has `9`lSpeed I`r`b!"/>
+    <trigger filter="speed-1" trigger="speed-alert-1" scope="player"/>
+    <message id="speed-alert-2" text="`bYour team now has `9`lSpeed II`r`b!"/>
+    <trigger filter="speed-2" trigger="speed-alert-2" scope="player"/>
+    <message id="aqua-affinity-alert-1" text="`bYour team now has `9`lAqua Affinity and Respiration I`r`b!"/>
+    <trigger filter="aqua-affinity-1" trigger="aqua-affinity-alert-1" scope="player"/>
+    <message id="depth-strider-alert-1" text="`bYour armour has been upgraded to `9`lDepth Strider I`r`b!"/>
+    <trigger filter="depth-strider-1" trigger="depth-strider-alert-1" scope="player"/>
+    <message id="depth-strider-alert-2" text="`bYour armour has been upgraded to `9`lDepth Strider II`r`b!"/>
+    <trigger filter="depth-strider-2" trigger="depth-strider-alert-2" scope="player"/>
+    <message id="depth-strider-alert-3" text="`bYour armour has been upgraded to `9`lDepth Strider III`r`b!"/>
+    <trigger filter="depth-strider-3" trigger="depth-strider-alert-3" scope="player"/>
+    <message id="generator-alert-1" text="`bYour team now has an `9`lAdvanced generator`r`b!"/>
+    <trigger filter="generator-1" trigger="generator-alert-1" scope="player"/>
+    <!-- Enchantment triggers -->
+    <trigger filter="apply-sharpness" trigger="sharpness-replacements" scope="player"/>
+    <trigger filter="apply-power" trigger="power-replacements" scope="player"/>
+    <trigger filter="apply-aqua-affinity" trigger="aqua-affinity-replacements" scope="player"/>
+    <trigger filter="apply-protection-1" trigger="protection-replacement-1" scope="player"/>
+    <trigger filter="apply-protection-2" trigger="protection-replacement-2" scope="player"/>
+    <trigger filter="apply-protection-3" trigger="protection-replacement-3" scope="player"/>
+    <trigger filter="apply-protection-4" trigger="protection-replacement-4" scope="player"/>
+    <trigger filter="apply-depth-strider-1" trigger="depth-strider-replacement-1" scope="player"/>
+    <trigger filter="apply-depth-strider-2" trigger="depth-strider-replacement-2" scope="player"/>
+    <trigger filter="apply-depth-strider-3" trigger="depth-strider-replacement-3" scope="player"/>
+</actions>
+<variables>
+    <variable id="aqua_affinity_variable" scope="team"/>
+    <variable id="depth_strider_variable" scope="team"/>
+    <variable id="haste_variable" scope="team"/>
+    <variable id="speed_variable" scope="team"/>
+    <variable id="generator_variable" scope="team"/>
+    <variable id="power_variable" scope="team"/>
+    <variable id="sharpness_variable" scope="team"/>
+    <variable id="protection_variable" scope="team"/>
+</variables>
+<filters>
+    <team id="only-red">red</team>
+    <team id="only-blue">blue</team>
+    <deny id="blast-proof">
+        <all>
+            <cause>explosion</cause>
+            <if variant="default">
+                <material>prismarine</material>
+            </if>
+            <if variant="christmas">
+                <material>nether brick</material>
+            </if>
+        </all>
+    </deny>
+     <!-- Team Upgrade Systems -->
+    <all id="apply-sharpness">
+        <variable var="sharpness_variable">1</variable>
+        <alive/>
+    </all>
+    <all id="apply-power">
+        <variable var="power_variable">1</variable>
+        <alive/>
+    </all>
+    <all id="apply-protection-1">
+        <variable var="protection_variable">1</variable>
+        <alive/>
+    </all>
+    <all id="apply-protection-2">
+        <variable var="protection_variable">2</variable>
+        <alive/>
+    </all>
+    <all id="apply-protection-3">
+        <variable var="protection_variable">3</variable>
+        <alive/>
+    </all>
+    <all id="apply-protection-4">
+        <variable var="protection_variable">4</variable>
+        <alive/>
+    </all>
+    <all id="apply-haste-1">
+        <variable var="haste_variable">1</variable>
+        <alive/>
+        <any>
+            <all>
+                <team>blue</team>
+                <region id="blue-base-area"/>
+            </all>
+            <all>
+                <team>red</team>
+                <region id="red-base-area"/>
+            </all>
+        </any>
+    </all>
+    <all id="apply-haste-2">
+        <variable var="haste_variable">2</variable>
+        <alive/>
+        <any>
+            <all>
+                <team>blue</team>
+                <region id="blue-base-area"/>
+            </all>
+            <all>
+                <team>red</team>
+                <region id="red-base-area"/>
+            </all>
+        </any>
+    </all>
+    <all id="apply-speed-1">
+        <variable var="speed_variable">1</variable>
+        <alive/>
+    </all>
+    <all id="apply-speed-2">
+        <variable var="speed_variable">2</variable>
+        <alive/>
+    </all>
+    <all id="apply-aqua-affinity">
+        <variable var="aqua_affinity_variable">1</variable>
+        <alive/>
+    </all>
+    <all id="apply-depth-strider-1">
+        <variable var="depth_strider_variable">1</variable>
+        <alive/>
+    </all>
+    <all id="apply-depth-strider-2">
+        <variable var="depth_strider_variable">2</variable>
+        <alive/>
+    </all>
+    <all id="apply-depth-strider-3">
+        <variable var="depth_strider_variable">3</variable>
+        <alive/>
+    </all>
+    <all id="apply-generator">
+        <variable var="generator_variable">1</variable>
+        <alive/>
+    </all>
+    <variable id="haste-0" var="haste_variable">0</variable>
+    <variable id="haste-1" var="haste_variable">1</variable>
+    <variable id="haste-2" var="haste_variable">2</variable>
+    <variable id="protection-0" var="protection_variable">0</variable>
+    <variable id="protection-1" var="protection_variable">1</variable>
+    <variable id="protection-2" var="protection_variable">2</variable>
+    <variable id="protection-3" var="protection_variable">3</variable>
+    <variable id="protection-4" var="protection_variable">4</variable>
+    <variable id="sharpness-0" var="sharpness_variable">0</variable>
+    <variable id="sharpness-1" var="sharpness_variable">1</variable>
+    <variable id="power-0" var="power_variable">0</variable>
+    <variable id="power-1" var="power_variable">1</variable>
+    <variable id="speed-0" var="speed_variable">0</variable>
+    <variable id="speed-1" var="speed_variable">1</variable>
+    <variable id="speed-2" var="speed_variable">2</variable>
+    <variable id="depth-strider-0" var="depth_strider_variable">0</variable>
+    <variable id="depth-strider-1" var="depth_strider_variable">1</variable>
+    <variable id="depth-strider-2" var="depth_strider_variable">2</variable>
+    <variable id="depth-strider-3" var="depth_strider_variable">3</variable>
+    <variable id="aqua-affinity-0" var="aqua_affinity_variable">0</variable>
+    <variable id="aqua-affinity-1" var="aqua_affinity_variable">1</variable>
+    <variable id="generator-0" var="generator_variable">0</variable>
+    <variable id="generator-1" var="generator_variable">1</variable>
+</filters>
+<regions>
+<!-- Regions -->
+    <negative id="void-area">
+        <cuboid min="30,0,-164" max="-35,27,21"/>
+    </negative>
+    <union id="spawn-areas">
+        <rectangle id="blue-spawn-area" min="6,-149" max="-14,-164"/>
+        <rectangle id="red-spawn-area" min="-11,6" max="9,21"/>
+    </union>
+    <union id="base-areas">
+        <half id="blue-base-area" origin="0,0,-114" normal="0,0,-1"/>
+        <half id="red-base-area" origin="0,0,-29" normal="0,0,1"/>
+    </union>
+    <union id="emerald-areas">
+        <cuboid id="east-emerald-area" min="20,3,-75" max="25,9,-70"/>
+        <cuboid id="west-emerald-area" min="-25,3,-68" max="-30,9,-73"/>
+    </union>
+    <!-- Areas -->
+    <negative id="not-all-core-areas">
+        <union id="all-core-areas">
+            <rectangle id="blue-core-area" min="-14,-155" max="-34,-122"/>
+            <rectangle id="red-core-area" min="9,12" max="29,-21"/>
+        </union>
+    </negative>
+    <union id="all-cores">
+        <cuboid id="blue-core" min="-27,16,-145" max="-22,21,-140"/>
+        <cuboid id="red-core" min="22,16,2" max="17,21,-3"/>
+    </union>
+    <union id="all-generators">
+        <cuboid id="blue-generator" min="3.5,8,-157.5" max="1,9,-153.5"/>
+        <cuboid id="red-generator" min="-8.5,8,14.5" max="-6,9,10.5"/>
+    </union>
+    <!-- blocks -->
+    <block id="emerald-spawner-east">22,5,-73</block>
+    <block id="emerald-spawner-west">-28,5,-71</block>
+    <!-- Rules Applied (order is important!) -->
+    <apply block-break="blast-proof"/>
+    <apply block="never" region="spawn-areas" message="You may not modify the spawn areas!"/>
+    <apply block="never" region="emerald-areas" message="You may not modify the emerald generators!"/>
+    <apply block-break="never" region="void-area"/>
+    <apply enter="only-blue" region="blue-spawn-area" message="You may not enter the enemy's spawn!"/>
+    <apply enter="only-red" region="red-spawn-area" message="You may not enter the enemy's spawn!"/>
+    <apply block="deny(void)" region="void-area" message="You may not modify the void area!"/>
+</regions>
+<!-- Cores & modes -->
+<cores material="obsidian" leak="4" mode-changes="true">
+    <core team="red" region="red-core"/>
+    <core team="blue" region="blue-core"/>
+</cores>
+<modes>
+    <mode after="20m" material="gold block" id="gold-mode" name="`eGOLD CORE MODE"/>
+    <mode after="60m" material="coal block" id="coal-mode" name="`dCOAL CORE MODE"/>
+</modes>
+<!--  Spawners (drop in sets of 2 so more players can pickup stuff)  -->
+<spawners>
+    <spawner spawn-region="blue-generator" player-region="blue-spawn-area" max-entities="128" delay="1s">
+        <item amount="4" material="gold nugget"/>
+        <item amount="4" material="gold nugget"/>
+    </spawner>
+    <spawner spawn-region="blue-generator" player-region="blue-spawn-area" max-entities="4" filter="apply-generator" delay="20s">
+        <item amount="1" material="emerald"/>
+    </spawner>
+    <spawner spawn-region="red-generator" player-region="red-spawn-area" max-entities="128" delay="1s">
+        <item amount="4" material="gold nugget"/>
+        <item amount="4" material="gold nugget"/>
+    </spawner>
+    <spawner spawn-region="red-generator" player-region="red-spawn-area" max-entities="4" filter="apply-generator" delay="20s">
+        <item amount="1" material="emerald"/>
+    </spawner>
+    <spawner spawn-region="emerald-spawner-east" player-region="everywhere" delay="10s">
+        <item material="emerald"/>
+    </spawner>
+    <spawner spawn-region="emerald-spawner-west" player-region="everywhere" delay="10s">
+        <item material="emerald"/>
+    </spawner>
+</spawners>
+<shopkeepers>
+    <shopkeepers name="`b`lItem Shop" shop="item-shop"> 
+        <shopkeeper yaw="0">-2.5,8,-159.5</shopkeeper> <!-- Blue -->
+        <shopkeeper yaw="180">-2.5,8,16.5</shopkeeper> <!-- Red -->
+    </shopkeepers>
+    <shopkeepers name="`b`lUpgrade Shop" shop="upgrade-shop">
+        <shopkeeper yaw="0">-5.5,8,-159.5</shopkeeper> <!-- Blue -->
+        <shopkeeper yaw="180">0.5,8,16.5</shopkeeper> <!-- Red -->
+    </shopkeepers>
+</shopkeepers>
+<shops>
+    <shop id="item-shop" name="Items">
+        <category id="offensives" name="`aOffensives" material="tnt">
+            <item material="tnt" amount="16" price="16" currency="gold nugget"/>
+            <item material="redstone" amount="16" price="4" currency="gold nugget"/>
+            <item material="redstone torch on" amount="16" price="4" currency="gold nugget"/>
+            <item material="diode" amount="16" price="8" currency="gold nugget"/>
+            <item material="stone button" amount="16" price="8" currency="gold nugget"/>
+            <item material="lever" amount="16" price="8" currency="gold nugget"/>
+            <item material="step" damage="1" amount="16" price="16" currency="gold nugget"/>
+            <item material="dark oak fence" amount="16" price="32" currency="gold nugget"/>
+            <item material="iron_plate" amount="16" price="4" currency="gold nugget"/>
+            <item material="water bucket" amount="1" price="16" currency="gold nugget"/>
+            <item material="dispenser" amount="3" price="16" currency="emerald"/>
+            <item material="sponge" amount="2" price="6" currency="emerald"/>
+        </category>
+        <category id="defences" name="`aDefences" material="workbench">
+            <item material="workbench" amount="32" price="16" currency="gold nugget"/>
+            <item material="water bucket" amount="1" price="16" currency="gold nugget"/>
+            <item material="bucket" amount="1" price="8" currency="gold nugget"/>
+            <item material="dark oak fence" amount="16" price="32" currency="gold nugget"/>
+            <item material="dark oak fence gate" amount="16" price="32" currency="gold nugget"/>
+            <item material="step" damage="1" amount="16" price="16" currency="gold nugget"/>
+            <item material="iron fence" amount="16" price="32" currency="gold nugget"/>
+            <item material="iron_plate" amount="16" price="4" currency="gold nugget"/>
+            <item material="stone button" amount="16" price="8" currency="gold nugget"/>
+            <item material="chest" amount="1" price="8" currency="gold nugget"/>
+            <item material="piston base" amount="16" price="2" currency="emerald"/>
+            <item material="piston sticky base" amount="16" price="2" currency="emerald"/>
+        </category>
+        <category id="utility-blocks" name="`aBridging blocks" material="sandstone" damage="2">
+            <item material="ladder" amount="16" price="8" currency="gold nugget"/>
+            <item material="sandstone stairs" damage="2" amount="16" price="10" currency="gold nugget"/>
+            <item material="sandstone" damage="2" amount="16" price="8" currency="gold nugget"/>
+            <item material="stained glass" team-color="true" amount="16" price="16" currency="gold nugget"/>
+            <item material="ender stone" amount="16" price="32" currency="gold nugget"/>
+            <if variant="default">
+                <item material="prismarine" damage="2" name="`rAlien Scales" lore="`7Immune to blast damage" amount="16" price="6" currency="emerald"/>
+            </if>
+            <if variant="christmas">
+                <item material="nether brick" name="`rHardened Scales" lore="`7Immune to blast damage" amount="16" price="6" currency="emerald"/>
+            </if>
+        </category>
+    </shop>
+    <shop id="upgrade-shop" name="Team Upgrades">
+        <category id="upgrades" name="`aTeam Upgrades" material="beacon">
+            <item material="iron sword" name="`4`lSharpened swords" lore="`7Your team permanently gains|`7Sharpness I on all swords" price="30" currency="emerald" action="sharpness-dummy" filter="sharpness-0"/>
+            <item material="bow" name="`4`lLethal bows" lore="`7Your team permanently gains|`7Power I on all bows" price="30" currency="emerald" action="power-dummy" filter="power-0"/>
+            <item material="chainmail chestplate" name="`e`lProtection I" lore="`7Your team permanently gains|`7Protection I on all armor pieces." price="30" currency="emerald" action="protection-dummy-1" filter="protection-0"/>
+            <item material="iron chestplate" name="`e`lProtection II" lore="`7Your team permanently gains|`7Protection II on all armor pieces." price="50" currency="emerald" action="protection-dummy-2" filter="protection-1"/>
+            <item material="gold chestplate" name="`e`lProtection III" lore="`7Your team permanently gains|`7Protection III on all armor pieces." price="75" currency="emerald" action="protection-dummy-3" filter="protection-2"/>
+            <item material="diamond chestplate" name="`e`lProtection IV" lore="`7Your team permanently gains|`7Protection IV on all armor pieces." price="100" currency="emerald" action="protection-dummy-4" filter="protection-3"/>
+            <item material="gold pickaxe" name="`6`lHaste I" lore="`7All players on your team|`7permanently gain Haste I on your island!" price="30" currency="emerald" action="haste-dummy-1" filter="haste-0"/>
+            <item material="diamond pickaxe" name="`6`lHaste II" lore="`7All players on your team|`7permanently gain Haste II on your island!." price="50" currency="emerald" action="haste-dummy-2" filter="haste-1"/>
+            <item material="feather" name="`c`lSpeed I" lore="`7All players on your team|`7permanently gain Speed I!." price="40" currency="emerald" action="speed-dummy-1" filter="speed-0"/>
+            <item material="feather" amount="2" name="`c`lSpeed II" lore="`7All players on your team|`7permanently gain Speed II!." price="75" currency="emerald" action="speed-dummy-2" filter="speed-1"/>
+            <item material="water bucket" name="`c`lDeep sea mining" lore="`7All players on your team|`7permanently gain Aqua Affinity and Respiration I!." price="40" currency="emerald" action="aqua-affinity-dummy" filter="aqua-affinity-0"/>
+            <item material="raw fish" name="`c`lDepth Strider I" lore="`7All players on your team|`7permanently gain Depth Strider I!." price="30" currency="emerald" action="depth-strider-dummy-1" filter="depth-strider-0"/>
+            <item material="raw fish" damage="1" name="`c`lDepth Strider II" lore="`7All players on your team|`7permanently gain Depth Strider II!." price="50" currency="emerald" action="depth-strider-dummy-2" filter="depth-strider-1"/>
+            <item material="raw fish" damage="2" name="`c`lDepth Strider III" lore="`7All players on your team|`7permanently gain Depth Strider III!." price="75" currency="emerald" action="depth-strider-dummy-3" filter="depth-strider-2"/>
+            <item material="emerald" name="`a`lAdvanced generator" lore="`7Your team's generator will|`7ocassionaly spawn emeralds!." price="40" currency="emerald" action="generator-dummy" filter="generator-0"/>
+        </category>
+    </shop>
+</shops>
+<toolrepair>
+    <tool>iron sword</tool>
+    <tool>iron axe</tool>
+    <tool>diamond pickaxe</tool>
+    <tool>bow</tool>
+</toolrepair>
+<itemremove>
+    <item>arrow</item>
+    <item>leather helmet</item>
+    <item>leather chestplate</item>
+    <item>chainmail leggings</item>
+    <item>leather boots</item>
+    <item>ender stone</item>
+    <item>stained glass</item>
+    <item>stained clay</item>
+    <item>hard clay</item>
+    <item>wood step</item>
+    <item>wood double step</item>
+    <item>step</item>
+    <item>double step</item>
+    <item>double stone slab2</item>
+    <item>dark oak fence</item>
+    <item>nether fence</item>
+    <item>iron fence</item>
+    <item>banner</item>
+    <item>hopper</item>
+    <item>melon</item>
+    <item>gold plate</item>
+    <item>sponge</item>
+    <item>redstone lamp off</item>
+    <item>redstone lamp on</item>
+    <item>iron trapdoor</item>
+    <item>cobble wall</item>
+    <item>daylight detector</item>
+    <item>daylight detector inverted</item>
+    <item>sand</item>
+    <item>sandstone</item>
+    <item>stone</item>
+    <item>smooth brick</item>
+    <item>smooth stairs</item>
+    <item>quartz stairs</item>
+    <item>obsidian</item>
+    <item>emerald block</item>
+    <item>golden apple</item>
+    <item>iron sword</item>
+    <item>bow</item>
+    <item>iron axe</item>
+    <item>diamond pickaxe</item>
+    <item>gold block</item>
+    <if variant="christmas">
+        <item>snowball</item>
+        <item>prismarine</item>
+    </if>
+</itemremove>
+<crafting>
+    <disable>gold ingot</disable>
+    <disable>emerald block</disable>
+    <disable>emerald</disable>
+</crafting>
+<kill-rewards>
+    <kill-reward>
+        <item amount="16" damage="2" material="sandstone"/>
+        <item amount="8" team-color="true" material="stained glass"/>
+    </kill-reward>
+    <kill-reward>
+        <filter>
+            <kill-streak repeat="true" count="3"/>
+        </filter>
+        <item material="emerald"/>
+    </kill-reward>
+</kill-rewards>
+<!-- map regen -->
+<renewables>
+    <renewable interval="25s" grow="true" particles="false" sound="false" avoid-players="2" region="not-all-core-areas">
+        <renew-filter>
+        <not>
+            <any>
+                <material>air</material>
+            </any>
+        </not>
+        </renew-filter>
+        <replace-filter>
+            <any>
+                <material>air</material>
+            </any>
+        </replace-filter>
+    </renewable>
+</renewables>
+<timelock>on</timelock>
+<maxbuildheight>27</maxbuildheight>
+<hunger>
+    <depletion>off</depletion>
+</hunger>
+</map>

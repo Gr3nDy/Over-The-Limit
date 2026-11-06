@@ -1,0 +1,155 @@
+<map proto="1.5.0">
+<name>Mole Dream</name>
+<version>1.0.11</version>
+<include id="gapple-kill-reward"/>
+<objective>Destroy the enemy's monument to the left side of their spawn!</objective>
+<created>2022-11-14</created>
+<authors>
+    <author uuid="644521d7-9437-47c1-b1d2-698eb757df3d"/> <!-- minuyo -->
+</authors>
+<contributors> 
+    <contributor uuid="9d4779a8-d35f-45d2-b51c-95de7a77e128" contribution="Map Packaging and XML"/> <!-- zzuf -->
+</contributors>
+<teams>
+    <team id="blue-team" color="blue" dye-color="blue" max="24">Blue</team>
+    <team id="red-team" color="dark red" dye-color="red" max="24">Red</team>
+</teams>
+<kits>
+    <kit id="spawn-kit">
+        <clear/>
+        <item slot="0" material="iron sword" unbreakable="true"/>
+        <item slot="1" material="bow" unbreakable="true"/>
+        <item slot="2" material="diamond pickaxe" unbreakable="true"/>
+        <item slot="3" material="iron axe" unbreakable="true"/>
+        <item slot="4" amount="64" damage="1" material="wood"/>
+        <item slot="5" amount="32" material="glass"/>
+        <item slot="6" material="iron spade" unbreakable="true"/>
+        <item slot="8" material="golden apple"/>
+        <item slot="28" amount="48" material="arrow"/>
+        <item slot="30" amount="64" damage="1" material="wood"/>
+        <helmet team-color="true" material="leather helmet" unbreakable="true"/>
+        <chestplate team-color="true" material="leather chestplate" unbreakable="true"/>
+        <leggings team-color="true" material="leather leggings" unbreakable="true"/>
+        <boots team-color="true" material="leather boots" unbreakable="true"/>
+        <effect duration="2" amplifier="255">resistance</effect>
+    </kit>
+</kits>
+<spawns>
+    <spawn team="blue-team" kit="spawn-kit" yaw="-90">
+        <region>
+            <point>-86.5,23.5,-25.5</point>
+        </region>
+    </spawn>
+    <spawn team="red-team" kit="spawn-kit" yaw="90">
+        <region>
+            <point>86.5,23.5,26.5</point>
+        </region>
+    </spawn>
+    <default yaw="180">
+        <region>
+            <point>0.5,115.5,82.5</point>
+        </region>
+    </default>
+</spawns>
+<filters>
+    <team id="only-red">red-team</team>
+    <team id="only-blue">blue-team</team>
+    <deny id="deny-iron">
+        <all>
+            <cause>player</cause>
+            <material id="only-iron">iron block</material>
+        </all>
+    </deny>
+    <deny id="deny-beacon">
+        <material>beacon</material>
+    </deny>
+</filters>
+<regions>
+    <negative id="void-area">
+        <rectangle min="-100,-42" max="100,43"/>
+    </negative>
+    <union id="iron-mines">
+        <cuboid id="blue-iron-mine" min="-64,14,-19" max="-42,21,3"/>
+        <cuboid id="red-iron-mine" min="63,14,20" max="32,21,-2"/>
+    </union>
+    <union id="spawn-areas">
+        <rectangle id="blue-spawn-area" min="-81,-20" max="-93,-31"/>
+        <rectangle id="red-spawn-area" min="81,21" max="93,32"/>
+    </union>
+    <apply block-place="deny-iron" region="iron-mines" message="You may not place iron blocks here."/>
+    <apply block="never" region="spawn-areas" message="You may not modify the spawn areas!"/>
+    <apply enter="only-red" region="red-spawn-area" message="You may not enter the enemy's spawn!"/>
+    <apply enter="only-blue" region="blue-spawn-area" message="You may not enter the enemy's spawn!"/>
+    <apply block="never" region="void-area" message="You may not edit the void!"/>
+    <apply use="deny-beacon"/>
+</regions>
+<destroyables materials="obsidian" completion="100%" required="true" mode-changes="true">
+    <destroyable owner="blue-team" name="Blue Monument">
+        <region>
+            <cuboid min="-79,27,20" max="-78,30,21"/>
+        </region>
+    </destroyable>
+    <destroyable owner="red-team" name="Red Monument">
+        <region>
+            <cuboid min="79,27,-19" max="78,30,-20"/>
+        </region>
+    </destroyable>
+</destroyables>
+<modes>
+    <mode after="30m" material="beacon" name="`bBEACON MONUMENT MODE"/>
+</modes>
+<itemkeep>
+    <item>iron sword</item>
+    <item>bow</item>
+    <item>diamond pickaxe</item>
+    <item>iron axe</item>
+    <item>iron spade</item>
+    <item>golden apple</item>
+    <item>wood</item>
+    <item>glass</item>
+    <item>arrow</item>
+</itemkeep>
+<itemremove>
+    <item>leather helmet</item>
+    <item>leather chestplate</item>
+    <item>leather leggings</item>
+    <item>leather boots</item>
+    <item>lever</item>
+    <item>obsidian</item>
+    <item>beacon</item>
+</itemremove>
+<toolrepair>
+    <tool>iron sword</tool>
+    <tool>bow</tool>
+    <tool>diamond pickaxe</tool>
+    <tool>iron axe</tool>
+    <tool>iron spade</tool>
+</toolrepair>
+<renewables>
+    <renewable region="iron-mines" renew-filter="only-iron"/>
+</renewables>
+<block-drops>
+    <rule>
+        <filter>
+            <material>gravel</material>
+        </filter>
+        <drops>
+            <item chance="0" material="flint"/>
+            <item chance="100" material="gravel"/>
+        </drops>
+    </rule>
+</block-drops>
+<tnt>
+    <yield>0</yield>
+</tnt>
+<kill-rewards>
+    <kill-reward>
+        <item material="wood" damage="1" amount="16"/>
+        <item material="arrow" amount="12"/>
+    </kill-reward>
+</kill-rewards>
+<hunger>
+    <depletion>off</depletion>
+</hunger>
+<maxbuildheight>45</maxbuildheight>
+</map>

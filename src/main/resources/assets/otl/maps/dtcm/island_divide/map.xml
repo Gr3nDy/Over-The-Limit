@@ -1,0 +1,256 @@
+<map proto="1.5.0">
+<name>Island Divide</name>
+<version>1.1.6</version>
+<objective>Destroy the opponent's monuments at the opposite side of the island and enjoy the sun!</objective>
+<include id="gapple-kill-reward"/>
+<authors>
+    <author uuid="060ae7e1-43a0-42ad-8b5d-7240c5ec05af"/> <!-- EsotericSorcery -->
+</authors>
+<teams>
+    <team id="blue-team" color="blue" dye-color="light blue" max="20">Blue</team>
+    <team id="green-team" color="green" max="20">Green</team>
+</teams>
+<kits>
+    <kit id="spawn-kit">
+        <clear/>
+        <item slot="0" material="stone sword" unbreakable="true"/>
+        <item slot="1" material="bow" unbreakable="true" enchantment="arrow infinite"/>
+        <item slot="2" material="diamond pickaxe" unbreakable="true"/>
+        <item slot="3" material="iron axe" unbreakable="true">
+            <enchantment level="2">dig speed</enchantment>
+        </item>
+        <item slot="4" material="water bucket" amount="1"/>
+        <item slot="5" material="wood" amount="64" damage="3"/>
+        <item slot="6" team-color="true" amount="48" material="stained clay"/>
+        <item slot="7" material="vine" amount="32"/>
+        <item slot="8" material="golden apple"/>
+        <item slot="28" material="arrow"/>
+        <item slot="30" material="iron spade" unbreakable="true"/>
+        <item slot="34" material="torch" amount="16"/>
+        <item slot="35" material="shears" unbreakable="true"/>
+        <leggings material="chainmail leggings" unbreakable="true">
+            <enchantment>projectile_protection</enchantment>
+        </leggings>
+        <effect duration="3s" amplifier="255">damage resistance</effect>
+    </kit>
+    <kit id="blue-kit" parents="spawn-kit">
+        <chestplate color="3AB3DA" unbreakable="true">leather chestplate</chestplate>
+        <boots color="3AB3DA" unbreakable="true">leather boots</boots>
+    </kit>
+    <kit id="green-kit" parents="spawn-kit">
+        <chestplate color="80C71F" unbreakable="true">leather chestplate</chestplate>
+        <boots color="80C71F" unbreakable="true">leather boots</boots>
+    </kit>
+</kits>
+<spawns>
+    <default yaw="90">
+        <region>
+            <point>105.5,30,0.5</point>
+        </region>
+    </default>
+    <spawn team="blue-team" kit="blue-kit">
+        <region>
+            <point>69.5,10,-94.5</point>
+        </region>
+    </spawn>
+    <spawn team="green-team" kit="green-kit" yaw="-180">
+        <region>
+            <point>-68.5,10,95.5</point>
+        </region>
+    </spawn>
+</spawns>
+<filters>
+    <team id="only-blue">blue-team</team>
+    <team id="only-green">green-team</team>
+    <all id="only-gold-cause-world">
+        <material id="only-gold">gold block</material>
+        <cause>world</cause>
+    </all>
+    <deny id="deny-beacon">
+        <material>beacon</material>
+    </deny>
+</filters>
+<regions>
+    <negative id="void-area">
+        <region id="build-area"/>
+        <region id="spawns"/>
+        <region id="water-edges"/>
+    </negative>
+    <negative id="not-spawns">
+        <union id="spawns">
+            <rectangle id="blue-spawn" min="81,-100" max="58,-42"/>
+            <rectangle id="green-spawn" min="-80,101" max="-57,43"/>
+        </union>
+    </negative>
+    <union id="build-area">
+        <rectangle min="-59,-45" max="-20,33"/> <!-- West Lane -->
+        <rectangle min="60,46" max="21,-32"/> <!-- East Lane -->
+    </union>
+    <union id="water-edges">
+        <union id="water-edge-blue">
+            <rectangle min="-79,-92" max="-80,-53"/> 
+            <circle center="-55,-92" radius="24"/>
+            <rectangle min="-78,-98" max="-79,-97"/>
+            <rectangle min="-77,-101" max="-78,-100"/>
+            <rectangle min="-75,-105" max="-76,-104"/>
+            <rectangle min="-67,-113" max="-68,-112"/>
+            <rectangle min="-63,-115" max="-64,-114"/>
+            <rectangle min="-60,-116" max="-61,-115"/>
+            <rectangle min="69,-117" max="-55,-116"/>
+            <circle center="66.5,-102.5" radius="14"/>
+            <rectangle min="81,-105" max="80,-13"/>
+            <complement>
+                <rectangle min="80,-32" max="60,-12"/>
+                <half origin="79,0,-12" normal="-1,0,1"/>
+            </complement>
+            <rectangle min="21,-31" max="-14,-30"/>
+            <rectangle min="11,-30" max="-11,-29"/>
+            <rectangle min="-14,-32" max="-17,-31"/>
+            <rectangle min="-17,-33" max="-20,-32"/>
+            <complement>
+                <rectangle min="-58,-53" max="-79,-46"/>
+                <half origin="-61,0,-46" normal="-1,0,2.85"/> 
+            </complement>
+        </union>
+        <union id="water-edge-green">
+            <rectangle min="80,93" max="81,54"/> 
+            <circle center="56,93" radius="24"/>
+            <rectangle min="79,99" max="80,98"/>
+            <rectangle min="78,102" max="79,101"/>
+            <rectangle min="76,106" max="77,105"/>
+            <rectangle min="68,114" max="69,113"/>
+            <rectangle min="64,116" max="65,115"/>
+            <rectangle min="61,117" max="62,116"/>
+            <rectangle min="-68,118" max="56,117"/>
+            <circle center="-65.5,103.5" radius="14"/>
+            <rectangle min="-80,106" max="-79,14"/>
+            <complement>
+                <rectangle min="-79,33" max="-59,13"/>
+                <half origin="-78,0,13" normal="1,0,-1"/>
+            </complement>
+            <rectangle min="-20,32" max="15,31"/>
+            <rectangle min="-10,31" max="12,30"/>
+            <rectangle min="15,33" max="18,32"/>
+            <rectangle min="18,34" max="21,33"/>
+            <complement>
+                <rectangle min="59,54" max="80,47"/>
+                <half origin="62,0,47" normal="1,0,-2.85"/> 
+            </complement>
+        </union>
+    </union>
+    <union id="spawners">
+        <point id="gold-point-west">-34.5,12,-7.5</point>
+        <cuboid id="gold-point-west-platform" min="-33,14,-9" max="-36,11,-6"/>
+        <point id="gold-point-east">35.5,12,8.5</point>
+        <cuboid id="gold-point-east-platform" min="34,14,10" max="37,11,7"/>
+    </union>
+    <apply use="deny-beacon"/>
+    <apply block-place="only-gold-cause-world" block-break="only-gold" region="spawns" message="You may not edit spawn!"/>
+    <apply enter="only-blue" region="blue-spawn" message="You may not enter the opponent's spawn!"/>
+    <apply enter="only-green" region="green-spawn" message="You may not enter the opponent's spawn!"/>
+    <apply block="never" region="spawners" message="You may not edit the golden apple spawner!"/>
+    <apply block-place="deny(void)" region="void-area" message="You may not build in the void!"/>
+</regions>
+<destroyables required="true" sparks="true">
+    <destroyable name="Hill Monument" id="blue-obsidian" materials="obsidian" owner="blue-team" modes="beacon-mode coal-mode">
+        <region>
+            <cuboid min="-22,22,-75" max="-21,25,-74"/>
+        </region>
+    </destroyable>
+    <destroyable name="Hill Monument" id="green-obsidian" materials="obsidian" owner="green-team" modes="beacon-mode coal-mode">
+        <region>
+            <cuboid min="23,22,76" max="22,25,75"/>
+        </region>
+    </destroyable>
+    <destroyable name="Beach Monument" id="blue-emerald" materials="emerald block" owner="blue-team" show-progress="true">
+        <region>
+            <cuboid min="33,16,-85" max="36,19,-88"/>
+        </region>
+    </destroyable>
+    <destroyable name="Beach Monument" id="green-emerald" materials="emerald block" owner="green-team" show-progress="true">
+        <region>
+            <cuboid min="-32,16,86" max="-35,19,89"/>
+        </region>
+    </destroyable>
+</destroyables>
+<modes>
+    <mode id="beacon-mode" after="15m" name="`bBEACON MONUMENT MODE `e(Hill Monument)" material="beacon"/>
+    <mode id="coal-mode" after="30m" name="`0COAL MONUMENT MODE `e(Hill Monument)" material="coal block"/>
+</modes>
+<spawners player-region="everywhere">
+    <spawner spawn-region="gold-point-west" max-entities="1" delay="10s">
+        <item amount="1" material="golden apple"/>
+    </spawner>
+    <spawner spawn-region="gold-point-east" max-entities="1" delay="10s">
+        <item amount="1" material="golden apple"/>
+    </spawner>
+</spawners>
+<renewables>
+    <renewable sound="false" region="spawns" renew-filter="only-gold"/>
+</renewables>
+<toolrepair>
+    <tool>stone sword</tool>
+    <tool>bow</tool>
+    <tool>diamond pickaxe</tool>
+    <tool>iron axe</tool>
+    <tool>iron spade</tool>
+    <tool>shears</tool>
+</toolrepair>
+<itemremove>
+    <item>leather chestplate</item>
+    <item>chainmail leggings</item>
+    <item>leather boots</item>
+    <item>arrow</item>
+    <item>seeds</item>
+    <item>flower pot</item>
+    <item>melon seeds</item>
+    <item>melon block</item>
+    <item>melon stem</item>
+    <item>water lily</item>
+    <item>sapling:3</item>
+    <item>book</item>
+    <item>wheat</item>
+    <item>hay block</item>
+    <item>item frame</item> 
+    <item>string</item>
+    <item>prismarine crystals</item>
+    <item>coal block</item>
+    <item>emerald block</item>
+    <item>obsidian</item>
+    <item>beacon</item>
+</itemremove>
+<itemkeep>
+    <item>vine</item>
+    <item>wood</item>
+    <item>stained clay</item>
+    <item>golden apple</item>
+    <item>torch</item>
+    <item>water bucket</item>
+</itemkeep>
+<item-mods>
+    <rule>
+        <match>
+            <material>gold sword</material>
+            <material>gold helmet</material>
+            <material>gold chestplate</material>
+            <material>gold leggings</material>
+            <material>gold boots</material>
+        </match>
+        <modify unbreakable="true"/>
+    </rule>
+</item-mods>
+<crafting>
+    <disable>gold pickaxe</disable>
+    <disable>coal block</disable>
+</crafting>
+<kill-rewards>
+    <kill-reward>
+        <item material="wood" amount="16" damage="3"/>
+        <item material="vine" amount="16"/>
+    </kill-reward>
+</kill-rewards>
+<maxbuildheight>27</maxbuildheight>
+<hunger>
+    <depletion>off</depletion>
+</hunger>
+</map>

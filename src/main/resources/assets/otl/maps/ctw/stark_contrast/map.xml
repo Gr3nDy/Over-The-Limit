@@ -1,0 +1,179 @@
+<map proto="1.5.0">
+<name>Stark Contrast</name>
+<version>1.0.2</version>
+<objective>Take the opponent's wools and place them on your victory monument!</objective>
+<gamemode>ctw</gamemode>
+<created>2021-07-03</created>
+<include id="gapple-kill-reward"/>
+<phase>staging</phase>
+<authors>
+    <author uuid="93a2f790-e430-4742-94ac-e513660bef37"/> <!-- adenines -->
+    <author uuid="787c2738-70ba-4bfc-8faf-70ae9d87e5b9"/> <!-- uracils -->
+    <author uuid="52b83015-83e2-4327-9f07-83d358750325"/> <!-- llehc -->
+</authors>
+<teams>
+    <team id="white-team" color="white" max="32">Blanc</team>
+    <team id="black-team" color="dark gray" dye-color="black" max="32">Noir</team>
+</teams>  
+<kits>
+    <kit id="spawn-kit">
+        <item slot="0" material="iron sword" unbreakable="true"/>
+        <item slot="1" material="bow" unbreakable="true"> 
+            <enchantment>infinity</enchantment>
+        </item>
+        <item slot="2" material="iron pickaxe">
+            <enchantment level="2">efficiency</enchantment>
+            <enchantment level="2">unbreaking</enchantment>
+        </item>
+        <item slot="3" material="bucket"/>
+        <item slot="4" material="stained clay" team-color="true" amount="64"/>
+        <item slot="5" material="stained clay" team-color="true" amount="64"/>
+        <item slot="31" material="stained clay" team-color="true" amount="64"/>
+        <item slot="6" material="stained glass" team-color="true" amount="64"/>
+        <item slot="7" material="golden apple"/>
+        <item slot="8" material="golden carrot" amount="64"/>
+        <item slot="28" material="arrow"/>
+        <chestplate material="leather chestplate" team-color="true" unbreakable="true">
+            <enchantment level="2">projectile_protection</enchantment>
+        </chestplate>
+        <boots material="leather boots" team-color="true" unbreakable="true">
+            <enchantment level="2">projectile_protection</enchantment>
+        </boots>
+        <effect duration="5" amplifier="255">damage resistance</effect>
+    </kit>
+</kits>
+<spawns>
+    <spawn team="white-team" kit="spawn-kit" yaw="180">
+        <region>
+            <cylinder id="white-drop" base="0.5,87,134.5" radius="1" height="0"/>
+        </region>
+    </spawn>
+    <spawn team="black-team" kit="spawn-kit">
+        <region>
+            <cylinder id="black-drop" base="0.5,87,-133.5" radius="1" height="0"/>
+        </region>
+    </spawn>
+    <default yaw="-90">
+        <region>
+            <cylinder base="-87.5,52,0.5" radius="1" height="0"/>
+        </region>
+    </default>
+</spawns>
+<filters>
+    <all id="white-woolroom-filter">
+        <team id="only-white">white-team</team>
+        <filter id="woolroom-materials-white"/>
+    </all>
+    <any id="woolroom-materials-white">    
+        <material>web</material>       
+        <material>stained_glass:7</material>
+        <material>stained_glass:15</material>
+    </any>
+    <all id="black-woolroom-filter">
+        <team id="only-black">black-team</team>
+        <filter id="woolroom-materials-black"/>   
+    </all>
+    <any id="woolroom-materials-black">
+        <material>web</material>
+        <material>stained_glass:0</material>
+        <material>stained_glass:8</material>
+    </any>
+    <material id="only-iron">iron block</material>
+    <material id="only-air">air</material>
+    <all id="only-renewable">
+        <material>iron block</material>  
+        <not>
+            <cause>player</cause>
+        </not>
+    </all>
+</filters>
+<regions>
+    <rectangle id="full-map" min="-70,-171" max="70,171"/>
+    <union id="spawns">
+        <rectangle id="white-spawn" min="18,152" max="-17,118"/>
+        <rectangle id="black-spawn" min="-17,-151" max="18,-117"/>
+    </union>
+    <union id="woolrooms">
+        <union id="whites-woolrooms">
+            <rectangle id="gray-woolroom" min="43,-140" max="66,-164"/>
+            <rectangle id="black-woolroom" min="-42,-140" max="-65,-164"/>
+        </union>
+        <union id="blacks-woolrooms">
+            <rectangle id="white-woolroom" min="43,141" max="66,165"/>
+            <rectangle id="silver-woolroom" min="-42,141" max="-65,165"/>
+        </union> 
+    </union>
+    <union id="monuments">
+        <cuboid id="white-monument" min="-3,7,-67" max="4,15,-62"/>
+        <cuboid id="black-monument" min="4,7,68" max="-3,15,63"/>
+    </union>
+    <cuboid id="spawner" min="-1,4,-1" max="2,9,2"/>
+    <apply enter="only-white" region="white-spawn" message="You cannot enter `FBlanc's `Cspawn!"/>
+    <apply enter="only-black" region="black-spawn" message="You cannot enter `8Noir's `Cspawn!"/>
+    <apply enter="only-white" region="whites-woolrooms" message="You cannot enter your own woolroom!"/>
+    <apply enter="only-black" region="blacks-woolrooms" message="You cannot enter your own woolroom!"/>
+    <apply block-place="never" region="woolrooms" message="You cannot place blocks in the woolrooms!"/>
+    <apply block-break="white-woolroom-filter" region="whites-woolrooms" message="You can only break webs and stained glass in the woolrooms!"/>
+    <apply block-break="black-woolroom-filter" region="blacks-woolrooms" message="You can only break webs and stained glass in the woolrooms!"/>
+    <apply block="never" region="monuments" message="You cannot edit the victory monuments!"/>
+    <apply block-place="only-renewable" region="spawns" message="You can only break iron in spawn!"/>
+    <apply block-break="only-iron" region="spawns" message="You can only break iron in spawn!"/>
+    <apply block="never" region="spawner" message="You cannot edit the spawner region!"/>
+    <apply block="deny(void)" region="full-map" message="You cannot build in the void!"/>
+</regions>
+<wools craftable="false">
+    <wool team="white-team" color="black" location="-53.5,11,-152.5">
+        <monument>
+            <block>-1.5,11,65.5</block>
+        </monument>
+    </wool>
+    <wool team="white-team" color="gray" location="54.5,11,-152.5">
+        <monument>
+            <block>2.5,11,65.5</block>
+        </monument>
+    </wool>   
+    <wool team="black-team" color="white" location="54.5,11,153.5">
+        <monument>
+            <block>2.5,11,-64.5</block>
+        </monument>
+    </wool>                          
+    <wool team="black-team" color="silver" location="-53.5,11,153.5">
+        <monument>
+            <block>-1.5,11,-64.5</block>
+        </monument>
+    </wool>
+</wools>
+<renewables>
+    <renewable interval="5" sound="true" particles="true" region="everywhere" renew-filter="only-iron" replace-filter="only-air" avoid-players="2"/>
+</renewables>
+<toolrepair>
+    <tool>iron sword</tool>
+    <tool>iron pickaxe</tool>  
+</toolrepair>
+<itemremove>
+    <item>smooth brick:3</item>
+    <item>stained clay:0</item>
+    <item>stained clay:7</item>
+    <item>stained clay:9</item>
+    <item>stained clay:15</item>
+    <item>coal block</item>
+    <item>quartz block</item>
+    <item>clay</item>
+    <item>clay ball</item>
+    <item>step:0</item>
+    <item>double step:8</item>
+    <item>stone:4</item>
+    <item>stone:6</item>
+    <item>string</item>
+    <item>arrow</item>
+    <item>bucket</item>
+    <item>golden carrot</item>
+    <item>stained glass:0</item>
+    <item>stained glass:15</item>
+    <item>glowstone dust</item>
+    <item>leather chestplate</item>
+    <item>leather boots</item>
+</itemremove>
+<maxbuildheight>40</maxbuildheight>
+<respawn delay="2.5s"/>
+</map>

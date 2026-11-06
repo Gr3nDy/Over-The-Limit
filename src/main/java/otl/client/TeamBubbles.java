@@ -12,43 +12,41 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 import org.lwjgl.opengl.GL11;
 
-/** Team information is learned from server chat and never carried into another world. */
+/** Bubbles use only server-delivered team-chat lines, including the local player's echo. */
 final class TeamBubbles {
     static final TeamBubbles INSTANCE=new TeamBubbles();
     private static Object world;
-    private static String host="",team;
-    private static long chatContext=-1;
+    private static String host="";
+    private static final TeamBubbleRules.Cooldown cooldown=new TeamBubbleRules.Cooldown();
     static final Map<UUID,Bubble> bubbles=new HashMap<>();
     static final class Bubble {
         final String text;final long until;
         Bubble(String text){this.text=text;until=System.nanoTime()+UtilitySettings.bubbleSeconds*1000000000L;}
     }
-    static String team(){ensureWorld();return team;}
     static void clearBubbles(){bubbles.clear();}
     private static void ensureWorld(){
-        Minecraft mc=MinecraftAccess.get();String now=ServerScope.current();long context=ReliableChat.contextVersion();
-        if(world!=mc.theWorld||!host.equals(now)||chatContext!=context||!ReliableChat.active()||!ReliableChat.fullChat()){
-            bubbles.clear();team=null;world=mc.theWorld;host=now;chatContext=context;
+        Minecraft mc=MinecraftAccess.get();String now=ServerScope.current();
+        boolean active=ReliableChat.active()&&ReliableChat.fullChat();
+        if(world!=mc.theWorld||!host.equals(now)){
+            bubbles.clear();cooldown.clear();world=mc.theWorld;host=now;
         }
+        if(!active)bubbles.clear();
     }
     static void receive(IChatComponent message){
-        ensureWorld();if(!ReliableChat.active())return;
-        String joined=TeamBubbleRules.joined(message.getFormattedText());
-        if(joined!=null){team=joined;bubbles.clear();return;}
-        if(!UtilitySettings.bubbles||team==null)return;
-        String senderTeam=ChatRules.groupTeam(message.getFormattedText());
-        if(senderTeam==null||!team.equalsIgnoreCase(senderTeam))return;
-        ChatRules.Route route=ChatRules.classify(message.getFormattedText());if(!ChatRules.TEAM.equals(route.key))return;
+        ensureWorld();
+        if(!UtilitySettings.bubbles||!ReliableChat.active()||!ReliableChat.fullChat()||MinecraftAccess.get().theWorld==null)return;
+        TeamBubbleRules.Chat chat=TeamBubbleRules.chat(message.getFormattedText());if(chat==null)return;
         EntityPlayer sender=null;
-        for(EntityPlayer p:MinecraftAccess.get().theWorld.playerEntities)if(p.getName().equalsIgnoreCase(route.name)){if(sender!=null)return;sender=p;}
-        if(sender==null||sender.isInvisible())return;
-        String body=TeamBubbleRules.limit(ChatRules.groupBody(message.getFormattedText()),UtilitySettings.bubbleCharacters);
-        if(!body.isEmpty())bubbles.put(sender.getUniqueID(),new Bubble(body));
+        for(EntityPlayer p:MinecraftAccess.get().theWorld.playerEntities)if(p.getName().equalsIgnoreCase(chat.name)){if(sender!=null)return;sender=p;}
+        if(sender==null)return;
+        String body=TeamBubbleRules.limit(chat.body,UtilitySettings.bubbleCharacters);
+        if(!body.isEmpty()&&cooldown.accept(sender.getUniqueID(),System.nanoTime()))bubbles.put(sender.getUniqueID(),new Bubble(body));
     }
     @SubscribeEvent public void tick(TickEvent.ClientTickEvent event){
         if(event.phase!=TickEvent.Phase.END)return;ensureWorld();
+        long now=System.nanoTime();cooldown.expire(now);
         if(!UtilitySettings.bubbles){bubbles.clear();return;}
-        long now=System.nanoTime();bubbles.values().removeIf(b->b.until<=now);
+        bubbles.values().removeIf(b->b.until<=now);
     }
     @SubscribeEvent public void render(RenderLivingEvent.Specials.Post<?> event){
         if(!UtilitySettings.bubbles||!ReliableChat.active()||FaceDoll.preview||!(event.entity instanceof EntityPlayer))return;
@@ -74,5 +72,5 @@ final class TeamBubbles {
             GlStateManager.tryBlendFuncSeparate(src,dst,srcA,dstA);GlStateManager.color(1,1,1,1);
         }
     }
-    static boolean visible(EntityPlayer player){Minecraft mc=MinecraftAccess.get();return mc.thePlayer!=null&&!player.isInvisible()&&!player.isSneaking()&&(player!=mc.thePlayer||mc.gameSettings.thirdPersonView!=0)&&mc.thePlayer.getDistanceSqToEntity(player)<=32*32&&mc.thePlayer.canEntityBeSeen(player);}
+    static boolean visible(EntityPlayer player){Minecraft mc=MinecraftAccess.get();return mc.thePlayer!=null&&!player.isInvisibleToPlayer(mc.thePlayer)&&!player.isSneaking()&&(player!=mc.thePlayer||mc.gameSettings.thirdPersonView!=0)&&mc.thePlayer.getDistanceSqToEntity(player)<=32*32&&mc.thePlayer.canEntityBeSeen(player);}
 }

@@ -1,0 +1,182 @@
+<map proto="1.5.0">
+<name>Burning Palace</name>
+<version>1.0.6</version>
+<created>2026-01-17</created>
+<constant id="score">750</constant>
+<constant id="respawn-timer">3s</constant>
+<constant id="points-per-second">1</constant>
+<constant id="damage-resistance">2s</constant>
+<constant id="map-center">0.5,0.5,0.5</constant>
+<constant id="long-refill-timer">45s</constant>
+<constant id="medium-refill-timer">15s</constant>
+<constant id="short-refill-timer">10s</constant>
+<include id="conquest"/>
+<objective>Be the first team to reach ${score} points!</objective>
+<authors>
+    <author uuid="1aad55f7-2dea-4f22-85ca-ad9de3a78609"/> <!-- Technodono -->
+    <author uuid="b4e0ff6e-c806-4598-a866-249e7ea40cee"/> <!-- Robeens -->
+</authors>
+<teams>
+    <team id="red" color="dark red" max="18">Red</team>
+    <team id="blue" color="blue" max="18">Blue</team>
+</teams>
+<kits>
+    <kit id="spawn-kit" parent="base-kit">
+        <if variant="default">
+            <action>
+                <replace-item>
+                    <find unbreakable="true" material="iron boots"/>
+                    <replace unbreakable="true" enchantment="fire_protection" material="iron boots"/>
+                </replace-item>
+            </action>
+        </if>
+    </kit>
+</kits>
+<projectiles>
+    <projectile id="arrow" name="crossbow bolt" velocity="4" damage="7" throwable="true" cooldown="2.5s"/>
+    <projectile id="blaze" name="flaming fireball" projectile="SmallFireball" velocity="0.3" damage="10" throwable="true" cooldown="0.1s" precise="false" click="right"/>
+</projectiles>
+<spawns>
+    <default>
+        <region yaw="90">
+            <point>60,34,0.5</point>
+        </region>
+    </default>
+    <spawn team="red" kit="spawn-kit">
+        <region yaw="-45">
+            <point>-41,12,-41</point>
+        </region>
+    </spawn>
+    <spawn team="blue" kit="spawn-kit">
+        <region yaw="135">
+            <point>42,12,42</point>
+        </region>
+    </spawn>
+</spawns>
+<filters>
+    <material id="only-chest">chest</material>
+    <random id="50-percent">0.5</random>
+    <any id="fall-damage-immune">
+        <filter id="fall-damage-disabling-regions"/>
+        <countdown duration="2s">
+            <not>
+                <filter id="trigger-fall-damage-immunity"/>
+            </not>
+        </countdown>
+    </any>
+</filters>
+<regions>
+    <union id="fall-damage-disabling-regions">
+        <cuboid id="mid-jump-area" min="-2,7,-2" max="3,25,3"/>
+        <cuboid id="mid-koth-area" min="13,17,13" max="-12,21,-12"/>
+        <union id="trigger-fall-damage-immunity">
+            <cuboid id="blue-spawn-area" min="32,12,32" max="46,oo,46"/>
+            <mirror normal="-1,0,-1" origin="${map-center}" region="blue-spawn-area"/>
+        </union>
+    </union>
+    <cuboid id="ne-hill" min="38,11,-37" size="-9,4,9"/>
+    <mirror normal="-1,0,1" origin="${map-center}" region="ne-hill" id="sw-hill"/>
+    <union id="arrow-chests">
+        <block>-35,17,0</block> <!--red-->
+        <block>2,15,-44</block>
+        <block>35,17,0</block>
+        <block>-2,15,44</block>
+    </union>
+    <union id="crossbow-chests">
+        <block>-2,13,18</block>
+        <block>-37,7,-8</block>
+        <block>2,13,-18</block>
+        <block>37,7,8</block>
+    </union>
+    <union id="ultimate-chests">
+        <block>0,10,13</block>
+        <block>0,10,-13</block>
+    </union>
+    <union id="utility-chests">
+        <block id="red-utility-chest">49,12,-49</block>
+        <mirror normal="-1,0,1" origin="${map-center}" region="red-utility-chest"/>
+    </union>
+    <union id="grenade-chests">
+        <block>11,9,-6</block>
+        <block>-11,9,6</block>
+    </union>
+    <complement  id="center-hill">
+        <cuboid min="8,16,-7" size="-15,4,15"/>
+        <cuboid min="4,16,-3" size="-7,4,7"/>
+    </complement>
+    <apply velocity="0.0,1.7,0.0">
+        <region>
+            <cuboid min="2,7,-1" size="-3,1,3"/>
+        </region>
+    </apply>
+    <apply block="never" use="only-chest"/>
+</regions>
+<lootables>
+    <loot id="crossbow">
+        <any count="6" unique="false">
+            <item projectile="arrow" name="`rCrossbow" lore="`r`7Right-click to fire!" material="firework charge"/>
+        </any>
+        <maybe filter="50-percent">
+            <any count="1" unique="true">
+                <item material="golden apple"/>
+            </any>
+        </maybe>
+    </loot>
+    <loot id="grenade">
+        <any count="4" unique="false">
+            <item name="`6Grenade" grenade="true" grenade-power="1.7" material="snow ball"/>
+        </any>
+    </loot>
+    <loot id="arrowloot">
+        <any count="6" unique="false">
+            <item material="arrow"/>
+        </any>
+        <any count="2" unique="false">
+            <item name="`6Grenade" grenade="true" grenade-power="1.7" material="snow ball"/>
+        </any>
+    </loot>
+    <loot id="utility">
+        <any>
+            <item material="potion" damage="8" name="Buff Juice">
+                <effect amplifier="2" duration="10s">absorption</effect>
+                <effect duration="10s" amplifier="1">resistance</effect>
+            </item>
+            <item material="potion" damage="9" name="Enrage Juice">
+                <effect duration="10s" amplifier="1">strength</effect>
+                <effect duration="10s" amplifier="1">regeneration</effect>
+            </item>
+            <item material="potion" damage="2" name="Energy Juice">
+                <effect duration="15s" amplifier="1">speed</effect>
+                <effect duration="15s" amplifier="3">jump_boost</effect>
+            </item>
+        </any>
+    </loot>
+    <loot id="ultimate">
+        <any count="8" unique="false">
+            <item amount="2" projectile="blaze" name="`cFlamming fireballs" lore="`r`7Right-click to fire!" material="magma cream"/>
+        </any>
+    </loot>
+    <fill loot="ultimate" filter="ultimate-chests" refill-interval="${long-refill-timer}" refill-clear="true"/>
+    <fill loot="utility" filter="utility-chests" refill-interval="${long-refill-timer}" refill-clear="true"/>
+    <fill loot="crossbow" filter="crossbow-chests" refill-interval="${short-refill-timer}" refill-clear="true"/>
+    <fill loot="arrowloot" filter="arrow-chests" refill-interval="${short-refill-timer}" refill-clear="true"/>
+    <fill loot="grenade" filter="grenade-chests" refill-interval="${medium-refill-timer}" refill-clear="true"/>
+</lootables>
+<damage>
+    <deny>
+        <all>
+            <filter id="fall-damage-immune"/>
+            <cause>fall</cause>
+        </all>
+    </deny>
+</damage>
+<control-points required="false" capture-time="5s" points="${points-per-second}" time-multiplier="0" show-progress="true" neutral-state="true" incremental="true" permanent="false">
+    <control-point name="Center" capture="center-hill" progress="center-hill"/>
+    <control-point name="A Gardens" capture="ne-hill" progress="ne-hill"/>
+    <control-point name="B Gardens" capture="sw-hill" progress="sw-hill"/>
+</control-points>
+<score>
+    <limit>${score}</limit>
+</score>
+<modifybowprojectile pickup-filter="never"/>
+</map>

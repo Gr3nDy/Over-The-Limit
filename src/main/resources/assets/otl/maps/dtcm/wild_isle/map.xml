@@ -1,0 +1,334 @@
+<map proto="1.5.0">
+<name>Wild Isle</name>
+<version>1.4.5</version>
+<variant id="christmas" world="christmas" override="true">Snowy Isle</variant>
+<variant id="halloween" world="halloween" override="true">Wild Vile</variant>
+<objective>Destroy both enemy monuments!</objective>
+<if variant="default">
+    <created>2021-10-18</created>
+</if>
+<if variant="christmas">
+    <created>2021-11-22</created>
+</if>
+<if variant="halloween">
+    <created>2022-09-10</created>
+</if>
+<include id="gapple-kill-reward"/>
+<authors>
+    <author uuid="ec5ec930-5cf3-4f8a-ad9f-09056aeed71b"/> <!-- Tundren -->
+    <author uuid="b2539be1-8f98-4375-b653-9d91cd04c30e"/> <!-- Mewzzy -->
+    <if variant="halloween">
+        <author uuid="6863869b-4b8c-4445-b778-a8e016775ae4" contribution="Halloween edits"/> <!-- Cazadorian -->
+    </if>
+</authors>
+<contributors>
+    <contributor uuid="621b2aa8-4e5f-4ed8-bd36-0ae2f8952a06" contribution="Gameplay advice, suggestions and feedback"/> <!-- Strangey -->
+    <contributor uuid="430ec559-364a-4363-ac7a-2529050440ac" contribution="XML, gameplay suggestions/feedback"/> <!-- mameBT -->
+    <contributor uuid="fe3608b7-d105-4029-8800-34b3147065b6" contribution="Feedback and suggestions"/> <!-- rockymine -->
+    <contributor uuid="1987fc00-a5b2-43b5-b94b-e3c0d25776e9" contribution="Feedback and suggestions"/> <!-- BrettOgden -->
+</contributors>
+<constants>
+    <constant id="observers-kit" delete="true"/>
+</constants>
+<if variant="halloween">
+    <constant id="observers-kit">default-kit</constant>
+</if>
+<teams>
+    <unless variant="halloween">
+        <team id="blue" color="blue" max="24">Blue</team>
+        <team id="red" color="dark red" max="24">Red</team>
+    </unless>
+    <if variant="halloween">
+        <team id="blue" color="gold" max="24">Orange</team>
+        <team id="red" color="dark purple" max="24">Purple</team>
+    </if>
+</teams>
+<kits>
+    <kit id="default-kit">
+        <effect>night vision</effect>
+    </kit>
+    <kit id="spawn-kit" parents="${observers-kit}">
+        <clear/>
+        <item slot="0" unbreakable="true" material="iron sword"/>
+        <item slot="1" unbreakable="true" material="bow">
+            <enchantment>infinity</enchantment>
+        </item>
+        <item slot="28" material="arrow"/>
+        <item slot="29" unbreakable="true" material="shears"/>
+        <item slot="2" unbreakable="true" material="iron pickaxe"/>
+        <item slot="3" unbreakable="true" material="iron axe">
+            <enchantment>efficiency</enchantment>
+        </item>
+        <item slot="4" unbreakable="true" material="iron spade"/>
+        <item slot="5" amount="64" team-color="true" material="stained clay"/>
+        <item slot="6" amount="32" material="glass"/>
+        <item slot="7" material="bucket"/>
+        <item slot="8" material="golden apple"/>
+        <chestplate unbreakable="true" team-color="true" material="leather chestplate"/>
+        <leggings unbreakable="true" material="chainmail leggings"/>
+        <boots unbreakable="true" team-color="true" material="leather boots">
+            <enchantment>depth_strider</enchantment>
+        </boots>
+    </kit>
+</kits>
+<spawns>
+    <default kit="${observers-kit}" yaw="180">
+        <region>
+            <cylinder base="35.5,28,77.5" radius="0.5" height="0"/>
+        </region>
+    </default>
+    <spawn team="blue" kit="spawn-kit" yaw="90">
+        <region>
+            <cylinder base="181.5,8,187.5" radius="0.5" height="0"/>
+        </region>
+    </spawn>
+    <spawn team="red" kit="spawn-kit" yaw="-90">
+        <region>
+            <cylinder base="-110.5,8,187.5" radius="0.5" height="0"/>
+        </region>
+    </spawn>
+</spawns>
+<filters>
+    <team id="only-blue">blue</team>
+    <team id="only-red">red</team>
+    <deny id="no-beacon">
+        <material>beacon</material>
+    </deny>
+    <all id="only-iron-regen">
+        <cause>world</cause>
+        <material id="only-iron">iron block</material>
+    </all>
+</filters>
+<regions>
+    <union id="spawn-islands">
+        <rectangle id="blue-spawn" min="169,170" max="196,205"/>
+        <mirror id="red-spawn" origin="35.5,0,187.5" normal="1,0,0" region="blue-spawn"/>
+    </union>
+    <union id="iron">
+        <circle id="blue-iron" center="156.5,187.5" radius="6"/>
+        <circle id="red-iron" center="-85.5,187.5" radius="6"/>
+    </union>
+    <union id="monuments">
+        <cylinder id="blue-north" base="115.5,9,143.5" radius="2.5" height="7"/>
+        <cylinder id="blue-south" base="115.5,9,231.5" radius="2.5" height="7"/>
+        <cylinder id="red-north" base="-44.5,9,143.5" radius="2.5" height="7"/>
+        <cylinder id="red-south" base="-44.5,9,231.5" radius="2.5" height="7"/>
+    </union>
+    <union id="spawner-protection">
+        <cylinder id="mid-gapple" base="35.5,5,187.5" radius="1.5" height="4"/>
+        <unless variant="christmas">
+            <cylinder id="north-lilypad" base="35.5,5,138.5" radius="1.5" height="4"/>
+            <cylinder id="south-lilypad" base="35.5,5,236.5" radius="1.5" height="4"/>
+        </unless>
+        <if variant="christmas">
+            <cylinder id="north-lilypad" base="35.5,6,138.5" radius="1.5" height="4"/>
+            <cylinder id="south-lilypad" base="35.5,6,236.5" radius="1.5" height="4"/>
+        </if>
+    </union>
+    <complement id="void-area">
+        <everywhere/>
+        <complement id="map">
+            <rectangle min="-140,108" max="211,267"/>
+            <union id="rn-corner">
+                <rectangle min="-140,108" max="-135,118"/>
+                <rectangle min="-140,108" max="-134,117"/>
+                <rectangle min="-140,108" max="-132,116"/>
+                <rectangle min="-140,108" max="-131,114"/>
+                <rectangle min="-140,108" max="-130,113"/>
+            </union>
+            <mirror id="rs-corner" origin="35.5,0,187.5" normal="1,0,0" region="rn-corner"/>
+            <mirror id="bn-corner" origin="35.5,0,187.5" normal="0,0,1" region="rn-corner"/>
+            <mirror id="bs-corner" origin="35.5,0,187.5" normal="1,0,1" region="rn-corner"/>
+            <rectangle id="north-mid-void" min="12,108" max="59,124"/>
+            <mirror id="south-mid-void" origin="35.5,0,187.5" normal="0,0,1" region="north-mid-void"/>
+        </complement>
+    </complement>
+    <circle id="middle-gapple-void" center="35.5,187.5" radius="7.5"/>
+    <apply enter="only-blue" use="only-blue" region="blue-spawn" message="You may not enter the enemy's spawn!"/>
+    <apply enter="only-red" use="only-red" region="red-spawn" message="You may not enter the enemy's spawn!"/>
+    <apply use="no-beacon"/>
+    <apply block-break="only-iron" block-place="only-iron-regen" region="iron" message="You may only break iron blocks here!"/>
+    <apply block="never" region="spawn-islands" message="You may not destroy the spawn islands!"/>
+    <apply block="never" region="spawner-protection" message="You may not interfere with the spawners!"/>
+    <apply block="deny(void)" region="void-area" message="You may not build outside of the map!"/>
+    <apply block="never" region="middle-gapple-void" message="You may not build here!"/>
+</regions>
+<modes>
+    <mode id="gold-mode" after="15m" material="gold block" name="`6GOLD MONUMENT MODE"/>
+    <mode id="coal-mode" after="30m" material="coal block" name="`8COAL MONUMENT MODE"/>
+</modes>
+<destroyables repairable="false" materials="emerald block" show-progress="true" modes="gold-mode coal-mode">
+    <destroyables name="North Monument">
+        <destroyable owner="blue" region="blue-north"/>
+        <destroyable owner="red" region="red-north"/>
+    </destroyables>
+    <destroyables name="South Monument">
+        <destroyable owner="blue" region="blue-south"/>
+        <destroyable owner="red" region="red-south"/>
+    </destroyables>
+</destroyables>
+<renewables>
+    <renewable region="iron" renew-filter="only-iron"/>
+</renewables>
+<spawners>
+    <spawner id="gapple-mid" delay="6s">
+        <spawn-region>
+            <if variant="default">
+                <point>35.5,5.1,187.5</point>
+            </if>
+            <unless variant="default">
+                <point>35.5,6.1,187.5</point>
+            </unless>
+        </spawn-region>
+        <player-region>
+            <if variant="default">
+                <cylinder base="35.5,5,187.5" radius="5" height="6"/>
+            </if>
+            <unless variant="default">
+                <cylinder base="35.5,6,187.5" radius="5" height="6"/>
+            </unless>
+        </player-region>
+        <item material="golden apple"/>
+    </spawner>
+    <spawner id="lilypad-north" delay="2s">
+        <spawn-region>
+            <unless variant="christmas">
+                <point>35.5,6.1,138.5</point>
+            </unless>
+            <if variant="christmas">
+                <point>35.5,7.1,138.5</point>
+            </if>
+        </spawn-region>
+        <player-region>
+            <unless variant="christmas">
+                <cylinder base="35.5,6,138.5" radius="5" height="6"/>
+            </unless>
+            <if variant="christmas">
+                <cylinder base="35.5,7,138.5" radius="5" height="6"/>
+            </if>
+        </player-region>
+        <item material="water lily"/>
+    </spawner>
+    <spawner id="lilypad-south" delay="2s">
+        <spawn-region>
+            <unless variant="christmas">
+                <point>35.5,6.1,236.5</point>
+            </unless>
+            <if variant="christmas">
+                <point>35.5,7.1,236.5</point>
+            </if>
+        </spawn-region>
+        <player-region>
+            <unless variant="christmas">
+                <cylinder base="35.5,6,236.5" radius="5" height="6"/>
+            </unless>
+            <if variant="christmas">
+                <cylinder base="35.5,7,236.5" radius="5" height="6"/>
+            </if>
+        </player-region>
+        <item material="water lily"/>
+    </spawner>
+</spawners>
+<toolrepair>
+    <tool>iron sword</tool>
+    <tool>bow</tool>
+    <tool>iron pickaxe</tool>
+    <tool>iron axe</tool>
+    <tool>iron spade</tool>
+    <tool>arrow</tool>
+    <tool>shears</tool>
+</toolrepair>
+<itemremove>
+    <item>leather chestplate</item>
+    <item>chainmail leggings</item>
+    <item>leather boots</item>
+    <item>emerald block</item>
+    <item>gold block</item>
+    <item>coal block</item>
+    <item>leaves</item>
+    <item>bucket</item>
+    <item>water bucket</item>
+    <if variant="halloween">
+        <item>nether stalk</item>
+        <item>brown mushroom</item>
+        <item>double plant</item>
+    </if>
+</itemremove>
+<block-drops>
+    <rule>
+        <filter>
+            <material>stained clay</material>
+        </filter>
+        <drops>
+            <item chance="0" material="stained clay"/>
+        </drops>
+    </rule>
+    <rule>
+        <filter>
+            <material>glass</material>
+        </filter>
+        <drops>
+            <item chance="0" material="glass"/>
+        </drops>
+    </rule>
+    <rule>
+        <filter>
+            <material>wood</material>
+        </filter>
+        <drops>
+            <item chance="0" material="wood"/>
+        </drops>
+    </rule>
+    <rule>
+        <filter>
+            <material>log</material>
+        </filter>
+        <drops>
+            <unless variant="christmas">
+                <item damage="3" material="log"/>
+            </unless>
+            <if variant="christmas">
+                <item damage="1" material="log"/>
+            </if>
+        </drops>
+    </rule>
+</block-drops>
+<itemkeep>
+    <item>golden apple</item>
+    <item>stained clay</item>
+    <item>glass</item>
+    <item>wood</item>
+</itemkeep>
+<kill-rewards>
+    <kill-reward>
+        <item amount="8" material="glass"/>
+        <item amount="8" damage="3" material="wood"/>
+        <item amount="16" team-color="true" material="stained clay"/>
+    </kill-reward>
+</kill-rewards>
+<maxbuildheight>28</maxbuildheight>
+<hunger>
+    <depletion>off</depletion>
+</hunger>
+<item-mods>
+    <rule>
+        <match>
+            <material>iron boots</material>
+        </match>
+        <modify>
+            <enchantment>depth_strider</enchantment>
+        </modify>
+    </rule>
+    <rule>
+        <match>
+            <material>stone pickaxe</material>
+        </match>
+        <modify unbreakable="true">
+            <enchantment level="3">efficiency</enchantment>
+        </modify>
+    </rule>
+</item-mods>
+<crafting>
+    <disable>iron pickaxe</disable>
+</crafting>
+</map>

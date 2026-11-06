@@ -7,8 +7,8 @@ One Forge 1.8.9 mod, many modules, one server family (`play.oc.tc`, `vanish.oc.t
 | Constraint | Consequence |
 |---|---|
 | Client is Lunar Client (obfuscated) or plain Forge | No reflection on MCP/SRG field names. Scan by **type/shape**, never by name. `MinecraftAccess` wraps the singleton lookup. |
-| Server has no API, no plugin of ours, no chat backend | Everything is derived from client-visible state (chat packets, scoreboard, tab list, world). No network calls, no accounts. |
-| Users install one JAR | Modules ship together; there is exactly one entry point and one config file. |
+| Server has no API, no plugin of ours, no chat backend | Gameplay uses client-visible state. Optional map lookups use GitHub GETs; no accounts. |
+| Users install one JAR | Modules ship together with one entry point. Module preferences and face settings/marks are stored separately. |
 | 1.8.9 + Java 8 | No streams-heavy code, no `java.time`, no newer Guava. |
 | Feature must never break the game | Every module is a clearly gated `if (!enabled) return;`, and toggling is safe at any moment. |
 
@@ -63,7 +63,7 @@ Adding a module = one entry in `OtlModule.ALL` + (optionally) its own screen. Th
 There is no database, and adding one would be wrong: this is a single-process desktop client whose entire persistent state is user preferences. A SQL store would duplicate ~20 booleans behind a driver, a migration tool and a corruption mode. The document below is the store; it is versioned so a real migration is possible later.
 
 **Path:** `%APPDATA%/.minecraft/config/overcast_util/settings.json`
-**Engine:** Gson, pretty-printed UTF-8, rewritten whole on save (last write wins — acceptable for a single client).
+**Engine:** Gson, pretty-printed UTF-8. Save to a unique temporary file, then replace the previous file (atomic replacement where supported). The same writer protects face settings, painted marks, and remote map caches.
 **Never stored:** chat messages, player names, drafts, server addresses, any image data.
 
 ```jsonc
@@ -89,6 +89,7 @@ There is no database, and adding one would be wrong: this is a single-process de
   "dev_hosts": [],              // extra hosts where modules also run (local test server)
 
   "map_preview": true,          // bool, module: Map Preview (book hover + gallery)
+  "preview_on_command": true,   // bool, independently intercept /map when Map Preview is enabled
 
   "selected_channels": {        // view id -> channel key, validated against ChatRules on load
     "ALL": "all",
@@ -121,7 +122,7 @@ Escape ─┬─ FaceScreen            (J)   face rig sliders/toggles
               └─ Done
 ```
 
-Module rows are generated from `OtlModule.ALL`, ids `20+i` (toggle) and `40+i` (settings). Four rows fit above the Done button; beyond that, add paging.
+Module rows are generated from `OtlModule.ALL`, ids `20+i` (toggle) and `40+i` (settings). Four rows fit above the Done button; beyond that, add paging. The map gallery calculates its grid and page capacity from the current screen size; drawing and hit-testing share that grid.
 
 **HUD / render layers** (registered once in `Otl.init`, gated inside):
 
@@ -133,12 +134,15 @@ Input is centralized in `Otl`: `J` menu, `P` modules, `Y` team chat, vanilla `T`
 
 **Lunar safety pattern.** When the vanilla field name is not trustworthy (`GuiScreenBook` pages on Lunar), find the field by **type**: walk `GuiScreen` fields, take the `List` whose first element is an `IChatComponent`. This survives obfuscation because runtime types can't be renamed.
 
-**`/map` map card.** Typing `/map <name>` on an approved server is intercepted in `GuiScreenEvent.KeyboardInputEvent.Pre` (the only pre-send hook 1.8.9 exposes — Forge has no `ClientChatEvent` here). The chat text is read from the `GuiTextField` found by type, so it also works on Lunar and from `ReliableChatScreen`. The command is not sent; `MapInfoScreen` opens immediately.
+**`/map` map card.** A Forge client command handles `/map <name>` from normal chat, Reliable Chat and clickable commands. It queues the card for the next client tick because vanilla chat closes itself after sending; the keyboard hook is only a fallback. Commands still reach the server: its repository/path response corrects aliases and ambiguous names while the requested card remains open. Bare `/map` uses that response to identify the current map. Disabled/off-server commands are forwarded unchanged. Closing/navigating away cancels late GUI updates. Gallery clicks pass the exact repository/path, not a second ambiguous name search.
 
-- Resolution order: bundled `map.xml` under `assets/otl/maps` → `OvercastCommunity/PublicMaps` raw files.
-- Remote work is off-thread (`MapRemote.lookup`); the screen is already on screen and swaps in the result. Downloads land in `config/overcast_util/map_cache/<gamemode>_<map>/` and the repo tree is cached for 6h, so a map is fetched at most once.
-- Nothing is sent anywhere except those two GETs; no query text, no player data. Cancel by closing the screen.
-- The "Server book" button re-sends the original command for the authoritative in-game preview.
+- Resolution order: bundled `map.xml` → PublicMaps (`main`) and CommunityMaps (`master`), with exact remote matches before partial matches.
+- A bounded single worker performs remote work. Downloads live under `config/overcast_util/map_cache/<repo>/<branch>/<map>/`, with separate 6h indexes. Closing a screen cannot let a late response replace another screen.
+- Downloads have byte limits, preview dimensions are bounded, and cached paths reject traversal. No query text or player data is sent.
+- Shared square textures preserve the full image with padding. They are reused across books, cards, galleries and reconnects instead of losing references to textures still owned by Minecraft.
+- Metadata scrolls beside the square image; footer controls remain outside the scroll area.
+- Metadata is parsed with Java's XML reader with external entities/DTDs disabled. Only the default variant is shown; active shared includes and constants supply objectives, teams and player limits. Shared include files are cached from PublicMaps, and unavailable fields are labelled explicitly.
+- The gallery merges bundled previews with both six-hour repository indexes, keeping repository identity even for maps with the same folder name. Remote images load on demand; maps without bundled images are no longer omitted. Repository outages are shown in the gallery header.
 
 ## 6. File structure
 
@@ -178,19 +182,19 @@ otl/                         (repo root: Over The Limit)
 ## 8. Build and deploy
 
 ```
-gradlew.bat build        # compile + jar (dev/MCP names) + unit tests
-gradlew.bat deploy       # reobfJar, verify, copy OTL.jar to the Lunar mods folder
+gradlew.bat clean build  # tests + reobfuscation + verified build/libs/OTL.jar for manual copying
+gradlew.bat releaseJar   # tests + reobfuscation + verification, without a clean
 gradlew.bat runClient -PotlSmoke   # in-client smoke harness
 ```
 
-**Always deploy through `deploy`.** `runClient` depends on `jar`, and `jar` overwrites `build/libs/OTL.jar` with a dev jar whose calls use MCP names (`Minecraft.getRenderManager`). That jar starts fine in the dev workspace but dies on a real client with `NoSuchMethodError: net.minecraft.client.Minecraft.getRenderManager()` during `Loader.initializeMods`. `deploy` runs `reobfJar` first (so the jar carries `func_175598_ae`), refuses to copy if it still sees an MCP name or the `OtlSmoke` classes, then copies to `~/.lunarclient/profiles/1.8/mods/forge-1.8.9`. Override the folder with `-PdeployDir=<path>`.
+**No automatic deployment.** `jar` and `runClient` use `build/dev-libs/`. `releaseJar` depends on unit tests and `reobfJar`, rejects development names and any `OtlSmoke` classes, then writes only `build/libs/OTL.jar`. Users copy that verified release themselves. Running `runClient` later cannot overwrite it. A release requested with `-PotlSmoke` fails verification.
 
 `getSkinMap()` stays unrenamed on purpose: it is a Forge-added method (`RenderManager` in forgeSrc declares it), so it resolves at runtime. Only vanilla members need SRG names.
 
 ## 9. Known debt and the next scale step
 
 - Module list is a static `Arrays.asList` — compile-time only, no dynamic loading. Fine while everything ships in one JAR; a service loader only pays off when modules become separate artifacts.
-- Public-repo lookup uses unauthenticated GitHub API (60 requests/hour) and slug-only matching, so a badly spelled name falls back to "Server book".
+- Public-repo lookup uses unauthenticated GitHub API (60 requests/hour) and slug matching; a miss offers the gallery. A repository outage is logged, and the other repository is still searched.
 - 4 visible module rows, no scrolling.
 - No per-server or per-profile config sets.
 - Map preview assets: 880 PNG previews + XML (1,661 files, ~84 MB, ~97% of the JAR) belong in a separate optional resource pack if size becomes a complaint. `MapPreviewIndex` is generated from that folder and must be regenerated whenever assets change.

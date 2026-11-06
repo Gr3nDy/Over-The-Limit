@@ -1,0 +1,281 @@
+<map proto="1.5.0">
+<name>Explosive Vengeance</name>
+<version>1.1.8</version>
+<created>2014-12-25</created>
+<objective>Be team with the most amount of kills after 15 minutes or the first team to 100 points!</objective>
+<gamemode>tdm</gamemode>
+<gamemode>scorebox</gamemode>
+<authors>
+    <author uuid="8d812ffa-e5f1-4658-bb47-a18b785ccd27"/> <!-- HardstyleRaver2 -->
+    <author uuid="dff980ed-9f69-491e-b79c-30c21350baf2"/> <!-- DoomRobotBoy -->
+</authors>
+<contributors>
+    <contributor uuid="e5eea785-51c1-40fe-a2d0-f83d4c035cd9" contribution="Palette"/> <!-- pikpikmerchant -->
+    <contributor uuid="dad8b95c-cf6a-44df-982e-8c8dd70201e0" contribution="Feedback"/> <!-- ElectroidFilms -->
+</contributors>
+<teams>
+    <team id="yellow" color="yellow" max="40">Yellow</team>
+    <team id="green" color="dark green" max="40">Green</team>
+</teams>
+<kits>
+    <kit id="give-invulnerability" force="true">
+        <effect amplifier="100">heal</effect>
+        <effect amplifier="100">damage resistance</effect>
+    </kit>
+    <kit id="take-invulnerability" force="true">
+        <effect duration="0" amplifier="0">heal</effect>
+        <effect duration="0" amplifier="0">damage resistance</effect>
+    </kit>
+    <kit id="teams" parents="give-invulnerability">
+        <item slot="0" unbreakable="true" material="stone sword"/>
+        <item slot="1" unbreakable="true" enchantment="arrow infinite" material="bow"/>
+        <item slot="28" material="arrow"/>
+        <item slot="2" unbreakable="true" enchantment="dig speed;silk touch" material="iron pickaxe"/>
+        <item slot="29" unbreakable="true" material="iron axe"/>
+        <item slot="20" material="dispenser"/>
+        <item slot="3" amount="64" material="vine"/>
+        <item slot="30" amount="16" material="ladder"/>
+        <item slot="4" amount="64" material="cobblestone"/>
+        <item slot="31" amount="64" material="cobblestone"/>
+        <item slot="22" amount="32" material="fence"/>
+        <item slot="13" amount="32" material="trap door"/>
+        <item slot="5" amount="16" material="stone button"/>
+        <item slot="32" amount="16" material="wood plate"/>
+        <item slot="23" amount="16" material="lever"/>
+        <item slot="14" amount="64" material="wood step"/>
+        <item slot="6" material="water bucket"/>
+        <item slot="33" material="water bucket"/>
+        <item slot="24" material="water bucket"/>
+        <item slot="15" material="water bucket"/>
+        <item slot="7" amount="16" material="redstone block"/>
+        <item slot="34" amount="64" material="redstone"/>
+        <item slot="25" amount="16" material="redstone torch on"/>
+        <item slot="16" amount="16" material="diode"/>
+        <item slot="8" amount="64" material="tnt"/>
+        <item slot="35" amount="64" material="tnt"/>
+        <helmet unbreakable="true" team-color="true" material="leather helmet"/>
+        <chestplate unbreakable="true" enchantment="protection explosions:2" team-color="true" material="leather chestplate"/>
+    </kit>
+</kits>
+<spawns safe="true">
+    <spawn team="yellow" kit="teams">
+        <regions yaw="90">
+            <cylinder base="154.5,15,65.5" radius="1" height="0"/>
+            <cylinder base="154.5,15,86.5" radius="1" height="0"/>
+        </regions>
+    </spawn>
+    <spawn team="green" kit="teams">
+        <regions yaw="-90">
+            <cylinder base="-55.5,15,86.5" radius="1" height="0"/>
+            <cylinder base="-55.5,15,65.5" radius="1" height="0"/>
+        </regions>
+    </spawn>
+    <default>
+        <regions>
+            <point>49.5,61,-26.5</point>
+        </regions>
+    </default>
+</spawns>
+<filters>
+    <team id="only-yellow">yellow</team>
+    <team id="only-green">green</team>
+    <any id="allow-some">
+        <material>tnt</material>
+        <material>water</material>
+        <material>stationary water</material>
+    </any>
+    <not id="deny-stained-clay-yellow-green-explosions">
+        <any>
+            <material>stained clay:4</material>
+            <material>stained clay:13</material>
+        </any>
+    </not>
+    <not id="deny-tnt">
+        <cause>explosion</cause>
+    </not>
+</filters>
+<regions>
+    <union id="spawns">
+        <rectangle id="yellow-spawn" min="149,34" max="166,118"/>
+        <rectangle id="green-spawn" min="-50,118" max="-67,34"/>
+    </union>
+    <complement id="terrain">
+        <cuboid id="map" min="131,0,21" max="-32,36,130"/>
+        <union id="icari">
+            <cuboid id="yellow-icarus" min="81,28,52" max="67,33,44"/>
+            <cuboid id="green-icarus" min="18,28,100" max="32,33,108"/>
+        </union>
+    </complement>
+    <union id="void-exceptions">
+        <rectangle id="void-gap" min="71,129" max="28,23"/>
+        <rectangle id="yellow-front" min="70,51" max="87,101"/>
+        <rectangle id="green-front" min="29,101" max="12,51"/>
+    </union>
+    <union id="in-spawns">
+        <cuboid id="yellow-in-spawn" min="157,14,100" max="151,18,52"/>
+        <cuboid id="green-in-spawn" min="-59,14,52" max="-52,18,100"/>
+    </union>
+    <!-- Applied -->
+    <apply block="never" message="You may not edit this area!">
+        <region>
+            <rectangle min="131,34" max="166,118"/>
+            <rectangle min="-32,118" max="-67,34"/>
+            <cylinder base="49.5,40,-26.5" radius="10" height="30"/> 
+        </region>
+    </apply>
+    <apply enter="only-yellow" message="You may not enter your own team's scorebox!">
+        <region>
+            <cuboid min="-46,14,90" max="-47,18,83"/>
+            <cuboid min="-46,14,69" max="-47,18,62"/>
+        </region>
+    </apply>
+    <apply enter="only-green" message="You may not enter your own team's scorebox!">
+        <region>
+            <cuboid min="145,14,62" max="146,18,69"/>
+            <cuboid min="145,14,83" max="146,18,90"/>
+        </region>
+    </apply>
+    <apply region="spawns" block="never" message="You may not edit the spawn area!"/>
+    <apply region="icari" block="allow-some" message="You may not edit the icarus building!"/>
+    <apply region="green-spawn" enter="only-green" message="You may not enter the enemy's spawn!"/>
+    <apply region="yellow-spawn" enter="only-yellow" message="You may not enter the enemy's spawn!"/>
+    <apply kit="take-invulnerability">
+        <region>
+            <negative id="outside-spawns">
+                <region id="in-spawns"/>
+            </negative>
+        </region>
+    </apply>
+    <apply block="deny-stained-clay-yellow-green-explosions"/>
+    <apply region="void-exceptions" block="deny(void)" message="You may not modify the void area!"/>
+</regions>
+<time>15m</time>
+<score>
+    <limit>100</limit>
+    <kills>1</kills>
+    <box points="4" filter="only-green">
+        <region>
+            <cuboid id="left-yellow-box" min="149,14,62" max="147,17,69"/>
+        </region>
+    </box>
+    <box points="4" filter="only-green">
+        <region>
+            <cuboid id="right-yellow-box" min="149,14,83" max="147,17,90"/>
+        </region>
+    </box>
+    <box points="4" filter="only-yellow">
+        <region>
+            <cuboid id="left-green-box" min="-50,14,90" max="-48,17,83"/>
+        </region>
+    </box>
+    <box points="4" filter="only-yellow">
+        <region>
+            <cuboid id="right-green-box" min="-50,14,69" max="-48,17,62"/>
+        </region>
+    </box>
+</score>
+<portals>
+    <portal x="@-55.5" y="@15" z="@86.5"> <!-- right-yellow-box -->
+        <region>
+            <cuboid min="149,14,83" max="147,17,90"/>
+        </region>
+    </portal>
+    <portal x="@-55.5" y="@15" z="@65.5"> <!-- right-yellow-box --> 
+        <region>
+            <cuboid min="149,14,62" max="147,17,69"/>
+        </region>
+    </portal>
+    <portal x="@154.5" y="@15" z="@65.5"> <!-- right-yellow-box --> 
+        <region>
+            <cuboid min="-50,14,69" max="-48,17,62"/>
+        </region>
+    </portal>
+    <portal x="@154.5" y="@15" z="@86.5"> <!-- right-yellow-box --> 
+        <region>
+            <cuboid min="-50,14,90" max="-48,17,83"/>
+        </region>
+    </portal>
+</portals>
+<renewables>
+    <renewable rate="15" grow="true" sound="false" particles="false">
+        <renew-filter>
+            <any>
+                <material>stone</material>
+                <material>stained clay:9</material>
+                <material>step</material>
+                <material>double step</material>
+                <material>clay</material>
+                <material>wood</material>
+                <material>redstone block</material>
+                <material>redstone lamp on</material>
+                <material>redstone lamp off</material>
+                <material>smooth brick</material>
+                <material>smooth stairs</material>
+                <material>wood step</material>
+                <material>wood double step</material>
+                <material>cobble wall</material>
+                <material>wood stairs</material>
+                <material>spruce wood stairs</material>
+            </any>
+        </renew-filter>
+        <replace-filter>
+            <any>
+                <material>water</material>
+                <material>stationary water</material>
+                <material>air</material>
+            </any>
+        </replace-filter>
+    </renewable>
+</renewables>
+<itemremove>
+    <item>wood</item>
+    <item>log</item>
+    <item>glass</item>
+    <item>shears</item>
+    <item>leather helmet</item>
+    <item>leather chestplate</item>
+    <item>iron leggings</item>
+    <item>stone sword</item>
+    <item>bow</item>
+    <item>arrow</item>
+    <item>iron pickaxe</item>
+    <item>stone</item>
+    <item>step</item>
+    <item>stained clay</item>
+    <item>smooth brick</item>
+    <item>clay ball</item>
+    <item>cobble wall</item>
+    <item>cobblestone</item>
+    <item>sign</item>
+    <item>gold plate</item>
+    <item>clay</item>
+    <item>double step</item>
+    <item>smooth stairs</item>
+    <item>wood stairs</item>
+    <item>dispenser</item>
+    <item>water bucket</item>
+    <item>bucket</item>
+    <item>trap door</item>
+    <item>tnt</item>
+    <item>redstone block</item>
+    <item>redstone</item>
+    <item>redstone torch on</item>
+    <item>diode</item>
+    <item>vine</item>
+    <item>ladder</item>
+    <item>fence</item>
+    <item>trap door</item>
+    <item>stone button</item>
+    <item>wood plate</item>
+    <item>lever</item>
+    <item>wood step</item>
+    <item>spruce wood stairs</item>
+</itemremove>
+<hunger>
+    <depletion>off</depletion>
+</hunger>
+<disabledamage>
+    <damage ally="true" self="false" enemy="false" other="false">block explosion</damage>
+</disabledamage>
+<maxbuildheight>36</maxbuildheight>
+</map>

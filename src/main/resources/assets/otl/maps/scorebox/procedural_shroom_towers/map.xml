@@ -1,0 +1,655 @@
+<map proto="1.5.0">
+<name>Procedural: Shroom Towers</name>
+<version>2.0.2</version>
+<created>2023-09-06</created>
+<objective>Runners have 12 minutes to score 300 points. Towers must hold them back.</objective>
+<gamemode>scorebox</gamemode>
+<authors>
+    <author uuid="2ca8072f-74be-4798-85b8-bbce03aa91af" contribution="Map + XML"/> <!-- Tywnis -->
+    <author uuid="cc2292de-fcb3-412d-9319-f3177f73b605" contribution="Procedural Extraordinaire"/> <!-- cs_ -->
+</authors>
+<broadcasts>
+    <alert after="0s" every="3m">`cTowers `fcan only shoot from Mushroom platforms, and can `bFly</alert>
+    <alert after="1s" every="3m">`9Runners `fhave to make it across to score</alert>
+    <alert after="2s" every="3m">`fThey can also punch `eGold `for `bDiamond `fblocks to find buffs,</alert>
+    <alert after="3s" every="3m">`fand can blow up the Red Mushroom platforms.</alert>
+    <alert after="4s" every="3m">`fScoring with diamonds gives more points!</alert>
+    <alert after="5s" every="3m">`fAll players can buy `lupgrades `fat the shops.</alert>
+</broadcasts>
+<teams>
+    <team id="towers" color="dark red" max="10" max-overfill="15">Towers</team>
+    <team id="runners" color="blue" max="20" max-overfill="30">Runners</team>
+</teams>
+<block-drops>
+    <rule punch="true">
+        <filter>
+            <material>gold block</material>
+        </filter>
+        <drops>
+            <item chance="0.03" material="golden apple"/>
+            <item chance="0.02" amount="1" material="potion" damage="16385" name="Rejuvenation Potion">
+                <effect duration="1m" amplifier="2">regeneration</effect>
+            </item>
+            <item chance="0.01" amount="1" material="potion" damage="16399" name="Hearty Mead">
+                <effect duration="1m" amplifier="2">health_boost</effect>
+            </item>
+        </drops>
+    </rule>
+    <rule punch="true">
+        <filter>
+            <material>diamond block</material>
+        </filter>
+        <drops>
+            <item chance="0.02" material="diamond"/>
+            <item chance="0.01" material="emerald"/>
+            <item chance="0.001" material="nether_star"/>
+        </drops>
+    </rule>
+    <rule punch="true">
+        <filter>
+            <material>cactus</material>
+        </filter>
+        <drops>
+            <item chance="0.007" amount="1" material="potion" damage="16388" name="Cactus Juice">
+                <effect duration="1m" amplifier="1">speed</effect>
+            </item>
+        </drops>
+    </rule>
+</block-drops>
+<portals>
+    <!-- Teleports players on the Red Team from score-box to red-spawn, facing west -->
+    <portal yaw="@0" region="blue-portal" destination="blue-spawn"/>
+    <portal filter="only-red" observers="never" yaw="@90" region="blue-ground-right" destination="first-red-spawn-area"/>
+    <portal filter="only-red" observers="never" yaw="@-90" region="blue-ground-left" destination="second-red-spawn-area"/>
+</portals>
+<score>
+    <limit>500</limit>
+    <deaths>1</deaths>
+    <kills>1</kills>
+    <box points="8">
+        <region><cylinder base="35,2,155" radius="3" height="1"/></region>
+        <redeemables>
+            <item points="1">diamond</item>
+            <item points="10">nether_star</item>
+        </redeemables>
+    </box>
+</score>
+<time result="towers">12m</time>
+<spawns>
+    <default region="default-spawn"/>
+    <spawn team="runners" kit="blue-kit" region="blue-spawn"/>
+    <spawn team="towers" kit="red-kit">
+        <regions>
+            <region id="first-red-spawn-area" yaw="90"/>
+            <region id="second-red-spawn-area" yaw="-90"/>
+        </regions>
+    </spawn>
+</spawns>
+<kits>
+    <kit id="blue-kit">
+        <walk-speed>0.8</walk-speed>
+        <helmet color="0066cc" unbreakable="true" material="leather helmet"/>
+        <chestplate color="0066cc" unbreakable="true" material="leather chestplate"/>
+        <leggings color="000000" unbreakable="true" material="leather leggings"/>
+        <boots unbreakable="true" material="gold boots"/>
+        <item slot="0" unbreakable="true" material="bow">
+            <enchantment>arrow infinite</enchantment>
+        </item>
+        <item slot="28" material="arrow"/>
+        <item slot="2" amount="2" material="golden apple"/>
+        <item slot="3" amount="15" material="snowball"/>
+        <item slot="1" damage="230" material="shears"/>
+        <effect duration="5">instant_health</effect>
+        <effect>night vision</effect>
+    </kit>
+    <kit id="red-kit">
+        <walk-speed>0.8</walk-speed>
+        <fly can-fly="true" fly-speed="0.4"/>
+        <helmet locked="true" color="cd0000" unbreakable="true" material="leather helmet"/>
+        <chestplate locked="true" color="cd0000" unbreakable="true" material="leather chestplate"/>
+        <leggings locked="true" color="000000" unbreakable="true" material="leather leggings"/>
+        <boots locked="true" unbreakable="true" material="gold boots"/>
+        <effect duration="5">instant_health</effect>
+        <effect>night vision</effect>
+        <item slot="1" amount="2" material="golden apple"/>
+        <item slot="0" locked="true" unbreakable="true" enchantment="infinity;punch" material="bow">
+            <enchantment>arrow infinite</enchantment>
+        </item>
+    </kit>
+    <kit id="poison-kit">
+        <effect>poison</effect>
+        <effect>instant_damage</effect>
+    </kit>
+    <kit id="air-kit">
+        <item slot="5" locked="true" material="barrier"/>
+    </kit>
+    <kit id="arrow-kit">
+        <item slot="5" locked="true" material="arrow"/>
+    </kit>
+    <kit id="shooting-kit">
+        <item slot="0" locked="true" unbreakable="true" material="bow">
+            <enchantment>arrow infinite</enchantment>
+            <enchantment>punch</enchantment>
+        </item>
+    </kit>
+    <kit id="shooting-kit-2" force="true">
+        <item slot="0" locked="true" unbreakable="true" material="bow">
+            <enchantment>power</enchantment>
+            <enchantment>flame</enchantment>
+            <enchantment>arrow infinite</enchantment>
+        </item>
+    </kit>
+    <kit id="shooting-kit-3" force="true">
+        <item slot="0" locked="true" unbreakable="true" material="bow">
+            <enchantment level="2">power</enchantment>
+            <enchantment>arrow infinite</enchantment>
+        </item>
+    </kit>
+    <kit id="shooting-kit-4" force="true">
+        <item slot="0" locked="true" unbreakable="true" material="bow">
+            <enchantment level="3">power</enchantment>
+            <enchantment>arrow infinite</enchantment>
+        </item>
+    </kit>
+    <kit id="shooting-kit-5" force="true">
+        <item slot="0" locked="true" unbreakable="true" material="bow">
+            <enchantment level="4">power</enchantment>
+            <enchantment>arrow infinite</enchantment>
+            <enchantment>flame</enchantment>
+        </item>
+    </kit>
+    <kit id="punch-kit" force="true">
+        <item damage="364" material="bow">
+            <enchantment>punch</enchantment>
+        </item>
+        <item amount="5" material="arrow"/>
+    </kit>
+    <kit id="blue-arrows">
+        <item amount="5" material="arrow"/>
+    </kit>
+    <kit id="kb-resistance" force="true">
+        <knockback-reduction>0.5</knockback-reduction>
+    </kit>
+    <kit id="shield" force="true">
+        <shield health="4" delay="8s"/>
+    </kit>
+    <!-- <lend kit="speed-kit" filter="speed-lanes"/>-->
+    <give kit="arrow-kit" filter="not-flying-and-at-shooting-height"/>
+    <give kit="air-kit" filter="flying-and-in-game-area"/>
+    <give kit="air-kit" filter="all(below-shooting-height,participating)"/>
+    <lend kit="poison-kit" filter="runner-on-grass"/>
+</kits>
+<shops>
+    <shop id="bow-upgrades" name="`bBow Upgrades">
+        <category id="Upgrades-Red" name="`cKit Upgrades" material="Bow">
+            <item name="`cStarter Bow: `fInfinity + Punch 1" material="bow" price="0" kit="shooting-kit"/>
+            <item name="`cBow Level 2: `fInfinity + Power 1 + Flame 1" material="bow" price="4" currency="emerald" kit="shooting-kit-2"/>
+            <item name="`cBow Level 3: `fInfinity + Power 2" material="bow" price="7" currency="emerald" kit="shooting-kit-3"/>
+            <item name="`cBow Level 4: `fInfinity + Power 3" material="bow" price="11" currency="emerald" kit="shooting-kit-4"/>
+            <item name="`cBow Level 5: `fInfinity + Power 4" material="bow" price="18" currency="emerald" kit="shooting-kit-5"/>
+            <item name="`cAnti-Knockback" material="blaze powder" price="5" currency="emerald" kit="kb-resistance"/>
+            <item name="`cEnergy Shield" material="prismarine shard" price="1" currency="emerald" kit="shield"/>
+        </category>
+    </shop>
+    <shop id="blue-upgrades" name="`9Upgrades">
+        <category id="Upgrades-Blue" name="`9Upgrades" material="Beacon">
+            <item name="`bShears" damage="208" material="shears" price="3" currency="emerald"/>
+            <item name="`bChainmail Chestplate" material="chainmail chestplate" price="5" currency="emerald"/>
+            <item name="`bIron Chestplate" material="iron chestplate" price="8" currency="emerald"/>
+            <item name="`bDiamond Chestplate" material="diamond chestplate" price="15" currency="emerald"/>
+            <item name="`bSnowballs" material="snowball" amount="5" price="1" currency="emerald"/>
+            <item name="`bPunch Bow and Arrows" material="bow" price="10" currency="emerald" kit="punch-kit"/>
+            <item name="`bExtra Arrows for Punch" material="arrow" price="3" currency="emerald" kit="blue-arrows"/>
+            <item amount="1" material="potion" damage="16386" name="`bPotion of Swiftness" price="6" currency="emerald">
+                <effect amplifier="2">speed</effect>
+            </item>
+            <item name="`bAnti-Knockback" material="blaze powder" price="7" currency="emerald" kit="kb-resistance"/>
+            <item name="`bEnergy Shield" material="prismarine shard" price="7" currency="emerald" kit="shield"/>
+        </category>
+    </shop> 
+</shops>
+<shopkeepers>
+    <!-- A shop keeper for the "Items" shop (defaults to villager) -->
+    <shopkeeper name="`cBow Upgrades" shop="bow-upgrades" mob="MushroomCow">
+        <point yaw="-90" pitch="10">-5.5,23.5,97.5</point>
+    </shopkeeper>
+    <shopkeeper name="`cBow Upgrades" shop="bow-upgrades" mob="MushroomCow">
+        <point yaw="-90" pitch="10">-5.5,23.5,82.5</point>
+    </shopkeeper>
+    <shopkeeper name="`cBow Upgrades" shop="bow-upgrades" mob="MushroomCow">
+        <point yaw="-90" pitch="10">-5.5,23.5,67.5</point>
+    </shopkeeper>
+    <shopkeeper name="`cBow Upgrades" shop="bow-upgrades" mob="MushroomCow">
+        <point yaw="-90" pitch="10">-5.5,23.5,52.5</point>
+    </shopkeeper>
+    <shopkeeper name="`cBow Upgrades" shop="bow-upgrades" mob="MushroomCow">
+        <point yaw="90" pitch="10">75.5,23.5,97.5</point>
+    </shopkeeper>
+    <shopkeeper name="`cBow Upgrades" shop="bow-upgrades" mob="MushroomCow">
+        <point yaw="90" pitch="10">75.5,23.5,82.5</point>
+    </shopkeeper>
+    <shopkeeper name="`cBow Upgrades" shop="bow-upgrades" mob="MushroomCow">
+        <point yaw="90" pitch="10">75.5,23.5,67.5</point>
+    </shopkeeper>
+    <shopkeeper name="`cBow Upgrades" shop="bow-upgrades" mob="MushroomCow">
+        <point yaw="90" pitch="10">75.5,23.5,52.5</point>
+    </shopkeeper>
+    <shopkeeper name="`9Upgrades" shop="blue-upgrades" mob="Witch">
+        <point yaw="-90" pitch="10">30.5,4,-5.5</point>
+    </shopkeeper>
+    <shopkeeper name="`9Upgrades" shop="blue-upgrades" mob="Witch">
+        <point yaw="90" pitch="10">39.5,4,-5.5</point>
+    </shopkeeper>
+</shopkeepers>
+<regions>
+    <cuboid id="shooting-height" min="0,11,150" max="70,13,0"/>
+    <cuboid id="below-shooting-height" min="0,9,150" max="70,10,0"/>
+    <cuboid id="score-box" min="33,3,157" max="37,3,153"/>
+    <cuboid id="blue-portal" min="33,0,157" max="37,2,153"/>
+    <cuboid id="default-spawn" min="25,36,-18" max="22,36,-17"/>
+    <cuboid id="blue-spawn" min="35,4,-10" max="34,4,-11"/>
+    <cuboid id="first-red-spawn-area" min="78,24,44" max="77,24,105"/>
+    <cuboid id="second-red-spawn-area" min="-9,24,44" max="-8,24,105"/>
+    <cuboid id="game-area" min="-5,0,0" max="75,27,150"/>
+    <cuboid id="on-grass" min="-5,6,0" max="75,12,150"/>
+    <cuboid id="blue-ground-left" min="0,0,0" max="35,9,150"/>
+    <cuboid id="blue-ground-right" min="35,0,0" max="70,9,150"/>
+    <apply block-break="breakable" block-place="never"/>
+    <!-- apply generation -->
+    <apply block="deny(participating)"/>
+    <apply block-physics="physics-filter"/>
+</regions>
+<actions>
+    <!-- Returns a random interior wall: the first 90 are vertical walls, the rest horizontal -->
+    <function id="randomInteriorWall" scope="match" locals="r">
+        <set var="r" value="floor(random() * INTERIOR_WALL_COUNT)"/>
+        <return filter="r=..89" value="floor(r / (GRID_X - 1)) * V_STRIDE + (r % (GRID_X - 1)) + 1"/>
+        <!-- Skip the top boundary row of horizontal walls -->
+        <return value="H_WALL_OFFSET + GRID_X + r - V_INTERIOR_WALL_COUNT"/>
+    </function>
+
+    <!-- Breadth-first search from cell 0, returning how many cells are reachable -->
+    <function id="countReachable" scope="match" locals="head,tail">
+        <repeat times="CELL_COUNT" index="i">
+            <set var="reached" index="i" value="0"/>
+        </repeat>
+        <set var="reached" index="0" value="1"/>
+        <set var="queue" index="0" value="0"/>
+        <set var="tail" value="1"/>
+        <repeat times="CELL_COUNT" locals="cell,x,z,leftWall,rightWall,upWall,downWall">
+            <!-- Stop once the queue is empty -->
+            <break filter="tail-head=0"/>
+            <set var="cell" value="queue[head]"/>
+            <set var="head" value="head + 1"/>
+            <set var="x" value="cell % GRID_X"/>
+            <set var="z" value="floor(cell / GRID_X)"/>
+            <set var="leftWall" value="z*V_STRIDE + x"/>
+            <set var="rightWall" value="leftWall + 1"/>
+            <set var="upWall" value="H_WALL_OFFSET + cell"/>
+            <set var="downWall" value="upWall + GRID_X"/>
+
+            <action filter="all(x=1.., walls[leftWall]=0, reached[cell-1]=0)">
+                <set var="reached" index="cell - 1" value="1"/>
+                <set var="queue" index="tail" value="cell - 1"/>
+                <set var="tail" value="tail + 1"/>
+            </action>
+
+            <action filter="all(x=..5, walls[rightWall]=0, reached[cell+1]=0)">
+                <set var="reached" index="cell + 1" value="1"/>
+                <set var="queue" index="tail" value="cell + 1"/>
+                <set var="tail" value="tail + 1"/>
+            </action>
+
+            <action filter="all(z=1.., walls[upWall]=0, reached[cell-GRID_X]=0)">
+                <set var="reached" index="cell - GRID_X" value="1"/>
+                <set var="queue" index="tail" value="cell - GRID_X"/>
+                <set var="tail" value="tail + 1"/>
+            </action>
+
+            <action filter="all(z=..13, walls[downWall]=0, reached[cell+GRID_X]=0)">
+                <set var="reached" index="cell + GRID_X" value="1"/>
+                <set var="queue" index="tail" value="cell + GRID_X"/>
+                <set var="tail" value="tail + 1"/>
+            </action>
+        </repeat>
+        <!-- Every reached cell was added to the queue once -->
+        <return value="tail"/>
+    </function>
+
+    <!-- Toggles several random walls, undoing them all if any cell becomes unreachable -->
+    <function id="flipBatch" scope="match" params="flips" locals="reachable">
+        <repeat times="flips" index="i" locals="wall">
+            <call function="randomInteriorWall" result="wall"/>
+            <set var="walls" index="wall" value="1 - walls[wall]"/>
+            <set var="flipped" index="i" value="wall"/>
+        </repeat>
+        <call function="countReachable" result="reachable"/>
+        <return filter="CELL_COUNT-reachable=0"/>
+        <!-- Flip the same walls back -->
+        <repeat times="flips" index="i">
+            <set var="walls" index="flipped[i]" value="1 - walls[flipped[i]]"/>
+        </repeat>
+    </function>
+
+    <action id="generateMaze" scope="match">
+        <!-- Boundary walls, leaving an opening at x=3 on each end -->
+        <repeat times="GRID_Z" index="z">
+            <set var="walls" index="z * V_STRIDE" value="1"/>
+            <set var="walls" index="z * V_STRIDE + GRID_X" value="1"/>
+        </repeat>
+        <repeat times="GRID_X" index="x">
+            <continue filter="x=3"/>
+            <set var="walls" index="H_WALL_OFFSET + x" value="1"/>
+            <set var="walls" index="H_WALL_OFFSET + CELL_COUNT + x" value="1"/>
+        </repeat>
+        <!-- Flip large batches first, then smaller ones -->
+        <repeat times="25">
+            <call function="flipBatch" flips="5"/>
+        </repeat>
+        <repeat times="20">
+            <call function="flipBatch" flips="3"/>
+        </repeat>
+        <repeat times="60">
+            <call function="flipBatch" flips="1"/>
+        </repeat>
+    </action>
+
+    <action id="pasteMaze" scope="match">
+        <repeat times="CELL_COUNT" index="i" locals="x,z,worldX,worldZ,leftWall,rightWall,upWall,downWall,wallConfig,variant">
+            <set var="x" value="i % GRID_X"/>
+            <set var="z" value="floor(i / GRID_X)"/>
+            <set var="worldX" value="x * CELL_SIZE + WORLD_OFFSET"/>
+            <set var="worldZ" value="z * CELL_SIZE + WORLD_OFFSET"/>
+            <set var="leftWall" value="z*V_STRIDE + x"/>
+            <set var="rightWall" value="leftWall + 1"/>
+            <set var="upWall" value="H_WALL_OFFSET + i"/>
+            <set var="downWall" value="upWall + GRID_X"/>
+            <set var="wallConfig" value="walls[rightWall] + walls[downWall] * 2 + walls[leftWall] * 4 + walls[upWall] * 8"/>
+            <set var="variant" value="floor(random() * 4)"/>
+            <!-- Crossroads -->
+            <action filter="wallConfig=0">
+                <action filter="variant=0"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-0-0" update="false"/></action>
+                <action filter="variant=1"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-0-1" update="false"/></action>
+                <action filter="variant=2"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-0-2" update="false"/></action>
+                <action filter="variant=3"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-0-3" update="false"/></action>
+            </action>
+            <!-- T-junction wall +X -->
+            <action filter="wallConfig=1">
+                <action filter="variant=0"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-1-0" update="false"/></action>
+                <action filter="variant=1"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-1-1" update="false"/></action>
+                <action filter="variant=2"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-1-2" update="false"/></action>
+                <action filter="variant=3"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-1-3" update="false"/></action>
+            </action>
+            <!-- T-junction wall +Z -->
+            <action filter="wallConfig=2">
+                <action filter="variant=0"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-2-0" update="false"/></action>
+                <action filter="variant=1"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-2-1" update="false"/></action>
+                <action filter="variant=2"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-2-2" update="false"/></action>
+                <action filter="variant=3"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-2-3" update="false"/></action>
+            </action>
+            <!-- Corner open -X,-Z -->
+            <action filter="wallConfig=3">
+                <action filter="variant=0"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-3-0" update="false"/></action>
+                <action filter="variant=1"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-3-1" update="false"/></action>
+                <action filter="variant=2"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-3-2" update="false"/></action>
+                <action filter="variant=3"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-3-3" update="false"/></action>
+            </action>
+            <!-- T-junction wall -X -->
+            <action filter="wallConfig=4">
+                <action filter="variant=0"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-4-0" update="false"/></action>
+                <action filter="variant=1"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-4-1" update="false"/></action>
+                <action filter="variant=2"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-4-2" update="false"/></action>
+                <action filter="variant=3"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-4-3" update="false"/></action>
+            </action>
+            <!-- Vertical corridor -->
+            <action filter="wallConfig=5">
+                <action filter="variant=0"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-5-0" update="false"/></action>
+                <action filter="variant=1"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-5-1" update="false"/></action>
+                <action filter="variant=2"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-5-2" update="false"/></action>
+                <action filter="variant=3"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-5-3" update="false"/></action>
+            </action>
+            <!-- Corner open +X,-Z -->
+            <action filter="wallConfig=6">
+                <action filter="variant=0"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-6-0" update="false"/></action>
+                <action filter="variant=1"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-6-1" update="false"/></action>
+                <action filter="variant=2"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-6-2" update="false"/></action>
+                <action filter="variant=3"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-6-3" update="false"/></action>
+            </action>
+            <!-- Dead-end open -Z -->
+            <action filter="wallConfig=7">
+                <action filter="variant=0"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-7-0" update="false"/></action>
+                <action filter="variant=1"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-7-1" update="false"/></action>
+                <action filter="variant=2"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-7-2" update="false"/></action>
+                <action filter="variant=3"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-7-3" update="false"/></action>
+            </action>
+            <!-- T-junction wall -Z -->
+            <action filter="wallConfig=8">
+                <action filter="variant=0"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-8-0" update="false"/></action>
+                <action filter="variant=1"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-8-1" update="false"/></action>
+                <action filter="variant=2"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-8-2" update="false"/></action>
+                <action filter="variant=3"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-8-3" update="false"/></action>
+            </action>
+            <!-- Corner open +Z,-X -->
+            <action filter="wallConfig=9">
+                <action filter="variant=0"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-9-0" update="false"/></action>
+                <action filter="variant=1"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-9-1" update="false"/></action>
+                <action filter="variant=2"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-9-2" update="false"/></action>
+                <action filter="variant=3"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-9-3" update="false"/></action>
+            </action>
+            <!-- Horizontal corridor -->
+            <action filter="wallConfig=10">
+                <action filter="variant=0"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-10-0" update="false"/></action>
+                <action filter="variant=1"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-10-1" update="false"/></action>
+                <action filter="variant=2"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-10-2" update="false"/></action>
+                <action filter="variant=3"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-10-3" update="false"/></action>
+            </action>
+            <!-- Dead-end open -X -->
+            <action filter="wallConfig=11">
+                <action filter="variant=0"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-11-0" update="false"/></action>
+                <action filter="variant=1"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-11-1" update="false"/></action>
+                <action filter="variant=2"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-11-2" update="false"/></action>
+                <action filter="variant=3"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-11-3" update="false"/></action>
+            </action>
+            <!-- Corner open +X,+Z -->
+            <action filter="wallConfig=12">
+                <action filter="variant=0"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-12-0" update="false"/></action>
+                <action filter="variant=1"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-12-1" update="false"/></action>
+                <action filter="variant=2"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-12-2" update="false"/></action>
+                <action filter="variant=3"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-12-3" update="false"/></action>
+            </action>
+            <!-- Dead-end open +Z -->
+            <action filter="wallConfig=13">
+                <action filter="variant=0"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-13-0" update="false"/></action>
+                <action filter="variant=1"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-13-1" update="false"/></action>
+                <action filter="variant=2"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-13-2" update="false"/></action>
+                <action filter="variant=3"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-13-3" update="false"/></action>
+            </action>
+            <!-- Dead-end open +X -->
+            <action filter="wallConfig=14">
+                <action filter="variant=0"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-14-0" update="false"/></action>
+                <action filter="variant=1"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-14-1" update="false"/></action>
+                <action filter="variant=2"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-14-2" update="false"/></action>
+                <action filter="variant=3"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-14-3" update="false"/></action>
+            </action>
+        </repeat>
+    </action>
+
+    <trigger filter="always" action="generateMaze" scope="match"/>
+    <trigger filter="structure-filter" action="pasteMaze" scope="match"/>
+</actions>
+<filters>
+    <any id="breakable">
+        <any id="slow-regen">
+            <material>web</material>
+        </any>
+        <material>100:14</material>
+        <material>100:15</material>
+        <material>step:4</material>
+        <material>step:15</material>
+        <material>quartz block:1</material>
+        <material>quartz stairs</material>
+    </any>
+    <all id="not-flying-and-at-shooting-height">
+        <not><flying/></not>
+        <participating/>
+        <region id="shooting-height"/>
+    </all>
+    <all id="flying-and-in-game-area">
+        <flying/>
+        <participating/>
+        <region id="game-area"/>
+    </all>
+    <all id="runner-on-grass">
+        <team id="only-blue">runners</team>
+        <region id="on-grass"/>
+    </all>
+    <team id="only-red">towers</team>
+    <after id="physics-filter" duration="5s">
+        <match-started id="structure-filter"/>
+    </after>
+</filters>
+<renewables>
+    <renewable region="everywhere" renew-filter="slow-regen" interval="1s" grow="false" particles="true" sound="true" avoid-players="2"></renewable>
+</renewables>
+<variables>
+    <variable id="GRID_X" scope="match" default="7"/>
+    <variable id="GRID_Z" scope="match" default="15"/>
+    <variable id="CELL_COUNT" scope="match" default="105"/>
+
+    <variable id="H_WALL_OFFSET" scope="match" default="120"/>
+    <variable id="V_STRIDE" scope="match" default="8"/>
+    <variable id="INTERIOR_WALL_COUNT" scope="match" default="188"/>
+    <variable id="V_INTERIOR_WALL_COUNT" scope="match" default="90"/>
+
+    <variable id="CELL_SIZE" scope="match" default="10"/>
+    <variable id="WORLD_OFFSET" scope="match" default="1"/>
+
+    <array id="walls" scope="match" size="232"/>
+    <array id="flipped" scope="match" size="5"/>
+    <array id="reached" scope="match" size="105"/>
+    <array id="queue" scope="match" size="105"/>
+</variables>
+<structures>
+    <!-- wallConfig=0: Crossroads (Base 14, X=169) -->
+    <structure air="true" clear="false" id="structure-0-0"><region><cuboid min="169,0,200" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-0-1"><region><cuboid min="169,0,212" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-0-2"><region><cuboid min="169,0,224" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-0-3"><region><cuboid min="169,0,236" size="10,30,10"/></region></structure>
+    
+    <!-- wallConfig=1: T-junction wall +X (Base 8, X=97) -->
+    <structure air="true" clear="false" id="structure-1-0"><region><cuboid min="97,0,200" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-1-1"><region><cuboid min="97,0,212" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-1-2"><region><cuboid min="97,0,224" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-1-3"><region><cuboid min="97,0,236" size="10,30,10"/></region></structure>
+    
+    <!-- wallConfig=2: T-junction wall +Z (Base 9, X=109) -->
+    <structure air="true" clear="false" id="structure-2-0"><region><cuboid min="109,0,200" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-2-1"><region><cuboid min="109,0,212" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-2-2"><region><cuboid min="109,0,224" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-2-3"><region><cuboid min="109,0,236" size="10,30,10"/></region></structure>
+    
+    <!-- wallConfig=3: Corner open -X,-Z (Base 5, X=61) -->
+    <structure air="true" clear="false" id="structure-3-0"><region><cuboid min="61,0,200" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-3-1"><region><cuboid min="61,0,212" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-3-2"><region><cuboid min="61,0,224" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-3-3"><region><cuboid min="61,0,236" size="10,30,10"/></region></structure>
+    
+    <!-- wallConfig=4: T-junction wall -X (Base 7, X=85) -->
+    <structure air="true" clear="false" id="structure-4-0"><region><cuboid min="85,0,200" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-4-1"><region><cuboid min="85,0,212" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-4-2"><region><cuboid min="85,0,224" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-4-3"><region><cuboid min="85,0,236" size="10,30,10"/></region></structure>
+    
+    <!-- wallConfig=5: Vertical corridor (Base 0, X=1) -->
+    <structure air="true" clear="false" id="structure-5-0"><region><cuboid min="1,0,200" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-5-1"><region><cuboid min="1,0,212" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-5-2"><region><cuboid min="1,0,224" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-5-3"><region><cuboid min="1,0,236" size="10,30,10"/></region></structure>
+    
+    <!-- wallConfig=6: Corner open +X,-Z (Base 4, X=49) -->
+    <structure air="true" clear="false" id="structure-6-0"><region><cuboid min="49,0,200" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-6-1"><region><cuboid min="49,0,212" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-6-2"><region><cuboid min="49,0,224" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-6-3"><region><cuboid min="49,0,236" size="10,30,10"/></region></structure>
+    
+    <!-- wallConfig=7: Dead-end open -Z (Base 12, X=145) -->
+    <structure air="true" clear="false" id="structure-7-0"><region><cuboid min="145,0,200" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-7-1"><region><cuboid min="145,0,212" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-7-2"><region><cuboid min="145,0,224" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-7-3"><region><cuboid min="145,0,236" size="10,30,10"/></region></structure>
+    
+    <!-- wallConfig=8: T-junction wall -Z (Base 6, X=73) -->
+    <structure air="true" clear="false" id="structure-8-0"><region><cuboid min="73,0,200" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-8-1"><region><cuboid min="73,0,212" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-8-2"><region><cuboid min="73,0,224" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-8-3"><region><cuboid min="73,0,236" size="10,30,10"/></region></structure>
+    
+    <!-- wallConfig=9: Corner open +Z,-X (Base 3, X=37) -->
+    <structure air="true" clear="false" id="structure-9-0"><region><cuboid min="37,0,200" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-9-1"><region><cuboid min="37,0,212" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-9-2"><region><cuboid min="37,0,224" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-9-3"><region><cuboid min="37,0,236" size="10,30,10"/></region></structure>
+    
+    <!-- wallConfig=10: Horizontal corridor (Base 1, X=13) -->
+    <structure air="true" clear="false" id="structure-10-0"><region><cuboid min="13,0,200" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-10-1"><region><cuboid min="13,0,212" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-10-2"><region><cuboid min="13,0,224" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-10-3"><region><cuboid min="13,0,236" size="10,30,10"/></region></structure>
+    
+    <!-- wallConfig=11: Dead-end open -X (Base 11, X=133) -->
+    <structure air="true" clear="false" id="structure-11-0"><region><cuboid min="133,0,200" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-11-1"><region><cuboid min="133,0,212" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-11-2"><region><cuboid min="133,0,224" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-11-3"><region><cuboid min="133,0,236" size="10,30,10"/></region></structure>
+    
+    <!-- wallConfig=12: Corner open +X,+Z (Base 2, X=25) -->
+    <structure air="true" clear="false" id="structure-12-0"><region><cuboid min="25,0,200" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-12-1"><region><cuboid min="25,0,212" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-12-2"><region><cuboid min="25,0,224" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-12-3"><region><cuboid min="25,0,236" size="10,30,10"/></region></structure>
+    
+    <!-- wallConfig=13: Dead-end open +Z (Base 10, X=121) -->
+    <structure air="true" clear="false" id="structure-13-0"><region><cuboid min="121,0,200" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-13-1"><region><cuboid min="121,0,212" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-13-2"><region><cuboid min="121,0,224" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-13-3"><region><cuboid min="121,0,236" size="10,30,10"/></region></structure>
+    
+    <!-- wallConfig=14: Dead-end open +X (Base 13, X=157) -->
+    <structure air="true" clear="false" id="structure-14-0"><region><cuboid min="157,0,200" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-14-1"><region><cuboid min="157,0,212" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-14-2"><region><cuboid min="157,0,224" size="10,30,10"/></region></structure>
+    <structure air="true" clear="false" id="structure-14-3"><region><cuboid min="157,0,236" size="10,30,10"/></region></structure>
+</structures>
+<kill-rewards>
+    <kill-reward>
+        <item material="emerald"/>
+    </kill-reward>
+</kill-rewards>
+<itemremove>
+    <item>gold boots</item>
+    <item>leather helmet</item>
+    <item>leather chestplate</item>
+    <item>chainmail chestplate</item>
+    <item>iron chestplate</item>
+    <item>diamond chestplate</item>
+    <item>leather leggings</item>
+    <item>shears</item>
+    <item>bow</item>
+    <item>golden apple</item>
+    <item>red mushroom</item>
+    <item>brown mushroom</item>
+    <item>string</item>
+    <item>snowball</item>
+    <item>arrow</item>
+    <item>44:4</item>
+</itemremove>
+<hunger>
+    <depletion>off</depletion>
+</hunger>
+<disabledamage>
+    <damage>fall</damage>
+</disabledamage>
+<gamerules>
+    <doTileDrops>false</doTileDrops>
+</gamerules>
+</map>

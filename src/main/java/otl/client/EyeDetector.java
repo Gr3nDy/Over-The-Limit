@@ -167,7 +167,7 @@ final class EyeDetector {
 
     /** Most common colour bucket in the lower face; the skin, not hair or a single bright texel. */
     private static int skinTone(int[] plane){
-        Map<Integer,int[]> buckets=new LinkedHashMap<>();
+        Map<Integer,int[]> buckets=new HashMap<>();
         for(int i=3*8;i<64;i++){
             int c=plane[i];
             if((c>>>24)<64)continue;

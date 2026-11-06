@@ -1,0 +1,91 @@
+<map proto="1.5.1">
+<name>Fireballs Bowl</name>
+<version>1.1.5</version>
+<created>2025-12-26</created>
+<variant id="mini" world="mini">Mini</variant>
+<variant id="fumble">Fumble</variant>
+<if variant="fumble">
+    <phase>development</phase>
+</if>
+<constants>
+    <constant id="team-flag-posts">true</constant>
+    <constant id="team-one-name">Blue</constant>
+    <constant id="team-two-name">Red</constant>
+    <constant id="team-one-color">blue</constant>
+    <constant id="team-two-color">red</constant>
+    <constant id="team-one-yaw">-90</constant>
+    <constant id="team-two-yaw">90</constant>
+    <constant id="flag-post">0.5,7,0.5</constant>
+    <constant id="void-plane">-1</constant>
+    <constant id="flag-respawn">7s</constant>
+    <constant id="flag-prerespawn">6.8s</constant>
+    <constant id="instaheal-default">2</constant>
+</constants>
+<unless variant="mini">
+    <constants>
+        <constant id="team-size">20</constant>
+        <constant id="team-one-spawn">-71.5,12,0.5</constant>
+        <constant id="team-two-spawn">72.5,12,0.5</constant>
+        <constant id="team-one-flag-post">-42.5,4,0.5</constant>
+        <constant id="team-two-flag-post">43.5,4,0.5</constant>
+        <constant id="time-limit">15m</constant>
+        <if variant="fumble">
+            <constant id="experimental-flag-land">true</constant>
+            <constant id="valid-landing-area-min">-50,4,-39</constant>
+            <constant id="valid-landing-area-max">51,4,40</constant>
+            <constant id="ground_y">4</constant>
+        </if>
+    </constants>
+    <regions>
+        <point id="obs-spawn">0.5,18,106.5</point>
+        <cuboid id="playing-field" min="-67,3,40" max="68,10,-39"/>
+        <cuboid id="team-one-portal" min="-50,3,40" max="-67,10,-39"/>
+        <cuboid id="team-two-portal" min="51,3,40" max="68,10,-39"/>
+    </regions>
+    <filters>
+        <below id="team-one-4s" x="-24.5"/>
+        <below id="team-one-3s" x="0.5"/>
+        <above id="team-two-4s" x="25.5"/>
+        <above id="team-two-3s" x="0.5"/>
+    </filters>
+</unless>
+<if variant="mini">
+    <constants>
+        <constant id="team-size">11</constant>
+        <constant id="team-one-spawn">-59.5,12,0.5</constant>
+        <constant id="team-two-spawn">60.5,12,0.5</constant>
+        <constant id="team-one-flag-post">-38.5,4,0.5</constant>
+        <constant id="team-two-flag-post">39.5,4,0.5</constant>
+        <constant id="time-limit">12m</constant>
+    </constants>
+    <regions>
+        <point id="obs-spawn">0.5,18,89.5</point>
+        <cuboid id="playing-field" min="-55,3,33" max="56,10,-32"/>
+        <cuboid id="team-one-portal" min="-55,3,33" max="-44,10,-32"/>
+        <cuboid id="team-two-portal" min="45,3,33" max="56,10,-32"/>
+    </regions>
+    <filters>
+        <below id="team-one-4s" x="-21.5"/>
+        <below id="team-one-3s" x="0.5"/>
+        <above id="team-two-4s" x="25.5"/>
+        <above id="team-two-3s" x="22.5"/>
+    </filters>
+</if>
+<include id="touchdown"/>
+<authors>
+    <author uuid="f610e558-a3c8-44fb-8622-68cc49dbc18f"/> <!-- jcane -->
+</authors>
+<contributors>
+    <contributor uuid="430ec559-364a-4363-ac7a-2529050440ac"/> <!-- mameBT -->
+</contributors>
+<spawns>
+    <default region="obs-spawn" yaw="180"/>
+</spawns>
+<respawns auto="true">
+    <respawn filter="all(team-one-4s,team-one,game_state=${carry})" delay="4.5s"/>
+    <respawn filter="all(team-one-3s,team-one,game_state=${carry})" delay="3.5s"/>
+    <respawn filter="all(team-two-4s,team-two,game_state=${carry})" delay="4.5s"/>
+    <respawn filter="all(team-two-3s,team-two,game_state=${carry})" delay="3.5s"/>
+    <respawn delay="3s"/>
+</respawns>
+</map>

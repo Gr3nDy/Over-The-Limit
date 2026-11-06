@@ -1,0 +1,74 @@
+<map proto="1.5.0">
+<name>Ice Rift</name>
+<version>1.0.1</version>
+<slug>flag_football_ice_rift</slug>
+<constants>
+    <constant id="team-1-spawn-yaw">0</constant>
+    <constant id="team-2-spawn-yaw">180</constant>
+    <constant id="team-1-spawn-pitch">-10</constant>
+    <constant id="team-2-spawn-pitch">-10</constant>
+    <constant id="flag-color">purple</constant>
+    <constant id="flag-post">0.5,5,1.5</constant>
+    <constant id="team-size">8</constant>
+    <constant id="max-overfill" delete="true"/>
+    <constant id="respawn-timer">2s</constant>
+</constants>
+<include id="ffb"/>
+<objective>Capture the flag as many times as possible in eight minutes!</objective>
+<authors>
+    <author uuid="b03360db-b8cd-49de-8ba1-b7920c2238a9" contribution="Map design, aesthetics and XML"/> <!-- Obelistics -->
+</authors>
+<teams>
+    <team id="team-1" color="blue" max="${team-size}" max-overfill="${max-overfill}">Blue</team>
+    <team id="team-2" color="dark red" max="${team-size}" max-overfill="${max-overfill}">Red</team>
+</teams>
+<spawns>
+    <default>
+        <regions>
+            <region id="obs-spawn-180" yaw="180"/>
+            <region id="obs-spawn-0" yaw="0"/>
+        </regions>
+    </default>
+    <spawn team="team-1" kit="spawn-kit">
+        <region pitch="${team-1-spawn-pitch}">
+            <point>0.5,7,-21.5</point>
+        </region>
+    </spawn>
+    <spawn team="team-2" kit="spawn-kit">
+        <region yaw="${team-2-spawn-yaw}" pitch="${team-2-spawn-pitch}">
+            <point>0.5,7,24.5</point>
+        </region>
+    </spawn>
+</spawns>
+<filters>
+    <not id="not-above-nor-below">
+        <cuboid min="-1,2,0" max="2,5,3"/>
+    </not>
+</filters>
+<regions>
+    <cuboid id="obs-spawn-180" min="2,19,26" max="-1,19,23"/>
+    <cuboid id="obs-spawn-0" min="-1,19,-23" max="2,19,-20"/>
+    <union id="spawn-points">
+        <point id="team-1-spawn-point">0.5,7.25,-21.5</point>
+        <point id="team-2-spawn-point">0.5,7.25,24.5</point>
+    </union>
+    <union id="sides">
+        <rectangle id="team-1-side" min="28,8" max="55,-5"/>
+        <rectangle id="team-2-side" min="-27,-5" max="-54,8"/>
+    </union>
+    <union id="flag-nets">
+        <union id="team-1-net">
+            <cuboid min="48,4,0" max="54,7,3"/>
+            <cuboid min="49,4,-2" max="53,7,5"/>
+        </union>
+        <union id="team-2-net">
+            <cuboid min="-47,4,3" max="-53,7,0"/>
+            <cuboid min="-48,4,5" max="-52,7,-2"/>
+        </union>
+    </union>
+    <union id="spawns">
+        <cuboid id="team-1-spawn" min="3,10,-14" max="-2,7,-23"/>
+        <cuboid id="team-2-spawn" min="-2,10,17" max="3,7,26"/>
+    </union>
+</regions>
+</map>

@@ -1,0 +1,54 @@
+<map proto="1.5.1">
+<name>Moon Brady</name>
+<version>1.0.1</version>
+<created>2026-07-03</created>
+<constants>
+    <constant id="team-flag-posts">true</constant>
+    <constant id="team-size">8</constant>
+    <constant id="team-one-name">Blue Team</constant>
+    <constant id="team-two-name">Red Team</constant>
+    <constant id="team-one-color">blue</constant>
+    <constant id="team-two-color">red</constant>
+    <constant id="team-one-spawn">-52.5,18,0.5</constant>
+    <constant id="team-one-yaw">-90</constant>
+    <constant id="team-two-spawn">53.5,18,0.5</constant>
+    <constant id="team-two-yaw">90</constant>
+    <constant id="flag-post">0.5,10,0.5</constant>
+    <constant id="team-one-flag-post">-35.5,7,0.5</constant>
+    <constant id="team-two-flag-post">36.5,7,0.5</constant>
+    <constant id="void-plane">-1</constant>
+    <constant id="time-limit">12m</constant>
+    <constant id="flag-respawn">7s</constant>
+    <constant id="flag-prerespawn">6.8s</constant>
+    <constant id="instaheal-default">2</constant>
+</constants>
+<include id="touchdown"/>
+<authors>
+    <author uuid="8fbb6041-66cc-4efd-a1b1-55bc60e55739"/> <!-- ATub -->
+</authors>
+<spawns>
+    <default>
+        <region yaw="180">
+            <point>0.5,9,46.5</point>
+        </region>
+    </default>
+</spawns>
+<filters>
+    <below id="team-one-4s" x="-20.5"/> <!-- Blue -->
+    <below id="team-one-3s" x="0.5"/>
+    <above id="team-two-4s" x="21.5"/> <!-- Red -->
+    <above id="team-two-3s" x="0.5"/>
+</filters>
+<regions>
+    <cuboid id="playing-field" min="-52,7,28" max="53,14,-27"/>
+    <cuboid id="team-one-portal" min="-41,7,28" max="-52,10,-27"/>
+    <cuboid id="team-two-portal" min="42,7,28" max="53,10,-27"/>
+</regions>
+<respawns auto="true">
+    <respawn filter="all(team-one-4s,team-one,game_state=${carry})" delay="5s"/>
+    <respawn filter="all(team-one-3s,team-one,game_state=${carry})" delay="4s"/>
+    <respawn filter="all(team-two-4s,team-two,game_state=${carry})" delay="5s"/>
+    <respawn filter="all(team-two-3s,team-two,game_state=${carry})" delay="4s"/>
+    <respawn delay="3s"/>
+</respawns>
+</map>

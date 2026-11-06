@@ -1,0 +1,157 @@
+<map proto="1.5.0" game="Scores">
+<name>Fishing Frenzy</name>
+<version>1.0.14</version>
+<gamemode>scorebox</gamemode>
+<created>2021-03-23</created>
+<objective>Catch fish and score as many points as possible!</objective>
+<include id="gapple-kill-reward"/>
+<authors>
+    <author uuid="1aad55f7-2dea-4f22-85ca-ad9de3a78609" contribution="Map author and creator"/> <!-- Technodono -->
+</authors>
+<teams>
+    <team id="blue" color="blue" max="24">Cod</team>
+    <team id="red" color="red" max="24">Salmon</team>
+</teams>
+<rules>
+    <rule>You should not enter the enemy team's spawns</rule>
+</rules>
+<broadcasts>
+    <tip after="1m" every="2m">`e⚠  `7Remember: `6Fish and kill coins can be scored at the scoreboxes for points!</tip>
+    <tip after="0s" every="2m">`e⚠  `7Remember: `6Fish give you 5pts at the scorebox, this is very useful for scoring lots of points!</tip>
+</broadcasts>
+<time>8m</time>
+<score>
+    <box filter="only-red" region="red-depot">
+        <redeemables>
+            <item points="5">raw fish:0</item> <!-- Raw Fish -->
+            <item points="6">raw fish:1</item> <!-- Raw Salmon -->
+            <item points="7">raw fish:3</item> <!-- Pufferfish -->
+            <item points="9">raw fish:2</item> <!-- Clownfish -->
+            <item points="12">enchanted book</item>
+            <item points="1">emerald</item>	
+        </redeemables>
+    </box>
+    <box filter="only-blue" region="blue-depot">
+        <redeemables>
+            <item points="5">raw fish:0</item> <!-- Raw Fish -->
+            <item points="6">raw fish:1</item> <!-- Raw Salmon -->
+            <item points="7">raw fish:3</item> <!-- Pufferfish -->
+            <item points="9">raw fish:2</item> <!-- Clownfish -->
+            <item points="12">enchanted book</item>
+            <item points="1">emerald</item>	
+        </redeemables>
+    </box>
+</score>
+<!-- Spawns -->
+<spawns>
+    <spawn team="blue" kit="spawn" yaw="180">
+        <regions>
+            <union id="blue-spawns">
+                <point id="blue-top">-170.5,14.5,52.5</point>
+                <point id="blue-bottom">-117.5,14.5,52.5</point>
+            </union>
+        </regions>
+    </spawn>
+    <spawn team="red" kit="spawn">
+        <regions>
+            <union id="red-spawns">
+                <point id="red-top">-170.5,14.5,-149.5</point>
+                <point id="red-bottom">-117.5,14.5,-149.5</point>
+            </union>
+        </regions>
+    </spawn>
+    <default yaw="-90">
+        <region>
+            <cuboid min="-183,15,-47" max="-182,15,-50"/>
+        </region>
+    </default>
+</spawns>
+<!-- Kits -->
+<kits>
+    <kit id="spawn">
+        <item amount="1" name="`rKnife" slot="0" unbreakable="true" material="stone sword"/>
+        <item slot="1" name="`rMusket" unbreakable="true" material="bow"/>
+        <item slot="2" name="`a`oFisherman's Friend" material="fishing rod">
+            <enchantment level="7">lure</enchantment>
+        </item>
+        <item slot="3" material="golden apple"/>
+        <item slot="8" amount="24" material="arrow"/>
+        <helmet team-color="true" unbreakable="true" material="leather helmet"/>
+        <chestplate color="ffd500" unbreakable="true" material="leather chestplate"/>
+        <leggings unbreakable="true" material="chainmail leggings"/>
+        <boots color="7a7a7a" unbreakable="true" material="leather boots"/>
+        <potion amplifier="25" duration="2">damage resistance</potion>
+        <!-- Important! gamemode -->
+        <game-mode>adventure</game-mode>
+    </kit>
+</kits>
+<!-- Filters -->
+<filters>
+    <not id="only-players">
+        <any>
+            <team id="only-blue">blue</team>
+            <team id="only-red">red</team>
+        </any>
+    </not>
+    <any id="visual-blocks">
+        <material>stained glass</material>
+        <material>wool</material>
+    </any>
+</filters>
+<!-- Regions -->
+<regions>
+    <!-- Portal Regions -->
+    <cuboid id="red-depot" min="-158,16,13" max="-163,19,17"/>
+    <cuboid id="blue-depot" min="-163,16,-110" max="-158,19,-114"/>
+    <!-- first I blacklist areas that can be destroyed in any way or form -->
+    <apply block="never" use="never"/>
+    <apply enter="only-red" message="You may not enter the enemy's scorebox!">
+        <region>
+            <cuboid min="-158,16,10" max="-163,19,17"/>    
+        </region>
+    </apply>
+    <apply enter="only-blue" message="You may not enter the enemy's scorebox!">
+        <region>
+            <cuboid min="-163,16,-107" max="-158,19,-114"/>    
+        </region>
+    </apply>
+</regions>
+<toolrepair>
+    <tool>stone sword</tool>
+    <tool>bow</tool>
+    <tool>fishing rod</tool>
+</toolrepair>
+<!--- I hate item remove... soo many items to deal with -->
+<itemremove>
+    <item>leather helmet</item>
+    <item>leather chestplate</item>
+    <item>chainmail leggings</item>
+    <item>leather boots</item>
+    <item>golden apple</item>
+    <item>arrow</item>  
+</itemremove>
+<itemkeep>
+    <item>emerald</item>
+    <item>raw fish</item>
+</itemkeep>
+<!-- Boring stuff -->
+<portals>
+    <!-- fast portals -->
+    <portal region="red-depot" destination="red-bottom" yaw="@0"/>
+    <portal region="blue-depot" destination="blue-bottom" yaw="@180"/>
+</portals>
+<disabledamage>
+    <damage ally="true" self="false" enemy="false" other="false">block explosion</damage>
+</disabledamage>
+<kill-rewards>
+    <kill-reward>
+        <item amount="8" material="arrow"/>
+        <item name="`aKill coin" lore="`7`oRedeem me at the scorebox to earn 1 point per coin" material="emerald"/>
+    </kill-reward>
+</kill-rewards>
+<timelock>on</timelock>
+<respawn delay="2s" blackout="true"/>
+<hunger>
+    <depletion>off</depletion>
+</hunger>
+</map>

@@ -1,0 +1,37 @@
+<map proto="1.5.1">
+<name>Steppe Bowl</name>
+<version>1.0.1</version>
+<created>2026-06-24</created>
+<constants>
+    <constant id="team-flag-posts">true</constant>
+    <constant id="team-size">8</constant>
+    <constant id="team-one-name">Blue Sky</constant>
+    <constant id="team-two-name">Golden Horde</constant>
+    <constant id="team-one-color">blue</constant>
+    <constant id="team-two-color">red</constant>
+    <constant id="team-one-spawn">0.5,18,-57.5</constant>
+    <constant id="team-one-yaw">0</constant>
+    <constant id="team-two-spawn">0.5,18,58.5</constant>
+    <constant id="team-two-yaw">180</constant>
+    <constant id="flag-post">0.5,10,0.5</constant>
+    <constant id="team-one-flag-post">0.5,7,-37.5</constant>
+    <constant id="team-two-flag-post">0.5,7,38.5</constant>
+    <constant id="void-plane">-1</constant>
+</constants>
+<include id="touchdown"/>
+<authors>
+    <author uuid="b83f7de9-9d69-468a-8cea-dc3864b584cb"/> <!-- nuttydragon -->
+</authors>
+<spawns>
+    <default>
+        <region yaw="-90">
+            <point>-56.5,10,0.5</point>
+        </region>
+    </default>
+</spawns>
+<regions>
+    <cuboid id="playing-field" min="-26,7,-55" max="27,14,56"/>
+    <cuboid id="team-one-portal" min="-26,7,-43" max="27,10,-55"/>
+    <cuboid id="team-two-portal" min="27,7,44" max="-26,10,56"/>
+</regions>
+</map>

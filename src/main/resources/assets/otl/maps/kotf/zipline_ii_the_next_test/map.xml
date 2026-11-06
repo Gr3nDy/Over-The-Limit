@@ -1,0 +1,176 @@
+<map proto="1.5.0">
+<name>Zipline II - The Next Test</name>
+<version>1.1.4</version>
+<include id="kotf"/>
+<constant id="damage-resistance">0s</constant>
+<objective>Hold the flag for ${score} seconds to win!</objective>
+<created>2022-08-07</created>
+<authors>
+    <author uuid="1aad55f7-2dea-4f22-85ca-ad9de3a78609"/> <!-- Technodono -->
+</authors>
+<rules>
+    <rule>Fall damage is disabled!</rule>
+    <rule>You can only respawn when your team doesn't have the flag!</rule>
+    <rule>No camping inside any ziplines!</rule>
+</rules>
+<broadcasts>
+    <tip after="0m" every="3m">Ziplines transport you really fast in a direction as indicated by the arrows! Use them to get around.</tip>
+    <tip after="30s" every="2m">Look in the chat to see the flag's next location!</tip>
+</broadcasts>
+<teams>
+    <team id="blue-team" color="blue" max="24">Blue</team>
+    <team id="yellow-team" color="yellow" max="24">Yellow</team>
+</teams>
+<kits>
+    <kit id="default-kit">
+        <effect>night vision</effect>
+    </kit>
+    <kit id="spawn-kit" parents="default-kit,base-kit"/>
+    <kit id="fly" force="true">
+        <fly/>
+    </kit>
+    <kit id="force-kill" force="true">
+        <health>1</health>
+        <effect>wither</effect>
+    </kit>
+</kits>
+<spawns>
+    <default kit="default-kit">
+        <region yaw="45">
+            <cuboid id="Obs-spawn" min="59,17,-57" max="56,17,-54"/>
+        </region>
+    </default>
+    <spawn team="blue-team" kit="spawn-kit" filter="has-flag">
+        <regions yaw="-45">
+            <block id="Blue-spawn">-61,20,-60</block>
+        </regions>
+    </spawn>
+    <spawn team="yellow-team" kit="spawn-kit" filter="has-flag">
+        <regions yaw="135">
+            <block id="Yellow-spawn">61,20,62</block>
+        </regions>
+    </spawn>
+</spawns>
+<filters>
+    <team id="only-blue">blue-team</team>
+    <team id="only-yellow">yellow-team</team>
+</filters>
+<regions>
+    <cuboid id="blue-spawn" min="-62,-oo,-61" max="-50,oo,-49"/>
+    <cuboid id="yellow-spawn" min="63,-oo,64" max="51,oo,52"/>
+    <union id="ziplines">
+        <union id="Blue-ziplines">
+            <union id="Blue-green-ziplines">
+                <cuboid id="Blue-green-mid-zipline" min="-25,16,-11" max="-28,16.5,13"/>
+            </union>
+            <union id="Blue-red-ziplines">
+                <cuboid id="Blue-red-mid-zipline" min="-12,16,-27" max="11,16.5,-24"/>
+            </union>
+        </union>
+        <union id="Yellow-ziplines">
+            <union id="Yellow-green-ziplines">
+                <mirror origin="0.5,24,1.5" normal="1,0,1" id="Yellow-green-mid-zipline">
+                    <region id="Blue-green-mid-zipline"/>
+                </mirror>
+            </union>
+            <union id="Yellow-red-ziplines">
+                <mirror origin="0.5,24,1.5" normal="1,0,1" id="Yellow-red-mid-zipline">
+                    <region id="Blue-red-mid-zipline"/>
+                </mirror>
+            </union>
+        </union>
+    </union>
+    <union id="jump-pads">
+        <union id="Blue-jump-pads">
+            <cuboid id="Blue-green-pad" min="-40,17,3" max="-37,17.5,0"/>
+            <cuboid id="Blue-red-pad" min="2,17,-39" max="-1,17.5,-36"/>
+            <cuboid id="Blue-corner-pad" min="-28,17,-27" max="-25,17.5,-24"/>
+
+            <mirror origin="0.5,24,1.5" normal="1,0,1" id="Yellow-green-pad">
+                <region id="Blue-green-pad"/>
+            </mirror>
+            <mirror origin="0.5,24,1.5" normal="1,0,1" id="Yellow-red-pad">
+                <region id="Blue-red-pad"/>
+            </mirror>
+            <mirror origin="0.5,24,1.5" normal="1,0,1" id="Yellow-corner-pad">
+                <region id="Blue-corner-pad"/>
+            </mirror>
+
+        </union>
+        <union id="Mid-jump-pads">
+            <cuboid id="Mid-N-pad" min="-1,17,-6" max="2,17.5,-3"/>
+            <cuboid id="Mid-W-pad" min="-4,17,0" max="-7,17.5,3"/>
+            <mirror origin="0.5,24,1.5" normal="0,0,1" id="Mid-S-pad">
+                <region id="Mid-N-pad"/>
+            </mirror>
+            <mirror origin="0.5,24,1.5" normal="1,0,0" id="Mid-E-pad">
+                <region id="Mid-W-pad"/>
+            </mirror>
+        </union>
+        <union id="Spawn-exit-pads">
+            <cuboid id="Yellow-to-green-exit-pad" min="36,16,60" max="34,16.5,55"/>
+            <cuboid id="Yellow-to-red-exit-pad" min="54,16,37" max="59,16.5,35"/>
+            <mirror origin="0.5,24,1.5" normal="-1,0,-1" id="Blue-to-green-exit-pad" region="Yellow-to-red-exit-pad"/>
+            <mirror origin="0.5,24,1.5" normal="-1,0,-1" id="Blue-to-red-exit-pad" region="Yellow-to-green-exit-pad"/>
+        </union>
+    </union>
+
+    <cuboid id="not-poison" min="oo,13,oo" max="oo,oo,oo"/>
+    <cuboid id="poison" min="-oo,-oo,-oo" max="oo,10,oo"/>
+
+    <apply block="never" use="never"/>
+    <apply enter="only-blue" region="blue-spawn" message="You may not enter the opposing team's spawn!"/>
+    <apply enter="only-yellow" region="yellow-spawn" message="You may not enter the opposing team's spawn!"/>
+    <!-- <apply lend-kit="fly" region="ziplines"/> comment out for now untill anti-cheat kicks in?-->
+
+    <apply velocity="0,0.5,-3.9" region="Blue-green-mid-zipline"/>
+    <apply velocity="-3.9,0.5,0" region="Blue-red-mid-zipline"/>
+    <apply velocity="3.9,0.5,0" region="Yellow-green-mid-zipline"/>
+    <apply velocity="0,0.5,3.9" region="Yellow-red-mid-zipline"/>
+
+    <apply velocity="0,1.5,0.5" region="Mid-N-pad"/>
+    <apply velocity="0.5,1.5,0" region="Mid-W-pad"/>
+    <apply velocity="0,1.5,-0.5" region="Mid-S-pad"/>
+    <apply velocity="-0.5,1.5,0" region="Mid-E-pad"/>
+    
+    <apply velocity="0,1,0" region="Spawn-exit-pads"/>
+
+    <apply velocity="1.8,0.8,0" region="Blue-green-pad"/>
+    <apply velocity="0,0.8,1.8" region="Blue-red-pad"/>
+    <apply velocity="-0.5,1,-0.5" region="Blue-corner-pad"/>
+
+    <apply velocity="-1.8,0.8,0" region="Yellow-red-pad"/>
+    <apply velocity="0,0.8,-1.8" region="Yellow-green-pad"/>
+    <apply velocity="0.5,1,0.5" region="Yellow-corner-pad"/>
+
+    <!-- Insta-Kill Kit -->
+    <apply kit="force-kill" region="poison"/>
+</regions>
+<flags>
+    <flag id="flag"
+          name="Flag"
+          color="magenta"
+          shared="true"
+          points-rate="1"
+          pickup-kit="flag-kit"
+          drop-kit="reset-health"
+          flag-proximity-metric="none"
+          show-respawn-on-pickup="${announce-post-pickup}">
+        <post return-time="0s" respawn-time="${flag-respawn-timer}">
+            <post name="Center Post">0,24,1</post>
+            <post name="North East Post">36,20,-35</post>
+            <post name="South West Post">-36,20,37</post>
+        </post>
+    </flag>
+</flags>
+<damage>
+    <deny>
+        <all>
+            <cause>fall</cause>
+            <not>
+                <region id="poison"/>
+            </not>
+        </all>
+    </deny>
+</damage>
+</map>

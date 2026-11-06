@@ -1,0 +1,155 @@
+<map proto="1.5.0">
+<name>Infection: Riot in Prison</name>
+<version>1.0.12</version>
+<created>2022-03-11</created>
+<include id="infection"/>
+<constants>
+    <constant id="zombie-team-name">Prison Police</constant>
+    <constant id="human-team-name">Prisoners</constant>
+    <constant id="zombie-team-color">dark aqua</constant>
+    <constant id="human-team-color">green</constant>
+</constants>
+<authors>
+    <author uuid="065c76d6-32b8-4b3a-8270-db350f876844"/> <!-- Put0veda -->
+</authors>
+<contributors>
+    <contributor uuid="3a3f756e-7925-409a-be5e-e8c1694b3e2c" contribution="Map Additions"/> <!-- Shimane -->
+</contributors>
+<rules>
+    <rule>Fall damage is off</rule>
+    <rule>${zombie-team-name} name tags don't show</rule>
+    <rule>${zombie-team-name} have Speed I</rule>
+</rules>
+<broadcasts>
+    <tip after="0s">${zombie-team-name} have Speed I</tip>
+    <alert after="0s">${zombie-team-name} will be released from the main entrance after 30s!</alert>
+</broadcasts>
+<!-- Kits -->
+<kits>
+    <kit id="prison-police-switch-kit" force="true">
+        <team-switch team="zombie-team"/>
+    </kit>
+    <kit id="prison-police-kit">
+        <helmet unbreakable="true" material="gold helmet"/>
+        <chestplate unbreakable="true" material="gold chestplate"/>
+        <leggings unbreakable="true" material="gold leggings"/>
+        <boots unbreakable="true" material="gold boots"/>
+        <item slot="0" unbreakable="true" material="gold sword" name="`2Macana"/>
+        <item slot="1" unbreakable="true" material="bow" name="`2Chopo"/>
+        <item slot="2" material="arrow" amount="16"/>
+        <effect duration="15">increase damage</effect>
+        <effect>speed</effect>
+        <effect duration="30" amplifier="2">jump</effect>
+        <game-mode>adventure</game-mode>
+    </kit>
+    <kit id="prison-police-kit-start">
+        <helmet unbreakable="true" material="gold helmet"/>
+        <chestplate  unbreakable="true" material="gold chestplate"/>
+        <leggings  unbreakable="true" material="gold leggings"/>
+        <boots  unbreakable="true" material="gold boots"/>
+        <item slot="0" unbreakable="true" material="gold sword" name="`2Macana"/>
+        <item slot="1" unbreakable="true" material="bow" name="`2Chopo"/>
+        <item slot="2" material="arrow" amount="16"/>
+        <effect duration="50">increase damage</effect>
+        <effect>speed</effect>
+        <effect duration="30" amplifier="2">jump</effect>
+        <effect duration="30">blindness</effect>
+        <game-mode>adventure</game-mode>
+    </kit>
+    <kit id="prisoners-kit">
+        <helmet locked="true" unbreakable="true" material="leather helmet"/>
+        <chestplate locked="true" unbreakable="true" material="iron chestplate"/>
+        <leggings locked="true" unbreakable="true" material="chainmail leggings"/>
+        <boots locked="true" unbreakable="true" material="leather boots"/>
+        <item slot="0" unbreakable="true" material="iron sword" name="`2Fierro"/>
+        <item slot="1" unbreakable="true" material="bow"/>
+        <item slot="2" material="arrow" amount="7"/>
+        <effect>speed</effect>
+        <game-mode>adventure</game-mode>
+    </kit>
+</kits>
+<!-- Spawns -->
+<spawns>
+    <spawn team="human-team" kit="prisoners-kit" yaw="180" safe="true" filter="before-30s" region="Prisoners-spawn-point"/>
+    <spawn team="zombie-team" kit="prison-police-kit-start" yaw="-90" filter="before-30s" region="Prison Police-spawn-point"/>
+    <spawn team="human-team" kit="zombie-switch-kit" yaw="180" safe="true" filter="after-30s" region="Prisoners-spawn-point"/>
+    <spawn team="zombie-team" kit="prison-police-kit" yaw="-90" filter="after-30s" region="Prison Police-spawn-point"/>
+    <default region="obs-spawn-point"/>
+</spawns>
+<!-- TODO: migrate fake destroyables to structure or fill actions -->
+<destroyables name="cage" required="false" show="false" owner="human-team">
+    <destroyable materials="stained glass" region="prison-police-cage" modes="start-game"/>
+</destroyables>
+<!-- Police Release -->
+<modes show-before="30s">
+    <mode id="start-game" after="30s" material="air" name="The ${zombie-team-name} will be released in"/>
+</modes>
+<!-- Filters -->
+<filters>
+    <not id="before-10s">
+        <time id="after-10s">11s</time>
+    </not>
+    <not id="before-30s">
+        <time id="after-30s">31s</time>
+    </not>
+</filters>
+<regions>
+    <cylinder id="obs-spawn-point" base="-177.351,44,72.890" height="0" radius="2"/>
+    <cylinder id="Prisoners-spawn-point" base="-111.000,57.00,58.177" height="0" radius="2"/>
+    <cuboid id="Prison Police-spawn-point" min="-171,44,68" max="-183,45,78"/>
+    <cuboid id="prison-police-cage" min="-171,44,68" max="-169,47,78"/>
+</regions>
+<kill-rewards>
+    <kill-reward>
+        <kit>
+            <effect duration="5" amplifier="4">regeneration</effect>
+            <item amount="4" material="arrow"/>
+        </kit>
+        <filter>
+            <all>
+                <team>human-team</team>
+                <kill-streak count="5" repeat="true"/>
+            </all>
+        </filter>
+    </kill-reward>
+    <kill-reward>
+        <kit>
+            <effect duration="5" amplifier="3">regeneration</effect>
+        </kit>
+        <filter>
+            <team>zombie-team</team>
+        </filter>
+    </kill-reward>
+</kill-rewards>
+<itemremove>
+        <item>arrow</item>
+        <item>leather helmet</item>
+        <item>leather chestplate</item>
+        <item>leather leggings</item>
+        <item>leather boots</item>
+        <item>chainmail chestplate</item>
+        <item>chainmail leggings</item>
+        <item>chainmail boots</item>
+        <item>chainmail helmet</item>
+        <item>stone sword</item>
+        <item>iron sword</item>
+        <item>gold sword</item>
+        <item>bow</item>
+        <item>iron boots</item>
+        <item>iron chestplate</item>
+        <item>gold boots</item>
+        <item>gold chestplate</item>
+        <item>gold helmet</item>
+        <item>gold leggings</item>
+</itemremove>
+<damage>
+    <deny>
+        <attacker>
+            <filter id="before-10s"/>
+        </attacker>
+    </deny>
+</damage>
+<world>
+    <timeset>13000</timeset>
+</world>
+</map>

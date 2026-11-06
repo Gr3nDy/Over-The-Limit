@@ -1,0 +1,85 @@
+<map proto="1.5.1">
+<name>FB: Blue Snooze</name>
+<variant id="comp" override="true">FB: Tourney Snooze</variant>
+<version>1.0.0</version>
+<phase>staging</phase>
+<created>2026-06-17</created>
+<constants>
+    <constant id="team-size">6</constant>
+    <constant id="build-limit">18</constant>
+    <constant id="breakable-blocks">custom-breakable-blocks</constant>
+    <constant id="central-island-chest-region">central-chests</constant>
+    <constant id="central-island-chest-refill-timer">12s</constant> <!-- time it takes for these chests to refill-->
+    <constant id="symmetry-mode">1</constant>
+    <constant id="map-center">0.5,0.0,0.5</constant>
+    <constant id="team-two-mirror-dir">1,0,0</constant>
+    <constant id="team-three-mirror-dir">0,0,1</constant>
+    <constant id="team-three-mirror-ref">team-two</constant>
+    <constant id="team-four-mirror-dir">0,0,1</constant>
+    <if variant="comp">
+        <constant id="kill-teams">1</constant> <!-- When teams are killed and this feature is enabled players are sent to obs instead of swapping teams (Used primarily for comp) -->
+    </if>
+    <constant id="obs-yaw">0</constant>
+    <constant id="obs-pitch">0</constant>
+    <constant id="team-one-yaw">0</constant>
+    <constant id="team-one-pitch">0</constant>
+    <constant id="team-one-flag-post-1-yaw">180</constant>
+    <constant id="team-one-flag-post-2-yaw">0</constant>
+    <constant id="team-two-yaw">0</constant>
+    <constant id="team-two-pitch">0</constant>
+    <constant id="team-two-flag-post-1-yaw">180</constant>
+    <constant id="team-two-flag-post-2-yaw">180</constant>
+    <constant id="team-three-yaw">180</constant>
+    <constant id="team-three-pitch">0</constant>
+    <constant id="team-three-flag-post-1-yaw">0</constant>
+    <constant id="team-three-flag-post-2-yaw">0</constant>
+    <constant id="team-four-yaw">180</constant>
+    <constant id="team-four-pitch">0</constant>
+    <constant id="team-four-flag-post-1-yaw">0</constant>
+    <constant id="team-four-flag-post-2-yaw">0</constant>
+    <constant id="recover-time">12s</constant> <!-- flag recovery time -->
+    <constant id="respawn-time">5s</constant> <!-- flag respawn time -->
+</constants>
+<include id="flag-battles"/>
+<authors>
+    <author uuid="1aad55f7-2dea-4f22-85ca-ad9de3a78609" contribution="Map Author"/> <!-- Technodono -->
+</authors>
+<filters>
+    <blocks id="custom-breakable-blocks" region="map-buildable-area">
+        <any>
+            <material>air</material>
+            <material>water</material>
+            <material>stationary water</material>
+            <material>lava</material>
+            <material>stationary lava</material>
+            <material>leaf litter</material>
+        </any>
+    </blocks>
+</filters>
+<regions>
+    <point id="obs-spawnpoint">0.5,37,0.5</point>
+    <point id="team-one-spawnpoint">-26,11,-40</point>
+    <cuboid id="team-one-portal" min="-24,7,-26" size="5,6,-1"/>
+    <cuboid id="team-one-portal-indicator" min="-24,31,-28" size="5,-9,1"/>
+    <block id="team-one-flag-1-post">-23,11,-30</block>
+    <block id="team-one-flag-2-post">-21,11,-30</block>
+    <union id="team-one-spawnroom">
+        <cuboid min="-29,11,-37" size="6,oo,-6"/>
+    </union>
+    <union id="central-chests">
+        <block id="n-chest">0,10,-26</block>
+        <mirror normal="0,0,1" origin="${map-center}" region="n-chest"/>
+        <mirror normal="1,0,1" origin="${map-center}" region="n-chest"/>
+        <mirror normal="-1,0,1" origin="${map-center}" region="n-chest"/>
+    </union>
+    <cuboid id="team-one-spawnroom-door" min="-28,11,-37" size="4,5,-5"/>
+    <cuboid id="map-buildable-area" min="-38,0,-43" max="39,60,44"/>
+</regions>
+<itemremove>
+    <item>leaf litter</item>
+</itemremove>
+<world>
+    <timelock>on</timelock>
+    <timeset>5000</timeset>
+</world>
+</map>

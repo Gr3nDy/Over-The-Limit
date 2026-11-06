@@ -1,0 +1,91 @@
+<map proto="1.5.0">
+<name>Spaced Out</name>
+<version>1.0.6</version>
+<variant id="5v5">5v5</variant>
+<unless variant="5v5">
+    <include id="conquest"/>
+    <constant id="max">16</constant>
+    <constant id="max-overfill" delete="true"/>
+</unless>
+<if variant="5v5">
+    <include id="conquest-comp"/>
+    <constant id="max">5</constant>
+    <constant id="max-overfill">5</constant>
+</if>
+<constant id="respawn-timer">3s</constant>
+<constant id="damage-resistance">4s</constant>
+<objective>Be the first team to 750 points to win!</objective>
+<created>2021-04-02</created>
+<authors>
+    <author uuid="5198dc37-537f-4ea5-8ee8-1e0952d4a36b"/> <!-- _3Each -->
+    <author uuid="53f0b566-4ae5-48d7-ac86-5a6f7a38bd3a"/> <!-- Xuph -->
+</authors>
+<contributors>
+    <contributor uuid="e2d2c2c6-cea9-4510-9ab2-a091b5605b30" contribution="XML"/> <!--  Ruediger_LP  -->
+</contributors>
+<teams>
+    <team id="blue" color="blue" max="${max}" max-overfill="${max-overfill}">Blue</team>
+    <team id="red" color="dark red" max="${max}" max-overfill="${max-overfill}">Red</team>
+</teams>
+<spawns>
+    <default>
+        <region yaw="90">
+            <cylinder base="20.5,29,-27.5" radius="2" height="0"/>
+        </region>
+    </default>
+    <spawn team="blue" kit="base-kit">
+        <region yaw="90">
+            <point>34.5,34,-27.5</point>
+        </region>
+    </spawn>
+    <spawn team="red" kit="base-kit">
+        <region yaw="-90">
+            <point>-63.5,34,-27.5</point>
+        </region>
+    </spawn>
+</spawns>
+<filters>
+    <team id="only-blue">blue</team>
+    <team id="only-red">red</team>
+    <objective id="north-point-filter">north-point</objective>
+    <objective id="south-point-filter">south-point</objective>
+    <any id="visual-materials-filter">
+        <material>wool:0</material>
+        <material>wool:11</material>
+        <material>wool:14</material>
+        <material>stained glass:0</material>
+        <material>stained glass:11</material>
+        <material>stained glass:14</material>
+    </any>
+</filters>
+<regions>
+    <cuboid id="middle" min="-18,21,-31" max="-11,24,-24"/>
+    <cuboid id="middle-captured" min="-18,36,-34" max="-11,54,-21"/>
+    <cylinder id="north-progress" base="-14.5,14,-55.5" radius="7.5" height="1"/>
+    <cylinder id="north-capture" base="-14.5,14,-55.5" radius="7.5" height="3"/>
+    <cylinder id="north-captured" base="-14.5,14,-55.5" radius="7.5" height="23"/>
+    <cylinder id="south-progress" base="-14.5,14,0.5" radius="7.5" height="1"/>
+    <cylinder id="south-capture" base="-14.5,14,0.5" radius="7.5" height="3"/>
+    <cylinder id="south-captured" base="-14.5,14,0.5" radius="7.5" height="23"/>
+    <cuboid id="north-jumppad-1" min="-16,17,-56" max="-13,18,-54"/>
+    <cuboid id="north-jumppad-2" min="-16,27,-57" max="-13,30,-54"/>
+    <cuboid id="south-jumppad-1" min="-16,17,-1" max="-13,18,1"/>
+    <cuboid id="south-jumppad-2" min="-16,27,-1" max="-13,30,2"/>
+    <!-- applicators -->
+    <apply velocity="0,3,0" region="north-jumppad-1" filter="north-point-filter"/>
+    <apply velocity="0,3,0" region="south-jumppad-1" filter="south-point-filter"/>
+    <apply velocity="0,0,1" region="north-jumppad-2" filter="north-point-filter"/>
+    <apply velocity="0,0,-1" region="south-jumppad-2" filter="south-point-filter"/>
+    <apply block="never" use="never"/>
+</regions>
+<king>
+    <hills required="false" capture-time="5s" points="1" time-multiplier="0" show-progress="true" neutral-state="true" incremental="true" permanent="false" visual-materials="visual-materials-filter">
+        <hill name="North" captured="north-captured" capture="north-capture" progress="north-progress" id="north-point"/>
+        <hill name="Middle" captured="middle-captured" capture="middle" progress="middle"/>
+        <hill name="South" captured="south-captured" capture="south-capture" progress="south-progress" id="south-point"/>
+    </hills>
+</king>
+<score>
+    <limit>750</limit>
+</score>
+</map>

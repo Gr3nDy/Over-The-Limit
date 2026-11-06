@@ -1,0 +1,93 @@
+<map proto="1.5.0">
+<name>Pipes and Punters</name>
+<version>1.6.2</version>
+<variant id="christmas" world="christmas" override="true">Penguins and Punters</variant>
+<variant id="halloween" world="halloween" override="true">Boo Pipes</variant>
+<objective>Score the flag in the enemy's pipe as many times as possible!</objective>
+<constants>
+    <constant id="team-1-spawn-yaw">180</constant>
+    <constant id="team-2-spawn-yaw">0</constant>
+    <constant id="enable-night-vision">true</constant>
+    <constant id="flag-post">0.5,17,0.5</constant>
+    <constant id="flag-color">white</constant>
+    <constant id="pickup-filter" delete="true"/>
+    <constant id="team-1-net-region">team-1-net</constant>
+    <constant id="team-2-net-region">team-2-net</constant>
+    <constant id="team-1-net-portal-filter">only-team-1</constant>
+    <constant id="team-2-net-portal-filter">only-team-2</constant>
+    <constant id="team-size">5</constant>
+    <constant id="max-overfill" delete="true"/>
+    <constant id="respawn-timer">3.5s</constant>
+</constants>
+<include id="ffb"/>
+<authors>
+    <author uuid="6863869b-4b8c-4445-b778-a8e016775ae4"/> <!-- Cazadorian -->
+</authors>
+<if variant="default">
+    <created>2022-06-08</created>
+</if>
+<if variant="christmas">
+    <created>2022-11-24</created>
+</if>
+<if variant="halloween">
+    <created>2022-09-10</created>
+</if>
+<teams>
+    <unless variant="halloween">
+        <team id="team-1" color="blue" max="${team-size}" max-overfill="${max-overfill}">Blue</team>
+        <team id="team-2" color="dark red" max="${team-size}" max-overfill="${max-overfill}">Red</team>
+    </unless>
+    <if variant="halloween">
+        <team id="team-1" color="dark purple" max="${team-size}" max-overfill="${max-overfill}">Purple</team>
+        <team id="team-2" color="gold" max="${team-size}" max-overfill="${max-overfill}">Orange</team>
+    </if>
+</teams>
+<broadcasts>
+    <alert after="7m30s">If the match ends in a tie, the game will go to overtime!</alert>
+</broadcasts>
+<kits>
+    <kit id="map-spawn-kit" parent="default-kit">
+        <kit id="spawn-kit"/>
+        <kit id="knockback-reduction">
+            <knockback-reduction>1</knockback-reduction>
+        </kit>
+        <effect duration="4s" amplifier="5">damage resistance</effect>
+    </kit>
+    <take kit="knockback-reduction" filter="not(resistance-area)"/>
+</kits>
+<spawns>
+    <default kit="default-kit">
+        <region yaw="-90">
+            <point>0.5,60,0.5</point>
+        </region>
+    </default>
+    <spawn team="team-1" kit="map-spawn-kit" region="team-1-spawn-point" yaw="${team-1-spawn-yaw}"/>
+    <spawn team="team-2" kit="map-spawn-kit" region="team-2-spawn-point"/>
+</spawns>
+<regions>
+    <union id="spawn-points">
+        <point id="team-1-spawn-point">0.5,33,30.5</point>
+        <point id="team-2-spawn-point">0.5,33,-29.5</point>
+    </union>
+    <union id="sides">
+        <rectangle id="team-1-side" min="-30,-15" max="31,-71"/>
+        <rectangle id="team-2-side" min="-30,16" max="31,72"/>
+        <cuboid id="team-1-side-c" min="-29.5,10,-23.5" max="30.5,40,-43.5"/>
+        <cuboid id="team-2-side-c" min="30.5,10,24.5" max="-29.5,40,44.5"/>
+    </union>
+    <union id="nets">
+        <cylinder id="team-1-net" base="0.5,16,-51.5" radius="4" height="1"/>
+        <cylinder id="team-2-net" base="0.5,16,52.5" radius="4" height="1"/>
+        <cylinder id="team-1-net-exclusion" base="0.5,16,-51.5" radius="3.5" height="7"/>
+        <cylinder id="team-2-net-exclusion" base="0.5,16,52.5" radius="3.5" height="7"/>
+    </union>
+    <union id="resistance-area">
+        <circle id="team-1-coin" center="0.5,30.5" radius="6"/>
+        <circle id="team-2-coin" center="0.5,-29.5" radius="6"/>
+    </union>
+    <apply enter="only-team-1" region="team-1-net-exclusion" message="You may not enter your own pipe!"/>
+    <apply enter="only-team-2" region="team-2-net-exclusion" message="You may not enter your own pipe!"/>
+    <apply enter="deny(team-1-carrying-flag)" region="team-2-side-c" message="You cannot return to your side while holding the flag!"/>
+    <apply enter="deny(team-2-carrying-flag)" region="team-1-side-c" message="You cannot return to your side while holding the flag!"/>
+</regions>
+</map>

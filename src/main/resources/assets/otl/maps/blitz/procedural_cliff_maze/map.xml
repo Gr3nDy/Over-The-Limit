@@ -1,0 +1,314 @@
+<map proto="1.5.0">
+<name>Procedural: Cliff Maze</name>
+<version>3.0.2</version>
+<created>2023-09-05</created>
+<objective>Kill all player's on the enemy team to win!</objective>
+<include id="gapple-kill-reward"/>
+<authors>
+    <author uuid="cc2292de-fcb3-412d-9319-f3177f73b605"/> <!-- cs_ -->
+    <author uuid="2ca8072f-74be-4798-85b8-bbce03aa91af"/> <!-- Tywnis -->
+</authors>
+<broadcasts>
+    <tip after="5s">Check out /classes</tip>
+    <tip after="6s">Change class with /class "name"</tip>
+    <tip after="2m" count="5">Check out /classes</tip>
+    <tip after="2m" count="5">Change class with /class "name"</tip>
+</broadcasts>
+<teams>
+    <team id="blue-team" color="blue" max="12">Blue</team>
+    <team id="red-team" color="dark red" max="12">Red</team>
+</teams>
+<kits>
+    <kit id="spawn-kit">
+        <game-mode>adventure</game-mode>
+        <effect>night vision</effect>
+    </kit>
+</kits>
+<classes family="ghost" sticky="false">
+    <class name="Scion" default="true" description="All Rounder" longdescription="Jack of all Trades, and master of None!" icon="emerald">
+        <kit>
+            <item slot="0" material="stone sword" unbreakable="true"/>
+            <item slot="1" material="bow" unbreakable="true"/>
+            <item slot="2" material="golden apple"/>
+            <item slot="8" material="arrow" amount="16"/>
+            <effect ambient="true">damage resistance</effect>
+            <helmet team-color="true" unbreakable="true" material="leather helmet"/>
+            <chestplate team-color="true" unbreakable="true" material="leather chestplate"/>
+            <leggings team-color="true" unbreakable="true" enchantment="protection projectile:1" material="leather leggings"/>
+            <boots team-color="true" unbreakable="true" material="leather boots"/>
+        </kit>
+    </class>
+    <class name="Champion" default="false" description="Sharp and true" longdescription="Live by the Sword, and die by it!" icon="iron sword">
+        <kit>
+            <item slot="0" material="iron sword" unbreakable="true"/>
+            <item slot="1" material="golden apple"/>
+            <effect amplifier="-1">health boost</effect>
+            <effect ambient="true">damage resistance</effect>
+            <helmet team-color="true" unbreakable="true" material="leather helmet"/>
+            <chestplate team-color="true" unbreakable="true" material="leather chestplate"/>
+            <leggings material="gold leggings" enchantment="protection projectile:2" unbreakable="true"/>
+            <boots material="gold boots" unbreakable="true"/>
+        </kit>
+    </class>
+    <class name="Juggernaut" default="false" description="Sturdy and reliable" longdescription="Stalwart guardian of the scorebox" icon="iron helmet">
+        <kit>
+            <item slot="0" material="stone sword" unbreakable="true"/>
+            <item slot="1" amount="3" material="golden apple"/>
+            <effect>health boost</effect>
+            <effect amplifier="2" ambient="true">damage resistance</effect>
+            <effect amplifier="2" ambient="true">slow</effect>
+            <helmet unbreakable="true" material="iron helmet"/>
+            <chestplate team-color="true" unbreakable="true" material="leather chestplate"/>
+            <leggings unbreakable="true" enchantment="protection projectile:3" material="iron leggings"/>
+            <boots unbreakable="true" material="iron boots"/>
+        </kit>
+    </class>
+    <class name="Ranger" default="false" description="Agile and quick!" longdescription="A whistle, a feather, it's gone..." icon="bow">
+        <kit>
+            <item slot="0" enchantment="power" material="bow" unbreakable="true"/>
+            <item slot="1" amount="2" material="golden apple"/>
+            <item slot="8" material="arrow" amount="64"/>
+            <effect amplifier="-3">health boost</effect>
+            <effect ambient="true">damage resistance</effect>
+            <effect ambient="true">speed</effect>
+            <helmet team-color="true" unbreakable="true" material="leather helmet"/>
+            <chestplate team-color="true" unbreakable="true" material="leather chestplate"/>
+            <leggings material="chainmail leggings" enchantment="protection projectile:3" unbreakable="true"/>
+            <boots material="chainmail boots" unbreakable="true"/>
+        </kit>
+    </class>
+</classes>
+<spawns>
+    <default yaw="-90">
+        <region>
+            <point>2,32,2</point>
+        </region>
+    </default>
+    <spawn team="blue-team" kit="spawn-kit">
+        <region>
+            <cuboid min="24,2,-6" max="26,2,-4"/>
+        </region>
+    </spawn>
+    <spawn team="red-team" kit="spawn-kit" yaw="180">
+        <region>
+            <cuboid min="24,2,54" max="22,6,56"/>
+        </region>
+    </spawn>
+</spawns>
+<regions>
+    <apply block="not(participating)"/>
+    <apply block-physics="physics-filter"/>
+</regions>
+<time result="score" overtime="45s" max-overtime="3m15s">10m</time>
+<score>
+    <kills>3</kills> <!-- +5 points for every kill -->
+    <deaths>2</deaths> <!-- -2 points for accidentally dying -->
+</score>
+<blitz>
+    <lives>3</lives>
+    <broadcastLives>true</broadcastLives>
+</blitz>
+<respawn auto="true"/>
+<block-drops>
+    <rule punch="true">
+        <filter>
+            <material>gold block</material>
+        </filter>
+        <drops>
+            <item chance="0.03" material="golden apple"/>
+            <item chance="0.02" material="arrow"/>
+            <item chance="0.01" amount="1" material="potion" damage="16396" name="Gaz Grenade">
+                <effect duration="1m" amplifier="2">poison</effect>
+            </item>
+        </drops>
+    </rule>
+</block-drops>
+<actions>
+    <!-- Returns a random interior wall: the first half are vertical walls, the second half horizontal -->
+    <function id="randomInteriorWall" scope="match" locals="r">
+        <set var="r" value="floor(random() * INTERIOR_WALL_COUNT)"/>
+        <return filter="r=..19" value="floor(r / (GRID_SIZE - 1)) * V_STRIDE + (r % (GRID_SIZE - 1)) + 1"/>
+        <!-- Skip the top boundary row of horizontal walls -->
+        <return value="H_WALL_OFFSET + GRID_SIZE + r - INTERIOR_WALL_COUNT / 2"/>
+    </function>
+
+    <!-- Flood fills from cell 0, returning 1 if every cell is reachable -->
+    <function id="allReachable" scope="match">
+        <repeat times="CELL_COUNT" index="i">
+            <set var="reached" index="i" value="0"/>
+        </repeat>
+        <set var="reached" index="0" value="1"/>
+        <repeat times="CELL_COUNT - 1" locals="changed">
+            <repeat times="CELL_COUNT" index="i" locals="x,y,leftWall,rightWall,upWall,downWall">
+                <continue filter="reached[i]=1"/>
+                <set var="x" value="i % GRID_SIZE"/>
+                <set var="y" value="floor(i / GRID_SIZE)"/>
+                <set var="leftWall" value="y*V_STRIDE + x"/>
+                <set var="rightWall" value="leftWall + 1"/>
+                <set var="upWall" value="H_WALL_OFFSET + i"/>
+                <set var="downWall" value="upWall + GRID_SIZE"/>
+                <action filter="any(all(x=1.., walls[leftWall]=0, reached[i-1]=1), all(x=..3, walls[rightWall]=0, reached[i+1]=1), all(y=1.., walls[upWall]=0, reached[i-GRID_SIZE]=1), all(y=..3, walls[downWall]=0, reached[i+GRID_SIZE]=1))">
+                    <set var="reached" index="i" value="1"/>
+                    <set var="changed" value="1"/>
+                </action>
+            </repeat>
+            <!-- Nothing new was reached, so further passes won't change anything -->
+            <break filter="changed=0"/>
+        </repeat>
+        <repeat times="CELL_COUNT" index="i">
+            <return filter="reached[i]=0" value="0"/>
+        </repeat>
+        <return value="1"/>
+    </function>
+
+    <!-- Toggles a random interior wall, undoing it if any cell becomes unreachable -->
+    <function id="flipRandomWall" scope="match" locals="wall,reroll,connected">
+        <call function="randomInteriorWall" result="wall"/>
+        <!-- Favor removing walls: if the wall is up, pick again 61% of the time -->
+        <set var="reroll" value="walls[wall] * floor(random() + 0.61)"/>
+        <call filter="reroll=1" function="randomInteriorWall" result="wall"/>
+        <set var="walls" index="wall" value="1 - walls[wall]"/>
+        <call function="allReachable" result="connected"/>
+        <action filter="connected=0">
+            <set var="walls" index="wall" value="1 - walls[wall]"/>
+        </action>
+    </function>
+
+    <action id="generateMaze" scope="match">
+        <!-- Boundary walls, leaving the middle open at each end for the spawns -->
+        <repeat times="GRID_SIZE" index="y">
+            <set var="walls" index="y * V_STRIDE" value="1"/>
+            <set var="walls" index="y * V_STRIDE + GRID_SIZE" value="1"/>
+        </repeat>
+        <repeat times="GRID_SIZE" index="x">
+            <continue filter="x=2"/>
+            <set var="walls" index="H_WALL_OFFSET + x" value="1"/>
+            <set var="walls" index="H_WALL_OFFSET + CELL_COUNT + x" value="1"/>
+        </repeat>
+        <repeat times="200">
+            <call function="flipRandomWall"/>
+        </repeat>
+    </action>
+
+    <action id="pasteMaze" scope="match">
+        <repeat times="CELL_COUNT" index="i" locals="x,y,worldX,worldZ,leftWall,rightWall,upWall,downWall,wallConfig">
+            <set var="x" value="i % GRID_SIZE"/>
+            <set var="y" value="floor(i / GRID_SIZE)"/>
+            <set var="worldX" value="x * CELL_SIZE + WORLD_OFFSET"/>
+            <set var="worldZ" value="y * CELL_SIZE + WORLD_OFFSET"/>
+            <set var="leftWall" value="y*V_STRIDE + x"/>
+            <set var="rightWall" value="leftWall + 1"/>
+            <set var="upWall" value="H_WALL_OFFSET + i"/>
+            <set var="downWall" value="upWall + GRID_SIZE"/>
+            <set var="wallConfig" value="walls[rightWall] + walls[downWall] * 2 + walls[leftWall] * 4 + walls[upWall] * 8"/>
+            <action filter="wallConfig=0"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-0" update="false"/></action>
+            <action filter="wallConfig=1"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-1" update="false"/></action>
+            <action filter="wallConfig=2"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-2" update="false"/></action>
+            <action filter="wallConfig=3"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-3" update="false"/></action>
+            <action filter="wallConfig=4"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-4" update="false"/></action>
+            <action filter="wallConfig=5"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-5" update="false"/></action>
+            <action filter="wallConfig=6"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-6" update="false"/></action>
+            <action filter="wallConfig=7"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-7" update="false"/></action>
+            <action filter="wallConfig=8"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-8" update="false"/></action>
+            <action filter="wallConfig=9"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-9" update="false"/></action>
+            <action filter="wallConfig=10"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-10" update="false"/></action>
+            <action filter="wallConfig=11"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-11" update="false"/></action>
+            <action filter="wallConfig=12"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-12" update="false"/></action>
+            <action filter="wallConfig=13"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-13" update="false"/></action>
+            <action filter="wallConfig=14"><paste-structure x="worldX" y="1" z="worldZ" structure="structure-14" update="false"/></action>
+        </repeat>
+    </action>
+    <trigger filter="always" action="generateMaze" scope="match"/>
+    <trigger filter="structure-filter" action="pasteMaze" scope="match"/>
+</actions>
+<filters>
+    <after id="physics-filter" duration="5s">
+        <match-started id="structure-filter"/>
+    </after>
+</filters>
+<variables>
+    <variable id="GRID_SIZE" scope="match" default="5"/>
+    <variable id="CELL_COUNT" scope="match" default="25"/>
+    <variable id="H_WALL_OFFSET" scope="match" default="30"/>
+    <variable id="V_STRIDE" scope="match" default="6"/>
+    <variable id="INTERIOR_WALL_COUNT" scope="match" default="40"/>
+    <variable id="CELL_SIZE" scope="match" default="10"/>
+    <variable id="WORLD_OFFSET" scope="match" default="1"/>
+    <array id="walls" scope="match" size="60"/>
+    <array id="reached" scope="match" size="25"/>
+</variables>
+<structures>
+    <!-- Structure ids match wallConfig: RIGHT=1, DOWN=2, LEFT=4, UP=8 -->
+    <!-- No walls -->
+    <structure air="true" clear="false" id="structure-0"><region><cuboid min="25,0,200" size="10,20,10"/></region></structure>
+    <!-- RIGHT -->
+    <structure air="true" clear="false" id="structure-1"><region><cuboid min="13,0,224" size="10,20,10"/></region></structure>
+    <!-- DOWN -->
+    <structure air="true" clear="false" id="structure-2"><region><cuboid min="13,0,236" size="10,20,10"/></region></structure>
+    <!-- RIGHT+DOWN -->
+    <structure air="true" clear="false" id="structure-3"><region><cuboid min="37,0,236" size="10,20,10"/></region></structure>
+    <!-- LEFT -->
+    <structure air="true" clear="false" id="structure-4"><region><cuboid min="13,0,200" size="10,20,10"/></region></structure>
+    <!-- RIGHT+LEFT -->
+    <structure air="true" clear="false" id="structure-5"><region><cuboid min="1,0,212" size="10,20,10"/></region></structure>
+    <!-- LEFT+DOWN -->
+    <structure air="true" clear="false" id="structure-6"><region><cuboid min="1,0,236" size="10,20,10"/></region></structure>
+    <!-- RIGHT+DOWN+LEFT -->
+    <structure air="true" clear="false" id="structure-7"><region><cuboid min="25,0,212" size="10,20,10"/></region></structure>
+    <!-- UP -->
+    <structure air="true" clear="false" id="structure-8"><region><cuboid min="13,0,212" size="10,20,10"/></region></structure>
+    <!-- RIGHT+UP -->
+    <structure air="true" clear="false" id="structure-9"><region><cuboid min="37,0,200" size="10,20,10"/></region></structure>
+    <!-- DOWN+UP -->
+    <structure air="true" clear="false" id="structure-10"><region><cuboid min="1,0,224" size="10,20,10"/></region></structure>
+    <!-- RIGHT+DOWN+UP -->
+    <structure air="true" clear="false" id="structure-11"><region><cuboid min="37,0,224" size="10,20,10"/></region></structure>
+    <!-- LEFT+UP -->
+    <structure air="true" clear="false" id="structure-12"><region><cuboid min="1,0,200" size="10,20,10"/></region></structure>
+    <!-- RIGHT+LEFT+UP -->
+    <structure air="true" clear="false" id="structure-13"><region><cuboid min="37,0,212" size="10,20,10"/></region></structure>
+    <!-- LEFT+DOWN+UP -->
+    <structure air="true" clear="false" id="structure-14"><region><cuboid min="25,0,224" size="10,20,10"/></region></structure>
+</structures>
+<toolrepair>
+    <tool>stone sword</tool>
+    <tool>bow</tool>
+</toolrepair>
+<itemremove>
+    <item>leather helmet</item>
+    <item>leather chestplate</item>
+    <item>leather leggings</item>
+    <item>leather boots</item>
+    <item>chainmail helmet</item>
+    <item>chainmail chestplate</item>
+    <item>chainmail leggings</item>
+    <item>chainmail boots</item>
+    <item>iron helmet</item>
+    <item>iron chestplate</item>
+    <item>iron leggings</item>
+    <item>iron boots</item>
+    <item>gold helmet</item>
+    <item>gold chestplate</item>
+    <item>gold leggings</item>
+    <item>gold boots</item>
+    <item>diamond helmet</item>
+    <item>diamond chestplate</item>
+    <item>diamond leggings</item>
+    <item>diamond boots</item>
+    <item>bow</item>
+    <item>stone sword</item>
+    <item>iron sword</item>
+</itemremove>
+<kill-rewards>
+    <kill-reward>
+        <item material="arrow" amount="3"/>
+    </kill-reward>
+</kill-rewards>
+<disabledamage>
+    <damage>fall</damage>
+</disabledamage>
+<hunger>
+    <depletion>off</depletion>
+</hunger>
+<timelock>on</timelock>
+</map>

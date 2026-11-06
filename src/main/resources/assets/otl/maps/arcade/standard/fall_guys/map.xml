@@ -1,0 +1,165 @@
+<map proto="1.5.0">
+<game>Progress</game>
+<name>Fall Guys</name>
+<version>1.0.8</version>
+<created>2022-08-08</created>
+<objective>Be the first to finish the parkour!</objective>
+<authors>
+    <author uuid="e4cfa2d5-6b11-4e15-a893-9d92f18385f3"/> <!-- mariogoat -->
+    <author uuid="4ed45d5d-bdc3-4f1a-9201-014e06019618"/> <!-- Trionaf -->
+</authors>
+<contributors>
+    <contributor uuid="63ddf58a-ba2c-4d39-8481-6358bb46c63a" contribution="XML"/> <!-- samschaap -->
+</contributors>
+<broadcasts>
+    <alert after="0s">The game will start in 10 seconds, get ready!</alert>
+    <tip after="20s" every="3m">There are various checkpoints around the map (gold blocks), make sure to pass them!</tip>
+    <tip after="22s" every="3m">When you die, you will respawn at the previous checkpoint!</tip>
+</broadcasts>
+<players max="50" colors="true"/>
+<respawn auto="true"/>
+<spawns>
+    <spawn filter="score-0" kit="runner-kit">
+        <region>
+            <point>-0.5,1,-22.5</point>
+        </region>
+    </spawn>
+    <spawn yaw="-180" filter="score-1" region="checkpoint-1" kit="runner-kit"/>
+    <spawn yaw="180" filter="score-2" region="checkpoint-2" kit="runner-kit"/>
+    <spawn filter="score-3" region="checkpoint-3" kit="runner-kit"/>
+    <spawn filter="score-4" region="checkpoint-4" kit="runner-kit"/>
+    <default kit="night-vision-kit" yaw="90">
+        <region>
+            <cylinder base="-39.5,60,57.5" radius="3" height="0"/>
+        </region>
+    </default>
+</spawns>
+<kits>
+    <kit id="runner-kit" parents="night-vision-kit">
+        <boots material="leather boots" team-color="true" locked="true" unbreakable="true" name="`oRunner Boots"/>
+    </kit>
+    <kit id="night-vision-kit">
+        <effect>night vision</effect>
+    </kit>
+    <kit id="jump-boost-2-kit" force="true">
+        <effect amplifier="2">jump_boost</effect>
+    </kit>
+    <kit id="jump-boost-3-kit" force="true">
+        <effect amplifier="3">jump_boost</effect>
+    </kit>
+    <kit id="speed-kit" force="true">
+        <effect duration="5">speed</effect>
+    </kit>
+    <kit id="wither-kit" force="true">
+        <health>1</health>
+        <effect amplifier="255">wither</effect>
+    </kit>
+    <kit id="void-death-kit" force="true">
+        <health>1</health>
+    </kit>
+    <lend kit="jump-boost-2-kit" filter="jump-boost-2-region"/>
+    <lend kit="jump-boost-3-kit" filter="jump-boost-3-region"/>
+    <give kit="speed-kit" filter="speed-portals"/>
+</kits>
+<portals>
+    <portal y="-64" sound="false">
+        <region>
+            <below y="-5"/>
+        </region>
+    </portal>
+</portals>
+<regions>
+    <cuboid id="spawn-cage-exit" min="-13,1,-15" max="12,4,-11"/>
+    <cuboid id="checkpoint-1" min="52,29,109" max="50,30,107"/>
+    <cuboid id="checkpoint-2" min="65,30,27" max="67,31,29"/>
+    <cuboid id="checkpoint-3" min="119,35,37" max="121,36,39"/>
+    <cuboid id="checkpoint-4" min="11,38,127" max="9,39,129"/>
+    <cuboid id="finish" min="9,104,197" max="4,105,202"/>
+    <cuboid id="wither-region" min="112,41,64" max="111,42,77"/>
+    <cuboid id="jump-boost-2-region" min="66,21,111" max="43,44,65"/>
+    <cuboid id="jump-boost-3-region" min="23,19,150" max="26,20,153"/>
+    <union id="speed-portals">
+        <cuboid min="25,11,87" max="30,14,88"/>
+        <cuboid min="68,36,45" max="63,39,44"/>
+        <cuboid min="122,36,103" max="127,39,104"/>
+        <cuboid min="41,49,105" max="40,52,110"/>
+        <cuboid min="1,84,127" max="6,87,128"/>
+        <cuboid min="7,84,127" max="12,87,128"/>
+    </union>
+    <apply block="allow-some" use="deny-use"/>
+    <apply velocity="0,2.85,3.9">
+        <region>
+            <cuboid min="1,93,159" max="12,94,161"/>
+        </region>
+    </apply>
+    <apply kit="void-death-kit">
+        <region>
+            <below y="-5"/>
+        </region>
+    </apply>
+    <apply kit="wither-kit" region="wither-region"/>
+</regions>
+<filters>
+    <any id="allow-some">
+        <cause>world</cause>
+    </any>
+    <deny id="deny-use">
+        <any>
+            <material>dispenser</material>
+            <material>furnace</material>
+        </any>
+    </deny>
+    <material id="only-stained-glass">stained glass</material>
+    <score id="score-0">0</score>
+    <score id="score-1">1</score>
+    <score id="score-2">2</score>
+    <score id="score-3">3</score>
+    <score id="score-4">4</score>
+    <after id="after-10s" message="Spawn cage will open in {0}" duration="10s">
+        <match-started/>
+    </after>
+</filters>
+<actions>
+    <fill id="open-spawn-cage" region="spawn-cage-exit" material="air" filter="only-stained-glass"/>
+    <trigger filter="after-10s" action="open-spawn-cage" scope="match"/>
+    <!-- fill redstone dust -->
+    <trigger scope="match" filter="match-started">
+        <action>
+            <fill material="redstone wire" update="true">
+                <block>24.5,14,123.5</block>
+                <block>-5.5,20,138.5</block>
+                <block>60.5,34,55.5</block>
+                <block>82.5,31,2.5</block>
+                <block>117.5,38,65.5</block>
+                <block>25.5,42,139.5</block>
+                <block>29.5,42,137.5</block>
+                <block>35.5,39,137.5</block>
+                <block>31.5,39,139.5</block>
+                <block>34.5,39,115.5</block>
+                <block>10.5,62,138.5</block>
+                <block>7.5,62,138.5</block>
+                <block>7.5,84,142.5</block>
+            </fill>
+        </action>
+    </trigger>
+</actions>
+<score>
+    <limit>5</limit>
+    <box points="1" region="checkpoint-1" filter="score-0" silent="true"/>
+    <box points="1" region="checkpoint-2" filter="score-1" silent="true"/>
+    <box points="1" region="checkpoint-3" filter="score-2" silent="true"/>
+    <box points="1" region="checkpoint-4" filter="score-3" silent="true"/>
+    <box points="5" region="finish"/>
+</score>
+<disabledamage>
+    <damage>entity attack</damage>
+    <damage>fall</damage>
+</disabledamage>
+<itemremove>
+    <item>leather boots</item>
+    <item>arrow</item>
+</itemremove>
+<hunger>
+    <depletion>off</depletion>
+</hunger>
+</map>

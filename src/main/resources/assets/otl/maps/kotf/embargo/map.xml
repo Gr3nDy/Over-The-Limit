@@ -1,0 +1,96 @@
+<map proto="1.5.0">
+<name>Embargo</name>
+<version>1.1.2</version>
+<variant id="5v5">5v5</variant>
+<unless variant="5v5">
+    <include id="kotf"/>
+    <constant id="max">12</constant>
+    <constant id="max-overfill" delete="true"/>
+</unless>
+<if variant="5v5">
+    <include id="kotf-comp"/>
+    <constant id="max">5</constant>
+    <constant id="max-overfill">5</constant>
+    <constant id="respawn-timer">5s</constant>
+</if>
+<constant id="damage-resistance">4s</constant>
+<objective>Capture and hold the flag for ${score} seconds to win</objective>
+<!-- Map authors & contributors. -->
+<authors>
+    <author uuid="b03360db-b8cd-49de-8ba1-b7920c2238a9" contribution="Map author"/> <!-- Obelistics -->
+</authors>
+<contributors>
+    <contributor  uuid="dff980ed-9f69-491e-b79c-30c21350baf2" contribution="Feedback"/> <!-- DoomyBoy -->
+    <contributor  uuid="621b2aa8-4e5f-4ed8-bd36-0ae2f8952a06" contribution="Feedback"/> <!-- Strangey -->
+</contributors>
+<!-- Map modules, i.e. objectives, regions, spawns. -->
+<teams>
+    <team id="red-team" color="red" max="${max}" max-overfill="${max-overfill}">Red</team>
+    <team id="blue-team" color="blue" max="${max}" max-overfill="${max-overfill}">Blue</team>
+</teams>
+<kits>
+    <kit id="spawn-kit" parent="base-kit">
+        <action>
+            <replace-item>
+                <find unbreakable="true" material="iron boots"/>
+                <replace unbreakable="true" enchantment="feather_falling:2" material="iron boots"/>
+            </replace-item>
+        </action>
+    </kit>
+</kits>
+<spawns>
+    <default>
+        <region yaw="-90">
+            <block>-31.5,25,1.5</block>
+        </region>
+    </default>
+    <spawn team="red-team" kit="spawn-kit" filter="has-flag">
+        <region yaw="0">
+            <point>5,10,-41</point>
+        </region>
+    </spawn>
+    <spawn team="blue-team" kit="spawn-kit" filter="has-flag">
+        <region yaw="180">
+            <point>5,10,44</point>
+        </region>
+    </spawn>
+</spawns>
+<filters>
+    <any id="above-or-below-canyon">
+        <not>
+            <cuboid min="24,10,-1" max="29,13,4"/>
+        </not>
+    </any>
+    <any id="above-or-below-lava">
+        <not>
+            <cuboid min="-2,8,-1" max="3,12,4"/>
+        </not>
+    </any>
+</filters>
+<regions>
+    <cylinder id="gapple-trigger" base="0.5,16,1.5" radius="5" height="2"/>
+    <block id="gapple-spawner">0.5,17,1.5</block>
+    <apply block="never" use="never"/>
+</regions>
+<spawners>
+    <spawner spawn-region="gapple-spawner" player-region="gapple-trigger" delay="5s" max-entities="2">
+        <item amount="1" material="golden apple"/>
+    </spawner>
+</spawners>
+<flags>
+    <flag id="flag"
+          name="Flag"
+          color="purple"
+          shared="true"
+          points-rate="1"
+          pickup-kit="flag-kit"
+          drop-kit="reset-health"
+          flag-proximity-metric="none"
+          show-respawn-on-pickup="${announce-post-pickup}">
+        <post return-time="0s" respawn-time="${flag-respawn-timer}">
+            <post name="Canyon Post" yaw="90" pickup-filter="above-or-below-canyon">26.5,13,1.5</post>
+            <post name="Lava Post" yaw="-90" pickup-filter="above-or-below-lava">0.5,12,1.5</post>
+        </post>
+    </flag>
+</flags>
+</map>

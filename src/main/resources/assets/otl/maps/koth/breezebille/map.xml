@@ -1,0 +1,141 @@
+<map proto="1.5.1" min-server-version="1.21.11">
+<name>Breezebille</name> 
+<version>1.0.5</version>
+<created>2026-06-17</created>
+<objective>Be the first team to reach 2000 points!</objective>
+<include id="gapple-kill-reward"/>
+<authors>
+    <author uuid="ec5ec930-5cf3-4f8a-ad9f-09056aeed71b"/> <!-- Tundren -->
+    <author uuid="b2539be1-8f98-4375-b653-9d91cd04c30e"/> <!-- Mewzzy -->
+</authors>
+<contributors>
+    <contributor uuid="64e840c8-4fb5-4659-a36b-ff93e2f6113a" contribution="XML"/> <!-- Javg_ -->
+</contributors>
+<teams>
+    <team id="red" color="red" max="8">Red</team>
+    <team id="blue" color="blue" max="8">Blue</team>
+</teams>
+<kits>
+    <kit id="default-kit" force="true">
+        <game-mode>adventure</game-mode>
+        <item slot="0" material="iron sword" unbreakable="true" />
+        <item slot="1" material="bow" unbreakable="true" />
+        <item slot="2" material="golden apple" amount="2" />
+        <item slot="3" material="iron axe" unbreakable="true" />
+        <item slot="weapon.offhand" material="shield" unbreakable="true" />
+        <item slot="7" material="wind charge" amount="8" />
+        <item slot="8" material="mace" unbreakable="true">
+            <enchantment>wind burst</enchantment>
+            <enchantment>density</enchantment>
+        </item>
+        <item slot="28" material="arrow" amount="8" />
+        <helmet material="leather helmet" team-color="true" unbreakable="true" locked="true" />
+        <chestplate material="leather chestplate" team-color="true" unbreakable="true" locked="true" />
+        <leggings material="chainmail leggings" unbreakable="true" locked="true" />
+        <boots material="iron boots" unbreakable="true" locked="true" />
+    </kit>
+</kits>
+<spawns>
+    <default>
+        <region yaw="90">
+            <point>211.5,74,-198.5</point>
+        </region>
+    </default>
+    <spawn team="blue" kit="default-kit">
+        <region yaw="90">
+            <point>170.5,6,-198.5</point>
+        </region>
+    </spawn>
+    <spawn team="red" kit="default-kit">
+        <region yaw="-90">
+            <point>52.5,6,-198.5</point>
+        </region>
+    </spawn>
+</spawns>
+<filters>
+    <not id="prevent-pot">
+        <material>decorated pot</material>
+    </not>
+</filters>
+<regions>
+    <apply block="never" use="prevent-pot" />
+</regions>
+<score>
+    <limit>750</limit>
+</score>
+<control-points capture-time="10s" neutral-state="false" decay-rate="1" points="1">
+    <control-point name="North" required="false">
+        <capture>
+            <cylinder base="111.5,18,-264.5" radius="4.5" height="2" />
+        </capture>
+        <progress>
+            <cylinder base="111.5,17,-264.5" radius="4.5" height="1" />
+        </progress>
+        <captured>
+            <cuboid min="108,43,-263" max="115,54,-268" />
+        </captured>
+    </control-point>
+    <control-point name="South" required="false">
+        <capture>
+            <cylinder base="111.5,18,-132.5" radius="4.5" height="2" />
+        </capture>
+        <progress>
+            <cylinder base="111.5,17,-132.5" radius="4.5" height="1" />
+        </progress>
+        <captured>
+            <cuboid min="115,43,-134" max="108,54,-129" />
+        </captured>
+    </control-point>
+    <control-point name="Center" required="false">
+        <capture>
+            <cuboid min="106,19,-193" max="117,21,-204" />
+        </capture>
+        <progress>
+            <cuboid min="106,18,-193" max="117,19,-204" />
+        </progress>
+        <captured>
+            <cuboid min="119,18,-206" max="104,19,-191" />
+        </captured>
+    </control-point>
+</control-points>
+<kill-rewards>
+    <kill-reward>
+        <item material="arrow" amount="6" />
+        <item material="wind charge" amount="4" />
+    </kill-reward>
+</kill-rewards>
+<spawners>
+    <spawner delay="6s">
+        <item material="golden apple" />
+        <spawn-region>
+            <point>111.5,9.5,-198.5</point>
+        </spawn-region>
+        <player-region>
+            <cuboid min="106,9,-193" max="117,13,-204" />
+        </player-region>
+    </spawner>
+</spawners>
+<itemremove>
+    <item>leather helmet</item>
+    <item>leather chestplate</item>
+    <item>chainmail leggings</item>
+    <item>iron boots</item>
+    <item>wind charge</item>
+</itemremove>
+<itemkeep>
+    <item>shield</item>
+    <item>iron sword</item>
+    <item>bow</item>
+    <item>iron axe</item>
+    <item>mace</item>
+    <item>golden apple</item>
+</itemkeep>
+<damage>
+    <deny>
+        <cause>fall</cause>
+    </deny>
+</damage>
+<hunger>
+    <depletion>off</depletion>
+</hunger>
+</map>

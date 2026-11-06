@@ -1,0 +1,164 @@
+<map proto="1.5.0">
+<name>Yukoth</name>
+<version>2.0.2</version>
+<created>2015-08-04</created>
+<objective>Be the first team to reach 444 points.</objective>
+<authors>
+    <author uuid="2ca8072f-74be-4798-85b8-bbce03aa91af"/> <!-- Tywnis -->
+</authors>
+<rules>
+    <rule>Switching/exchanging classses or items within a class is illegal.</rule>
+</rules>
+<broadcasts>
+    <tip after="5s" every="2m">`fCheck out the other `b/classes`f!</tip>
+    <tip after="6s" every="2m">`fChoose a class with `b/class "name"`f.</tip>
+</broadcasts>
+<teams>
+    <team id="blue" color="blue" max="4">Blue</team>
+    <team id="red" color="dark red" max="4">Red</team>
+    <team id="green" color="dark green" max="4">Green</team>
+    <team id="purple" color="dark purple" max="4">Purple</team>
+</teams>
+<kits>
+    <kit id="spawn-kit">
+        <item slot="3" material="golden apple"/>
+        <chestplate team-color="true" material="leather chestplate"/>
+        <boots team-color="true" material="leather boots"/>
+        <effect duration="5">heal</effect>
+        <effect duration="5">damage resistance</effect>
+    </kit>
+</kits>
+<classes family="Yu" sticky="false">
+    <class name="Soldier" default="true" description="Lambda fighter" icon="iron sword">
+        <kit parents="spawn-kit">
+            <helmet name="Metal Helmet" locked="true" unbreakable="true" material="iron helmet"/>
+            <leggings name="Metal Pants" locked="true" unbreakable="true" material="iron leggings"/>
+            <item slot="0" name="Sword" prevent-sharing="true" unbreakable="true" material="iron sword"/>
+            <item slot="1" name="Health Potion" amount="3" damage="16421" prevent-sharing="true" material="potion"/>
+        </kit>
+    </class>
+    <class name="Archer" description="Shoot and dodge" icon="arrow">
+        <kit parents="spawn-kit">
+            <helmet name="Archer Hat" enchantment="protection projectile:2" locked="true" unbreakable="true" material="chainmail helmet"/>
+            <leggings name="Archer Leggings" locked="true" unbreakable="true" material="chainmail leggings"/>
+            <item slot="0" name="Dagger" prevent-sharing="true" unbreakable="true" material="stone sword"/>
+            <item slot="1" name="Bow" enchantment="arrow infinite;arrow damage:2" prevent-sharing="true" unbreakable="true" material="bow"/>
+            <item slot="28" name="arrow" prevent-sharing="true" material="arrow"/>
+            <effect>speed</effect>
+        </kit>
+    </class>
+    <class name="Grounder" description="Slow but strong" icon="diamond chestplate">
+        <kit parents="spawn-kit">
+            <helmet name="Grounding Plates" enchantment="protection:3" locked="true" unbreakable="true" material="diamond helmet"/>
+            <leggings name="Grounding Leggings" attributes="generic.knockbackResistance:add:0.50" locked="true" unbreakable="true" material="iron leggings"/>
+            <item slot="0" name="Large Sword" prevent-sharing="true" unbreakable="true" material="diamond sword"/>
+            <item slot="1" name="Pain Potion" amount="2" damage="16458" prevent-sharing="true" material="potion"/>
+            <item slot="2" name="Pain Potion" amount="2" damage="16458" prevent-sharing="true" material="potion"/>
+            <effect>slow</effect>
+            <effect>slow digging</effect>
+        </kit>
+    </class>
+    <class name="Messenger" description="Run and sting" icon="feather">
+        <kit parents="spawn-kit">
+            <helmet name="Winged Hat" enchantment="protection projectile:2" locked="true" unbreakable="true" material="iron helmet"/>
+            <leggings name="Winged Leggings" locked="true" unbreakable="true" material="chainmail leggings"/>
+            <item slot="0" name="Winged Knife" enchantment="knockback" prevent-sharing="true" unbreakable="true" material="stone sword"/>
+            <item slot="1" name="Illness Potion" amount="2" damage="16388" prevent-sharing="true" material="potion"/>
+            <effect amplifier="2">speed</effect>
+            <effect amplifier="2">jump</effect>
+        </kit>
+    </class>
+</classes>
+<spawns>
+    <spawn team="red" kit="spawn-kit" yaw="-135">
+        <region>
+            <cylinder base="1758,7,-817" height="0" radius="1"/>
+        </region>
+    </spawn>
+    <spawn team="blue" kit="spawn-kit" yaw="45">
+        <region>
+            <cylinder base="1829,7,-888" height="0" radius="1"/>
+        </region>
+    </spawn>
+    <spawn team="green" kit="spawn-kit" yaw="-45">
+        <region>
+            <cylinder base="1758,7,-888" height="0" radius="1"/>
+        </region>
+    </spawn>
+    <spawn team="purple" kit="spawn-kit" yaw="135">
+        <region>
+            <cylinder base="1829,7,-817" height="0" radius="1"/>
+        </region>
+    </spawn>
+    <default yaw="-90">
+        <region>
+            <cuboid min="1762,40,-884" max="1763,40,-883"/>
+        </region>
+    </default>
+</spawns>
+<regions>
+    <apply block="never"/>
+</regions>
+<score>
+    <limit>444</limit>
+</score>
+<king>
+    <hills required="false">
+        <hill name="Market Plaza" capture-time="4s" points="0.50">
+            <capture><cuboid min="1787,0,-859" max="1800,20,-846"/></capture>
+            <progress><cuboid min="1787,0,-859" max="1800,20,-846"/></progress>
+            <captured><cuboid min="1787,0,-859" max="1800,12,-846"/></captured>
+        </hill>
+        <hill name="Blue Roofs" capture-time="2s" points="0.25" initial-owner="blue">
+            <capture><cuboid min="1822,11,-860" max="1801,16,-881"/></capture>
+            <progress><cuboid min="1822,11,-860" max="1801,16,-881"/></progress>
+            <captured><cuboid min="1822,11,-860" max="1801,46,-881"/></captured>
+        </hill>
+        <hill name="Purple Roofs" capture-time="2s" points="0.25" initial-owner="purple">
+            <capture><cuboid min="1801,11,-824" max="1822,16,-845"/></capture>
+            <progress><cuboid min="1801,11,-824" max="1822,16,-845"/></progress>
+            <captured><cuboid min="1801,11,-824" max="1822,46,-845"/></captured>
+        </hill>
+        <hill name="Red Roofs" capture-time="2s" points="0.25" initial-owner="red">
+            <capture><cuboid min="1786,11,-824" max="1765,16,-845"/></capture>
+            <progress><cuboid min="1786,11,-824" max="1765,16,-845"/></progress>
+            <captured><cuboid min="1786,11,-824" max="1765,46,-845"/></captured>
+        </hill>
+        <hill name="Green Roofs" capture-time="2s" points="0.25" initial-owner="green">
+            <capture><cuboid min="1765,11,-860" max="1786,16,-881"/></capture>
+            <progress><cuboid min="1765,11,-860" max="1786,16,-881"/></progress>
+            <captured><cuboid min="1765,11,-860" max="1786,46,-881"/></captured>
+        </hill>
+    </hills>
+</king>
+<toolrepair>
+    <tool>iron sword</tool>
+    <tool>bow</tool>
+</toolrepair>
+<itemremove>
+    <item>stick</item>
+    <item>leather boots</item>
+    <item>leather chestplate</item>
+    <item>iron helmet</item>
+    <item>iron leggings</item>
+    <item>chainmail helmet</item>
+    <item>chainmail leggings</item>
+    <item>diamond helmet</item>
+    <item>diamond leggings</item>
+    <item>arrow</item>
+    <item>wood sword</item>
+    <item>stone sword</item>
+    <item>iron sword</item>
+    <item>bow</item>
+    <item>snow ball</item>
+    <item>diamond sword</item>
+    <item>potion</item>
+    <item>golden apple</item>
+    <item>glass bottle</item>
+    <item>web</item>
+    <item>string</item>
+</itemremove>
+<hunger>
+    <depletion>off</depletion>
+</hunger>
+</map>

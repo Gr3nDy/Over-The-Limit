@@ -1,0 +1,354 @@
+<map proto="1.5.1">
+<!-- #region meta -->
+<name>Watch Your Head</name>
+<!-- Commit ID: 13421bd44add7bf138c7ac461f3cf0e6e539c8c9 -->
+<!-- Full version (PGM does not implement the semver spec fully): 1.2.0-pre.3 -->
+<version>1.2.0</version>
+<created>2023-11-11</created>
+<objective>Be the first team to reach ${wyh:constants/max_points} points!</objective>
+<phase>staging</phase>
+<authors>
+    <author uuid="654a9fe7-c75c-4b45-91df-8d48c4a5e072"/> <!-- Flamiix -->
+</authors>
+<contributors>
+    <contributor uuid="4efaccb9-7535-4638-8907-47b47cf1af37" contribution="XML"/> <!-- TTtie -->
+</contributors>
+<teams>
+    <team id="wyh:teams/red" color="red" min="1" max="24">Red</team>
+    <team id="wyh:teams/blue" color="blue" min="1" max="24">Blue</team>
+</teams>
+<!-- #endregion meta -->
+<constants>
+    <constant id="wyh:constants/max_points">120</constant>
+    <!--
+        Enables an experimental hard mode with a shifted TNT moderator
+        layer at low offender counts. Dev-phases the map if enabled.
+    -->
+    <constant id="wyh:constants/experimental_hard_mode">false</constant>
+    <constant id="wyh:constants/hard_mode/height_shift">5</constant>
+    <constant id="wyh:constants/hard_mode/max_players">5</constant> <!-- player count <= this value triggers hard mode -->
+    <constant id="wyh:constants/hard_mode/trigger_after">5s</constant> <!-- the above condition must hold true for this duration for hard mode to trigger -->
+</constants>
+<variables>
+    <!--
+        Denotes the stage of the game.
+        0 - INITIAL - The first round where the initial fight begins.
+                      The team which wins gets to defend the point when
+                      switched to ATTACK_DEFENSE mode
+        1 - ATTACK_DEFENSE - The usual KOTH/CTP match
+    -->
+    <variable scope="match" id="wyh__game_stage" default="0"/>
+    <!--
+        Denotes if the current team is defending.
+        Boolean - 0 for false, 1 for true
+    -->
+    <variable scope="team" id="wyh__is_defending" default="0" exclusive="1"/>
+    <!--
+        Holds whether the teams are currently switching or not.
+        Functions as a lock to avoid team switching breakages
+        Boolean - 0 for false, 1 for true
+    -->
+    <variable scope="match" id="wyh__switching" default="0"/>
+    <!--
+        Holds whether the player already died,
+        so they cannot respawn until the teams switch.
+        Boolean - 0 for false, 1 for true. Defaults to 1 to
+        avoid the player count from increasing in the CTP stage.
+    -->
+    <variable scope="player" id="wyh__died" default="1"/>
+</variables>
+<respawn delay="0s" auto="true" spectate="true">
+    <message>
+        You will respawn once the teams switch.
+    </message>
+</respawn>
+<score>
+    <limit>${wyh:constants/max_points}</limit>
+</score>
+<regions>
+    <!-- #region region-definitions -->
+    <point id="wyh:regions/spawns/defenders">14.5,79.0,18.5</point>
+    <point id="wyh:regions/spawns/offenders">14.5,42.0,18.5</point>
+    <cuboid id="wyh:regions/anthill" min="-2,41,2" max="31,45,35"/>
+    <cuboid id="wyh:regions/defenders" min="-9,71,-5" max="38,82,42"/>
+    <union id="wyh:regions/tnt_moderators">
+        <cuboid id="wyh:regions/tnt_moderators/easy" min="-6,53,-3" max="33,54,39"/>
+        <translate id="wyh:regions/tnt_moderators/hard" offset="0,${wyh:constants/hard_mode/height_shift},0" region="wyh:regions/tnt_moderators/easy"/>
+    </union>
+    <!-- #endregion region-definitions -->
+    <apply block-physics="never" region="wyh:regions/tnt_moderators"/>
+    <apply leave="wyh__is_defending = 1" message="You may not leave the anthill!" region="wyh:regions/anthill"/>
+</regions>
+<spawns>
+    <spawn filter="all('wyh__game_stage = 0', wyh:teams/blue, not(wyh:filters/match_start_debounce))" kit="wyh:kits/stage_0">
+        <regions yaw="-45" pitch="0">
+            <point>0.5,42.0,4.5</point>
+        </regions>
+    </spawn>
+    <spawn filter="all('wyh__game_stage = 0', wyh:teams/red, not(wyh:filters/match_start_debounce))" kit="wyh:kits/stage_0">
+        <regions yaw="135" pitch="0">
+            <point>28.5,42.0,32.5</point>
+        </regions>
+    </spawn>
+    <spawn filter="all('wyh__game_stage = 1', 'wyh__is_defending = 1', any('wyh__died = 0', wyh:filters/dead_defenders))" kit="wyh:kits/defenders">
+        <regions yaw="0" pitch="0">
+            <region id="wyh:regions/spawns/defenders"/>
+        </regions>
+    </spawn>
+    <spawn filter="all('wyh__game_stage = 1', 'wyh__is_defending = 0', 'wyh__died = 0')" kit="wyh:kits/offenders">
+        <regions yaw="0" pitch="0">
+            <region id="wyh:regions/spawns/offenders"/>
+        </regions>
+    </spawn>
+    <default>
+        <regions yaw="180" pitch="0">
+            <point>14.5,83.0,57.5</point>
+        </regions>
+    </default>
+</spawns>
+<control-points required="false" capture-time="0.05s" show-progress="true" neutral-state="false"
+    player-filter="all('wyh__game_stage = 1', 'wyh__is_defending = 0')" permanent="false">
+    <control-point capture="wyh:regions/anthill" captured="wyh:regions/anthill" name="The Anthill"/>
+</control-points>
+<kits>
+    <kit id="wyh:kits/base">
+        <clear/>
+        <effect duration="1s" amplifier="255">regeneration</effect>
+        <helmet material="leather helmet" team-color="true" locked="true" unbreakable="true"/>
+        <chestplate material="leather chestplate" team-color="true" locked="true" unbreakable="true"/>
+        <leggings material="chainmail leggings" locked="true" unbreakable="true">
+            <enchantment level="2">blast_protection</enchantment>
+        </leggings>
+        <boots material="leather boots" team-color="true" locked="true" unbreakable="true">
+            <enchantment level="1">feather_falling</enchantment>
+        </boots>
+        <max-health>20</max-health>
+        <game-mode>adventure</game-mode>
+    </kit>
+    <kit id="wyh:kits/defenders" parent="wyh:kits/base">
+        <item slot="0" material="explosive minecart" amount="64" prevent-sharing="true">
+            <can-place-on>
+                <item>rails</item>
+                <item>sandstone</item>
+            </can-place-on>
+        </item>
+        <item slot="1" material="explosive minecart" amount="64" prevent-sharing="true">
+            <can-place-on>
+                <item>rails</item>
+                <item>sandstone</item>
+            </can-place-on>
+        </item>
+        <item slot="2" material="explosive minecart" amount="64" prevent-sharing="true">
+            <can-place-on>
+                <item>rails</item>
+                <item>sandstone</item>
+            </can-place-on>
+        </item>
+        <item slot="3" material="explosive minecart" amount="64" prevent-sharing="true">
+            <can-place-on>
+                <item>rails</item>
+                <item>sandstone</item>
+            </can-place-on>
+        </item>
+        <item slot="4" material="explosive minecart" amount="64" prevent-sharing="true">
+            <can-place-on>
+                <item>rails</item>
+                <item>sandstone</item>
+            </can-place-on>
+        </item>
+        <item slot="5" material="explosive minecart" amount="64" prevent-sharing="true">
+            <can-place-on>
+                <item>rails</item>
+                <item>sandstone</item>
+            </can-place-on>
+        </item>
+        <item slot="6" material="explosive minecart" amount="64" prevent-sharing="true">
+            <can-place-on>
+                <item>rails</item>
+                <item>sandstone</item>
+            </can-place-on>
+        </item>
+        <item slot="7" material="explosive minecart" amount="64" prevent-sharing="true">
+            <can-place-on>
+                <item>rails</item>
+                <item>sandstone</item>
+            </can-place-on>
+        </item>
+        <item slot="8" material="explosive minecart" amount="64" prevent-sharing="true">
+            <can-place-on>
+                <item>rails</item>
+                <item>sandstone</item>
+            </can-place-on>
+        </item>
+    </kit>
+    <kit id="wyh:kits/offenders" parent="wyh:kits/base">
+        <item slot="8" material="potion" damage="16421" prevent-sharing="true"/>
+    </kit>
+    <kit id="wyh:kits/stage_0">
+        <helmet material="leather helmet" team-color="true" locked="true" unbreakable="true"/>
+        <max-health>4</max-health>
+        <game-mode>adventure</game-mode>
+    </kit>
+</kits>
+<portals observers="never" yaw="@0" pitch="@0">
+    <portal forward="all('wyh__game_stage = 1', 'wyh__is_defending = 0')" destination="wyh:regions/spawns/offenders"/>
+    <portal forward="all('wyh__game_stage = 1', 'wyh__is_defending = 1', not(wyh:regions/defenders))" destination="wyh:regions/spawns/defenders"/>
+</portals>
+<filters>
+    <entity id="wyh:filters/tnt_minecarts">minecart tnt</entity>
+    <all id="wyh:filters/dead_blue">
+        <filter id="wyh:filters/match_start_debounce"/>
+        <players min="0" max="0" filter="all(alive, wyh:teams/blue)"/>
+    </all>
+    <all id="wyh:filters/dead_red">
+        <filter id="wyh:filters/match_start_debounce"/>
+        <players min="0" max="0" filter="all(alive, wyh:teams/red)"/>
+    </all>
+    <all id="wyh:filters/dead_offenders">
+        <filter id="wyh:filters/match_start_debounce"/>
+        <players min="0" max="0" filter="all(alive, 'wyh__is_defending = 0')"/>
+    </all>
+    <all id="wyh:filters/dead_defenders">
+        <filter id="wyh:filters/match_start_debounce"/>
+        <players min="0" max="0" filter="all(alive, 'wyh__is_defending = 1')"/>
+    </all>
+    <!--
+        HACK: Waits for a bit before counting dead players as the
+              player count filter counts them only when the match
+              starts.
+    -->
+    <after id="wyh:filters/match_start_debounce" duration="0.5s" filter="match-running"/>
+</filters>
+<actions>
+    <action id="wyh:actions/sumo_announcement" scope="team">
+        <message text="It's time to `e`lfist fight`r!" title="Time to `e`lfist fight`r!" subtitle="Kill the enemies!"/>
+        <message text="Kill the players on the enemy team to control the point first!"/>
+    </action>
+    <!-- Call with the new defending team -->
+    <action id="wyh:actions/switch_teams" scope="team">
+        <action id="wyh__is_defending := 1"/>
+        <action id="wyh__switching := 1"/>
+        <switch-scope inner="match">
+            <switch-scope inner="team">
+                <message text="You're an {team}`r!" title="You're an {team}`r!" subtitle="{subtitle}">
+                    <replacements>
+                        <switch value="wyh__is_defending" id="team">
+                            <case match="0" result="`c`lant"/>
+                            <case match="1" result="`b`lanteater"/>
+                        </switch>
+                        <switch value="wyh__is_defending" id="subtitle">
+                            <case match="0" result="Watch out for TNT minecarts!"/>
+                            <case match="1" result="Blow up players under you!"/>
+                        </switch>
+                    </replacements>
+                </message>
+                <message text="{hint}">
+                    <replacements>
+                        <switch value="wyh__is_defending" id="hint">
+                            <case match="0" result="Watch out for TNT minecarts falling from the sky!"/>
+                            <case match="1" result="Blow up players under you to get a chance at holding the point!"/>
+                        </switch>
+                    </replacements>
+                </message>
+            </switch-scope>
+            <switch-scope inner="player">
+                <action filter="wyh__is_defending = 0"><kit id="wyh:kits/offenders"/></action>
+                <action filter="wyh__is_defending = 1"><kit id="wyh:kits/defenders"/></action>
+                <action id="wyh__died := 0"/>
+            </switch-scope>
+        </switch-scope>
+    </action>
+    <kill-entities id="wyh:actions/clear_tnt_minecarts" expose="true" filter="wyh:filters/tnt_minecarts"/>
+    <fill id="wyh:actions/tnt_moderator/place_easy" region="wyh:regions/tnt_moderators/easy" material="stationary water" update="false"/>
+    <fill id="wyh:actions/tnt_moderator/remove" expose="true" region="wyh:regions/tnt_moderators" material="air" update="false"/>
+    <action id="wyh:actions/tnt_moderator/replace_easy" expose="true" scope="match">
+        <if constant="wyh:constants/experimental_hard_mode" constant-value="true">
+            <message text="`b`l&#x2139;`9`o Hard mode disabled"/>
+        </if>
+        <action id="wyh:actions/tnt_moderator/remove"/>
+        <action id="wyh:actions/tnt_moderator/place_easy"/>
+    </action>
+    <action id="wyh:actions/respawn_defenders" expose="true" scope="match">
+        <switch-scope inner="team" filter="wyh__is_defending = 1">
+            <switch-scope inner="player">
+                <action id="wyh__died := 0"/>
+            </switch-scope>
+        </switch-scope>
+    </action>
+    <!-- #region triggers -->
+    <trigger filter="all('wyh__game_stage = 0', any(wyh:filters/dead_blue, wyh:filters/dead_red))" scope="match" action="wyh__game_stage := 1"/>
+    <trigger filter="all('wyh__game_stage = 1', wyh:filters/dead_offenders)" scope="match" action="wyh:actions/clear_tnt_minecarts"/>
+    <trigger filter="all(any(
+        all('wyh__game_stage = 0', any(
+            all(wyh:filters/dead_blue, wyh:teams/blue),
+            all(wyh:filters/dead_red, wyh:teams/red)
+        )),
+        all('wyh__game_stage = 1', wyh:filters/dead_offenders, 'wyh__is_defending = 0')
+    ), 'wyh__switching = 0')" scope="team" action="wyh:actions/switch_teams"/>
+    <trigger filter="dead" scope="player" action="wyh__died := 1"/>
+    <trigger filter="all('wyh__switching = 1', not(wyh:filters/dead_offenders))" scope="match" action="wyh__switching := 0"/>
+    <trigger filter="all('wyh__game_stage = 1', wyh:filters/dead_defenders)" scope="match" action="wyh:actions/respawn_defenders"/>
+    <trigger filter="match-running" scope="team" action="wyh:actions/sumo_announcement"/>
+    <unless constant="wyh:constants/experimental_hard_mode" constant-value="true">
+        <trigger filter="wyh__game_stage = 1" scope="match" action="wyh:actions/tnt_moderator/replace_easy"/>
+    </unless>
+    <!-- #endregion triggers -->
+</actions>
+<hunger>
+    <depletion>off</depletion>
+</hunger>
+<disabledamage>
+    <damage>fall</damage>
+</disabledamage>
+<damage>
+    <deny>
+        <all>
+            <filter id="wyh__is_defending = 1"/>
+            <cause>explosion</cause>
+        </all>
+    </deny>
+</damage>
+<itemremove>
+    <item>explosive minecart</item>
+    <item>potion</item>
+    <item>minecart</item>
+    <item>tnt</item>
+    <item>leather helmet</item>
+    <item>leather chestplate</item>
+    <item>chainmail leggings</item>
+    <item>leather boots</item>
+</itemremove>
+<!--
+    Note that TNT minecart power is hardcoded in the game code
+    and the only way to regulate the power is by regulating the
+    fall distance.
+-->
+<tnt>
+    <blockdamage>false</blockdamage>
+</tnt>
+<if constant="wyh:constants/experimental_hard_mode" constant-value="true">
+    <phase>development</phase>
+    <filters>
+        <players id="wyh:filters/hard_mode_trigger" lte="${wyh:constants/hard_mode/max_players}" filter="all(alive, 'wyh__is_defending = 0')"/>
+        <after id="wyh:filters/hard_mode_enable" duration="${wyh:constants/hard_mode/trigger_after}" message="`cHard mode`r enabled in {0}"
+            filter="all(wyh:filters/match_start_debounce, 'wyh__game_stage = 1', 'wyh__switching = 0', wyh:filters/hard_mode_trigger)"/>
+    </filters>
+    <actions>
+        <fill id="wyh:actions/tnt_moderator/place_hard" region="wyh:regions/tnt_moderators/hard" material="stationary water" update="false"/>
+        <!--
+            FIXME: mode transitions take 500+ms (measurement on my testing server + taken in prod OCC), most of which is spent relighting
+            the chunk after block placements. Async lighting on a testing server brings this down to a bit more bearable ~50ms but is off
+            by default. Maybe there's a way to make the relighting go in a single pass?
+        -->
+        <action id="wyh:actions/tnt_moderator/replace_hard" expose="true" scope="match">
+            <sound preset="alert"/>
+            <message text="`e⚠`l `c`lHARD MODE`e`l ENABLED" title="`e⚠ `c`lHARD MODE`e ⚠"/>
+            <message text="`6Watch out! The minecarts have been made stronger!"/>
+            <action id="wyh:actions/tnt_moderator/remove"/>
+            <action id="wyh:actions/tnt_moderator/place_hard"/>
+        </action>
+        <trigger filter="wyh:filters/hard_mode_enable" scope="match" action="wyh:actions/tnt_moderator/replace_hard"/>
+        <trigger filter="all(wyh:filters/match_start_debounce, 'wyh__game_stage = 1', not(wyh:filters/hard_mode_enable))" scope="match" action="wyh:actions/tnt_moderator/replace_easy"/>
+    </actions>
+</if>
+</map>

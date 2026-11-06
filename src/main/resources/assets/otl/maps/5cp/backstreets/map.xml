@@ -1,0 +1,65 @@
+<map proto="1.5.0">
+<name>Backstreets</name>
+<version>1.2</version>
+<variant id="5v5">5v5</variant>
+<objective>Capture all five control points.</objective>
+<constant id="team-1-name">Blue</constant>
+<constant id="team-2-name">Red</constant>
+<constant id="damage-resistance">3s</constant>
+<unless variant="5v5">
+    <constant id="team-size">13</constant>
+    <constant id="max-overfill" delete="true"/>
+    <constant id="respawn-timer">4s</constant>
+    <include id="conquest"/>
+</unless>
+<if variant="5v5">
+    <constant id="team-size">5</constant>
+    <constant id="max-overfill">5</constant>
+    <constant id="respawn-timer">6s</constant>
+    <include id="conquest-comp"/>
+</if>
+<include id="5cp"/>
+<authors>
+    <author uuid="2ca8072f-74be-4798-85b8-bbce03aa91af"/> <!-- Tywnis -->
+</authors>
+<teams>
+    <team id="team-1" color="blue" max="${team-size}" max-overfill="${max-overfill}">${team-1-name}</team>
+    <team id="team-2" color="dark red" max="${team-size}" max-overfill="${max-overfill}">${team-2-name}</team>
+</teams>
+<spawns>
+    <default>
+        <region yaw="90">
+            <point>-187.5,80,21.5</point>
+        </region>
+    </default>
+    <spawn team="team-1" kit="base-kit">
+        <region yaw="90">
+            <point>-144.5,39,-31.5</point>
+        </region>
+    </spawn>
+    <spawn team="team-2" kit="base-kit">
+        <region yaw="-90">
+            <point>-230.5,39,-31.5</point>
+        </region>
+    </spawn>
+</spawns>
+<regions>
+    <cuboid id="cp-team-1-last" min="-151,45,-35" size="7,4,7"/>
+    <cuboid id="cp-team-1-2nd" min="-191,32,-70" size="7,4,7"/>
+    <cuboid id="cp-mid" min="-191,36,-35" size="7,4,7"/>
+    <cuboid id="cp-team-2-2nd" min="-191,32,0" size="7,4,7"/>
+    <cuboid id="cp-team-2-last" min="-231,45,-35" size="7,4,7"/>
+    <apply block="never" use="never"/>
+</regions>
+<spawners>
+    <spawner max-entities="2" min-delay="3s" max-delay="10s">
+        <spawn-region>
+            <cuboid min="-188,29,-32" max="-187,30,-31"/>
+        </spawn-region>
+        <player-region>
+            <cuboid min="-189,29,-33" max="-186,30,-30"/>
+        </player-region>
+        <item material="golden apple"/>
+    </spawner>
+</spawners>
+</map>

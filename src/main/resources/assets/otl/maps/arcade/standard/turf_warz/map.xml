@@ -1,0 +1,168 @@
+<map proto="1.5.0">
+<name>Turf Warz</name>
+<variant id="christmas" world="christmas">Christmas</variant>
+<version>1.0.6</version>
+<phase>development</phase>
+<objective>Tug of war with your opponents as kills increase your playable territory.</objective>
+<authors>
+    <author uuid="75fd93dd-8e48-4698-81a2-97dae2ec5b5f"/> <!-- Pugzy -->
+    <author uuid="e82603df-417d-4a95-bd1f-1720648be0b4" contribution="XML Assistance"/> <!-- Pablete1234 -->
+</authors>
+<teams>
+    <team color="blue" min="1" max="100" id="blue-team">Blue</team>
+    <team color="dark red" min="1" max="100" id="red-team">Red</team>
+</teams>
+<kits>
+    <kit id="default-kit">
+        <item unbreakable="true" enchantment="sharpness:1">iron sword</item>
+        <item unbreakable="true" enchantment="power:1;sharpness:1">bow</item>
+        <item material="arrow" amount="8"/>
+        <item material="wool" team-color="true" amount="32"/>
+        <helmet locked="true" unbreakable="true" team-color="true">iron helmet</helmet>
+        <chestplate locked="true" unbreakable="true" team-color="true">leather chestplate</chestplate>
+        <leggings locked="true" unbreakable="true" team-color="true">leather leggings</leggings>
+        <boots locked="true" unbreakable="true">iron boots</boots>
+        <effect duration="3s" amplifier="255">damage resistance</effect>
+        <effect duration="2s" amplifier="1">speed</effect>
+    </kit>
+</kits>
+<spawns>
+    <spawn yaw="180" team="blue-team" kit="default-kit">
+        <region>
+            <cuboid min="-18,2,40" max="19,2,45"/>
+        </region>
+    </spawn>
+    <spawn yaw="0" team="red-team" kit="default-kit">
+        <region>
+            <cuboid min="19,2,-38" max="-18,5,-44"/>
+        </region>
+    </spawn>
+    <default yaw="-90">
+        <region>
+            <cylinder base="-31.5,26,0" height="0" radius="0.8"/>
+        </region>
+    </default>
+</spawns>
+<time>8m</time>
+<rage/>
+<maxbuildheight>7</maxbuildheight>
+<filters>
+    <material id="only-wool">wool</material>
+    <material id="only-clay">stained clay</material>
+    <!-- Filters for preventing empty team issues -->
+    <players id="red-team-has-players" filter="red-team"/>
+    <players id="blue-team-has-players" filter="blue-team"/>
+    <pulse id="empty-team-check" period="10s" duration="0.5s">
+        <!-- Change 'always' with 'never to disable/debug' -->
+        <after id="empty-team-countdown" duration="5s" filter="all(always, match-running, any(not(blue-team-has-players), not(red-team-has-players)))"/>
+    </pulse>
+    <!-- Restricted global build and enter zones -->
+    <apply block="never">
+        <region>
+            <negative>
+                <rectangle id="pitch-area" min="21,-32" max="-21,32"/>
+            </negative>
+        </region>
+    </apply>
+    <apply block-break="only-wool"/>
+    <apply enter="never">
+        <region>
+            <above y="10"/>
+        </region>
+    </apply>
+    <!-- Buildable zones for each team -->
+    <apply region="red_cuboid" block="red-team"/>
+    <apply region="blue_cuboid" block="blue-team"/>
+</filters>
+<variables>
+    <score id="team_score"/>
+    <with-team id="red_score" var="team_score" team="red-team"/>
+    <with-team id="blue_score" var="team_score" team="blue-team"/>
+    <variable id="point_multiplier" scope="match" default="1"/>
+    <!-- 0 = blue, 1 = red -->
+    <variable id="current_team" scope="match" default="-1"/>
+
+    <cuboid id="red_cuboid"   min="21,2,-32.0" max="-20,7, 0.0"/>
+    <cuboid id="blue_cuboid"  min="21,2,  0.0" max="-20,7,32.0"/>
+    <cuboid id="clear_cuboid" min="21,2,0" max="-20,8,1"/>
+    <cuboid id="floor_cuboid" min="21,1,0" max="-20,2,1"/>
+</variables>
+<modes show-before="10s">
+    <mode name="`l2x `dPoints" after="5m" action="increase-multiplier"/>
+    <mode name="`l3x `dPoints" after="6m" action="increase-multiplier"/>
+    <mode name="`l4x `dPoints" after="7m" action="increase-multiplier"/>
+</modes>
+<actions>
+    <!-- Modify team scores in correct direction and do world changes -->
+    <switch-scope id="player-gain-point" inner="team" outer="player">
+        <repeat id="team-gain-point" times="point_multiplier" scope="team">
+            <action filter="blue-team">
+                <set var="current_team" value="0"/>
+                <set var="red_score" value="max(0, red_score - 1)"/>
+                <set var="blue_score" value="blue_score + 1"/>
+            </action>
+            <action filter="red-team">
+                <set var="current_team" value="1"/>
+                <set var="blue_score" value="max(0, blue_score - 1)"/>
+                <set var="red_score" value="red_score + 1"/>
+            </action>
+            <action id="update-world"/>
+        </repeat>
+    </switch-scope>
+    <set id="increase-multiplier" scope="match" expose="true" var="point_multiplier" value="point_multiplier + 1"/>
+    <!-- Always sets the start score of both teams -->
+    <trigger filter="always" scope="team">
+        <action>
+            <set var="team_score" value="32"/>
+        </action>
+    </trigger>
+    <!-- Push team towards win with other is empty -->
+    <trigger filter="empty-team-check" action="test-empty-teams" scope="match"/>
+    <switch-scope id="test-empty-teams" filter="any(all(blue-team, not(red-team-has-players)), all(red-team, not(blue-team-has-players)))" inner="team" outer="match">
+        <action id="team-gain-point"/>
+    </switch-scope>
+    <trigger filter="empty-team-countdown" action="empty-team-countdown-started" scope="match"/>
+    <message id="empty-team-countdown-started" text="`e⚠ Empty team detected so match will automatically end shortly."/>
+    <!-- Update world by removing blocks above and changing floor -->
+    <switch-scope id="update-world" inner="match" outer="team">
+        <set var="floor_cuboid.min_z" value="red_score - 32 - current_team"/>
+        <set var="floor_cuboid.max_z" value="floor_cuboid.min_z + 1"/>
+        <set var="clear_cuboid.min_z" value="floor_cuboid.min_z"/>
+        <set var="clear_cuboid.max_z" value="floor_cuboid.max_z"/>
+
+        <set var="red_cuboid.max_z" value="red_score - 32"/>
+        <set var="blue_cuboid.min_z" value="red_score - 32"/>
+
+        <fill region="clear_cuboid" filter="only-wool" material="air"/>
+        <action filter="current_team=1">
+            <fill region="floor_cuboid" filter="only-clay" material="159:14"/>
+        </action>
+        <action filter="current_team=0">
+            <fill region="floor_cuboid" filter="only-clay" material="159:11"/>
+        </action>
+    </switch-scope>
+</actions>
+<score>
+    <limit>64</limit>
+</score>
+<hunger>
+    <depletion>off</depletion>
+</hunger>
+<kill-rewards>
+    <!-- Give rewards and modify team scores -->
+    <kill-reward action="player-gain-point">
+        <item team-color="true" amount="8">wool</item>
+        <item amount="2">arrow</item>
+    </kill-reward>
+</kill-rewards>
+<item-remove>
+    <item>iron sword</item>
+    <item>bow</item>
+    <item>arrow</item>
+    <item>wool</item>
+    <item>iron helmet</item>
+    <item>leather chestplate</item>
+    <item>leather leggings</item>
+    <item>iron boots</item>
+</item-remove>
+</map>

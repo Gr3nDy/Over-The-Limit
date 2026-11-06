@@ -1,0 +1,119 @@
+<map proto="1.5.0">
+<name>Le Sur-Mesure</name>
+<version>1.0</version>
+<objective>Capture the enemy's flag 3 times to win!</objective>
+<include id="gapple-kill-reward" />
+<authors>
+    <author uuid="6cba740a-cb74-4c9b-8881-c08e5bb34d87" /> <!-- NAZDT -->
+</authors>
+<broadcasts>
+    <alert after="8m" every="2m">If both teams' scores are tied after the timer reaches zero, the first team to capture a flag wins!</alert>
+</broadcasts>
+<teams>
+    <team id="red-team" color="red" max="12">Red</team>
+    <team id="blue-team" color="blue" max="12">Blue</team>
+</teams>
+<kits>
+    <kit id="spawn-kit">
+        <game-mode>adventure</game-mode>
+        <effect duration="3s" amplifier="255">resistance</effect>
+        <item slot="0" material="stone sword" unbreakable="true" />
+        <item slot="1" material="bow" unbreakable="true" />
+        <item slot="28" amount="24" material="arrow" />
+        <item slot="8" amount="32" material="golden carrot" />
+        <helmet team-color="true" unbreakable="true">leather helmet</helmet>
+        <chestplate team-color="true" unbreakable="true">leather chestplate</chestplate>
+        <leggings material="chainmail leggings" unbreakable="true" />
+        <boots material="chainmail boots" unbreakable="true" />
+    </kit>
+    <kit id="drop-kit" force="true">
+        <action id="remove-slow" />
+        <effect duration="0">slowness</effect>
+    </kit>
+    <kit id="flag-kit">
+        <action id="set-slow" />
+        <effect duration="oo">slowness</effect>
+    </kit>
+</kits>
+<spawns>
+    <spawn team="blue-team" kit="spawn-kit" yaw="180" region="blue-spawn" />
+    <spawn team="red-team" kit="spawn-kit" yaw="0" region="red-spawn" />
+    <default>
+        <region>
+            <cuboid min="2.7,10,-0.38" max="-1.7,10,1.38" />
+        </region>
+    </default>
+</spawns>
+<filters>
+    <team id="only-blue">blue-team</team>
+    <team id="only-red">red-team</team>
+</filters>
+<regions>
+    <cuboid id="blue-spawn" min="-29.5,1.5,48.5" max="-25.5,1.5,52.5" />
+    <cuboid id="red-spawn" min="25.5,1.5,-52.5" max="29.5,1.5,-48.5" />
+    <cuboid id="red-net" min="-24,10,-48" max="-17,11,-41" />
+    <!-- Red tower -->
+    <cuboid id="blue-net" min="18,10,42" max="25,11,49" />
+    <!-- Blue tower -->
+    <block id="gapple-spawner1">0.5,10.5,0.5 </block>
+    <block id="gapple-spawner2">0.5,2.5,0.5 </block>
+    <cylinder id="gap-region1" base="0.5,9.5,0.5" radius="2" height="2" />
+    <cylinder id="gap-region2" base="0.5,1.5,0.5" radius="2" height="2" />
+</regions>
+<flags flag-proximity-metric="none" net-proximity-metric="none" required="false">
+    <!-- Blue flag -->
+    <flag id="blue-flag" name="Blue Flag" color="blue" post="blue-flag-post" carry-message="You are carrying the flag, bring it to your tower!" pickup-kit="flag-kit" drop-kit="drop-kit" />
+    <post id="blue-flag-post" owner="blue-team" pickup-filter="only-red" respawn-time="3s" recover-time="15s">21.5,11,45.5</post>
+    <net post="blue-flag-post" points="1" region="red-net" capture-filter="only-red" flag="blue-flag" />
+    <!-- Red flag -->
+    <flag id="red-flag" name="Red Flag" color="red" post="red-flag-post" carry-message="You are carrying the flag, bring it to your tower!" pickup-kit="flag-kit" drop-kit="drop-kit" />
+    <post id="red-flag-post" owner="red-team" pickup-filter="only-blue" respawn-time="3s" recover-time="15s">-20.5,11,-44.5</post>
+    <net post="red-flag-post" points="1" region="blue-net" capture-filter="only-blue" flag="red-flag" />
+</flags>
+<score>
+    <limit>3</limit>
+</score>
+<time result="score" overtime="1s" max-overtime="2m">10m</time>
+<actions>
+    <action id="set-slow" scope="player">
+        <message text="`e⚠ `cYou have Slowness I while carrying the flag !" />
+    </action>
+    <action id="remove-slow" scope="player">
+        <message text="`e⚠ `aYour Slowness effect is gone !" />
+    </action>
+</actions>
+<spawners>
+    <spawner spawn-region="gapple-spawner1" player-region="gap-region1" delay="10s">
+        <item amount="1" material="golden apple" />
+    </spawner>
+    <spawner spawn-region="gapple-spawner2" player-region="gap-region2" delay="10s">
+        <item amount="1" material="golden apple" />
+    </spawner>
+</spawners>
+<toolrepair>
+    <tool>stone sword</tool>
+    <tool>bow</tool>
+    <tool>arrow</tool>
+</toolrepair>
+<itemkeep>
+    <item>stone sword</item>
+    <item>bow</item>
+    <item>arrow</item>
+    <item>golden apple</item>
+</itemkeep>
+<itemremove>
+    <item>leather helmet</item>
+    <item>leather chestplate</item>
+    <item>chainmail leggings</item>
+    <item>chainmail boots</item>
+</itemremove>
+<kill-rewards>
+    <kill-reward>
+        <item amount="12" material="arrow" />
+    </kill-reward>
+</kill-rewards>
+<respawn delay="3s" auto="true" />
+<hunger>
+    <depletion>on</depletion>
+</hunger>
+</map>

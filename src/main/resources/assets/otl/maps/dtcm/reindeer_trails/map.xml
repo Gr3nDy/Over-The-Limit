@@ -1,0 +1,133 @@
+<map proto="1.5.0">
+<name>Reindeer Trails</name>
+<version>1.0.2</version>
+<objective>Destroy the enemy team's obsidian monument!</objective>
+<created>2026-06-17</created>
+<constants>
+    <constant id="eff.team-1">pink-team</constant>
+    <constant id="eff.team-2">blue-team</constant>
+    <constant id="eff.t1-m1-region">blue-monument</constant>
+    <constant id="eff.t2-m1-region">pink-monument</constant>
+    <constant id="eff.modes-preset">every-10m</constant>
+</constants>
+<include id="efficiency-variables"/>
+<include id="gapple-kill-reward"/>
+<authors>
+    <author uuid="644521d7-9437-47c1-b1d2-698eb757df3d"/> <!-- minuyo -->
+</authors>
+<contributors>
+    <contributor uuid="63ddf58a-ba2c-4d39-8481-6358bb46c63a" contribution="xml"/> <!-- samschaap -->
+</contributors>
+<teams>
+    <team id="pink-team" color="light purple" max="12">Pink</team>
+    <team id="blue-team" color="blue" max="12">Blue</team>
+</teams>
+<kits>
+    <kit id="spawn-kit">
+        <clear/>
+        <item slot="0" unbreakable="true" material="stone sword"/>
+        <item slot="1" unbreakable="true" material="bow"/>
+        <item slot="28" material="arrow" amount="24"/>
+        <item slot="2" unbreakable="true" material="diamond pickaxe"/>
+        <item slot="3" unbreakable="true" material="iron axe"/>
+        <item slot="30" unbreakable="true" material="iron spade"/>
+        <item slot="4" amount="64" damage="1" material="wood"/>
+        <item slot="5" amount="64" damage="1" material="wood"/>
+        <item slot="6" unbreakable="true" material="shears"/>
+        <item slot="7" amount="8" material="torch"/>
+        <item slot="8" material="golden apple"/>
+        <effect duration="3s" amplifier="255">damage resistance</effect>
+    </kit>
+    <kit id="pink-kit" parents="spawn-kit">
+        <helmet unbreakable="true" color="ff72bf" material="leather helmet"/>
+        <chestplate unbreakable="true" color="ff72bf" material="leather chestplate"/>
+    </kit>
+    <kit id="blue-kit" parents="spawn-kit">
+        <helmet unbreakable="true" color="66b2ff" material="leather helmet"/>
+        <chestplate unbreakable="true" color="66b2ff" material="leather chestplate"/>
+    </kit>
+</kits>
+<spawns>
+    <default yaw="-90">
+        <region>
+            <point>-59.4,100,0.5</point>
+        </region>
+    </default>
+    <spawn team="pink-team" kit="pink-kit" yaw="90">
+        <region>
+            <point>23.5,17,-49.5</point>
+        </region>
+    </spawn>
+    <spawn team="blue-team" kit="blue-kit" yaw="-90">
+        <region>
+            <point>-22.5,17,50.5</point>
+        </region>
+    </spawn>
+</spawns>
+<filters>
+    <all id="only-gold-renew">
+        <material id="only-gold">gold block</material>
+        <cause>world</cause>
+    </all>
+    <deny id="deny-some-world">
+        <all>
+            <cause>world</cause>
+            <entity>armor stand</entity>
+        </all>
+    </deny>
+</filters>
+<regions>
+    <union id="spawns">
+        <cuboid id="pink-spawn" min="13,14,-42" max="25,oo,-55"/>
+        <cuboid id="blue-spawn" min="-12,14,43" max="-24,oo,56"/>
+    </union>
+    <cuboid id="pink-monument" min="-14,20,-59" max="-15,22,-60"/>
+    <cuboid id="blue-monument" min="15,20,60" max="16,22,61"/>
+    <union id="around-monuments">
+        <resize min="5,6,5" max="5,4,5" region="pink-monument"/>
+        <resize min="5,6,5" max="5,4,5" region="blue-monument"/>
+    </union>
+    <apply block="deny-some-world" region="around-monuments"/>
+    <apply block-break="only-gold" block-place="only-gold-renew" region="spawns" message="You may not modify the spawn area!"/>
+    <apply enter="pink-team" region="pink-spawn" message="You may not enter the enemy team's spawn!"/>
+    <apply enter="blue-team" region="blue-spawn" message="You may not enter the enemy team's spawn!"/>
+    <apply block="deny(void)" message="You may not modify the void area!"/>
+</regions>
+<destroyables name="Monument" material="obsidian" mode-changes="true">
+    <destroyable owner="pink-team" region="pink-monument"/>
+    <destroyable owner="blue-team" region="blue-monument"/>
+</destroyables>
+<renewables>
+    <renewable region="spawns" renew-filter="only-gold"/>
+</renewables>
+<toolrepair>
+    <tool>stone sword</tool>
+    <tool>bow</tool>
+    <tool>diamond pickaxe</tool>
+    <tool>shears</tool>
+    <tool>iron axe</tool>
+    <tool>iron spade</tool>
+</toolrepair>
+<itemremove>
+    <item>leather helmet</item>
+    <item>leather chestplate</item>
+    <item>obsidian</item>
+    <item>flint</item>
+</itemremove>
+<itemkeep>
+    <item>arrow</item>
+    <item>wood</item>
+    <item>torch</item>
+    <item>golden apple</item>
+</itemkeep>
+<kill-rewards>
+    <kill-reward>
+        <item amount="8" material="arrow"/>
+        <item amount="16" damage="1" material="wood"/>
+    </kill-reward>
+</kill-rewards>
+<maxbuildheight>30</maxbuildheight>
+<hunger>
+    <depletion>off</depletion>
+</hunger>
+</map>

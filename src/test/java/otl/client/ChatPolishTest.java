@@ -11,9 +11,9 @@ public class ChatPolishTest {
         assertTrue(ChatWarnings.privateMessage("Player Alex not found."));assertTrue(ChatWarnings.privateMessage("You cannot message yourself."));
         assertFalse(ChatWarnings.privateMessage("Alex: Player Steve not found."));assertFalse(ChatWarnings.privateMessage("Server restarting"));
     }
-    @Test public void teamJoinIsExactServerMessage(){
-        assertEquals("Blue Team",TeamBubbleRules.joined("\u00a77You Joined \u00a79Blue Team"));assertEquals("Red",TeamBubbleRules.joined("You joined Red."));
-        assertNull(TeamBubbleRules.joined("Alex: You Joined Blue"));assertNull(TeamBubbleRules.joined("You left Blue"));
+    @Test public void teamJoinsDoNotCreateBubbles(){
+        assertNull(TeamBubbleRules.chat("\u00a77You joined \u00a79Blue Team"));
+        assertNull(TeamBubbleRules.chat("You joined Observers."));
     }
     @Test public void teamPrefixAndBodyAreSeparate(){
         assertEquals("Blue Team",ChatRules.groupTeam("(Blue Team) Alex: hello"));assertEquals("hello",ChatRules.groupBody("(Blue Team) Alex: hello"));assertNull(ChatRules.groupTeam("\u00a7e(Party) Alex: hello"));

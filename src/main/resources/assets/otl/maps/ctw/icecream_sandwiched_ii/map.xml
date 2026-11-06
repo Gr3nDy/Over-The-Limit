@@ -1,0 +1,235 @@
+<map proto="1.5.0">
+<name>Icecream Sandwiched II</name>
+<version>1.1.6</version>
+<objective>Capture both of the enemy team's wools!</objective>
+<created>2022-08-26</created>
+<include id="gapple-kill-reward"/>
+<authors>
+    <author uuid="6863869b-4b8c-4445-b778-a8e016775ae4" contribution="Layout, theming, XML"/> <!-- Cazadorian -->
+    <author uuid="97d1cc45-0f69-482b-9974-09351aef9dfa" contribution="Layout, aesthetics"/> <!-- Lunaceee -->
+    <author uuid="ec5ec930-5cf3-4f8a-ad9f-09056aeed71b" contribution="Layout, aesthetics"/> <!--Tundren-->
+</authors>
+<teams>
+    <team id="blue" color="blue" max="24">Blue</team>
+    <team id="red" color="dark red" max="24">Red</team>
+</teams>
+<kits>
+    <kit id="spawn-kit">
+        <clear/>
+        <item slot="0" unbreakable="true" material="iron sword"/>
+        <item slot="1" unbreakable="true" material="bow" enchantment="infinity"/>
+        <item slot="2" unbreakable="true" material="iron pickaxe" enchantment="dig speed"/>
+        <item slot="3" material="iron axe" unbreakable="true">
+            <enchantment level="2">dig_speed</enchantment>
+        </item>
+        <item slot="4" unbreakable="true" material="stone spade"/>
+        <item slot="5" amount="64" damage="2" material="wood"/>
+        <item slot="6" amount="32" material="glass"/>
+        <item slot="7" material="golden apple"/>
+        <item slot="8" material="bucket"/>
+        <item slot="28" material="arrow"/>
+        <effect duration="4" amplifier="255">damage resistance</effect>
+        <helmet unbreakable="true" team-color="true" material="leather helmet"/>
+        <chestplate unbreakable="true" team-color="true" material="leather chestplate" enchantment="protection projectile:2"/>
+        <leggings material="chainmail leggings" unbreakable="true"/>
+        <boots material="leather boots" team-color="true" unbreakable="true"/>
+    </kit>
+</kits>
+<spawns>
+    <default yaw="180">
+        <regions>
+            <point>0.5,53,0.5</point>
+        </regions>
+    </default>
+    <spawn team="red" kit="spawn-kit" yaw="90">
+        <regions>
+            <point>140.5,12,0.5</point>
+        </regions>
+    </spawn>
+    <spawn team="blue" kit="spawn-kit" yaw="-90">
+        <regions>
+            <point>-139.5,12,0.5</point>
+        </regions>
+    </spawn>
+</spawns>
+<wools craftable="false">
+    <wool team="blue" color="orange" location="65.5,10,-53.5">
+        <monument>
+            <block>-133,13,-2</block>
+        </monument>
+    </wool>
+    <wool team="blue" color="yellow" location="65.5,10,54.5">
+        <monument>
+            <block>-133,13,2</block>
+        </monument>
+    </wool>
+    <wool team="red" color="lime" location="-64.5,10,-53.5">
+        <monument>
+            <block>133,13,-2</block>
+        </monument>
+   </wool>
+    <wool team="red" color="cyan" location="-64.5,10,54.5">
+        <monument>
+            <block>133,13,2</block>
+        </monument>
+   </wool>
+</wools>
+<filters>
+    <all id="blue-in-wr">
+        <team id="only-blue">blue</team>
+        <filter id="wr-filter"/>
+    </all>
+    <all id="red-in-wr">
+        <team id="only-red">red</team>
+        <filter id="wr-filter"/>
+    </all>
+    <not id="wr-filter">
+        <material>chest</material>
+    </not>
+    <deny id="deny-players">
+        <participating/>
+    </deny>
+    <material id="only-iron">iron block</material>
+    <material id="only-air">air</material>
+    <any id="water-lane-building">
+        <after id="add-water-lane" duration="30s" message="`eWater lanes will be added in {0}">
+            <time>25m</time>
+        </after>
+        <not>
+            <void/>
+        </not>
+    </any>
+</filters>
+<regions>
+    <union id="spawn-protection">
+        <rectangle id="blue-prot" min="-130,-7" max="-145,8"/>
+        <rectangle id="red-prot" min="131,-7" max="146,8"/>
+    </union>
+    <union id="wool-rooms">
+        <union id="blue-wool-rooms">  <!-- blue defends -->
+            <rectangle id="lime-wool-room" min="-79,-47" max="-61,-60"/>
+            <rectangle id="cyan-room" min="-79,48" max="-60,61"/>
+        </union>
+        <union id="red-wool-rooms">  <!-- red defends -->
+            <rectangle id="orange-wool-room" min="61,-47" max="80,-60"/>
+            <rectangle id="yellow-wool-room" min="61,48" max="80,61"/>
+        </union>
+    </union>
+    <union id="gap-spawner">
+        <cuboid id="gap-spawner-prot" min="1,11,1" max="0,9,0"/>
+        <point id="gap-spawner-point">0.5,10,0.5</point>
+        <cylinder id="gap-spawner-region" base="0.5,10,0.5" radius="4" height="3"/>
+    </union>
+    <union id="lanes">
+        <rectangle id="middle" min="25,39" max="-24,-38"/>
+        <rectangle id="blue-mid-lane" min="-77,-17" max="-48,18"/>
+        <rectangle id="red-mid-lane" min="49,-17" max="78,18"/>
+        <rectangle id="blue-side" min="-85,25" max="-118,-24"/>
+        <rectangle id="red-side" min="119,25" max="86,-24"/>
+    </union>
+    <union id="water-lanes">
+        <union id="blue-water-lanes">
+            <cuboid id="lime-water-lane" min="-80,0,-28" max="-95,1,-47"/>
+            <cuboid id="cyan-water-lane" min="-80,0,29" max="-95,1,48"/>
+        </union>
+        <union id="red-water-lanes">
+            <cuboid id="yellow-water-lane" min="81,0,29" max="96,1,48"/>
+            <cuboid id="orange-water-lane" min="81,0,-28" max="96,1,-47"/>
+        </union>
+    </union>
+    <union id="building-water-lanes">
+        <union id="blue-building-water-lanes">
+            <rectangle id="lime-building-water-lane" min="-80,-28" max="-95,-47"/>
+            <rectangle id="cyan-building-water-lane" min="-80,29" max="-95,48"/>
+        </union>
+        <union id="red-building-water-lanes">
+            <rectangle id="yellow-building-water-lane" min="81,29" max="96,48"/>
+            <rectangle id="orange-building-water-lane" min="81,-28" max="96,-47"/>
+        </union>
+    </union>
+    <negative id="void-area">
+        <region id="spawn-protection"/>
+        <region id="wool-rooms"/>
+        <region id="lanes"/>
+        <region id="gap-spawner"/>
+        <region id="water-lanes"/>
+        <region id="building-water-lanes"/>
+    </negative>
+    <apply enter="only-blue" region="blue-prot" message="You may not enter the opponent's spawn!"/>
+    <apply enter="only-red" region="red-prot" message="You may not enter the opponent's spawn!"/>
+    <apply enter="only-blue" region="red-wool-rooms" message="You may not enter your own wool room!"/>
+    <apply enter="only-red" region="blue-wool-rooms" message="You may not enter your own wool room!"/>
+    <apply block="blue-in-wr" use="only-blue" region="red-wool-rooms" message="You may not interact with this block!"/>
+    <apply block="red-in-wr" use="only-red" region="blue-wool-rooms" message="You may not interact with this block!"/>
+    <apply block="water-lane-building" region="building-water-lanes" message="You may not build in the void area!"/>
+    <apply block-break="only-iron" block-place="deny-players" region="spawn-protection" message="You may not modify the spawns!"/>
+    <apply block="never" region="gap-spawner-prot" message="You may not break the spawner"/>
+    <apply block-place="deny(void)" region="void-area" message="You may not build in the void area!"/>
+</regions>
+<actions>
+    <action id="water-lane" scope="match" expose="true">
+        <fill region="water-lanes" material="water" filter="only-air"/>
+    </action>
+    <trigger scope="match" action="water-lane" filter="add-water-lane"/>
+</actions>
+<spawners>
+    <spawner spawn-region="gap-spawner-point" player-region="gap-spawner-region" delay="8s">
+        <item material="golden apple" amount="1"/>
+    </spawner>
+</spawners>
+<toolrepair>
+    <tool>iron sword</tool>
+    <tool>bow</tool>
+    <tool>iron pickaxe</tool>
+    <tool>iron axe</tool>
+    <tool>stone spade</tool>
+    <tool>shears</tool>
+</toolrepair>
+<itemremove>
+    <item>leather helmet</item>
+    <item>leather chestplate</item>
+    <item>chainmail leggings</item>
+    <item>leather boots</item>
+    <item>string</item>
+    <item>snowball</item>
+    <item>brown mushroom</item>
+    <item>red mushroom</item>
+    <item>redstone</item>
+    <item>redstone torch off</item>
+</itemremove>
+<itemkeep>
+    <item>arrow</item>
+    <item>wood</item>
+    <item>glass</item>
+    <item>golden apple</item>
+    <item>water bucket</item>
+    <item>bucket</item>
+</itemkeep>
+<renewables>
+    <renewable region="spawn-protection" renew-filter="only-iron" interval="3" grow="false" particles="true" sound="true"/>
+</renewables>
+<block-drops>
+    <rule>
+        <filter>
+            <material>wood</material>
+        </filter>
+        <drops>
+            <item chance="0" material="wood"/>
+        </drops>
+    </rule>
+</block-drops>
+<tnt>
+    <instantignite>on</instantignite>
+    <fuse>4s</fuse>
+</tnt>
+<kill-rewards>
+    <kill-reward>
+        <item material="wood" damage="2" amount="32"/>
+        <item material="glass" amount="16"/>
+    </kill-reward>
+</kill-rewards>
+<hunger>
+    <depletion>off</depletion>
+</hunger>
+<maxbuildheight>30</maxbuildheight>
+</map>

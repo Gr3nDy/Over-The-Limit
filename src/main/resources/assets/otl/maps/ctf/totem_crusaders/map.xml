@@ -1,0 +1,180 @@
+<map proto="1.5.0">
+<name>Totem Crusaders</name>
+<version>1.2.1</version>
+<objective>Take the flag to the end of the path back to your spawn!</objective>
+<phase>staging</phase>
+<authors>
+    <author uuid="065c76d6-32b8-4b3a-8270-db350f876844"/> <!-- GatitoConSueter -->
+</authors>
+<contributors>
+    <contributor uuid="3a3f756e-7925-409a-be5e-e8c1694b3e2c" contribution="Moral contribution"/> <!-- Shimane -->   
+    <contributor uuid="6863869b-4b8c-4445-b778-a8e016775ae4" contribution="XML fix and improvement"/> <!-- Cazadorian -->
+    <contributor uuid="e2d2c2c6-cea9-4510-9ab2-a091b5605b30" contribution="XML review"/> <!-- Ruediger_LP -->
+    <contributor uuid="9d4779a8-d35f-45d2-b51c-95de7a77e128" contribution="XML review"/> <!-- zzuf -->
+</contributors>
+<broadcasts>
+    <tip after="1s" every="4m">`bReach the flag by passing through the Totem`b.</tip>
+    <tip after="1s" every="4m">`bReturn the flag to your spawn`b.</tip>
+</broadcasts>
+<teams>
+    <team id="blue" color="blue" dye-color="blue" max="25" max-overfill="30">Blue</team>
+    <team id="red" color="dark red" dye-color="red" max="25" max-overfill="30">Red</team>
+</teams>
+<kits>
+    <kit id="spawn-kit">
+        <item slot="0" unbreakable="true" material="iron sword"/>
+        <item slot="1" unbreakable="true" enchantment="arrow infinite" material="bow"/>
+        <item slot="28" material="arrow"/>
+        <item slot="2" unbreakable="true" material="iron pickaxe"/>
+        <item slot="3" unbreakable="true" material="iron axe"/>
+        <item slot="4" material="water bucket"/>
+        <item slot="5" material="golden apple"/>
+        <item slot="6" amount="64" damage="2" material="wood"/>
+        <item slot="7" amount="64" damage="2" material="wood"/>
+        <item slot="8" amount="64" damage="2" material="wood"/>
+        <helmet unbreakable="true" material="iron helmet"/>
+        <chestplate team-color="true" unbreakable="true" material="leather chestplate"/>
+        <leggings team-color="true" unbreakable="true" material="leather leggings"/>
+        <boots team-color="true" unbreakable="true" material="leather boots"/>
+    </kit>
+    <kit id="flag-kit">
+        <effect amplifier="-2">health boost</effect>
+        <effect amplifier="2">slow</effect>
+    </kit>
+    <kit id="reset" force="true">
+        <effect duration="1" amplifier="0">health boost</effect>
+        <effect duration="1" amplifier="20">regeneration</effect>
+        <effect duration="1" amplifier="0">slow</effect>
+    </kit>
+</kits>
+<spawns>
+    <spawn team="red" kit="spawn-kit" yaw="90">
+        <region>
+            <cuboid min="186,81,-212" max="192,81,-218"/>
+        </region>
+    </spawn>
+    <spawn team="blue" kit="spawn-kit" yaw="90">
+        <region>
+            <cuboid min="192,81,-305" max="186,81,-299"/>
+        </region>
+    </spawn>
+    <default yaw="-90">
+        <region>
+            <cylinder base="-255,89,-259" radius="4" height="0"/>
+        </region>
+    </default>
+</spawns>
+<filters>
+    <all id="red-team-carrying-flag">
+        <team id="only-red">red</team>
+        <carrying-flag>flag</carrying-flag>
+    </all>
+    <all id="blue-team-carrying-flag">
+        <team id="only-blue">blue</team>
+        <carrying-flag>flag</carrying-flag>
+    </all>
+    <material id="only-iron">iron block</material>
+    <deny id="deny-cobwebs">
+        <material>web</material>
+    </deny>
+</filters>
+<regions>
+    <union id="flagandgap">
+        <cuboid id="flag-base" min="-305,20,-209" max="-205,147,-309"/>
+        <rectangle id="bases-gap" min="251,-252"  max="116,-266"/>
+        <rectangle id="portals-gap" min="64,-271"  max="17,-246"/>
+    </union>
+    <union id="supports">
+        <cuboid id="rock-totem" min="16,31,-291" max="-13,31,-227"/>
+        <cuboid id="nether-totem" min="-54,19,-227" max="-83,19,-291"/>
+        <cuboid id="quartz-totem" min="-124,31,-291" max="-153,31,-227"/>
+    </union>
+    <union id="nets">
+        <cuboid id="blue_net" min="187,81,-304" max="191,84,-300"/>
+        <cuboid id="red_net" min="191,81,-217" max="187,84,-213"/>
+    </union>
+    <complement id="deny-lane">
+        <cuboid id="first-border" min="64,12,-290" max="-315,140,-340"/>
+        <cuboid id="second-border" min="64,12,-226" max="-308,144,-188"/>
+        <cuboid id="third-border" min="64,63,-291" max="97,81,-225"/>
+        <region id="rock-totem"/> 
+        <region id="nether-totem"/>
+        <region id="quartz-totem"/>
+    </complement>
+    <negative id="void-area">
+        <rectangle min="63,-227" max="-328,-293"/>
+        <union id="bases">
+            <rectangle id="red-base" min="251,-252" max="121,-179"/>
+            <rectangle id="blue-base" min="116,-266" max="236,-339"/>
+            <rectangle id="red-portal" min="47,-226" max="64,-246"/>
+            <rectangle id="blue-portal" min="47,-271" max="64,-291"/>
+        </union>
+    </negative>
+    <apply enter="only-blue" region="blue-base" message="You may not enter the opponent's spawn!"/>
+    <apply enter="only-red" region="red-base" message="You may not enter the opponent's spawn!"/>
+    <apply enter="only-blue" region="blue-portal" message="You may not enter the opponent's spawn!"/>
+    <apply enter="only-red" region="red-portal" message="You may not enter the opponent's spawn!"/>
+    <apply block="never" region="flagandgap" message="You may not modify this area!"/>
+    <apply block-place="deny(participating)" block-break="only-iron" region="bases" message="You may only break iron blocks here!"/>
+    <apply block-break="never" region="supports" message="You may not break blocks here!"/>
+    <apply block="never" region="deny-lane" message="You may not cross under the platforms!"/>
+    <apply block-place="deny(void)" block-break="deny-cobwebs" region="void-area" message="You may not build in the void!"/>
+</regions>
+<flags>
+    <flag id="flag" name="Flag" color="white" shared="true" pickup-kit="flag-kit" drop-kit="reset">
+        <post id="center-post" recover-time="60s" respawn-time="30s">
+            <block>-255,106,-259</block>
+        </post>
+        <net points="1" region="red_net" capture-filter="only-red"/>
+        <net points="1" region="blue_net" capture-filter="only-blue"/>
+    </flag>
+</flags>
+<score>
+   <limit>2</limit>
+</score>
+<portals>
+    <!-- Red side -->
+    <portal x="-71" y="10" z="-21.5" bidirectional="true"> <!-- top -->
+        <region><cuboid min="126,64,-217" max="127,66,-213"/></region>
+    </portal>
+    <portal x="-71" y="15" z="-21.5"> <!-- bottom -->
+        <region><cuboid min="126,62,-213" max="127,59,-217"/></region>
+    </portal>
+    <!-- Blue side -->
+    <portal x="-71" y="10" z="21.5" bidirectional="true"> <!-- top -->
+        <region><cuboid min="126,64,-304" max="127,66,-300"/></region>
+    </portal>
+    <portal x="-71" y="15" z="21.5"> <!-- bottom -->
+        <region><cuboid min="126,59,-304" max="127,62,-300"/></region>
+    </portal>
+</portals>
+<renewables>
+    <renewable region="bases" renew-filter="only-iron"/>
+</renewables>
+<itemremove>
+    <item>leather helmet</item>
+    <item>leather chestplate</item>
+    <item>stone sword</item>
+    <item>stone pickaxe</item>
+    <item>stone axe</item>
+    <item>bow</item>
+    <item>arrow</item>
+    <item>cooked beef</item>
+    <item>water bucket</item>
+    <item>bucket</item>
+    <item>diamond helmet</item>
+    <item>diamond chestplate</item>
+    <item>diamond leggings</item>
+    <item>diamond boots</item>
+    <item>diamond sword</item>
+    <item>iron sword</item>
+    <item>iron helmet</item>
+    <item>iron chestplate</item>
+    <item>iron leggings</item>
+    <item>iron boots</item>
+</itemremove>
+<hunger>
+    <depletion>off</depletion>
+</hunger>
+<maxbuildheight>105</maxbuildheight>
+</map>

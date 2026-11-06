@@ -49,28 +49,32 @@ final class FaceMarks {
     private static String sanitize(String key){return key.replaceAll("[^A-Za-z0-9._-]","_");}
 
     private static int[] load(String k){
+        return load(file(k));
+    }
+    static int[] load(Path p){
         try{
-            Path p=file(k);
             if(!Files.exists(p))return NONE;
-            int[] marks=new int[64];int count=0;
+            int[] marks=new int[64];
             for(String line:Files.readAllLines(p)){
                 int sep=line.indexOf(':');
                 if(sep<=0)continue;
                 int cell=Integer.parseInt(line.substring(0,sep).trim());
                 int kind=Integer.parseInt(line.substring(sep+1).trim());
-                if(cell>=0&&cell<64&&kind>=1&&kind<=4){marks[cell]=kind;count++;}
+                if(cell>=0&&cell<64&&kind>=1&&kind<=4)marks[cell]=kind;
             }
-            return count==0?NONE:marks;
+            return marks; // An empty file is an explicit all-erased override, not automatic detection.
         }catch(Exception e){return NONE;}
     }
     private static boolean save(String k,int[] value){
+        return save(file(k),value);
+    }
+    static boolean save(Path p,int[] value){
         try{
-            Path p=file(k);
-            Files.createDirectories(p.getParent());
             if(value==null||value.length==0){Files.deleteIfExists(p);return true;}
+            if(value.length!=64)throw new IllegalArgumentException("Expected 64 face marks");
             StringBuilder text=new StringBuilder();
             for(int i=0;i<64;i++)if(value[i]!=0)text.append(i).append(':').append(value[i]).append('\n');
-            Files.write(p,text.toString().getBytes(StandardCharsets.UTF_8));
+            AtomicFiles.write(p,text.toString().getBytes(StandardCharsets.UTF_8));
             return true;
         }catch(Exception e){
             System.err.println("OTL: could not save face marks: "+e.getMessage());

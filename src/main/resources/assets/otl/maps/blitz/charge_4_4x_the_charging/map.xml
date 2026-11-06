@@ -1,0 +1,57 @@
+<map proto="1.5.0">
+<name>Charge 4: 4x the Charging</name>
+<version>1.0.2</version>
+<objective>Eliminate the enemy team!</objective>
+<gamemode>blitz</gamemode>
+<gamemode>rage</gamemode>
+<created>2023-03-25</created>
+<authors>
+    <author uuid="79d4d76e-e08a-4a35-9411-05dd2397361f"/> <!-- Hydrosion -->
+</authors>
+<contributors>
+    <contributor uuid="430ec559-364a-4363-ac7a-2529050440ac" contribution="MCEdit, XML"/> <!-- mame_BT -->
+    <contributor uuid="6863869b-4b8c-4445-b778-a8e016775ae4" contribution="Creative Director"/> <!-- Cazadorian -->
+</contributors>
+<teams>
+    <team id="red" color="dark red" max="5348">Red</team>
+    <team id="blue" color="blue" max="5348">Blue</team>
+</teams>
+<kits>
+    <kit id="spawn">
+        <item slot="0" name="Yeeter" lore="One Hit Kill" enchantment="damage all:10" material="iron sword"/>
+        <effect amplifier="4">Speed</effect>
+        <game-mode>adventure</game-mode>
+    </kit>
+</kits>
+<spawns>
+    <spawn team="blue" kit="spawn" yaw="90">
+        <region>
+            <cuboid min="79,6,1" max="76,6,3"/>
+        </region>
+    </spawn>
+    <spawn team="red" kit="spawn" yaw="-90">
+        <region>
+            <cuboid min="-75,6,1" max="-73,6,3"/>
+        </region>
+    </spawn>
+    <default yaw="180" pitch="25">
+        <region>
+            <cylinder base="2,82,2" radius="1" height="0"/>
+        </region>
+    </default>
+</spawns>
+<regions>
+    <apply block="never" use="never"/>
+</regions>
+<blitz>
+    <lives>1</lives>
+</blitz>
+<rage/>
+<time>10m</time>
+<itemremove>
+    <item>iron sword</item>
+</itemremove>
+<hunger>
+    <depletion>off</depletion>
+</hunger>
+</map>

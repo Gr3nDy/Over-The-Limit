@@ -1,0 +1,415 @@
+<map proto="1.5.0">
+<name>Zipline</name>
+<version>1.2.1</version>
+<variant id="halloween" world="halloween" override="true">Hollow Lines</variant>
+<variant id="christmas" world="christmas" override="true">Zipmas</variant>
+<variant id="gunz">Moar Gunz Edition</variant>
+<include id="kotf"/>
+<objective>Hold the flag for ${score} seconds to win!</objective>
+<constant id="damage-resistance">0s</constant>
+<constant id="flag-respawn-timer">15s</constant>
+<if variant="default">
+    <created>2020-08-23</created>
+</if>
+<if variant="gunz">
+    <gamemode>arcade</gamemode>
+    <created>2021-03-18</created>
+    <constant id="override-kill-reward">true</constant>
+</if>
+<if variant="halloween">
+    <created>2021-10-03</created>
+</if>
+<if variant="christmas">
+    <created>2020-12-08</created>
+</if>
+<authors>
+    <author uuid="1aad55f7-2dea-4f22-85ca-ad9de3a78609"/> <!-- Technodono -->
+</authors>
+<rules>
+    <rule>Fall damage is disabled!</rule>
+    <rule>You can only respawn when your team doesn't have the flag!</rule>
+    <rule>No camping inside any ziplines!</rule>
+</rules>
+<broadcasts>
+    <tip after="0m" every="3m">Ziplines transport you really fast in a direction as indicated by the arrows! Use them to get around.</tip>
+    <tip after="30s" every="2m">The flag spawns on glowstone... Look in the chat to see the flag's next location!</tip>
+</broadcasts>
+<teams>
+    <unless variant="halloween,christmas">
+        <team id="team-1" color="blue" max="24">Blue</team>
+        <team id="team-2" color="dark red" max="24">Red</team>
+    </unless>
+    <if variant="halloween">
+        <team id="team-1" color="dark aqua" max="24">Dullaghan</team>
+        <team id="team-2" color="gold" max="24">Pumpkin Jack</team>
+    </if>
+    <if variant="christmas">
+        <team id="team-1" color="blue" max="24">Blue Baubles</team>
+        <team id="team-2" color="dark red" max="24">Red Reindeers</team>
+    </if>
+</teams>
+<kits>
+    <kit id="default-kit">
+        <clear items="false" armor="false" effects="true"/> <!-- kits can't be empty, so this is here as a close-to-no-op -->
+        <unless variant="halloween">
+            <effect>night vision</effect>
+        </unless>
+    </kit>
+    <kit id="spawn-kit" parents="default-kit,base-kit-compass">
+        <if variant="gunz">
+            <clear items="true" armor="false" effects="false"/>
+            <item slot="0" unbreakable="true" material="stone sword"/>
+            <item slot="3" material="golden apple"/>
+            <item slot="4" material="compass"/>
+        </if>
+    </kit>
+    <lend filter="any(all(participating,ziplines),observing)">
+        <kit>
+            <fly/>
+        </kit>
+    </lend>
+    <if variant="gunz">
+        <give filter="all(participating,not(spawns))">
+            <kit>
+                <item slot="1" projectile="lazer" name="`6Lazer Blaster" material="gold barding"/>
+                <item slot="2" projectile="mob" name="`cTNT Cannon" material="iron barding"/>
+            </kit>
+        </give>
+    </if>
+</kits>
+<projectiles>
+    <projectile id="lazer" name="lazer" projectile="SmallFireball" velocity="3.5" damage="4" throwable="false" cooldown="0.15s"/>
+    <projectile id="mob" name="TNT" projectile="TNTPrimed" velocity="1" damage="8" throwable="false" cooldown="4s"/>
+</projectiles>
+<spawns>
+    <default kit="default-kit" yaw="-90">
+        <region>
+            <cylinder base="40.5,25,0.5" height="0" radius="1.5"/>
+        </region>
+    </default>
+    <spawn team="team-1" kit="spawn-kit" filter="has-flag">
+        <regions yaw="180">
+            <cylinder base="0.5,20,54.5" height="1" radius="1.5"/>
+            <cylinder base="-30,21,54" height="1" radius="1.5"/>
+            <cylinder base="31,21,54" height="1" radius="1.5"/>
+        </regions>
+    </spawn>
+    <spawn team="team-2" kit="spawn-kit" filter="has-flag">
+        <regions>
+            <cylinder base="0.5,20,-53.5" height="1" radius="1.5"/>
+            <cylinder base="-30,21,-53" height="1" radius="1.5"/>
+            <cylinder base="31,21,-53" height="1" radius="1.5"/>
+        </regions>
+    </spawn>
+</spawns>
+<regions>
+    <union id="spawner-regions">
+        <cuboid id="spawner1" min="28,15.5,16" max="33,17,19"/>
+        <cylinder id="spawner1-radius" base="30.5,15,17.5" height="5" radius="2.5"/>
+        <cuboid id="spawner2" min="28,15.5,-18" max="33,17,-15"/>
+        <cylinder id="spawner2-radius" base="30.5,15,-16.5" height="5" radius="2.5"/>
+        <cuboid id="spawner3" min="-32,15.5,-18" max="-27,17,-15"/>
+        <cylinder id="spawner3-radius" base="-29.5,15,-16.5" height="5" radius="2.5"/>
+        <cuboid id="spawner4" min="-32,15.5,16" max="-27,17,19"/>
+        <cylinder id="spawner4-radius" base="-29.5,15,17.5" height="5" radius="2.5"/>
+    </union>
+    <union id="ziplines">
+        <cuboid min="11,16,49" max="14,18,45"/>
+        <cuboid min="10,25,33" max="14,25.9,49"/>
+        <cuboid min="7,25,34" max="14,25.5,31"/>
+        <cuboid min="4,25,34" max="8,25.5,13"/>
+        <cuboid min="-11,16,49" max="-14,18,45"/>
+        <cuboid min="-10,25,33" max="-13,25.9,49"/>
+        <cuboid min="-7,25,34" max="-13,25.5,31"/>
+        <cuboid min="-4,25,34" max="-7,25.5,13"/>
+        <cuboid min="11,16,-48" max="14,18,-45"/>
+        <cuboid min="10,25,-30" max="14,25.9,-49"/>
+        <cuboid min="7,25,-33" max="14,25.5,-30"/>
+        <cuboid min="4,25,-34" max="8,25.5,-12"/>
+        <cuboid min="-10,16,-49" max="-14,18,-45"/>
+        <cuboid min="-10,25,-31" max="-13,25.9,-49"/>
+        <cuboid min="-7,25,-33" max="-13,25.5,-30"/>
+        <cuboid min="-4,25,-34" max="-7,25.5,-12"/>
+    </union>
+    <union id="spawns">
+        <cuboid id="team-1-spawn" min="oo,16,51" max="-oo,oo,oo"/>
+        <cuboid id="team-2-spawn" min="-oo,16,-50" max="oo,oo,-oo"/>
+    </union>
+    <apply enter="deny(team-1)" region="team-2-spawn" message="You may not enter the opposing team's spawn!"/>
+    <apply enter="deny(team-2)" region="team-1-spawn" message="You may not enter the opposing team's spawn!"/>
+    <apply block="never" use="never"/>
+    <!--  Jumpads and Boost lanes  -->
+    <!--  Blue's middle lane  -->
+    <apply velocity="@0.0,0.5,-3.9" >
+        <region>
+            <cuboid min="2,16,45" max="-1,16.5,12"/>
+        </region>
+    </apply>
+    <!--  Blue's right side  -->
+    <!--  Right lanes  -->
+    <apply velocity="0.0,2,0" >
+        <region>
+            <cuboid min="11.2,16,49" max="14,18,46"/>
+        </region>
+    </apply>
+    <apply velocity="0.0,3,-3.9">
+        <region>
+            <cuboid min="11,25,34" max="14,25.9,49"/>
+        </region>
+    </apply>
+    <apply velocity="-3.9,3,0.0" >
+        <region>
+            <cuboid min="8,25,34" max="14,25.5,31"/>
+        </region>
+    </apply>
+    <apply velocity="0.0,2,-3.9" >
+        <region>
+            <cuboid min="5,25,34" max="8,25.5,13"/>
+        </region>
+    </apply>
+    <!--  Rightmost lanes  -->
+    <apply velocity="@0.0,0.37,-3.9" >
+        <region>
+            <cuboid min="20,16,45" max="23,16.5,24"/>
+        </region>
+    </apply>
+    <apply velocity="0.0,1,-0.4" >
+        <region>
+            <cuboid min="20,16,24" max="23,19,21"/>
+        </region>
+    </apply>
+    <apply velocity="0.0,0.7,-0.5" >
+        <region>
+            <cuboid min="20,21,20" max="23,23,17"/>
+        </region>
+    </apply>
+    <!--  Jumppads  -->
+    <apply velocity="0.6,1,0.0">
+        <region>
+            <cuboid min="5,16,33" max="8,18,36"/>
+        </region>
+    </apply>
+    <apply velocity="0.6,1,0.0">
+        <region>
+            <cuboid min="5,16,22" max="8,18,25"/>
+        </region>
+    </apply>
+    <!--  Blue's left side  -->
+    <!--  Left lanes  -->
+    <apply velocity="0.0,2,0" >
+        <region>
+            <cuboid min="-13,16,49" max="-10.2,18,46"/>
+        </region>
+    </apply>
+    <apply velocity="0.0,3,-3.9" >
+        <region>
+            <cuboid min="-10,25,34" max="-13,25.5,49"/>
+        </region>
+    </apply>
+    <apply velocity="3.9,3,0.0" >
+        <region>
+            <cuboid min="-7,25,34" max="-13,25.5,31"/>
+        </region>
+    </apply>
+    <apply velocity="0.0,2,-3.9" >
+        <region>
+            <cuboid min="-4,25,34" max="-7,25.5,13"/>
+        </region>
+    </apply>
+    <!--  Leftmost lanes  -->
+    <apply velocity="@0.0,0.37,-3.9" >
+        <region>
+            <cuboid min="-19,16,45" max="-22,16.5,24"/>
+        </region>
+    </apply>
+    <apply velocity="0.0,1,-0.4" >
+        <region>
+            <cuboid min="-22,16,24" max="-19,19,21"/>
+        </region>
+    </apply>
+    <apply velocity="0.0,0.7,-0.5" >
+        <region>
+            <cuboid min="-22,21,20" max="-19,23,17"/>
+        </region>
+    </apply>
+    <!--  Jumppads  -->
+    <apply velocity="-0.6,1,0.0">
+        <region>
+            <cuboid min="-4,16,33" max="-7,18,36"/>
+        </region>
+    </apply>
+    <apply velocity="-0.6,1,0.0">
+        <region>
+            <cuboid min="-4,16,22" max="-7,18,25"/>
+        </region>
+    </apply>
+    <!--  Red  -->
+    <!--  Middle lane  -->
+    <apply velocity="@0.0,0.5,3.9" >
+        <region>
+            <cuboid min="2,16,-44" max="-1,16.5,-11"/>
+        </region>
+    </apply>
+    <!--  Red's left side  -->
+    <!--  Left lanes  -->
+    <apply velocity="0.0,2,0" >
+        <region>
+            <cuboid min="11.2,16,-48" max="14,18,-45"/>
+        </region>
+    </apply>
+    <apply velocity="0.0,3,3.9" >
+        <region>
+            <cuboid min="11,25,-30" max="14,25.5,-48"/>
+        </region>
+    </apply>
+    <apply velocity="-3.9,3,0.0" >
+        <region>
+            <cuboid min="8,25,-33" max="14,25.5,-30"/>
+        </region>
+    </apply>
+    <apply velocity="0.0,2,3.9" >
+        <region>
+            <cuboid min="5,25,-33" max="8,25.5,-12"/>
+        </region>
+    </apply>
+    <!--  Leftmost lanes  -->
+    <apply velocity="@0.0,0.37,3.9" >
+        <region>
+            <cuboid min="20,16,-44" max="23,16.5,-23"/>
+        </region>
+    </apply>
+    <apply velocity="0.0,1,0.4" >
+        <region>
+            <cuboid min="23,16,-23" max="20,19,-20"/>
+        </region>
+    </apply>
+    <apply velocity="0.0,0.7,0.5" >
+        <region>
+            <cuboid min="23,21,-19" max="20,23,-16"/>
+        </region>
+    </apply>
+    <!--  Jumppads  -->
+    <apply velocity="0.6,1,0.0">
+        <region>
+            <cuboid min="5,16,-32" max="8,18,-35"/>
+        </region>
+    </apply>
+    <apply velocity="0.6,1,0.0">
+        <region>
+            <cuboid min="5,16,-21" max="8,18,-24"/>
+        </region>
+    </apply>
+    <!--  Red's right side  -->
+    <!--  Right lanes  -->
+    <apply velocity="0.0,2,0" >
+        <region>
+            <cuboid min="-10.2,16,-48" max="-13,18,-45"/>
+        </region>
+    </apply>
+    <apply velocity="0.0,3,3.9" >
+        <region>
+            <cuboid min="-10,25,-30" max="-13,25.9,-48"/>
+        </region>
+    </apply>
+    <apply velocity="3.9,3,0.0" >
+        <region>
+            <cuboid min="-7,25,-33" max="-13,25.5,-30"/>
+        </region>
+    </apply>
+    <apply velocity="0.0,2,3.9" >
+        <region>
+            <cuboid min="-4,25,-33" max="-7,25.5,-12"/>
+        </region>
+    </apply>
+    <!--  Rightmost lanes  -->
+    <apply velocity="@0.0,0.37,3.9" >
+        <region>
+            <cuboid min="-19,16,-44" max="-22,16.5,-23"/>
+        </region>
+    </apply>
+    <apply velocity="0.0,1,0.4" >
+        <region>
+            <cuboid min="-19,16,-23" max="-22,19,-20"/>
+        </region>
+    </apply>
+    <apply velocity="0.0,0.7,0.5" >
+        <region>
+            <cuboid min="-19,21,-19" max="-22,23,-16"/>
+        </region>
+    </apply>
+    <!--  Jumppads  -->
+    <apply velocity="-0.6,1,0.0">
+        <region>
+            <cuboid min="-4,16,-32" max="-7,18,-35"/>
+        </region>
+    </apply>
+    <apply velocity="-0.6,1,0.0">
+        <region>
+            <cuboid min="-4,16,-21" max="-7,18,-24"/>
+        </region>
+    </apply>
+    <!--  Middle pads  -->
+    <apply velocity="-0.6,1.4,0.0">
+        <region>
+            <cuboid min="-11,10,11" max="-14,12,8"/>
+        </region>
+    </apply>
+    <apply velocity="-0.6,1.4,0.0">
+        <region>
+            <cuboid min="-11,10,-10" max="-14,12,-7"/>
+        </region>
+    </apply>
+    <apply velocity="0.6,1.4,0.0">
+        <region>
+            <cuboid min="12,10,11" max="15,12,8"/>
+        </region>
+    </apply>
+    <apply velocity="0.6,1.4,0.0">
+        <region>
+            <cuboid min="15,10,-10" max="12,12,-7"/>
+        </region>
+    </apply>
+    <!--  Flag pads  -->
+    <apply velocity="-2,2,0.0">
+        <region>
+            <cuboid min="23,16,-1" max="20,17,2"/>
+        </region>
+    </apply>
+    <apply velocity="2,2,0.0">
+        <region>
+            <cuboid min="-22,16,-1" max="-19,17,2"/>
+        </region>
+    </apply>
+</regions>
+<spawners max-entities="1">
+    <spawner spawn-region="spawner1" player-region="spawner1-radius">
+        <item material="golden apple"/>
+    </spawner>
+    <spawner spawn-region="spawner2" player-region="spawner2-radius">
+        <item material="golden apple"/>
+    </spawner>
+    <spawner spawn-region="spawner3" player-region="spawner3-radius">
+        <item material="golden apple"/>
+    </spawner>
+    <spawner spawn-region="spawner4" player-region="spawner4-radius">
+        <item material="golden apple"/>
+    </spawner>
+</spawners>
+<flags>
+    <flag id="flag" name="Flag" color="orange" shared="true" points-rate="1" pickup-kit="flag-kit" drop-kit="reset-health" flag-proximity-metric="none" show-respawn-on-pickup="${announce-post-pickup}">
+        <post return-time="0s" respawn-time="${flag-respawn-timer}">
+            <post name="Top Platform">0,26,0</post>
+            <post name="Bottom Platform">0,13,0</post>
+            <post name="Point A">30,19,0</post>
+            <post name="Point B">-30,19,0</post>
+        </post>
+    </flag>
+</flags>
+<toolrepair>
+    <tool>gold barding</tool>
+    <tool>iron barding</tool>
+</toolrepair>
+<disabledamage>
+    <damage>fall</damage>
+</disabledamage>
+</map>

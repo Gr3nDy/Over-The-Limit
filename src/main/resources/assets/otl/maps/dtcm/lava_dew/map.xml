@@ -1,0 +1,125 @@
+<map proto="1.5.0">
+<name>Lava Dew</name>
+<version>2.2.4</version>
+<created>2013-12-29</created>
+<objective>Leak lava from the enemy's core to win the game!</objective>
+<include id="gapple-kill-reward"/>
+<authors>
+    <author uuid="2ca8072f-74be-4798-85b8-bbce03aa91af"/> <!-- Tywnis -->
+</authors>
+<teams>
+    <team id="red" color="dark red" max="16">Red</team>
+    <team id="blue" color="blue" max="16">Blue</team>
+</teams>
+<kits>
+    <kit id="spawn-kit">
+        <item slot="0" unbreakable="true" material="iron sword"/>
+        <item slot="1" enchantment="arrow infinite" material="bow"/>
+        <item slot="2" unbreakable="true" material="diamond pickaxe"/>
+        <item slot="3" unbreakable="true" material="iron axe"/>
+        <item slot="4" amount="64" material="wood"/>
+        <item slot="31" amount="64" material="wood"/>
+        <item slot="5" amount="32" material="glass"/>
+        <item slot="8" material="golden apple"/>
+        <item slot="28" material="arrow"/>
+        <helmet unbreakable="true" team-color="true" material="leather helmet"/>
+        <chestplate unbreakable="true" material="iron chestplate"/>
+        <leggings unbreakable="true" team-color="true" material="leather leggings"/>
+        <boots unbreakable="true" team-color="true" material="leather boots"/>
+    </kit>
+</kits>
+<spawns>
+    <spawn team="red" yaw="180" kit="spawn-kit">
+        <region>
+            <point>997.5,12,-1437.5</point>
+        </region>
+    </spawn>
+    <spawn team="blue" kit="spawn-kit">
+        <region>
+            <point>997.5,12,-1655.5</point>
+        </region>
+    </spawn>
+    <default yaw="-90">
+        <region>
+            <point>957.5,44,-1546.5</point>
+        </region>
+    </default>
+</spawns>
+<filters>
+    <deny id="deny-web">
+        <material>web</material>
+    </deny>
+</filters>
+<regions>
+    <negative id="void-area">
+        <rectangle id="middle" min="957,-1504" max="1038,-1589"/>
+    </negative>
+    <union id="spawns">
+        <cuboid min="1000,15,-1658" max="995,5,-1642"/>
+        <cuboid min="1000,15,-1435" max="995,5,-1451"/>
+    </union>
+    <apply block="never" region="spawns" message="You may not modify the spawn area!"/>
+    <apply block-place="deny(void)" block-break="deny-web" region="void-area" message="You may not modify the void area!"/>
+    <!-- Commenting velocity out due to issues found here: https://trello.com/c/HbL8rYrm/88
+    <apply velocity="@0,1.25,-3.9">
+        <region>
+            <block>988.5,6,-1512.5</block>
+            <block>1006.5,6,-1512.5</block>
+        </region>
+    </apply>
+    <apply velocity="@0,1.25,3.9">
+        <region>
+            <block>988.5,6,-1580.5</block>
+            <block>1006.5,6,-1580.5</block>
+        </region>
+    </apply>
+    -->
+</regions>
+<cores material="obsidian" leak="7" mode-changes="true">
+    <core team="red">
+        <region>
+            <cuboid min="966,25,-1476" max="1029,21,-1469"/>
+        </region>
+    </core>
+    <core team="blue">
+        <region>
+            <cuboid min="966,25,-1624" max="1029,21,-1617"/>
+        </region>
+    </core>
+</cores>
+<modes>
+    <mode after="10m" material="gold block" name="`eGolden Hot-Dog Mode"/>
+</modes>
+<toolrepair>
+    <tool>iron sword</tool>
+    <tool>bow</tool>
+    <tool>diamond pickaxe</tool>
+    <tool>iron axe</tool>
+    <tool>arrow</tool>
+</toolrepair>
+<itemremove>
+    <item>leather helmet</item>
+    <item>iron chestplate</item>
+    <item>leather leggings</item>
+    <item>leather boots</item>
+    <item>red mushroom</item>
+    <item>glowstone dust</item>
+    <item>seeds</item>
+</itemremove>
+<itemkeep>
+    <item>wood</item>
+    <item>glass</item>
+    <item>golden apple</item>
+</itemkeep>
+<kill-rewards>
+    <kill-reward>
+        <item amount="16" material="wood"/>
+        <item amount="16" material="glass"/>
+    </kill-reward>
+</kill-rewards>
+<timelock>off</timelock>
+<maxbuildheight>30</maxbuildheight>
+<hunger>
+    <depletion>off</depletion>
+</hunger>
+</map>

@@ -27,7 +27,7 @@ java -Xmx2G -Dterminal.jline=false -jar SportPaper.jar nogui
 PAUSE
 ```
 
-First run creates the files; then set `eula.txt` → `eula=true` and `server.properties` → `online-mode=false`. Point PGM at the folder in `plugins/PGM/config.yml`:
+First run creates the files; then set `eula.txt` → `eula=true`. For offline local testing only, set `server-ip=127.0.0.1` before setting `online-mode=false` in `server.properties`; do not expose an offline-mode server to other machines. Point PGM at the folder in `plugins/PGM/config.yml`:
 
 ```yaml
 map:
@@ -39,7 +39,7 @@ Start it, wait for `Done`, connect to `localhost` from 1.8.9.
 
 ## Let the mod run there
 
-The mod is scoped to `play.oc.tc` / `vanish.oc.tc`. Add a host to the allowlist in `config/overcast_util/settings.json`:
+The mod is scoped to `play.oc.tc`, `vanish.oc.tc`, and `172.65.223.142`. Add a test host to the allowlist in `config/overcast_util/settings.json`:
 
 ```json
 "dev_hosts": ["localhost", "127.0.0.1"]
@@ -63,4 +63,18 @@ No UI for this on purpose — it is a test-only escape hatch, and the modules sc
 
 ## Regression run
 
-`.\gradlew.bat runClient -PotlSmoke --offline` — deterministic, covers the book hover and the card with fixtures. The remote lookup line prints `skipped` when offline; it never fails the run.
+Left Hand checks toggle and reload its preference, capture right/left sword and empty-hand frames (`otl-hand-*.png`), verify off-server/disabled behavior, and assert projection/front-face restoration after an intentional rendering exception. These are plain Forge checks; Lunar's custom renderer still requires manual verification.
+
+`.\gradlew.bat runClient -PotlSmoke --offline` — deterministic fixtures for chat, book hover, gallery pagination/search/click/back, square previews, separate command-toggle persistence and scope, and PM reopening/retention.
+
+Add `-PotlSmokeRemote` to require live PublicMaps (`main`) and CommunityMaps (`master`) lookups. An enabled remote check fails on errors or timeout. Without the flag, remote checks are explicitly DISABLED.
+
+Add `-PotlSmokeServer` to also connect the development client to `localhost:25565`, check the separate command toggle and map card on the live connection, and save `run/screenshots/otl-localhost-map.png`. This does not change the server configuration or install a jar in any client.
+
+Command checks send Enter through both Reliable Chat and vanilla chat, then check the screen on a later tick. They do not call an open-card helper. The local-server check also exercises bare `/map` and its server response. Remote checks require both gallery catalogs and verify Infection: Cataclysm's default Infection objective, shared teams and 40-player capacity rather than its inactive OITQ variant.
+
+Use `-PotlSmokeServerOnly` instead of `-PotlSmokeServer` for direct localhost checks without loading/unloading the integrated fixture world. With `-PotlSmokeRemote`, this checks the exact `/map 100┈Rooms` input and captures a Public-map vote-book fixture hover in `run/screenshots/otl-public-book-hover.png`. Integrated fixtures are explicitly skipped in this mode; run them separately for full coverage.
+
+The direct checks also hover a gold `/map` link through real chat hit testing in both Reliable Chat and vanilla chat, saving `otl-gold-chat-hover.png` and `otl-gold-vanilla-hover.png`. Unit tests reject plain gold text, non-map commands, bare `/map`, and non-gold links, and cover inherited styles and Unicode separators.
+
+After smoke testing, run `.\gradlew.bat clean build --offline --no-daemon`. Only `build/libs/OTL.jar` is the verified manual-copy release; never install the jar in `build/dev-libs/`. Build tasks do not copy into any client mods folder.

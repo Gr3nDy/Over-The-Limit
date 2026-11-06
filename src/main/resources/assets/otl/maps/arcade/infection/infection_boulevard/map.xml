@@ -1,0 +1,92 @@
+<map proto="1.5.0">
+<name>Infection: Boulevard</name>
+<version>1.0.8</version>
+<include id="infection"/>
+<authors>
+    <author uuid="74948888-fdb8-4446-9340-f7688c2435cc"/> <!-- Zero_Frosty -->
+    <author uuid="ec5ec930-5cf3-4f8a-ad9f-09056aeed71b"/> <!-- Tundren -->
+    <author uuid="b2539be1-8f98-4375-b653-9d91cd04c30e"/> <!-- Mewzzy -->
+</authors>
+<contributors>
+    <contributor uuid="d5a64b26-15ea-46c4-8319-f9c83e82a1fa"/> <!-- Eliminate -->
+    <contributor uuid="6863869b-4b8c-4445-b778-a8e016775ae4"/> <!-- Cazadorian -->
+</contributors>
+<broadcasts>
+    <alert after="2s">The ${zombie-team-name} are released in 8 seconds!</alert>
+    <alert after="10s">The ${zombie-team-name} are released!</alert>
+    <tip after="20s" every="2m">${zombie-team-name} are able to double-jump every 7 seconds.</tip>
+</broadcasts>
+<spawns>
+    <default>
+        <region yaw="-90">
+            <point>2,70,1</point>
+        </region>
+    </default>
+    <spawn filter="before-10s" team="human-team" kit="default-human-kit">
+        <region>
+            <point>0.5,10,0.5</point>
+        </region>
+    </spawn>
+    <spawn filter="after-10s" team="human-team" kit="zombie-switch-kit">
+        <region>
+            <point>0.5,10,0.5</point>
+        </region>
+    </spawn>
+    <spawn filter="before-10s" team="zombie-team" kit="zombie-kit">
+        <region yaw="90">
+            <point>-11,65,1</point>
+        </region>
+    </spawn>
+    <spawn filter="after-10s" team="zombie-team" kit="zombie-kit">
+        <region>
+            <point>0.5,10,0.5</point>
+        </region>
+    </spawn>
+</spawns>
+<kits>
+    <kit id="zombie-kit">
+        <item slot="0" unbreakable="true" material="stone sword" name="`2`lInfection Sword"/>
+        <helmet locked="true" material="skull item" damage="2"/>
+        <chestplate locked="true" unbreakable="true" material="leather chestplate"/>
+        <leggings locked="true" unbreakable="true" material="leather leggings"/>
+        <boots locked="true" unbreakable="true" material="leather boots"/>
+        <effect duration="5s">increase damage</effect>
+        <double-jump recharge-time="7s"/>
+        <game-mode>adventure</game-mode>
+    </kit>
+</kits>
+<filters>
+    <not id="after-10s">
+        <countdown id="before-10s" duration="10s" message="Zombies will be released in {0}">
+            <match-running/>
+        </countdown>
+    </not>
+</filters>
+<portals observers="never">
+    <portal forward="after-10s" filter="zombie-team" x="@-15.5" y="@65" z="@1"/>
+</portals>
+<kill-rewards>
+    <kill-reward filter="human-team">
+        <kit id="human-kill-reward">
+            <effect duration="5s" amplifier="2">regeneration</effect>
+        </kit>
+    </kill-reward>
+</kill-rewards>
+<itemremove>
+    <item>arrow</item>
+    <item>leather helmet</item>
+    <item>leather chestplate</item>
+    <item>leather leggings</item>
+    <item>leather boots</item>
+    <item>chainmail chestplate</item>
+    <item>chainmail leggings</item>
+    <item>chainmail boots</item>
+    <item>chainmail helmet</item>
+    <item>skull item</item>
+    <item>stone sword</item>
+    <item>iron sword</item>
+    <item>armor stand</item>
+    <item>bow</item>
+    <item>iron boots</item>
+</itemremove>
+</map>

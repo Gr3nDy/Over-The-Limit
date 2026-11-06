@@ -24,13 +24,12 @@ final class ReliableChatScreen extends GuiChat {
         super.updateScreen();
         if(ReliableChat.active()){
             syncView();
-            String key=ReliableChat.session().selected;
-            inputField.setMaxStringLength(key.startsWith("pm:")&&!text().startsWith("/")?100-6-key.substring(3).length():100);
+            inputField.setMaxStringLength(Math.max(text().length(),ChatRules.inputLimit(ReliableChat.session().selected,text(),ReliableChat.fullChat())));
         }
     }
     @Override public void initGui(){String typing=inputField==null?null:inputField.getText();super.initGui();boundView=ReliableChat.currentView();boundContext=ReliableChat.contextVersion();if(typing!=null)inputField.setText(typing);else if(initial.isEmpty()&&UtilitySettings.rememberDrafts)inputField.setText(boundView.draft);boundView.unread=0;}
     private void storeDraft(){ReliableChat.View view=boundView==null?ReliableChat.currentView():boundView;view.draft=UtilitySettings.rememberDrafts?text():"";}
-    private void restoreDraft(){boundView=ReliableChat.currentView();boundContext=ReliableChat.contextVersion();inputField.setText(UtilitySettings.rememberDrafts?boundView.draft:"");inputField.setFocused(true);}
+    private void restoreDraft(){boundView=ReliableChat.currentView();boundContext=ReliableChat.contextVersion();inputField.setMaxStringLength(100);inputField.setText(UtilitySettings.rememberDrafts?boundView.draft:"");inputField.setFocused(true);}
     private boolean syncView(){
         long version=ReliableChat.contextVersion();ReliableChat.View view=ReliableChat.currentView();
         if(version!=boundContext){overflow=false;context=null;confirm=null;tabs.clear();items.clear();overflowKeys.clear();boundContext=version;
@@ -44,6 +43,9 @@ final class ReliableChatScreen extends GuiChat {
         if(!ReliableChat.active()){super.sendChatMessage(msg,addToChat);return;}
         // A transfer may happen between reading the input and sending it. Never publish a stale PM draft.
         if(syncView())return;
+        if(msg.length()>ChatRules.inputLimit(ReliableChat.session().selected,msg,ReliableChat.fullChat())){
+            mc.ingameGUI.getChatGUI().printChatMessage(new net.minecraft.util.ChatComponentText("OTL: message too long for this channel; shorten it before sending."));return;
+        }
         long sendingContext=ReliableChat.contextVersion();
         ReliableChat.View before=ReliableChat.currentView();before.draft=addToChat||!UtilitySettings.rememberDrafts?"":text();
         if(addToChat)mc.ingameGUI.getChatGUI().addToSentMessages(msg);
@@ -53,19 +55,21 @@ final class ReliableChatScreen extends GuiChat {
         ReliableChat.restoreTemporaryChannel();
         if(inputField!=null){if(addToChat){ReliableChat.currentView().draft="";inputField.setText("");}else if(before!=ReliableChat.currentView())inputField.setText(ReliableChat.currentView().draft);boundView=ReliableChat.currentView();boundContext=ReliableChat.contextVersion();}
     }
-    private void select(String key){
-        if(!ReliableChat.tabKeys().contains(key))return;
+    void select(String key){
+        if(!ReliableChat.tabKeys().contains(key)&&!(ReliableChat.fullChat()&&key.startsWith("pm:")&&ReliableChat.session().views.containsKey(key)))return;
         boolean different=!ReliableChat.session().selected.equals(key);
         if(different)storeDraft();ReliableChat.session().select(key);if(different)restoreDraft();inputField.setFocused(true);
         net.minecraftforge.fml.relauncher.ReflectionHelper.setPrivateValue(GuiChat.class,this,false,"waitingOnAutocomplete","field_146414_r");
         net.minecraftforge.fml.relauncher.ReflectionHelper.setPrivateValue(GuiChat.class,this,false,"playerNamesFound","field_146417_i");
-        String command=ReliableChat.channelCommand(key);
-        if(command!=null){ReliableChat.noteSend(key);mc.thePlayer.sendChatMessage(command);}
         overflow=false;context=null;confirm=null;
     }
     @Override protected void keyTyped(char typed,int key)throws IOException{
         if(key==org.lwjgl.input.Keyboard.KEY_TAB&&isShiftKeyDown()&&UtilitySettings.cycleTabs){
             cycleNext();return;
+        }
+        inputField.setMaxStringLength(Math.max(text().length(),ChatRules.inputLimit(ReliableChat.session().selected,text(),ReliableChat.fullChat())));
+        if((key==org.lwjgl.input.Keyboard.KEY_RETURN||key==org.lwjgl.input.Keyboard.KEY_NUMPADENTER)&&text().trim().length()>ChatRules.inputLimit(ReliableChat.session().selected,text().trim(),ReliableChat.fullChat())){
+            sendChatMessage(text().trim(),true);return;
         }
         super.keyTyped(typed,key);
     }

@@ -1,0 +1,117 @@
+<map proto="1.5.0">
+<name>Biotech</name>
+<variant id="halloween" world="halloween" override="true">Biohazard</variant>
+<variant id="5v5" world="5v5">5v5</variant>
+<version>1.1.2</version>
+<unless variant="5v5">
+    <include id="conquest"/>
+    <constant id="respawn-timer">3s</constant>
+</unless>
+<if variant="5v5">
+    <include id="conquest-comp"/>
+    <constant id="respawn-timer">4.5s</constant>
+</if>
+<constant id="damage-resistance">3s</constant>
+<objective>Be the first team to reach 750 points!</objective>
+<gamemode>koth</gamemode>
+<if variant="default,5v5">
+    <created>2022-04-05</created>
+</if>
+<if variant="halloween">
+    <created>2022-09-10</created>
+</if>
+<authors>
+    <author uuid="6863869b-4b8c-4445-b778-a8e016775ae4" contribution="Layout, XML"/> <!-- Cazadorian -->
+    <author uuid="834704b6-94d2-4f4f-abc6-fe2e1f085837" contribution="Layout"/> <!-- Alternqtive -->
+    <author uuid="ec5ec930-5cf3-4f8a-ad9f-09056aeed71b" contribution="Aesthetics"/> <!-- Tundren -->
+    <author uuid="b2539be1-8f98-4375-b653-9d91cd04c30e" contribution="Aesthetics"/> <!-- Mewzzy -->
+    <author uuid="2ca8072f-74be-4798-85b8-bbce03aa91af" contribution="Aesthetics"/> <!-- Tywnis -->
+</authors>
+<contributors>
+    <unless variant="halloween">
+        <contributor uuid="5198dc37-537f-4ea5-8ee8-1e0952d4a36b" contribution="Aesthetic contributions"/> <!-- _3Each -->
+    </unless>
+    <if variant="halloween">
+        <contributor uuid="b03360db-b8cd-49de-8ba1-b7920c2238a9" contribution="Aesthetic contributions"/> <!-- Obelistics -->
+    </if>
+</contributors>
+<teams>
+    <if variant="default">
+        <team id="team-1" color="blue" max="15">Blue</team>
+        <team id="team-2" color="dark red" max="15">Red</team>
+    </if>
+    <if variant="halloween">
+        <team id="team-1" color="dark purple" max="15">Purple</team>
+        <team id="team-2" color="gold" max="15">Orange</team>
+    </if>
+    <if variant="5v5">
+        <team id="team-1" color="blue" max="5" max-overfill="5">Blue</team>
+        <team id="team-2" color="dark red" max="5" max-overfill="5">Red</team>
+    </if>
+</teams>
+<kits>
+    <kit id="default-kit">
+        <clear items="false" armor="false" effects="true"/> <!-- kits can't be empty, so this is here as a close-to-no-op -->
+        <if variant="halloween">
+            <effect>night vision</effect>
+        </if>
+    </kit>
+    <kit id="spawn-kit" parents="default-kit,base-kit"/>
+</kits>
+<spawns>
+    <default kit="default-kit">
+        <region yaw="-135">
+            <point>-26.5,17,27.5</point>
+        </region>
+    </default>
+    <spawn team="team-1" kit="spawn-kit">
+        <region yaw="-180">
+            <point>18.5,10,28.5</point>
+        </region>
+    </spawn>
+    <spawn team="team-2" kit="spawn-kit">
+        <region yaw="-90">
+            <point>-27.5,10,-17.5</point>
+        </region>
+    </spawn>
+</spawns>
+<regions>
+    <apply block="never" use="never"/>
+    <point id="gap-spawner-point">0.5,5,0.5</point>
+    <cylinder id="gap-spawner" base="0.5,5,0.5" radius="4" height="3"/>
+</regions>
+<spawners>
+    <spawner spawn-region="gap-spawner-point" player-region="gap-spawner" delay="6s">
+        <item amount="1" material="golden apple"/>
+    </spawner>
+</spawners>
+<control-points required="false" capture-time="5s" points="1" time-multiplier="0" show-progress="true" neutral-state="true" incremental="true" permanent="false">
+    <control-point name="Balcony (SW)">
+        <capture-region>
+            <cuboid min="-12,16,13" max="-21,19,22"/>
+        </capture-region>
+        <progress-display-region>
+            <cuboid min="-13,15,14" max="-20,16,21"/>
+        </progress-display-region>
+    </control-point>
+    <control-point name="Middle">
+        <capture-region>
+            <cuboid min="4,10,-3" max="-3,12,4"/>
+        </capture-region>
+        <progress-display-region>
+            <cuboid min="6,9,-5" max="-5,13,6"/>
+        </progress-display-region>
+    </control-point>
+    <control-point name="Lab (NE)">
+        <capture-region>
+            <cuboid min="15,14,-14" max="22,16,-21"/>
+        </capture-region>
+        <progress-display-region>
+            <cuboid min="14,3,-13" max="23,16,-22"/>
+        </progress-display-region>
+    </control-point>
+</control-points>
+<score>
+    <limit>750</limit>
+</score>
+</map>

@@ -33,8 +33,7 @@ final class FaceConfig {
             j.addProperty("blush",blush);j.addProperty("glowing_eyes",glow);j.addProperty("glances",glances);j.addProperty("blinking",blinking);j.addProperty("hat",hat);
             j.addProperty("blink_seconds",(double)Math.round(blinkSeconds*10)/10);
             j.addProperty("world_lighting",naturalLight?"natural":"fullbright");
-            Files.createDirectories(path().getParent());
-            Files.write(path(),new GsonBuilder().setPrettyPrinting().create().toJson(j).getBytes(StandardCharsets.UTF_8));
+            AtomicFiles.write(path(),new GsonBuilder().setPrettyPrinting().create().toJson(j).getBytes(StandardCharsets.UTF_8));
         }catch(Exception e){System.err.println("OTL: could not save face settings: "+e.getMessage());}
     }
     static void reset(){blush=2;glow=2;glances=1;blinking=1;hat=2;blinkSeconds=3.6f;naturalLight=true;save();}

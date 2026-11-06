@@ -1,0 +1,61 @@
+<map proto="1.5.0">
+<name>Desert Sanctuary Mini</name>
+<version>1.2</version>
+<objective>Control the flag for ${score} seconds to win!</objective>
+<constant id="damage-resistance">6s</constant>
+<constant id="respawn-timer">5s</constant>
+<include id="kotf-comp"/>
+<authors>
+    <author uuid="621b2aa8-4e5f-4ed8-bd36-0ae2f8952a06"/> <!-- Strangey -->
+    <author uuid="e3fdaea1-8a19-4378-8ad7-41cf63f5d141"/> <!-- Avaleer -->
+    <author uuid="65ffe1e4-d09e-4835-85d3-bfa6972b8a25" contribution="5v5 edit"/> <!-- Pibo -->
+</authors>
+<contributors>
+    <contributor uuid="8f9344cf-7367-4e28-9f24-5c66422f28c9"/> <!-- Timotheeee -->
+    <contributor uuid="377e44ba-8c33-47bd-8c07-1ca03635e90c" contribution="5v5 edit"/> <!-- lPoloBlash -->
+    <contributor uuid="9ea9fc43-11e3-4fee-8ac7-69e7c6a12b98" contribution="5v5 edit"/> <!-- ra_quel -->
+    <contributor uuid="e82603df-417d-4a95-bd1f-1720648be0b4" contribution="5v5 edit"/> <!-- Pablete1234 -->
+    <contributor uuid="75fd93dd-8e48-4698-81a2-97dae2ec5b5f" contribution="XML 5v5 edit"/> <!-- Pugzy -->
+</contributors>
+<teams>
+    <team id="blue" color="blue" max="5" max-overfill="5">Blue</team>
+    <team id="red" color="dark red" max="5" max-overfill="5">Red</team>
+</teams>
+<spawns>
+    <default>
+        <region yaw="90">
+            <cylinder base="0.5,51,0.5" radius="2" height="0"/>
+        </region>
+    </default>
+    <spawn team="blue" kit="base-kit" filter="has-flag">
+        <region yaw="0">
+            <point>0.5,16,-53.5</point>
+        </region>
+    </spawn>
+    <spawn team="red" kit="base-kit" filter="has-flag">
+        <region yaw="180">
+            <point>0.5,16,54.5</point>
+        </region>
+    </spawn>
+</spawns>
+<regions>
+    <apply block="never" use="never"/>
+</regions>
+<flags>
+    <flag id="flag"
+          name="Flag"
+          color="purple"
+          shared="true"
+          points-rate="1"
+          pickup-kit="flag-kit"
+          drop-kit="reset-health"
+          flag-proximity-metric="none"
+          show-respawn-on-pickup="${announce-post-pickup}">
+        <post return-time="0s" respawn-time="${flag-respawn-timer}">
+            <post name="Mid Post">0.5,9,0.5</post>
+            <post name="East Post" yaw="-90">19.5,14,0.5</post>
+            <post name="West Post" yaw="90">-18.5,14,0.5</post>
+        </post>
+    </flag>
+</flags>
+</map>

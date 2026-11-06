@@ -1,0 +1,203 @@
+<map proto="1.5.0">
+<name>Pompeii DTC</name>
+<version>2.1.3</version>
+<objective>Leak the enemy's core!</objective>
+<created>2017-08-20</created>
+<include id="gapple-kill-reward"/>
+<include id="iron-bulkcrafting"/>
+<authors>
+    <author uuid="5198dc37-537f-4ea5-8ee8-1e0952d4a36b" contribution="Main map builder, landscape, structures"/> <!-- _3Each  -->
+    <author uuid="9225421c-3c09-4d97-bb80-f6a77c1f360b" contribution="Map builder, terrain, original XML, gameplay"/> <!-- Jexel -->
+    <author uuid="38ab65dd-95f9-406f-917c-6accc995421f" contribution="Map builder, layout, design"/> <!-- GoldenOre -->
+</authors>
+<contributors>
+    <contributor uuid="2cef6d05-ec9a-44b3-bedc-53359c68ae65" contribution="Feedback and minor XML fixes"/> <!-- BGM -->
+    <contributor uuid="fe3608b7-d105-4029-8800-34b3147065b6" contribution="2.0 aesthetics and gameplay updates"/> <!-- rockymine -->
+    <contributor uuid="2d372806-0e62-4e44-87f7-2394540f5203" contribution="Building"/> <!-- IlPapaya -->
+</contributors>
+<broadcasts>
+    <tip after="1m" every="5m">Enchantment bottles and lapis lazuli are given every 3 kills!</tip>
+</broadcasts>
+<teams>
+    <team id="purple" color="dark purple" max="22">Purple</team>
+    <team id="red" color="dark red" max="22">Red</team>
+</teams>
+<kits>
+    <kit id="spawn-kit">
+        <clear/>
+        <item slot="0" unbreakable="true" material="iron sword"/>
+        <item slot="1" unbreakable="true" material="bow">
+            <enchantment>infinity</enchantment>
+        </item>
+        <item slot="28" material="arrow"/>
+        <item slot="2" unbreakable="true" material="diamond pickaxe"/>
+        <item slot="29" unbreakable="true" material="shears"/>
+        <item slot="3" unbreakable="true" material="diamond axe"/>
+        <item slot="30" unbreakable="true" material="iron spade"/>
+        <item slot="4" amount="64" material="wood"/>
+        <item slot="5" amount="48" material="glass"/>
+        <item slot="6" material="bucket"/>
+        <item slot="8" material="golden apple"/>
+        <helmet unbreakable="true" team-color="true" material="leather helmet"/>
+        <chestplate unbreakable="true" team-color="true" material="leather chestplate"/>
+        <leggings unbreakable="true" material="chainmail leggings"/>
+        <boots unbreakable="true" team-color="true" material="leather boots"/>
+        <effect duration="6s" amplifier="255">resistance</effect>
+    </kit>
+</kits>
+<spawns>
+    <default yaw="90">
+        <region>
+            <cylinder base="-41.5,44,3.5" radius="1" height="0"/>
+        </region>
+    </default>
+    <spawn team="purple" kit="spawn-kit" filter="before-25-minutes" yaw="180">
+        <region>
+            <point>-105.5,22,140.5</point>
+        </region>
+    </spawn>
+    <spawn team="purple" kit="spawn-kit" filter="after-25-minutes" yaw="180">
+        <region>
+            <point>-105.5,39,140.5</point>
+        </region>
+    </spawn>
+    <spawn team="red" kit="spawn-kit" filter="before-25-minutes">
+        <region>
+            <point>-105.5,22,-134.5</point>
+        </region>
+    </spawn>
+    <spawn team="red" kit="spawn-kit" filter="after-25-minutes">
+        <region>
+            <point>-105.5,39,-134.5</point>
+        </region>
+    </spawn>
+</spawns>
+<filters>
+    <team id="only-purple">purple</team>
+    <team id="only-red">red</team>
+    <deny id="deny-enchantment-table">
+        <material>enchantment table</material>
+    </deny>
+    <all id="only-iron-renew">
+        <cause>world</cause>
+        <material id="only-iron">iron block</material>
+    </all>
+    <not id="before-25-minutes">
+        <time id="after-25-minutes">25m</time>
+    </not>
+</filters>
+<regions>
+    <union id="spawns">
+        <rectangle id="purple-spawn" min="-140,113" max="-71,153"/>
+        <rectangle id="red-spawn" min="-140,-147" max="-71,-107"/>
+    </union>
+    <complement id="outside-map">
+        <everywhere/>
+        <rectangle min="-140,-147" max="-71,153"/>
+    </complement>
+    <apply enter="only-purple" region="purple-spawn" message="You may not enter the enemy's spawn!"/>
+    <apply enter="only-red" region="red-spawn" message="You may not enter the enemy's spawn!"/>
+    <apply block-break="only-iron" block-place="only-iron-renew" region="spawns" message="You may only break iron blocks in the spawn regions!"/>
+    <apply block="deny-enchantment-table" message="You may not destroy the enchantment tables!"/>
+    <apply block="deny(void)" region="outside-map" message="You may not build outside of the map!"/>
+</regions>
+<modes>
+    <mode id="gold-core" after="15m" material="gold block" name="`6GOLD CORE MODE"/>
+    <mode id="ice-core" after="30m" material="packed ice" name="`3PACKED ICE CORE MODE"/>
+</modes>
+<cores material="obsidian" leak="4" proximity-metric="none" modes="gold-core ice-core">
+    <core team="purple">
+        <region>
+            <cylinder base="-120.5,18,81.5" radius="4" height="7"/>
+        </region>
+    </core>
+    <core team="red">
+        <region>
+            <cylinder base="-90.5,18,-75.5" radius="4" height="7"/>
+        </region>
+    </core>
+</cores>
+<renewables>
+    <renewable rate="1.5" renew-filter="only-iron" region="spawns"/>
+</renewables>
+<toolrepair>
+    <tool>iron sword</tool>
+    <tool>bow</tool>
+    <tool>diamond pickaxe</tool>
+    <tool>diamond axe</tool>
+    <tool>iron spade</tool>
+    <tool>shears</tool>
+    <tool>arrow</tool>
+</toolrepair>
+<itemremove>
+    <item>leather helmet</item>
+    <item>leather chestplate</item>
+    <item>chainmail leggings</item>
+    <item>leather boots</item>
+    <item>obsidian</item>
+    <item>gold block</item>
+    <item>packed ice</item>
+    <item>string</item>
+    <item>seeds</item>
+    <item>double plant</item>
+    <item>red rose</item>
+</itemremove>
+<block-drops>
+    <rule>
+        <filter>
+            <any>
+                <material>wood</material>
+                <material>glass</material>
+            </any>
+        </filter>
+        <drops>
+            <item chance="0" material="glass"/>
+        </drops>
+    </rule>
+</block-drops>
+<itemkeep>
+    <item>iron sword</item>
+    <item>bow</item>
+    <item>diamond pickaxe</item>
+    <item>diamond axe</item>
+    <item>iron spade</item>
+    <item>arrow</item>
+    <item>bucket</item>
+    <item>water bucket</item>
+    <item>golden apple</item>
+    <item>wood</item>
+    <item>glass</item>
+    <item>exp bottle</item>
+    <item>ink sack</item>
+</itemkeep>
+<kill-rewards>
+    <kill-reward>
+        <item amount="16" material="wood"/>
+        <item amount="12" material="glass"/>
+    </kill-reward>
+    <kill-reward>
+        <filter>
+            <kill-streak count="3" repeat="true"/>
+        </filter>
+        <item amount="2" material="exp bottle"/>
+        <item damage="4" material="ink sack"/>
+    </kill-reward>
+</kill-rewards>
+<maxbuildheight>36</maxbuildheight>
+<respawns>
+    <respawn delay="2.5s" filter="before-25-minutes"/>
+    <respawn delay="4s" filter="after-25-minutes"/>
+</respawns>
+<hunger>
+    <depletion>off</depletion>
+</hunger>
+<timelock>off</timelock>
+<damage>
+    <deny>
+        <all>
+            <cause>fall</cause>
+            <effect>resistance</effect>
+        </all>
+    </deny>
+</damage>
+</map>

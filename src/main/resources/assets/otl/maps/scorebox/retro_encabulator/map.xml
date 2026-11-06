@@ -1,0 +1,192 @@
+<map proto="1.5.0"> <!-- License: This map is available under CC-4.0-BY-SA -->
+<name>Retro Encabulator</name>
+<version>1.0.5</version>
+<objective>Jump into the enemy's scorebox, located past their spawn!</objective>
+<created>2023-07-02</created>
+<gamemode>scorebox</gamemode>
+<include id="gapple-kill-reward"/>
+<authors>
+    <author uuid="33b99f02-2a1a-42db-9505-6161a3b2cb7e"/> <!-- halfmaster1 -->
+</authors>
+<teams>
+    <team id="blue-team" color="blue" dye-color="light blue" max="16">Blue</team>
+    <team id="red-team" color="dark red" dye-color="pink" max="16">Red</team>
+</teams>
+<maxbuildheight>32</maxbuildheight>
+<score>
+    <box points="1" filter="only-red" region="red-scorebox"/>
+    <box points="1" filter="only-blue" region="blue-scorebox"/>
+</score>
+<time>10m</time>
+<spawns>
+    <default kit="observer-kit">
+        <regions>
+            <region id="observer-spawn-1" yaw="90"/>
+            <region id="observer-spawn-2" yaw="-90"/>
+        </regions>
+    </default>
+    <spawn team="blue-team" kit="base-kit" region="blue-spawn" yaw="-90"/>
+    <spawn team="red-team" kit="base-kit" region="red-spawn" yaw="90"/>
+</spawns>
+<filters>
+    <not id="breakable">
+        <any id="unbreakable">
+            <material>stained clay:5</material>
+            <material>stained clay:11</material>
+            <material>stained clay:13</material>
+            <material>stained clay:14</material>
+            <material>wool</material>
+            <material>stained glass</material>
+            <material>diamond block</material>
+            <material>iron block</material>
+        </any>
+    </not>
+    <team id="only-blue">blue-team</team>
+    <team id="only-red">red-team</team>
+    <all id="spawn-area-filter">
+        <region id="spawn-area"/>
+        <participating/>
+    </all>
+</filters>
+<regions>
+    <point id="observer-spawn-1">3.5,33,1.5</point>
+    <point id="observer-spawn-2">-2.5,33,1.5</point>
+    <point id="blue-spawn">3.5,33,1.5</point>
+    <point id="red-spawn">-2.5,33,1.5</point>
+    <cuboid id="blue-scorebox" min="-97,0,-1" max="-92,4,10"/>
+    <cuboid id="red-scorebox" min="93,0,-1" max="98,4,10"/>
+    <cuboid id="spawn-area" min="-52,33,-36" max="53,40,39"/>
+    <point id="diamond-spawner">0.5,7,1.5</point>
+    <point id="iron-spawner-1">29.5,5,46.5</point>
+    <point id="iron-spawner-2">-28.5,5,46.5</point>
+    <point id="iron-spawner-3">29.5,5,-43.5</point>
+    <point id="iron-spawner-4">-28.5,5,-43.5</point>
+    <union id="scorebox-areas">
+        <half origin="88,0,0" normal="1,0,0"/>
+        <half origin="-87,0,0" normal="-1,0,0"/>
+    </union>
+    <apply region="spawn-area" block="never" message="You can't break spawn"/>
+    <apply region="scorebox-areas" block="never" message="You can't edit the map here"/>
+    <apply block-break="breakable"/>
+</regions>
+<portals>
+    <!-- Warps out of own scoreboxes -->
+    <portal region="blue-scorebox" destination="blue-spawn" filter="only-blue" yaw="-90"/>
+    <portal region="red-scorebox" destination="red-spawn" filter="only-red" yaw="90"/>
+    <!-- Warps out of enemy scoreboxes -->
+    <portal region="red-scorebox" destination="blue-spawn" filter="only-blue" yaw="-90"/>
+    <portal region="blue-scorebox" destination="red-spawn" filter="only-red" yaw="90"/>
+</portals>
+<kits>
+    <kit id="spawn-area-kit">
+        <effect amplifier="6">speed</effect>
+        <effect amplifier="6">regeneration</effect>
+    </kit>
+    <kit id="observer-kit">
+        <effect>night vision</effect>
+    </kit>
+    <kit id="base-kit" parents="observer-kit,spawn-area-kit">
+        <item slot="0" amount="1" unbreakable="true" attributes="generic.attackDamage:add:7" material="diamond pickaxe"/>
+        <item slot="1" amount="1" unbreakable="true" enchantment="arrow infinite" material="bow"/>
+        <item slot="2" team-color="true" amount="64" material="stained clay"/>
+        <item slot="28" material="arrow"/>
+        <item slot="3" amount="32" material="nether fence"/>
+        <item slot="30" amount="32" material="step"/>
+        <item slot="11" team-color="true" amount="64" material="stained clay"/>
+        <item slot="20" team-color="true" amount="64" material="stained clay"/>
+        <item slot="21" amount="32" material="ladder"/>
+        <item slot="4" amount="16" material="stone button"/>
+        <item slot="31" amount="16" material="stone plate"/>
+        <item slot="22" amount="16" material="lever"/>
+        <item slot="5" material="water bucket"/>
+        <item slot="29" team-color="true" amount="64" material="stained clay"/>
+        <item slot="32" material="water bucket"/>
+        <item slot="23" material="water bucket"/>
+        <item slot="14" material="water bucket"/>
+        <item slot="6" material="golden apple"/>
+        <item slot="7" amount="16" material="redstone block"/>
+        <item slot="34" amount="64" material="redstone"/>
+        <item slot="25" amount="16" material="redstone torch on"/>
+        <item slot="16" amount="16" material="diode"/>
+        <item slot="8" amount="64" material="tnt"/>
+        <item slot="35" amount="64" material="tnt"/>
+        <item slot="26" amount="64" material="tnt"/>
+        <item slot="17" amount="64" material="tnt"/>
+        <chestplate locked="true" unbreakable="true" team-color="true" material="leather chestplate"/>
+        <leggings locked="true" unbreakable="true" team-color="true" material="leather leggings"/>
+        <boots locked="true" unbreakable="true" team-color="true" enchantment="protection explosions:3;protection fall:3;protection" material="leather boots"/>
+        <effect duration="6s" amplifier="255">damage resistance</effect>
+    </kit>
+    <lend kit="spawn-area-kit" filter="spawn-area-filter"/>
+</kits>
+<spawners>
+    <spawner spawn-region="diamond-spawner" player-region="everywhere" max-entities="1" delay="15s">
+        <item material="diamond helmet" enchantment="protection:6"/>
+    </spawner>
+    <spawner spawn-region="iron-spawner-1" player-region="everywhere" max-entities="1" delay="10s">
+        <item material="iron helmet" enchantment="protection:3"/>
+    </spawner>
+    <spawner spawn-region="iron-spawner-2" player-region="everywhere" max-entities="1" delay="10s">
+        <item material="iron helmet" enchantment="protection:3"/>
+    </spawner>
+    <spawner spawn-region="iron-spawner-3" player-region="everywhere" max-entities="1" delay="10s">
+        <item material="iron helmet" enchantment="protection:3"/>
+    </spawner>
+    <spawner spawn-region="iron-spawner-4" player-region="everywhere" max-entities="1" delay="10s">
+        <item material="iron helmet" enchantment="protection:3"/>
+    </spawner>
+</spawners>
+<itemremove>
+    <item>diamond pickaxe</item>
+    <item>bow</item>
+    <item>arrow</item>
+    <item>vine</item>
+    <item>stained clay</item>
+    <item>nether fence</item>
+    <item>step</item>
+    <item>ladder</item>
+    <item>stone plate</item>
+    <item>redstone block</item>
+    <item>redstone</item>
+    <item>stone button</item>
+    <item>lever</item>
+    <item>redstone torch on</item>
+    <item>diode</item>
+    <item>water bucket</item>
+    <item>bucket</item>
+    <item>tnt</item>
+    <item>leather chestplate</item>
+    <item>leather leggings</item>
+    <item>leather boots</item>
+    <item>bucket</item>
+    <item>diamond block</item>
+    <item>iron block</item>
+    <item>gold block</item>
+    <item>diamond block</item>
+    <item>dispenser</item>
+    <item>quartz block</item>
+    <item>ender stone</item>
+    <item>wood</item>
+    <item>wool</item>
+    <item>obsidian</item>
+    <item>fence</item>
+    <item>wood stairs</item>
+    <item>cobblestone stairs</item>
+    <item>smooth stairs</item>
+    <item>spruce wood stairs</item>
+    <item>dark oak stairs</item>
+    <item>cobblestone</item>
+    <item>golden apple</item>
+</itemremove>
+<kill-rewards>
+    <kill-reward>
+        <item amount="32" material="tnt"/>
+    </kill-reward>
+</kill-rewards>
+<hunger>
+    <depletion>off</depletion>
+</hunger>
+<disabledamage>
+    <damage>fall</damage>
+</disabledamage>
+</map>

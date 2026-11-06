@@ -1,0 +1,1 @@
+CommunityMaps preview files are from OvercastCommunity/CommunityMaps and are licensed under CC BY-SA 4.0. See https://github.com/OvercastCommunity/CommunityMaps/blob/master/LICENSE.md

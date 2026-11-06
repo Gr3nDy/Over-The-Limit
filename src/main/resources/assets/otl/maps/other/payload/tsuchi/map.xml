@@ -1,0 +1,144 @@
+<map proto="1.5.0">
+<name>Tsuchi</name>
+<version>2.0.2</version>
+<created>2023-10-01</created>
+<include id="gapple-kill-reward"/>
+<objective>Push your team's cart to the end point before the enemy!</objective>
+<authors>
+    <author uuid="b1521072-6993-4fe4-ae60-dbeeb7dc0cfa"/> <!-- Antnecb -->
+</authors>
+<teams>
+    <team id="blue" color="blue" max="16">Blue</team>
+    <team id="red" color="dark red" max="16">Red</team>
+</teams>
+<kits>
+    <kit id="spawn-kit">
+        <game-mode>adventure</game-mode>
+        <item slot="0" unbreakable="true" material="stone sword"/>
+        <item slot="1" unbreakable="true" material="bow"/>
+        <item slot="2" material="golden apple"/>
+        <item slot="8" amount="12" material="arrow"/>
+        <helmet unbreakable="true" team-color="true" material="leather helmet"/>
+        <chestplate unbreakable="true" team-color="true" enchantment="protection projectile:3" material="leather chestplate"/>
+        <leggings unbreakable="true" material="chainmail leggings"/>
+        <boots unbreakable="true" material="iron boots"/>
+    </kit>
+</kits>
+<spawns>
+    <spawn team="red" kit="spawn-kit">
+        <regions yaw="0">
+            <point>-6.5,15.5,-7.5</point>
+        </regions>
+    </spawn>
+    <spawn team="blue" kit="spawn-kit">
+        <regions yaw="0">
+            <point>59.5,15.5,-7.5</point>
+        </regions>
+    </spawn>
+    <default>
+        <region yaw="180">
+            <point>26.5,33.5,115.5</point>
+        </region>
+    </default>
+</spawns>
+<filters>
+    <team id="only-blue">blue</team>
+    <team id="only-red">red</team>
+</filters>
+<regions>
+<!-- Spawns -->
+    <union id="red-spawn">
+        <cuboid id="red-spawn-main" min="-3,15,7" max="5,20,13"/>
+        <cuboid id="red-spawn-top" min="-8,25,83" max="-2,30,87"/>
+    </union>
+    <union id="blue-spawn">
+        <cuboid id="blue-spawn-main" min="47,15,8" max="55,20,13"/>
+        <cuboid id="blue-spawn-top" min="54,25,83" max="60,30,87"/>
+    </union>
+    <!-- Applies -->
+    <apply enter="only-red" message="You may not enter the enemy's spawn!" region="red-spawn"/>
+    <apply enter="only-blue" message="You may not enter the enemy's spawn!" region="blue-spawn"/>
+    <apply use="never"/>
+    <apply block="never"/>
+</regions>
+<portals>
+    <!-- Red side portals -->
+    <portal id="red-spawn-portal" x="@-4.5" y="@25.5" z="@73.5" yaw="-90">
+        <region>
+            <cuboid min="-15.5,14,-4" max="-14.5,20,2"/>
+        </region>
+    </portal>
+    <!-- Blue side portals -->
+    <portal id="blue-spawn-portal" x="@57.5" y="@25.5" z="@73.5" yaw="90">
+        <region>
+            <cuboid min="67.5,15,-4" max="68.5,20,2"/>
+        </region>
+    </portal>
+</portals>
+<payloads radius="4" capture-time="4m" decay-rate="0.25" capture-rule="majority">
+    <payload location="20.5,15,38.5" name="Red Payload" capture-filter="only-red"/> <!--display-filter="filter"-->
+    <payload location="32.5,15,38.5" name="Blue Payload" capture-filter="only-blue"/> <!--display-filter="filter"-->
+</payloads>
+<spawners>
+    <spawner id="cave-gapple" delay="6">
+        <spawn-region>
+            <block>26,18,75</block>
+        </spawn-region>
+        <player-region>
+            <cylinder base="26,18,75" radius="3" height="3"/>
+        </player-region>
+        <item material="golden apple"/>
+    </spawner>
+    <spawner id="top-gapple" delay="6">
+        <spawn-region>
+            <block>26,26,91</block>
+        </spawn-region>
+        <player-region>
+            <cylinder base="26,26,91" radius="3" height="3"/>
+        </player-region>
+        <item material="golden apple"/>
+    </spawner>
+    <spawner id="blue-arrow" delay="4">
+        <spawn-region>
+            <block>59,26,100</block>
+        </spawn-region>
+        <player-region>
+            <cylinder base="59,26,100" radius="3" height="3"/>
+        </player-region>
+        <item amount="2" material="arrow"/>
+    </spawner>
+    <spawner id="red-arrow" delay="4">
+        <spawn-region>
+            <block>-6,26,100</block>
+        </spawn-region>
+        <player-region>
+            <cylinder base="-6,26,100" radius="3" height="3"/>
+        </player-region>
+        <item amount="2" material="arrow"/>
+    </spawner>
+</spawners>
+<score>
+    <limit>1</limit>
+</score>
+<broadcasts>
+    <tip after="1s">`bYour team's cart is located at the beacon!`b</tip>
+    <tip after="3s" every="2m">`bYou must stand near your team's cart to push it!`b</tip>
+    <tip after="5s" every="3m">`bYou may stand near the enemy's cart to halt it!`b</tip>
+</broadcasts>
+<hunger>
+    <depletion>off</depletion>
+</hunger>
+<itemremove>
+    <item>stone sword</item>
+    <item>bow</item>
+    <item>leather helmet</item>
+    <item>leather chestplate</item>
+    <item>chainmail leggings</item>
+    <item>iron boots</item>
+</itemremove>
+<kill-rewards>
+    <kill-reward>
+        <item amount="4" material="arrow"/>
+    </kill-reward>
+</kill-rewards>
+</map>

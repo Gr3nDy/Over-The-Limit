@@ -46,7 +46,6 @@ final class ReliableChat {
         s.selected=ChatRules.ALL;s.view().unread=0;
     }
     static List<String> tabKeys(){List<String> keys=new ArrayList<>();keys.add(ChatRules.ALL);if(fullChat()){keys.add(ChatRules.TEAM);keys.add(ChatRules.PARTY);keys.addAll(session().visible);}return keys;}
-    static String channelCommand(String key){return null;}
     @SubscribeEvent public void connect(FMLNetworkEvent.ClientConnectedToServerEvent e){contextDirty=true;}
     @SubscribeEvent public void disconnect(FMLNetworkEvent.ClientDisconnectionFromServerEvent e){contextDirty=true;}
     @SubscribeEvent public void worldLoad(WorldEvent.Load e){if(e.world.isRemote)contextDirty=true;}
@@ -134,9 +133,11 @@ final class ReliableChat {
     static long clock;
     static final class Session {
         final LinkedHashMap<String,View> views=new LinkedHashMap<>();final List<String> visible=new ArrayList<>();
+        final String host;
         String selected,restoreSelection;
         String temporaryReturn;
         Session(String host){
+            this.host=host;
             views.put(ChatRules.ALL,new View(ChatRules.ALL,"All"));views.put(ChatRules.TEAM,new View(ChatRules.TEAM,"Team"));views.put(ChatRules.PARTY,new View(ChatRules.PARTY,"Party"));
             restoreSelection=UtilitySettings.selected.getOrDefault(host,ChatRules.ALL);
             selected=views.containsKey(restoreSelection)?restoreSelection:ChatRules.ALL;
@@ -157,10 +158,16 @@ final class ReliableChat {
             restoreSelection=key;
             UtilitySettings.selected.put(ServerScope.current(),ChatRules.channel(key)==null?ChatRules.ALL:key);UtilitySettings.save();
         }
-        void close(String key){View v=views.get(key);if(v==null||!key.startsWith("pm:"))return;v.closed=true;visible.remove(key);if(selected.equals(key))select(ChatRules.ALL);}
+        void close(String key){View v=views.get(key);if(v==null||!key.startsWith("pm:"))return;v.closed=true;visible.remove(key);if(selected.equals(key))select(ChatRules.ALL);trimPrivate();}
+        void trimPrivate(){
+            List<View> idle=new ArrayList<>();
+            for(View v:views.values())if(v.key.startsWith("pm:")&&!visible.contains(v.key)&&!v.key.equals(selected)&&!v.key.equals(temporaryReturn)&&v.draft.isEmpty())idle.add(v);
+            idle.sort(Comparator.comparingLong(v->v.activity));
+            for(int i=0;i<idle.size()-32;i++)clear(idle.get(i).key);
+        }
         void clear(String key){
             View v=views.get(key);if(v==null)return;
-            if(key.startsWith("pm:")){v.unread=0;v.newBelow=0;v.draft="";visible.remove(key);views.remove(key);pending.remove(ServerScope.current()+"|"+key);if(selected.equals(key))select(ChatRules.ALL);}
+            if(key.startsWith("pm:")){v.unread=0;v.newBelow=0;v.draft="";visible.remove(key);views.remove(key);pending.remove(host+"|"+key);if(selected.equals(key))select(ChatRules.ALL);}
             else{v.hud.clearChatMessages();v.bottom();}
         }
         void clearPrivateExceptLatest(){
@@ -218,10 +225,14 @@ final class ReliableChat {
         }
     }
     static final class SendContext {final String host=ServerScope.current(),key;final long time=System.nanoTime();SendContext(String key){this.key=key;}}
-    static SendContext recentSend;
+    static volatile SendContext recentSend;
     static void noteSend(String key){recentSend=key==null?null:new SendContext(key);}
     static final class Pending {final int id;final String body,name;final long time=System.nanoTime();Pending(int id,String body,String name){this.id=id;this.body=body;this.name=name;}}
     static final Map<String,Deque<Pending>> pending=new HashMap<>();
+    static void expirePending(long now){
+        pending.values().removeIf(queue->{queue.removeIf(p->now-p.time>30000000000L);return queue.isEmpty();});
+        if(recentSend!=null&&now-recentSend.time>8000000000L)recentSend=null;
+    }
     static int localId=-10000;
     private static final Pattern SEND_PM=Pattern.compile("^/(?:msg|message|tell|w)\\s+([A-Za-z0-9_]{1,16})\\s+(.+)$",Pattern.CASE_INSENSITIVE);
     static String send(String text){
@@ -243,12 +254,16 @@ final class ReliableChat {
         if(event.type==2)return;
         observeWelcome(event.message);
         if(!active())return;
-        event.setCanceled(true);
         Minecraft mc=MinecraftAccess.get();GuiNewChat hud=mc.ingameGUI.getChatGUI();
         GuiNewChat fallback=hud instanceof RoutingHud?((RoutingHud)hud).original:hud;
-        storeFallback(fallback,event.message);
-        org.apache.logging.log4j.LogManager.getLogger(GuiNewChat.class).info("[CHAT] "+event.message.getUnformattedText());
-        receive(event.message,0);
+        try{
+            storeFallback(fallback,event.message);
+            org.apache.logging.log4j.LogManager.getLogger(GuiNewChat.class).info("[CHAT] "+event.message.getUnformattedText());
+            receive(event.message,0);
+            event.setCanceled(true);
+        }catch(Exception e){
+            System.err.println("OTL: could not route chat message: "+e.getMessage());
+        }
     }
     private static void storeFallback(GuiNewChat hud,IChatComponent message){
         // Keep vanilla OFF/fallback history, without invoking external/global print side effects.
@@ -266,6 +281,10 @@ final class ReliableChat {
     }
     @SubscribeEvent public void tick(TickEvent.ClientTickEvent e){
         if(e.phase!=TickEvent.Phase.END)return;Minecraft mc=MinecraftAccess.get();
+        if(mc.ingameGUI!=null&&mc.ingameGUI.getUpdateCounter()%20==0){
+            expirePending(System.nanoTime());
+            for(Session s:sessions.values())s.trimPrivate();
+        }
         if(mc.ingameGUI!=null&&!(mc.ingameGUI.getChatGUI() instanceof RoutingHud)){
             installed=new RoutingHud(mc,mc.ingameGUI.getChatGUI());
             ReflectionHelper.setPrivateValue(GuiIngame.class,mc.ingameGUI,installed,"persistantChatGUI","field_73840_e");

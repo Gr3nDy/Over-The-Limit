@@ -24,11 +24,15 @@ public final class Otl {
         ClientRegistry.registerKeyBinding(partyChat);
         MinecraftForge.EVENT_BUS.register(ReliableChat.INSTANCE);
         MinecraftForge.EVENT_BUS.register(MapPreview.INSTANCE);
+        FMLCommonHandler.instance().bus().register(MapPreview.INSTANCE);
+        net.minecraftforge.client.ClientCommandHandler.instance.registerCommand(MapPreview.COMMAND);
         FMLCommonHandler.instance().bus().register(ReliableChat.INSTANCE);
+        FMLCommonHandler.instance().bus().register(LeftHand.INSTANCE);
         MinecraftForge.EVENT_BUS.register(TeamBubbles.INSTANCE);
         FMLCommonHandler.instance().bus().register(TeamBubbles.INSTANCE);
         FMLCommonHandler.instance().bus().register(this);MinecraftForge.EVENT_BUS.register(this);
-        for(RenderPlayer renderer:MinecraftAccess.get().getRenderManager().getSkinMap().values())renderer.addLayer(new FaceOverlay(renderer));
+        net.minecraft.client.renderer.entity.RenderManager rm=MinecraftAccess.get().getRenderManager();
+        if(rm!=null)for(RenderPlayer renderer:rm.getSkinMap().values())renderer.addLayer(new FaceOverlay(renderer));
         ((IReloadableResourceManager)MinecraftAccess.get().getResourceManager()).registerReloadListener(resources->{SkinFace.clear();FaceMarks.clearCache();});
     }
     @SubscribeEvent public void key(InputEvent.KeyInputEvent event){

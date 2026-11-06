@@ -1,0 +1,74 @@
+<map proto="1.5.1">
+<name>Blue Lock</name>
+<version>1.0.7</version>
+<variant id="fumble">Fumble</variant>
+<created>2026-02-15</created>
+<if variant="fumble">
+    <phase>development</phase>
+</if>
+<constants>
+    <constant id="team-flag-posts">true</constant>
+    <constant id="team-size">11</constant>
+    <constant id="team-one-name">Blue Lock</constant>
+    <constant id="team-two-name">U-20 Japan</constant>
+    <constant id="team-one-color">blue</constant>
+    <constant id="team-two-color">red</constant>
+    <constant id="team-one-spawn">0.5,18,-47.5</constant>
+    <constant id="team-one-yaw">0</constant>
+    <constant id="team-two-spawn">0.5,18,68.5</constant>
+    <constant id="team-two-yaw">180</constant>
+    <constant id="flag-post">0.5,9,10.5</constant>
+    <constant id="team-one-flag-post">0.5,6,-31.5</constant>
+    <constant id="team-two-flag-post">0.5,6,52.5</constant>
+    <constant id="void-plane">2</constant>
+    <constant id="time-limit">12m</constant>
+    <constant id="flag-respawn">7s</constant>
+    <constant id="flag-prerespawn">6.8s</constant>
+    <constant id="instaheal-default">2</constant>
+    <!-- set this on true due to low light conditions -->
+    <constant id="enable-night-vision">true</constant>
+    <if variant="fumble">
+        <constant id="experimental-flag-land">true</constant>
+        <constant id="valid-landing-area-min">-32,6,-34</constant>
+        <constant id="valid-landing-area-max">33,6,55</constant>
+        <constant id="ground_y">6</constant>
+    </if>
+</constants>
+<include id="touchdown"/>
+<authors>
+    <author uuid="38ef938a-7020-4c04-9d12-4875ed0598ca"/> <!-- Kazoha -->
+    <author uuid="f6f5dce8-a158-461d-b26d-dc8acfaeedd7"/> <!-- Shuliett -->
+</authors>
+<kits>
+    <!-- set this on true due to low light conditions for observers -->
+    <kit id="obs-night-vision">
+        <effect>night vision</effect>
+    </kit>
+</kits>
+<spawns>
+    <default kit="obs-night-vision">
+        <regions>
+            <point yaw="0">63,6.1,3</point>
+            <point yaw="180">63,6.1,18</point>
+        </regions>
+    </default>
+</spawns>
+<filters>
+    <below id="team-one-4s" z="-16.5"/>
+    <below id="team-one-3s" z="10.5"/>
+    <above id="team-two-4s" z="37.5"/>
+    <above id="team-two-3s" z="10.5"/>       
+</filters>  
+<regions>
+    <cuboid id="playing-field" min="-32,5,-45" max="33,12,66"/>
+    <cuboid id="team-one-portal" min="-32,6,-45" max="33,10,-34"/> <!-- where team two scores -->
+    <cuboid id="team-two-portal" min="33,6,66" max="-32,10,55"/> <!-- where team one scores -->
+</regions>
+<respawns auto="true">
+    <respawn filter="all(team-one-4s,team-one,game_state=${carry})" delay="4s"/>
+    <respawn filter="all(team-one-3s,team-one,game_state=${carry})" delay="3.5s"/>
+    <respawn filter="all(team-two-4s,team-two,game_state=${carry})" delay="4s"/>
+    <respawn filter="all(team-two-3s,team-two,game_state=${carry})" delay="3.5s"/>
+    <respawn delay="3s"/>
+</respawns>
+</map>

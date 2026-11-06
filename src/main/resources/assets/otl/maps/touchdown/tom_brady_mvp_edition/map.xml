@@ -1,0 +1,72 @@
+<map proto="1.5.1">
+<name>Tom Brady: MVP Edition</name>
+<version>1.1.5</version>
+<created>2025-05-16</created>
+<phase>staging</phase>
+<constants>
+    <constant id="team-size">6</constant>
+    <constant id="team-one-name">Blue</constant>
+    <constant id="team-two-name">Red</constant>
+    <constant id="team-one-color">blue</constant>
+    <constant id="team-two-color">red</constant>
+    <constant id="team-one-spawn">-23.5,35,-102.5</constant>
+    <constant id="team-one-yaw">0</constant>
+    <constant id="team-two-spawn">-23.5,35,13.5</constant>
+    <constant id="team-two-yaw">180</constant>
+    <constant id="flag-post">-23.5,27,-44.5</constant>
+    <constant id="void-plane">20</constant>
+    <constant id="natural-regeneration">false</constant>
+    <constant id="melee-weapon">wood sword</constant>
+    <constant id="melee-weapon-attribute">attack_damage:add:2</constant>
+    <constant id="armor-kit">no-armor-kit</constant>
+    <constant id="flag-carrier-armor-kit">no-armor-kit</constant>
+    <constant id="score-display">square</constant>
+</constants>
+<include id="touchdown"/>
+<authors>
+    <author uuid="534470be-4122-4762-83e1-f45abb474cdc"/> <!-- Necrozma -->
+</authors>
+<contributors>
+    <contributor uuid="c31e94b2-7678-4551-847e-989c1423323a" contribution="Progenitor"/> <!-- TommyHillfigger -->
+    <contributor uuid="b390b87a-47e8-40d8-968a-9e7e2582a88b" contribution="Progenitor"/> <!-- MewTwoKing -->
+    <contributor uuid="2fd57dff-4cff-4b60-96a4-d26e37759c03" contribution="XML"/> <!-- Furrie -->
+    <contributor uuid="9d4779a8-d35f-45d2-b51c-95de7a77e128" contribution="Bridge Snippets"/> <!-- zzuf -->
+    <contributor uuid="c25a6f7b-4c42-40da-8cd6-add53f0c84eb" contribution="XML"/> <!-- arcadeboss -->
+    <contributor uuid="e419983c-bb20-438d-b900-717f131a272f" contribution="XML"/> <!-- KuNet -->
+    <contributor uuid="aa6a6b35-db22-4cff-bfce-3093cf4cf2e6" contribution="XML"/> <!-- honeyfuggle -->
+</contributors>
+<spawns>
+    <default>
+        <region yaw="90">
+            <point>1.5,28,-44.5</point>
+        </region>
+    </default>
+</spawns>
+<kits>
+    <kit id="no-armor-kit">
+        <clear items="false" armor="true" effects="false"/>
+    </kit>
+</kits>
+<regions>
+    <union id="barriers">
+        <cuboid min="1,24,-100" max="2,28,11"/>
+        <cuboid min="-49,24,-100" max="-48,28,11"/>
+    </union>
+    <cuboid id="playing-field" min="-48,23,-100" max="1,30,11"/>
+    <cuboid id="team-one-portal" min="-48,24,-100" max="1,28,-89"/> <!-- where team two scores -->
+    <cuboid id="team-two-portal" min="-48,24,0" max="1,28,11"/> <!-- where team one scores -->
+    <cuboid id="flag-indicator-upper" min="-25,35,-46" max="-22,40,-43"/>
+    <cuboid id="flag-indicator-lower" min="-25,32,-46" max="-22,34,-43"/>
+    <apply block-physics="never"/>
+</regions>
+<actions>
+    <!--
+    <action id="air" scope="match" expose="true">
+        <fill region="barriers" material="air"/>
+    </action>
+    -->
+</actions>
+<world>
+    <timeset>6000</timeset>
+</world>
+</map>

@@ -1,34 +1,28 @@
 # Changelog
 
-## 0.3.1
+## v0.3.2
 
-### Face Rig
+### Modified
+- **Team bubbles**: simplified to trigger only from server-delivered `(Team Name) Player: message` lines, including the local player's own messages. No join detection, team-color comparison, or scoreboard membership checks. Global, party, private, system and hub messages remain excluded. The 2-second per-sender cooldown remains.
 
-- Added reliable Face Rig support for other players.
-- Added automatic eye, pupil, brow, and eyelid detection from player skins.
-- Added per-eye skin-derived colors and manual Lid pixel selection.
-- Added support for 64×64 and legacy 64×32 skins.
-- Added skin caching and retry behavior for late-loading skins.
-- Improved dark-skin, hat-layer, and reference-style eyelid detection.
-- Added blinking, glances, blush, glow, bow-aiming expressions, and sneaking behavior.
+### Fixed
+- Team chat detection now uses explicit `(Team Name) Playername:` format exclusively.
+- Join messages and name-color matching removed from bubble eligibility.
+- Own team-chat messages now produce visible bubbles in third-person view.
 
-### Reliable Chat
+## v0.3.1
 
-- Added All, Team, Party, and private-message tabs.
-- Added configurable Party Chat keybind, unbound by default.
-- Pressing the vanilla Chat key opens the last selected channel.
-- Pressing **Y** temporarily opens Team Chat and returns to the previous channel after sending or closing chat.
-- Joining a game starts in All Chat without automatically sending `/t`.
-- Added optional HUD channel tabs with unread counts and new-message indicators.
-- Added Bottom Left, Bottom Right, Top Left, and Top Right tab positions.
-- Selected channels no longer show unread counts while chat is closed.
-- Preserved vanilla formatting, clicks, hover actions, completion, history, drafts, and PM handling.
-- Added team speech bubbles, chat background opacity, history, drafts, and tab cycling settings.
-- Improved HUD rendering so tabs remain visible after chat rendering.
+### Added
+- Map Preview module with book hover previews and searchable gallery.
+- `/map` Forge client command with queued GUI opening.
+- Gold map-name link previews in Reliable Chat and vanilla chat.
+- Book hover previews with small/large toggles, no caption, tooltip-aligned.
+- Prefered Hand module with Main Hand/Type settings and six type options.
+- Team bubbles with observer default on matches, confirmed joins, hub exclusion, 2-second cooldown.
+- PublicMaps (`main`) and CommunityMaps (`master`) catalog support.
+- On-demand Public preview caching, not bundling all assets in jar.
+- Secure JDK XML metadata parsing with default-variant selection and shared includes.
+- Release build `build/libs/OTL.jar`; development/smoke jars in `build/dev-libs/`.
 
-### Compatibility and packaging
-
-- Added Lunar/Ichor-compatible Minecraft singleton access to prevent startup `NoSuchMethodError` crashes.
-- Renamed the main artifact to `OTL.jar`.
-- Renamed the source artifact to `OTL-source.jar`.
-- Updated the manual release-artifact workflow.
+### Fixed
+- Various bug fixes and stability improvements.

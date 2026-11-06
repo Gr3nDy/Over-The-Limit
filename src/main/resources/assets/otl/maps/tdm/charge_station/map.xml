@@ -1,0 +1,190 @@
+<map proto="1.5.0">
+<name>Charge Station</name>
+<version>1.0.5</version>
+<objective>Get the most kills after 8 minutes!</objective>
+<gamemode>tdm</gamemode>
+<include id="gapple-kill-reward"/>
+<phase>staging</phase>
+<authors>
+    <author uuid="065c76d6-32b8-4b3a-8270-db350f876844"/> <!-- GatitoConSueter -->
+    <author uuid="3a3f756e-7925-409a-be5e-e8c1694b3e2c"/> <!-- Shimane -->
+</authors>
+<contributors>
+    <contributor uuid="9d4779a8-d35f-45d2-b51c-95de7a77e128" contribution="Map tester and XML checker"/> <!-- Zzuf -->
+</contributors>
+<teams>
+    <team id="blue" color="blue" dye-color="blue" max="16" max-overfill="20">Blue</team>
+    <team id="red" color="dark red" dye-color="red" max="16" max-overfill="20">Red</team>
+</teams>
+<kits>
+    <kit id="spawnkit">
+        <game-mode>adventure</game-mode>
+        <helmet locked="true" team-color="true" unbreakable="true" material="leather helmet"/>
+        <leggings locked="true" team-color="true" unbreakable="true" material="leather leggings"/>
+        <boots locked="true" team-color="true" unbreakable="true" material="leather boots"/>
+        <game-mode>adventure</game-mode>
+    </kit>
+</kits>
+<classes family="Soldiers" restrict="false">
+    <class name="Close Assault" description="Iron Sword, regular Bow and Iron Chestplate" icon="iron chestplate" default="true">
+        <kit parents="spawnkit">
+            <item slot="0" unbreakable="true" material="iron sword"/>
+            <item slot="1" unbreakable="true" material="bow"/>
+            <item slot="28" amount="32" material="arrow"/>
+            <item slot="3" material="golden apple"/>
+            <item slot="4" amount="2" name="Grenade" grenade="true" grenade-power="1.45" material="snow ball" lore="`dBooom!"/>
+            <chestplate locked="true" enchantment="projectile_protection:1" unbreakable="true" material="iron chestplate"/>
+        </kit>
+    </class>
+    <class name="Heavy Assault" description="Slowness II, Diamond Sword and Bow (Power I)" icon="diamond chestplate">
+        <kit parents="spawnkit">
+            <item slot="0" unbreakable="true" material="diamond sword"/>
+            <item slot="1" enchantment="power" unbreakable="true" material="bow"/>
+            <item slot="2" material="golden apple"/>
+            <item slot="3" amount="2" name="Grenade" grenade="true" grenade-power="1.45" material="snow ball" lore="`dBooom!"/>
+            <item slot="28" amount="30" material="arrow"/>
+            <chestplate locked="true" unbreakable="true" material="diamond chestplate"/>
+            <effect amplifier="2">slowness</effect>
+        </kit>
+    </class>
+    <class name="Sniper" description="Speed I (5 mins), Bow (Power I and Punch I) and Sharpness II Stone Sword " icon="skull item">
+        <kit parents="spawnkit">
+            <item slot="0" enchantment="sharpness:2" unbreakable="true" material="stone sword"/>
+            <item slot="1" enchantment="power:1;punch:1" unbreakable="true" material="bow"/>
+            <item slot="2" material="golden apple"/>
+            <item slot="3" amount="2" name="Grenade" grenade="true" grenade-power="1.45" material="snow ball" lore="`dBooom!"/>
+            <item slot="28" amount="64" material="arrow"/>
+            <chestplate locked="true" team-color="true" unbreakable="true" material="leather chestplate"/>
+            <effect duration="300s">speed</effect>
+        </kit>
+    </class>
+    <class name="Medic" description="Health potions, regular Bow and Knockback I Stone Sword" icon="gold chestplate">
+        <kit parents="spawnkit">
+            <item slot="1" enchantment="power:1" unbreakable="true" material="bow"/>
+            <item slot="0" enchantment="knockback:1" unbreakable="true" material="stone sword"/>
+            <item slot="2" material="golden apple"/>
+            <item slot="3" amount="2" name="Grenade" grenade="true" grenade-power="1.45" material="snow ball" lore="`dBooom!"/>
+            <item slot="4" material="potion" damage="16449" name="Cure Spray" lore="`dSpray">
+                <effect duration="2s" amplifier="20">regeneration</effect>
+            </item>
+            <item slot="5" material="potion" damage="16449" name="Cure Spray" lore="`dSpray">
+                <effect duration="2s" amplifier="20">regeneration</effect>
+            </item>
+            <item slot="28" amount="32" material="arrow"/>
+            <chestplate locked="true" unbreakable="true" material="gold chestplate"/>
+        </kit>
+    </class>
+    <class name="Pyro" description="Stone Sword (Fire Aspect) and regular Bow" icon="blaze powder">
+        <kit parents="spawnkit">
+            <item slot="1" unbreakable="true" material="bow"/>
+            <item slot="0" enchantment="fire_aspect" unbreakable="true" material="stone sword"/>
+            <item slot="2" material="golden apple"/>
+            <item slot="3" amount="2" name="Grenade" grenade="true" grenade-power="1.45" material="snow ball" lore="`dBooom!"/>
+            <item slot="28" amount="32" material="arrow"/>
+            <chestplate locked="true" enchantment="fire_protection" unbreakable="true" material="iron chestplate"/>
+        </kit>
+    </class>
+    <class name="Assassin" description="Speed I, Diamond Axe (Sharpness I) and 3 Grenades" icon="diamond axe">
+        <kit parents="spawnkit">
+            <item slot="0" enchantment="sharpness" unbreakable="true" material="diamond axe"/>
+            <item slot="1" material="golden apple"/>
+            <item slot="2" amount="2" name="Grenade" grenade="true" grenade-power="1.45" material="snow ball" lore="`dBooom!"/>
+            <chestplate locked="true" unbreakable="true" material="chainmail chestplate"/>
+            <effect>speed</effect>
+        </kit>
+    </class>
+</classes>
+<spawns>
+    <spawn kit="spawnkit" team="blue">
+        <region>
+            <cylinder base="-8,21,-93" radius="1" height="0"/>
+        </region>
+    </spawn>
+    <spawn kit="spawnkit" team="red" yaw="180">
+        <region>
+            <cylinder base="5,21,-7" radius="1" height="0"/>
+        </region>
+    </spawn>
+    <default yaw="90">
+        <region>
+            <block>-57,32,-49</block>
+        </region>
+    </default>
+</spawns>
+<filters>
+    <team id="only-red">red</team>
+    <team id="only-blue">blue</team>
+</filters>
+<regions>
+    <union id="bases">
+        <cuboid id="red-base" min="-7,20,-22" max="24,27,-10"/>
+        <cuboid id="blue-base" min="4,20,-78" max="-15,27,-90"/>
+        <union id="outside-playable-areas">
+            <cuboid id="area1" min="-13,20,-90" max="-79,50,-126"/>
+            <cuboid id="area2" min="-3,20,-90" max="83,47,-125"/>
+            <cuboid id="area3" min="-54,20,-95" max="-80,60,17"/>
+            <cuboid id="area4" min="0,20,-9" max="-75,53,19"/>
+            <cuboid id="area5" min="10,20,-9" max="89,54,22"/>
+            <cuboid id="area6" min="63,20,-8" max="85,60,-126"/>
+            <cuboid id="area7" min="-13,20,-22" max="-10,27,-37"/>
+        </union>
+    </union>
+    <apply enter="only-blue" region="blue-base" message="You may not enter your opponent's spawn!"/>
+    <apply enter="only-red" region="red-base" message="You may not enter your opponent's spawn!"/>
+    <apply enter="never" region="outside-playable-areas" message="Go and play!"/>
+    <apply block="never" use="never"/>
+</regions>
+<score>
+    <kills>1</kills>
+</score>
+<time result="score">8m</time>
+<itemremove>
+    <item>leather helmet</item>
+    <item>leather chestplate</item>
+    <item>leather leggings</item>
+    <item>leather boots</item>
+    <item>bow</item>
+    <item>arrow</item>
+    <item>iron sword</item>
+    <item>stone sword</item>
+    <item>gold sword</item>
+    <item>diamond sword</item>
+    <item>diamond helmet</item>
+    <item>diamond chestplate</item>
+    <item>diamond boots</item>
+    <item>diamond leggings</item>
+    <item>iron leggings</item>
+    <item>iron boots</item>
+    <item>iron helmet</item>
+    <item>iron chestplate</item>
+    <item>gold leggings</item>
+    <item>gold boots</item>
+    <item>gold helmet</item>
+    <item>gold chestplate</item>
+    <item>potion</item>
+    <item>golden apple</item>
+    <item>chainmail chestplate</item>
+    <item>diamond axe</item>
+    <item>snow ball</item>
+</itemremove>
+<kill-rewards>
+    <kill-reward>
+        <item material="arrow" amount="3"/>
+    </kill-reward>
+    <kill-reward>
+        <filter>
+            <kill-streak count="5"/>
+        </filter>
+        <item name="Grenade" grenade="true" grenade-power="1.45" amount="3" material="snow ball" lore="`dBooom!"/>
+    </kill-reward>
+</kill-rewards>
+<tnt>
+    <blockdamage>off</blockdamage>
+</tnt>
+<world>
+    <timeset>18000</timeset>
+</world>
+<hunger>
+    <depletion>off</depletion>
+</hunger>
+</map>

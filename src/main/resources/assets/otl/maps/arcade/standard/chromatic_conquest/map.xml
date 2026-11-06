@@ -1,0 +1,715 @@
+<map proto="1.5.0">
+<name>Chromatic Conquest</name>
+<version>2.1.0</version>
+<objective>Paint the majority of enemy players with your team color to win!</objective>
+<created>2024-03-07</created>
+<phase>staging</phase>
+<gamemode>arcade</gamemode>
+<authors>
+    <author uuid="f690a591-348b-482e-a18d-7779d0c0a28c"/> <!-- mitchiii -->
+</authors>
+<constants>
+    <constant id="none">0</constant>
+    <constant id="any">1..4</constant>
+    <constant id="blue">1</constant>
+    <constant id="red">2</constant>
+    <constant id="green">3</constant>
+    <constant id="orange">4</constant>
+</constants>
+<time>4m</time>
+<score/>
+<teams>
+    <team id="blue" color="blue" max="12" show-name-tags="allies">Blue</team>
+    <team id="red" color="dark red" max="12" show-name-tags="allies">Red</team>
+    <team id="green" color="green" max="12" show-name-tags="allies">Green</team>
+    <team id="orange" color="gold" max="12" show-name-tags="allies">Orange</team>
+</teams>
+<spawns safe="true">
+    <spawn team="blue" kit="main-kit" region="blue-spawn" yaw="0"/>
+    <spawn team="red" kit="main-kit" region="red-spawn" yaw="180"/>
+    <spawn team="green" kit="main-kit" region="green-spawn" yaw="-90"/>
+    <spawn team="orange" kit="main-kit" region="orange-spawn" yaw="90"/>
+    <default kit="obs-kit">
+        <regions angle="0.5,18,0.5">
+            <point>0.5,29,-47.5</point>
+            <point>48.5,29.5,0.5</point>
+            <point>0.5,29,48.5</point>
+            <point>-47.5,29,0.5</point>
+        </regions>
+    </default>
+</spawns>
+<respawn auto="true" delay="0.1s"/>
+<kits>
+    <kit id="obs-kit">
+        <effect>night vision</effect>
+        <book show-other="false">
+            <title>`e`lHow to Play</title>
+            <author>mitchiii</author>
+            <pages>
+                <page>
+                    `2» `lCHROMATIC CONQ.`0
+
+                    Kill enemy players to
+                    paint them in your
+                    team's color. The team
+                    with the most players
+                    painted their color
+                    wins.
+
+                    When an entire team
+                    has been painted,
+                    players are moved to
+                    the team that painted
+                    them.
+                </page>
+            </pages>
+        </book>
+    </kit>
+    <kit id="main-kit">
+        <clear items="true" armor="true" effects="true"/>
+        <effect>night vision</effect>
+        <game-mode>adventure</game-mode>
+        <chestplate material="leather chestplate" team-color="true" unbreakable="true" locked="true"/>
+        <action filter="any(owned_by=${none}, moving_team=1)">
+            <kit force="true">
+                <effect duration="4" amplifier="4">regeneration</effect>
+                <double-jump power="3"/>
+                <walk-speed>1.1</walk-speed>
+                <item slot="0" material="stone sword" unbreakable="true" locked="true"/>
+                <helmet material="wool" team-color="true" locked="true"/>
+                <leggings material="leather leggings" team-color="true" unbreakable="true" locked="true"/>
+                <boots material="leather boots" team-color="true" unbreakable="true" locked="true"/>
+            </kit>
+        </action>
+        <action filter="all(owned_by=${any}, moving_team=0)">
+            <kit force="true">
+                <effect>invisibility</effect>
+                <effect amplifier="-20">jump boost</effect>
+                <double-jump enabled="false"/>
+                <walk-speed>0</walk-speed>
+            </kit>
+            <set var="frozen_at_x" value="last_x"/>
+            <set var="frozen_at_z" value="last_z"/>
+            <set var="respawning" value="1"/>
+            <enchant-item enchantment="unbreaking" level="1" ignore-metadata="true">
+                <find material="leather chestplate"/>
+            </enchant-item>
+        </action>
+        <action filter="all(owned_by=${blue}, moving_team=0)">
+            <kit>
+                <helmet material="stained glass" damage="11" locked="true"/>
+                <item slot="0" material="wool" damage="11" locked="true"/>
+                <item slot="1" material="wool" damage="11" locked="true"/>
+                <item slot="2" material="wool" damage="11" locked="true"/>
+                <item slot="3" material="wool" damage="11" locked="true"/>
+                <item slot="5" material="wool" damage="11" locked="true"/>
+                <item slot="6" material="wool" damage="11" locked="true"/>
+                <item slot="7" material="wool" damage="11" locked="true"/>
+                <item slot="8" material="wool" damage="11" locked="true"/>
+            </kit>
+        </action>
+        <action filter="all(owned_by=${red}, moving_team=0)">
+            <kit>
+                <helmet material="stained glass" damage="14" locked="true"/>
+                <item slot="0" material="wool" damage="14" locked="true"/>
+                <item slot="1" material="wool" damage="14" locked="true"/>
+                <item slot="2" material="wool" damage="14" locked="true"/>
+                <item slot="3" material="wool" damage="14" locked="true"/>
+                <item slot="5" material="wool" damage="14" locked="true"/>
+                <item slot="6" material="wool" damage="14" locked="true"/>
+                <item slot="7" material="wool" damage="14" locked="true"/>
+                <item slot="8" material="wool" damage="14" locked="true"/>
+            </kit>
+        </action>
+        <action filter="all(owned_by=${green}, moving_team=0)">
+            <kit>
+                <helmet material="stained glass" damage="5" locked="true"/>
+                <item slot="0" material="wool" damage="5" locked="true"/>
+                <item slot="1" material="wool" damage="5" locked="true"/>
+                <item slot="2" material="wool" damage="5" locked="true"/>
+                <item slot="3" material="wool" damage="5" locked="true"/>
+                <item slot="5" material="wool" damage="5" locked="true"/>
+                <item slot="6" material="wool" damage="5" locked="true"/>
+                <item slot="7" material="wool" damage="5" locked="true"/>
+                <item slot="8" material="wool" damage="5" locked="true"/>
+            </kit>
+        </action>
+        <action filter="all(owned_by=${orange}, moving_team=0)">
+            <kit>
+                <helmet material="stained glass" damage="1" locked="true"/>
+                <item slot="0" material="wool" damage="1" locked="true"/>
+                <item slot="1" material="wool" damage="1" locked="true"/>
+                <item slot="2" material="wool" damage="1" locked="true"/>
+                <item slot="3" material="wool" damage="1" locked="true"/>
+                <item slot="5" material="wool" damage="1" locked="true"/>
+                <item slot="6" material="wool" damage="1" locked="true"/>
+                <item slot="7" material="wool" damage="1" locked="true"/>
+                <item slot="8" material="wool" damage="1" locked="true"/>
+            </kit>
+        </action>
+        <action id="set-current-team">
+            <action filter="blue"><set var="current_team" value="${blue}"/></action>
+            <action filter="red"><set var="current_team" value="${red}"/></action>
+            <action filter="green"><set var="current_team" value="${green}"/></action>
+            <action filter="orange"><set var="current_team" value="${orange}"/></action>
+        </action>
+    </kit>
+</kits>
+<kill-rewards>
+    <kill-reward>
+        <kit force="true">
+            <effect duration="6">regeneration</effect>
+            <effect duration="24">absorption</effect>
+        </kit>
+    </kill-reward>
+    <kill-reward>
+        <kit deduct-items="false">
+            <item slot="2" material="arrow" name="`rExplosive Arrow" grenade="true" grenade-power="2"/>
+        </kit>
+    </kill-reward>
+</kill-rewards>
+<broadcasts>
+    <tip after="15s" every="1m">Punch frozen teammates to un-freeze them!</tip>
+</broadcasts>
+<regions>
+    <union id="team-spawns">
+        <cuboid id="blue-spawn" min="-1,6,-46" size="3,3,3"/>
+        <cuboid id="red-spawn" min="-1,6,44" size="3,3,3"/>
+        <cuboid id="green-spawn" min="-46,6,-1" size="3,3,3"/>
+        <cuboid id="orange-spawn" min="44,6,-1" size="3,3,3"/>
+    </union>
+    <apply leave="never" message="You may not leave the arena!">
+        <region>
+            <sphere origin="0.5,6,0.5" radius="52"/>
+        </region>
+    </apply>
+    <apply block-break="never" block-place="splatable-blocks"/>
+</regions>
+<filters>
+    <any id="splatable-blocks">
+        <material id="splatable-wool">wool</material>
+        <all id="splatable-clay">
+            <material>stained clay</material>
+            <not>
+                <region id="team-spawns"/>
+            </not>
+        </all>
+    </any>
+    <all id="in-match">
+        <participating id="participating"/>
+        <match-running id="match-running"/>
+    </all>
+    <time id="delay">1s</time>
+    <cause id="projectile">projectile</cause>
+    <cause id="explosion">explosion</cause>
+    <cause id="world">world</cause>
+    <relation id="enemy">enemy</relation>
+    <relation id="ally">ally</relation>
+    <attacker id="blue-attacker">
+        <filter id="blue"/>
+    </attacker>
+    <attacker id="red-attacker">
+        <filter id="red"/>
+    </attacker>
+    <attacker id="green-attacker">
+        <filter id="green"/>
+    </attacker>
+    <attacker id="orange-attacker">
+        <filter id="orange"/>
+    </attacker>
+    <all id="blue-colored">
+        <filter id="any(all(blue, owned_by=${none}), owned_by=${blue})"/>
+    </all>
+    <all id="red-colored">
+        <filter id="any(all(red, owned_by=${none}), owned_by=${red})"/>
+    </all>
+    <all id="green-colored">
+        <filter id="any(all(green, owned_by=${none}), owned_by=${green})"/>
+    </all>
+    <all id="orange-colored">
+        <filter id="any(all(orange, owned_by=${none}), owned_by=${orange})"/>
+    </all>
+    <variable id="owned-by-target" scope="player" value="owned_by - target">0</variable>
+    <players id="blue-playing" filter="all(blue, owned_by=${none}, eliminated=0)" min="1"/>
+    <players id="red-playing" filter="all(red, owned_by=${none}, eliminated=0)" min="1"/>
+    <players id="green-playing" filter="all(green, owned_by=${none}, eliminated=0)" min="1"/>
+    <players id="orange-playing" filter="all(orange, owned_by=${none}, eliminated=0)" min="1"/>
+    <any id="team-has-alive-players">
+        <filter id="all(blue, blue-playing)"/>
+        <filter id="all(red, red-playing)"/>
+        <filter id="all(green, green-playing)"/>
+        <filter id="all(orange, orange-playing)"/>
+    </any>
+    <any id="move-target-alive">
+        <filter id="all(move_target=${blue}, blue-playing)"/>
+        <filter id="all(move_target=${red}, red-playing)"/>
+        <filter id="all(move_target=${green}, green-playing)"/>
+        <filter id="all(move_target=${orange}, orange-playing)"/>
+    </any>
+    <any id="exclusive">
+        <filter id="all(blue-playing, not(any(red-playing, green-playing, orange-playing)))"/>
+        <filter id="all(red-playing, not(any(blue-playing, green-playing, orange-playing)))"/>
+        <filter id="all(green-playing, not(any(blue-playing, red-playing, orange-playing)))"/>
+        <filter id="all(orange-playing, not(any(blue-playing, red-playing, green-playing)))"/>
+    </any>
+    <carrying id="carrying-firework" ignore-metadata="true">
+        <item material="firework"/>
+    </carrying>
+    <carrying id="carrying-arrow" ignore-metadata="true">
+        <item material="arrow"/>
+    </carrying>
+</filters>
+<variables scope="match">
+    <with-team id="blue_score" var="score" team="blue"/>
+    <with-team id="red_score" var="score" team="red"/>
+    <with-team id="green_score" var="score" team="green"/>
+    <with-team id="orange_score" var="score" team="orange"/>
+    <cuboid id="splat_x" min="0,0,0" max="0,0,0"/>
+    <cuboid id="splat_y" min="0,0,0" max="0,0,0"/>
+    <cuboid id="splat_z" min="0,0,0" max="0,0,0"/>
+    <variable id="splat_pos_x"/>
+    <variable id="splat_pos_y"/>
+    <variable id="splat_pos_z"/>
+    <variable id="target"/>
+    <variable id="eliminated_index"/>
+    <variable id="temp"/>
+    <variable id="index"/>
+</variables>
+<variables scope="team">
+    <variable id="eliminated"/>
+</variables>
+<variables scope="player">
+    <variable id="current_team" default="${none}"/>
+    <variable id="owned_by" default="${none}"/>
+    <variable id="last_attacked_by"/>
+    <variable id="last_x"/>
+    <variable id="last_y"/>
+    <variable id="last_z"/>
+    <variable id="last_pitch"/>
+    <variable id="last_yaw"/>
+    <variable id="respawning"/>
+    <variable id="moving_team"/>
+    <variable id="frozen_at_x"/>
+    <variable id="frozen_at_z"/>
+    <variable id="moved_from_x" scope="player"/>
+    <variable id="moved_from_z" scope="player"/>
+    <variable id="move_target"/>
+</variables>
+<replacements>
+    <switch id="players-plural" scope="match" value="temp">
+        <case match="1" result="player"/>
+        <fallback>players</fallback>
+    </switch>
+    <switch id="team-target" scope="match" value="target">
+        <case match="${blue}" result="`9Blue"/>
+        <case match="${red}" result="`4Red"/>
+        <case match="${green}" result="`aGreen"/>
+        <case match="${orange}" result="`6Orange"/>
+    </switch>
+    <switch id="team-owned-by" scope="player" value="owned_by">
+        <case match="${blue}" result="`9Blue"/>
+        <case match="${red}" result="`4Red"/>
+        <case match="${green}" result="`aGreen"/>
+        <case match="${orange}" result="`6Orange"/>
+    </switch>
+</replacements>
+<actions>
+    <trigger scope="match">
+        <filter>
+            <pulse period="0.5s" duration="0.1s" filter="match-running"/>
+        </filter>
+        <action>
+            <set var="blue_score" value="0"/>
+            <set var="red_score" value="0"/>
+            <set var="green_score" value="0"/>
+            <set var="orange_score" value="0"/>
+            <switch-scope inner="player" filter="in-match">
+                <action filter="blue-colored">
+                    <set var="blue_score" value="blue_score + 1"/>
+                </action>
+                <action filter="red-colored">
+                    <set var="red_score" value="red_score + 1"/>
+                </action>
+                <action filter="green-colored">
+                    <set var="green_score" value="green_score + 1"/>
+                </action>
+                <action filter="orange-colored">
+                    <set var="orange_score" value="orange_score + 1"/>
+                </action>
+            </switch-scope>
+        </action>
+    </trigger>
+    <action id="victim-action" scope="player">
+        <action filter="all(ally, owned_by=${any})">
+            <action id="unfreeze-player" scope="player">
+                <set var="owned_by" value="${none}"/>
+                <kit force="true">
+                    <health>10</health>
+                </kit>
+                <kit id="main-kit"/>
+                <sound key="${entity.experience_orb.pickup}" volume="1" pitch="1.2"/>
+            </action>
+        </action>
+        <action filter="all(enemy, not(projectile))">
+            <action id="record-last-victim-position"/>
+        </action>
+    </action>
+    <action id="attacker-action" scope="player">
+        <action filter="all(ally, owned_by=${any})">
+            <sound key="${entity.experience_orb.pickup}" volume="1" pitch="1.2"/>
+        </action>
+    </action>
+    <action id="record-last-victim-position" scope="player">
+        <set var="last_x" value="player.x"/>
+        <set var="last_y" value="player.y"/>
+        <set var="last_z" value="player.z"/>
+        <set var="last_pitch" value="player.pitch"/>
+        <set var="last_yaw" value="player.yaw"/>
+        <action filter="blue-attacker">
+            <set var="last_attacked_by" value="${blue}"/>
+        </action>
+        <action filter="red-attacker">
+            <set var="last_attacked_by" value="${red}"/>
+        </action>
+        <action filter="green-attacker">
+            <set var="last_attacked_by" value="${green}"/>
+        </action>
+        <action filter="orange-attacker">
+            <set var="last_attacked_by" value="${orange}"/>
+        </action>
+    </action>
+    <trigger scope="player" filter="all(match-running, dead)">
+        <action id="paste-death-splat" scope="player">
+            <set var="owned_by" value="last_attacked_by"/>
+            <set var="splat_pos_x" value="floor(last_x)"/>
+            <set var="splat_pos_y" value="floor(last_y)"/>
+            <set var="splat_pos_z" value="floor(last_z)"/>
+            <set var="splat_x.min_x" value="splat_pos_x - 2"/>
+            <set var="splat_x.min_y" value="splat_pos_y - 1"/>
+            <set var="splat_x.min_z" value="splat_pos_z - 1"/>
+            <set var="splat_x.max_x" value="splat_pos_x + 2"/>
+            <set var="splat_x.max_y" value="splat_pos_y + 1"/>
+            <set var="splat_x.max_z" value="splat_pos_z + 1"/>
+            <set var="splat_y.min_x" value="splat_pos_x - 1"/>
+            <set var="splat_y.min_y" value="splat_pos_y - 2"/>
+            <set var="splat_y.min_z" value="splat_pos_z - 1"/>
+            <set var="splat_y.max_x" value="splat_pos_x + 1"/>
+            <set var="splat_y.max_y" value="splat_pos_y + 2"/>
+            <set var="splat_y.max_z" value="splat_pos_z + 1"/>
+            <set var="splat_z.min_x" value="splat_pos_x - 1"/>
+            <set var="splat_z.min_y" value="splat_pos_y - 1"/>
+            <set var="splat_z.min_z" value="splat_pos_z - 2"/>
+            <set var="splat_z.max_x" value="splat_pos_x + 1"/>
+            <set var="splat_z.max_y" value="splat_pos_y + 1"/>
+            <set var="splat_z.max_z" value="splat_pos_z + 2"/>
+            <action filter="last_attacked_by=${blue}">
+                <switch-scope inner="match">
+                    <fill region="splat_x" material="wool:11" filter="splatable-blocks" update="false"/>
+                    <fill region="splat_y" material="wool:11" filter="splatable-blocks" update="false"/>
+                    <fill region="splat_z" material="wool:11" filter="splatable-blocks" update="false"/>
+                </switch-scope>
+            </action>
+            <action filter="last_attacked_by=${red}">
+                <switch-scope inner="match">
+                    <fill region="splat_x" material="wool:14" filter="splatable-blocks" update="false"/>
+                    <fill region="splat_y" material="wool:14" filter="splatable-blocks" update="false"/>
+                    <fill region="splat_z" material="wool:14" filter="splatable-blocks" update="false"/>
+                </switch-scope>
+            </action>
+            <action filter="last_attacked_by=${green}">
+                <switch-scope inner="match">
+                    <fill region="splat_x" material="wool:5" filter="splatable-blocks" update="false"/>
+                    <fill region="splat_y" material="wool:5" filter="splatable-blocks" update="false"/>
+                    <fill region="splat_z" material="wool:5" filter="splatable-blocks" update="false"/>
+                </switch-scope>
+            </action>
+            <action filter="last_attacked_by=${orange}">
+                <switch-scope inner="match">
+                    <fill region="splat_x" material="wool:1" filter="splatable-blocks" update="false"/>
+                    <fill region="splat_y" material="wool:1" filter="splatable-blocks" update="false"/>
+                    <fill region="splat_z" material="wool:1" filter="splatable-blocks" update="false"/>
+                </switch-scope>
+            </action>
+        </action>
+    </trigger>
+    <trigger scope="player" filter="all(match-running, delay, alive, respawning=1)">
+        <action>
+            <action filter="not(last_y=0)">
+                <teleport x="last_x" y="last_y" z="last_z" pitch="last_pitch" yaw="last_yaw"/>
+            </action>
+            <set var="respawning" value="0"/>
+            <action filter="moving_team=1">
+                <set var="moving_team" value="0"/>
+                <set var="owned_by" value="${none}"/>
+            </action>
+        </action>
+    </trigger>
+    <trigger scope="player">
+        <filter>
+            <pulse period="2s" duration="1s" filter="all(in-match, alive, owned_by=${any})"/>
+        </filter>
+        <action>
+            <action id="frozen-message" scope="player">
+                <message actionbar="`b`lYou have been frozen by {team}`b`l!">
+                    <replacements>
+                        <replacement id="team">team-owned-by</replacement>
+                    </replacements>
+                </message>
+            </action>
+            <action id="has-frozen-moved" scope="player">
+                <set var="moved_from_x" value="frozen_at_x - player.x"/>
+                <set var="moved_from_z" value="frozen_at_z - player.z"/>
+            </action>
+        </action>
+    </trigger>
+    <trigger scope="player">
+        <filter>
+            <pulse period="2s" duration="1s">
+                <after duration="1s" filter="all(in-match, alive, owned_by=${any})"/>
+            </pulse>
+        </filter>
+        <action>
+            <action id="frozen-message"/>
+            <action id="has-frozen-moved"/>
+        </action>
+    </trigger>
+    <trigger scope="player">
+        <filter>
+            <pulse period="0.2s" duration="0.1s" filter="all(in-match, owned_by=${any}, respawning=0, not(any(moved_from_x=0, moved_from_z=0)))"/>
+        </filter>
+        <action>
+            <teleport x="frozen_at_x" y="player.y" z="frozen_at_z"/>
+        </action>
+    </trigger>
+    <trigger scope="player" filter="all(alive, owned_by=${any}, respawning=0)">
+        <action id="give-firework">
+            <action filter="blue">
+                <kit force="true">
+                    <firework slot="4" power="3">
+                        <explosion type="burst" flicker="true" trail="true">
+                            <color>253192</color>
+                        </explosion>
+                    </firework>
+                </kit>
+            </action>
+            <action filter="red">
+                <kit force="true">
+                    <firework slot="4" power="3">
+                        <explosion type="burst" flicker="true" trail="true">
+                            <color>B3312C</color>
+                        </explosion>
+                    </firework>
+                </kit>
+            </action>
+            <action filter="green">
+                <kit force="true">
+                    <firework slot="4" power="3">
+                        <explosion type="burst" flicker="true" trail="true">
+                            <color>41CD34</color>
+                        </explosion>
+                    </firework>
+                </kit>
+            </action>
+            <action filter="orange">
+                <kit force="true">
+                    <firework slot="4" power="3">
+                        <explosion type="burst" flicker="true" trail="true">
+                            <color>EB8844</color>
+                        </explosion>
+                    </firework>
+                </kit>
+            </action>
+        </action>
+    </trigger>
+    <trigger scope="player" action="give-firework">
+        <filter>
+            <after duration="8s" filter="all(owned_by=${any}, not(carrying-firework))"/>
+        </filter>
+    </trigger>
+    <trigger scope="player" filter="carrying-arrow">
+        <action>
+            <kit>
+                <item slot="1" material="bow" name="`rExplosive Bow" unbreakable="true" locked="true"/>
+            </kit>
+        </action>
+    </trigger>
+    <trigger scope="player" filter="not(carrying-arrow)">
+        <action>
+            <replace-item ignore-metadata="true">
+                <find material="bow"/>
+                <replace material="air"/>
+            </replace-item>
+        </action>
+    </trigger>
+    <trigger scope="team" filter="all(match-running, delay, not(team-has-alive-players), not(exclusive))">
+        <action>
+            <action filter="blue">
+                <set var="target" value="${blue}"/>
+            </action>
+            <action filter="red">
+                <set var="target" value="${red}"/>
+            </action>
+            <action filter="green">
+                <set var="target" value="${green}"/>
+            </action>
+            <action filter="orange">
+                <set var="target" value="${orange}"/>
+            </action>
+            <switch-scope inner="match">
+                <message text="{team} `chas been eliminated!">
+                    <replacements>
+                        <replacement id="team">team-target</replacement>
+                    </replacements>
+                </message>
+                <sound key="${entity.lightning_bolt.thunder}"/>
+            </switch-scope>
+            <set var="index" value="target"/>
+            <set var="target" value="0"/>
+            <repeat times="4">
+                <set var="target" value="target + 1"/>
+                <set var="temp" value="0"/>
+                <switch-scope inner="player" filter="owned-by-target">
+                    <set var="temp" value="temp + 1"/>
+                </switch-scope>
+                <switch-scope inner="match" filter="temp=1..">
+                    <message text="`3» `e{count} {player} `bmoved to {team}">
+                        <replacements>
+                            <decimal id="count" value="temp"/>
+                            <replacement id="player">players-plural</replacement>
+                            <replacement id="team">team-target</replacement>
+                        </replacements>
+                    </message>
+                </switch-scope>
+            </repeat>
+            <set var="target" value="index"/>
+            <set var="eliminated" value="1"/>
+        </action>
+    </trigger>
+    <trigger scope="player" filter="all(match-running, delay, alive, eliminated=1, not(exclusive))">
+        <action>
+            <action filter="owned_by=${none}">
+                <set var="move_target" value="ceil(random() * 4)"/>
+                <repeat times="4" filter="not(move_target=0)">
+                    <set var="move_target" value="move_target + 1"/>
+                    <action filter="not(move_target=${any})">
+                        <set var="move_target" value="1"/>
+                    </action>
+                    <action filter="move-target-alive">
+                        <set var="owned_by" value="move_target"/>
+                        <set var="move_target" value="0"/>
+                    </action>
+                </repeat>
+            </action>
+            <set var="respawning" value="1"/>
+            <set var="moving_team" value="1"/>
+            <message text="{ translate: 'join.ok.team', with: ['{team}'] }" title="{ translate: 'join.ok.team', with: ['{team}'] }">
+                <replacements>
+                    <replacement id="team">team-owned-by</replacement>
+                </replacements>
+            </message>
+            <action filter="owned_by=${blue}">
+                <kit force="true">
+                    <team-switch team="blue"/>
+                </kit>
+            </action>
+            <action filter="owned_by=${red}">
+                <kit force="true">
+                    <team-switch team="red"/>
+                </kit>
+            </action>
+            <action filter="owned_by=${green}">
+                <kit force="true">
+                    <team-switch team="green"/>
+                </kit>
+            </action>
+            <action filter="owned_by=${orange}">
+                <kit force="true">
+                    <team-switch team="orange"/>
+                </kit>
+            </action>
+            <sound key="${block.wool.break}"/>
+        </action>
+    </trigger>
+    <trigger scope="player" action="unfreeze-player" filter="any(all(target=${blue}, owned_by=${blue}), all(target=${red}, owned_by=${red}), all(target=${green}, owned_by=${green}), all(target=${orange}, owned_by=${orange}))"/>
+    <trigger scope="player" action="unfreeze-player" filter="any(all(blue, owned_by=${blue}), all(red, owned_by=${red}), all(green, owned_by=${green}), all(orange, owned_by=${orange}))"/>
+    <trigger scope="match">
+        <filter>
+            <after duration="1s" filter="exclusive"/>
+        </filter>
+        <action>
+            <set var="timelimit" value="0"/>
+        </action>
+    </trigger>
+</actions>
+<friendlyfire>on</friendlyfire>
+<damage victim-action="victim-action" attacker-action="attacker-action">
+    <deny>
+        <any>
+            <cause>fall</cause>
+            <cause>projectile</cause>
+            <attacker>
+                <filter id="owned_by=${any}"/>
+            </attacker>
+            <all>
+                <victim>
+                    <filter id="owned_by=${any}"/>
+                </victim>
+                <filter id="enemy"/>
+            </all>
+            <any>
+                <all>
+                    <attacker>
+                        <filter id="blue-colored"/>
+                    </attacker>
+                    <victim>
+                        <filter id="blue-colored"/>
+                    </victim>
+                </all>
+                <all>
+                    <attacker>
+                        <filter id="red-colored"/>
+                    </attacker>
+                    <victim>
+                        <filter id="red-colored"/>
+                    </victim>
+                </all>
+                <all>
+                    <attacker>
+                        <filter id="green-colored"/>
+                    </attacker>
+                    <victim>
+                        <filter id="green-colored"/>
+                    </victim>
+                </all>
+                <all>
+                    <attacker>
+                        <filter id="orange-colored"/>
+                    </attacker>
+                    <victim>
+                        <filter id="orange-colored"/>
+                    </victim>
+                </all>
+            </any>
+        </any>
+    </deny>
+</damage>
+<itemremove>
+    <item>stone sword</item>
+    <item>bow</item>
+    <item>leather chestplate</item>
+    <item>leather leggings</item>
+    <item>leather boots</item>
+    <item>wool</item>
+    <item>stained glass</item>
+    <item>firework</item>
+    <item>potion</item>
+    <item>arrow</item>
+</itemremove>
+<hunger>
+    <depletion>off</depletion>
+</hunger>
+<gamerules>
+    <doDaylightCycle>false</doDaylightCycle>
+    <naturalRegeneration>false</naturalRegeneration>
+</gamerules>
+</map>

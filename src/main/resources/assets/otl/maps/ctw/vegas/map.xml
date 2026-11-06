@@ -1,0 +1,1394 @@
+<map proto="1.5.0">
+<name>Vegas</name>
+<version>1.1.6</version>
+<include id="gapple-kill-reward"/>
+<include id="velocity-no-fall-damage"/>
+<objective>Capture both of the enemy's wools, and upgrade your team at the Cocktail Club!</objective>
+<created>2025-01-14</created>
+<gamemode>ctw</gamemode>
+<authors>
+    <author uuid="79581014-09b0-4fbf-a388-aa4ba42c0bc2" contribution="Map Design"/> <!-- crazymc98 -->
+    <author uuid="e82603df-417d-4a95-bd1f-1720648be0b4" contribution="Roulette and XML Adjustments"/> <!-- Pablete1234 -->
+</authors>
+<contributors>
+    <contributor uuid="6863869b-4b8c-4445-b778-a8e016775ae4" contribution="XML Template"/> <!-- Cazadorian -->
+</contributors>
+<constants>
+    <constant id="observers-kit" delete="true"/>
+</constants>
+<teams>
+    <team id="blue" color="blue" max="32">Blue</team>
+    <team id="red" color="red" max="32">Red</team>
+</teams>
+<broadcasts>
+    <alert after="5s">Earn chips from kills, mining, spawners, or testing your luck at the roulette tables. Use these chips to upgrade your gear!</alert>
+    <alert after="10s">There are jump pads on both sides of spawn to help defend! Make sure to use them before the other team disables them...</alert>
+    <alert after="15s">The roulette tables will open once your team purchases `e`lHaste I`b so work together if you want to gamble...</alert>
+    <alert after="30m">The defense shops have closed.</alert>
+    <tip after="5m" every="5m">Earn chips from kills, mining, spawners, or testing your luck at the roulette tables. Use these chips to upgrade your gear!</tip>
+</broadcasts>
+<spawns>
+    <default kit="${observers-kit}" yaw="-90">
+        <regions>
+            <point>-111.5,17,15.5</point>
+        </regions>
+    </default>
+    <spawn team="blue" kit="spawn-kit" yaw="180" filter="speed=2" region="blue-spawnpoint-forward"/>
+    <spawn team="blue" kit="spawn-kit" yaw="180" filter="speed=0..1" region="blue-spawnpoint"/>
+    <spawn team="red" kit="spawn-kit" yaw="0" filter="speed=2" region="red-spawnpoint-forward"/>
+    <spawn team="red" kit="spawn-kit" yaw="0" filter="speed=0..1" region="red-spawnpoint"/>
+</spawns>
+<kits>
+    <kit id="default-kit">
+        <effect>night vision</effect>
+    </kit>
+    <kit id="spawn-kit">
+        <item slot="0" material="stone sword" unbreakable="true"/>
+        <item slot="1" unbreakable="true" material="bow"/>
+        <item slot="2" unbreakable="true" material="stone pickaxe"/>
+        <item slot="3" unbreakable="true" material="stone axe"/>
+        <item slot="4" material="water bucket"/>
+        <item slot="5" material="wood" damage="2" amount="64"/>
+        <item slot="6" material="stained glass" team-color="true" amount="32"/>
+        <item slot="8" material="golden apple"/>
+        <item slot="28" material="arrow" amount="32"/>
+        <item slot="29" unbreakable="true" material="stone spade"/>
+        <item slot="30" unbreakable="true" material="shears" enchantment="efficiency:1"/>
+        <helmet unbreakable="true" team-color="true" material="leather helmet" locked="true"/>
+        <chestplate unbreakable="true" team-color="true" material="leather chestplate" locked="true"/>
+        <leggings unbreakable="true" team-color="true" material="leather leggings" locked="true"/>
+        <boots unbreakable="true" team-color="true" material="leather boots" locked="true"/>
+        <effect duration="6" amplifier="255">damage resistance</effect>
+    </kit>
+    <!-- Upgrades -->
+    <give filter="all(alive,haste=1)">
+        <kit>
+            <effect>fast digging</effect>
+        </kit>
+    </give>
+    <give filter="all(alive,haste=2)">
+        <kit>
+            <effect amplifier="2">fast digging</effect>
+        </kit>
+    </give>
+    <give filter="all(alive,speed=1..)">
+        <kit>
+            <effect>speed</effect>
+        </kit>
+    </give>
+    <give filter="all(alive,fire_res=1..)">
+        <kit>
+            <effect>fire_resistance</effect>
+        </kit>
+    </give>
+    <lend filter="apply-fatigue">
+        <kit>
+            <effect>slow digging</effect>
+        </kit>
+    </lend>
+    <lend filter="all(in-enemy-side,healthboost=1)">
+        <kit>
+            <effect>health boost</effect>
+            <effect duration="5s">regeneration</effect> <!-- 1 heart over 5s -->
+        </kit>
+    </lend>
+    <lend filter="all(in-enemy-side,healthboost=2)">
+        <kit>
+            <effect amplifier="2">health boost</effect>
+            <effect duration="10s">regeneration</effect><!-- 2 hearts over 10s -->
+        </kit>
+    </lend>
+    <!-- Individual Armor -->
+    <kit id="chainmailhelmet-kit" force="true">
+        <helmet unbreakable="true" locked="true" material="chainmail helmet"/>
+        <action id="protection-replacements"/>
+    </kit>
+    <kit id="ironhelmet-kit" force="true">
+        <helmet unbreakable="true" locked="true" material="iron helmet"/>
+        <action id="protection-replacements"/>
+    </kit>
+    <kit id="diamondhelmet-kit" force="true">
+        <helmet unbreakable="true" locked="true" material="diamond helmet"/>
+        <action id="protection-replacements"/>
+    </kit>
+    <kit id="chainmailchestplate-kit" force="true">
+        <chestplate unbreakable="true" locked="true" material="chainmail chestplate"/>
+        <action id="protection-replacements"/>
+    </kit>
+    <kit id="ironchestplate-kit" force="true">
+        <chestplate unbreakable="true" locked="true" material="iron chestplate"/>
+        <action id="protection-replacements"/>
+    </kit>
+    <kit id="diamondchestplate-kit" force="true">
+        <chestplate unbreakable="true" locked="true" material="diamond chestplate"/>
+        <action id="protection-replacements"/>
+    </kit>
+</kits>
+<filters>
+    <!-- Roulette spins every 10s (pulse period) -->
+    <pulse id="roulette-pulse" period="10s" duration="9.5s" filter="any(bet_black=1..,bet_red=1..,bet_green=1..)"/>
+    <pulse id="roulette-spinning" period="0.2s" duration="0.1s">
+        <countdown filter="roulette-pulse" duration="8s" message="The wheel is spinning..."/>
+    </pulse>
+    <not id="can-bet">
+        <after id="no-more-bets" duration="7s" filter="roulette-pulse"/>
+    </not>
+    <after id="roulette-finished" duration="8.5s" filter="roulette-pulse"/>
+    <variable id="ended-green" value="roulette_slot" scope="player">0</variable>
+    <all id="ended-black">
+        <variable var="roulette_slot">1..</variable>
+        <variable value="roulette_slot % 2" scope="player">0</variable>
+    </all>
+    <variable id="ended-red" value="roulette_slot % 2" scope="player">1</variable>
+    <pulse id="payout-32" period="0.2s" duration="0.1s">
+        <variable var="winnings">48..</variable>
+    </pulse>
+    <pulse id="payout-4" period="0.2s" duration="0.1s">
+        <variable var="winnings">8..47</variable>
+    </pulse>
+    <pulse id="payout-1" period="0.2s" duration="0.1s">
+        <variable var="winnings">1..7</variable>
+    </pulse>
+</filters>
+<actions>
+    <!--Roulette-->
+    <trigger filter="roulette-pulse" scope="player">
+        <action>
+            <message text="`7`l[`2`lRoulette`7`l] `aThe croupier has spun the wheel. Place as many bets as you wish."/>
+        </action>
+    </trigger>
+    <trigger filter="roulette-spinning" scope="player">
+        <action>
+            <set var="roulette_slot" value="floor(random()*37)"/>
+            <action filter="ended-green">
+                <message subtitle="`e`lThe wheel is spinning..." title="`2{number}" fade-in="0s" fade-out="1s">
+                    <replacements>
+                        <decimal id="number" value="roulette_slot"/>
+                    </replacements>
+                </message>
+            </action>
+            <action filter="ended-black">
+                <message subtitle="`e`lThe wheel is spinning..." title="`8{number}" fade-in="0s" fade-out="1s">
+                    <replacements>
+                        <decimal id="number" value="roulette_slot"/>
+                    </replacements>
+                </message>
+            </action>
+            <action filter="ended-red">
+                <message subtitle="`e`lThe wheel is spinning..." title="`4{number}" fade-in="0s" fade-out="1s">
+                    <replacements>
+                        <decimal id="number" value="roulette_slot"/>
+                    </replacements>
+                </message>
+            </action>
+        </action>
+    </trigger>
+    <trigger filter="no-more-bets" scope="player">
+        <action>
+            <message text="`7`l[`2`lRoulette`7`l] `aNo more bets!"/>
+        </action>
+    </trigger>
+    <trigger filter="roulette-finished" scope="player">
+        <action>
+            <action filter="ended-green">
+                <set var="winnings" value="bet_green * 35"/>
+            </action>
+            <action filter="ended-black">
+                <set var="winnings" value="bet_black * 2"/>
+            </action>
+            <action filter="ended-red">
+                <set var="winnings" value="bet_red * 2"/>
+            </action>
+            <set var="bet_green" value="0"/>
+            <set var="bet_black" value="0"/>
+            <set var="bet_red" value="0"/>
+            <action filter="winnings=0">
+                <message text="`7`l[`2`lRoulette`7`l] `a...Sorry, you lost."/>
+            </action>
+            <action filter="winnings=1..">
+                <message text="`7`l[`2`lRoulette`7`l] `a...You won `6{amt}`a chips!">
+                    <replacements>
+                        <decimal id="amt" value="winnings"/>
+                    </replacements>
+                </message>
+            </action>
+        </action>
+    </trigger>
+    <!-- Reward triggers -->
+    <trigger filter="payout-32" scope="player">
+        <action>
+            <kit deduct-items="false">
+                <item amount="32" material="nether star" name="Casino Chips"/>
+            </kit>
+            <set var="winnings" value="winnings-32"/>
+            <sound pitch="2"/>
+        </action>
+    </trigger>
+    <trigger filter="payout-4" scope="player">
+        <action>
+            <kit deduct-items="false">
+                <item amount="4" material="nether star" name="Casino Chips"/>
+            </kit>
+            <set var="winnings" value="winnings-4"/>
+            <sound pitch="2"/>
+        </action>
+    </trigger>
+    <trigger filter="payout-1" scope="player">
+        <action>
+            <kit deduct-items="false">
+                <item amount="1" material="nether star" name="Casino Chips"/>
+            </kit>
+            <set var="winnings" value="winnings-1"/>
+            <sound pitch="2"/>
+        </action>
+    </trigger>
+    <!-- Store triggers -->
+    <set id="bet-1_green" var="bet_green" value="bet_green+1" scope="player"/>
+    <set id="bet-1_black" var="bet_black" value="bet_black+1" scope="player"/>
+    <set id="bet-1_red" var="bet_red" value="bet_red+1" scope="player"/>
+    <set id="bet-4_green" var="bet_green" value="bet_green+4" scope="player"/>
+    <set id="bet-4_black" var="bet_black" value="bet_black+4" scope="player"/>
+    <set id="bet-4_red" var="bet_red" value="bet_red+4" scope="player"/>
+    <set id="bet-8_green" var="bet_green" value="bet_green+8" scope="player"/>
+    <set id="bet-8_black" var="bet_black" value="bet_black+8" scope="player"/>
+    <set id="bet-8_red" var="bet_red" value="bet_red+8" scope="player"/>
+    <set id="bet-16_green" var="bet_green" value="bet_green+16" scope="player"/>
+    <set id="bet-16_black" var="bet_black" value="bet_black+16" scope="player"/>
+    <set id="bet-16_red" var="bet_red" value="bet_red+16" scope="player"/>
+    <set id="bet-32_green" var="bet_green" value="bet_green+32" scope="player"/>
+    <set id="bet-32_black" var="bet_black" value="bet_black+32" scope="player"/>
+    <set id="bet-32_red" var="bet_red" value="bet_red+32" scope="player"/>
+    <set id="bet-64_green" var="bet_green" value="bet_green+64" scope="player"/>
+    <set id="bet-64_black" var="bet_black" value="bet_black+64" scope="player"/>
+    <set id="bet-64_red" var="bet_red" value="bet_red+64" scope="player"/>
+    <set id="bet-128_green" var="bet_green" value="bet_green+128" scope="player"/>
+    <set id="bet-128_black" var="bet_black" value="bet_black+128" scope="player"/>
+    <set id="bet-128_red" var="bet_red" value="bet_red+128" scope="player"/>
+    <!-- Upgrade variables -->
+    <set id="add-haste" var="haste" value="haste+1" scope="player"/>
+    <set id="add-speed" var="speed" value="speed+1" scope="player"/>
+    <set id="add-sharpness" var="sharpness" value="sharpness+1" scope="player"/>
+    <set id="add-protection" var="protection" value="protection+1" scope="player"/>
+    <set id="add-fatigue" var="fatigue" value="fatigue+1" scope="player"/>
+    <set id="add-healthboost" var="healthboost" value="healthboost+1" scope="player"/>
+    <set id="add-fireresistance" var="fire_res" value="fire_res+1" scope="player"/>
+    <!-- Weapon Upgrades -->
+    <action id="iron-sword-kit" scope="player">
+        <replace-item ignore-metadata="true">
+            <find material="stone sword"/>
+            <replace material="air"/>
+        </replace-item>
+        <kit deduct-tools="false">
+            <item material="iron sword" unbreakable="true"/>
+        </kit>
+        <action id="sharpness-replacements"/>
+    </action>
+    <action id="diamond-sword-kit" scope="player">
+        <replace-item ignore-metadata="true">
+            <find material="stone sword"/>
+            <replace material="air"/>
+        </replace-item>
+        <replace-item ignore-metadata="true">
+            <find material="iron sword"/>
+            <replace material="air"/>
+        </replace-item>
+        <kit deduct-tools="false">
+            <item material="diamond sword" unbreakable="true"/>
+        </kit>
+        <action id="sharpness-replacements"/>
+    </action>
+    <action id="powerbow" scope="player">
+        <replace-item>
+            <find material="bow" unbreakable="true" enchantment="power:2"/>
+            <replace material="air"/>
+        </replace-item>
+        <replace-item>
+            <find material="bow" unbreakable="true"/>
+            <replace material="air"/>
+        </replace-item>
+        <kit deduct-tools="false">
+            <item material="bow" enchantment="power" unbreakable="true"/>
+        </kit>
+    </action>
+    <action id="flamebow" scope="player">
+        <replace-item>
+            <find material="bow" unbreakable="true"/>
+            <replace material="air"/>
+        </replace-item>
+        <kit deduct-tools="false">
+            <item material="bow" enchantment="flame" unbreakable="true"/>
+        </kit>
+    </action>
+    <action id="powerbow2" scope="player">
+        <replace-item>
+            <find material="bow" unbreakable="true" enchantment="power:1"/>
+            <replace material="air"/>
+        </replace-item>
+        <replace-item>
+            <find material="bow" unbreakable="true"/>
+            <replace material="air"/>
+        </replace-item>
+        <kit deduct-tools="false">
+            <item material="bow" enchantment="power:2" unbreakable="true"/>
+        </kit>
+    </action>
+    <action id="infinitybow" scope="player">
+        <replace-item>
+            <find material="bow" unbreakable="true"/>
+            <replace material="air"/>
+        </replace-item>
+        <kit deduct-tools="false">
+            <item material="bow" enchantment="infinity" unbreakable="true"/>
+        </kit>
+    </action>
+    <!-- Sharpness replacements -->
+    <action id="ironsword-replacement" scope="player">
+        <replace-item ignore-metadata="true">
+            <find material="stone sword"/>
+            <replace material="iron sword"/>
+        </replace-item>
+        <action id="sharpness-replacements"/>
+    </action>
+    <action id="sharpness-replacements" scope="player">
+        <enchant-item ignore-metadata="true" enchantment="sharpness" level="sharpness"><find material="wood sword"/></enchant-item>
+        <enchant-item ignore-metadata="true" enchantment="sharpness" level="sharpness"><find material="stone sword"/></enchant-item>
+        <enchant-item ignore-metadata="true" enchantment="sharpness" level="sharpness"><find material="iron sword"/></enchant-item>
+        <enchant-item ignore-metadata="true" enchantment="sharpness" level="sharpness"><find material="diamond sword"/></enchant-item>
+    </action>
+    <trigger filter="alive" action="sharpness-replacements" scope="player"/>
+    <!-- Team Armors -->
+    <set id="set-armor-chainmail" var="armor" value="1" scope="player"/>
+    <action id="set-armor-iron" scope="player">
+        <set var="ironsword" value="1" scope="player"/>
+        <set var="armor" value="2" scope="player"/>
+    </action>
+    <set id="set-armor-diamond" var="armor" value="3" scope="player"/>
+    <!-- Team Armor replacements -->
+    <kit id="chainmail-teamreplace" force="true">
+        <boots material="chainmail boots" unbreakable="true" locked="true"/>
+        <leggings material="chainmail leggings" unbreakable="true" locked="true"/>
+        <action id="protection-replacements"/>
+    </kit>
+    <kit id="iron-teamreplace" force="true">
+        <boots material="iron boots" unbreakable="true" locked="true"/>
+        <leggings material="iron leggings" unbreakable="true" locked="true"/>
+        <action id="protection-replacements"/>
+    </kit>
+    <kit id="diamond-teamreplace" force="true">
+        <boots material="diamond boots" unbreakable="true" locked="true"/>
+        <leggings material="diamond leggings" unbreakable="true" locked="true"/>
+        <action id="protection-replacements"/>
+    </kit>
+    <!-- Protection replacements -->
+    <action id="protection-replacements" scope="player">
+        <enchant-item ignore-metadata="true" enchantment="protection" level="protection"><find material="leather boots"/></enchant-item>
+        <enchant-item ignore-metadata="true" enchantment="protection" level="protection"><find material="chainmail boots"/></enchant-item>
+        <enchant-item ignore-metadata="true" enchantment="protection" level="protection"><find material="iron boots"/></enchant-item>
+        <enchant-item ignore-metadata="true" enchantment="protection" level="protection"><find material="diamond boots"/></enchant-item>
+        <enchant-item ignore-metadata="true" enchantment="protection" level="protection"><find material="leather leggings"/></enchant-item>
+        <enchant-item ignore-metadata="true" enchantment="protection" level="protection"><find material="chainmail leggings"/></enchant-item>
+        <enchant-item ignore-metadata="true" enchantment="protection" level="protection"><find material="iron leggings"/></enchant-item>
+        <enchant-item ignore-metadata="true" enchantment="protection" level="protection"><find material="diamond leggings"/></enchant-item>
+        <enchant-item ignore-metadata="true" enchantment="protection" level="protection"><find material="leather chestplate"/></enchant-item>
+        <enchant-item ignore-metadata="true" enchantment="protection" level="protection"><find material="chainmail chestplate"/></enchant-item>
+        <enchant-item ignore-metadata="true" enchantment="protection" level="protection"><find material="iron chestplate"/></enchant-item>
+        <enchant-item ignore-metadata="true" enchantment="protection" level="protection"><find material="diamond chestplate"/></enchant-item>
+        <enchant-item ignore-metadata="true" enchantment="protection" level="protection"><find material="leather helmet"/></enchant-item>
+        <enchant-item ignore-metadata="true" enchantment="protection" level="protection"><find material="chainmail helmet"/></enchant-item>
+        <enchant-item ignore-metadata="true" enchantment="protection" level="protection"><find material="iron helmet"/></enchant-item>
+        <enchant-item ignore-metadata="true" enchantment="protection" level="protection"><find material="diamond helmet"/></enchant-item>
+    </action>
+    <!-- Starting tool deletion replacements -->
+    <replace-item id="bowdelete">
+        <find material="bow" unbreakable="true"/>
+        <replace material="air"/>
+    </replace-item>
+    <replace-item id="stonesworddelete" ignore-metadata="true">
+        <find material="stone sword" unbreakable="true"/>
+        <replace material="air"/>
+    </replace-item>
+    <replace-item id="stonepickdelete" ignore-metadata="true">
+        <find material="stone pickaxe" unbreakable="true"/>
+        <replace material="air"/>
+    </replace-item>
+    <replace-item id="stoneaxedelete" ignore-metadata="true">
+        <find material="stone axe" unbreakable="true"/>
+        <replace material="air"/>
+    </replace-item>
+    <replace-item id="stonespadedelete" ignore-metadata="true">
+        <find material="stone spade" unbreakable="true"/>
+        <replace material="air"/>
+    </replace-item>
+    <!-- Upgrade alerts -->
+    <message id="sharpness-alert-1" text="`bYour sword has been upgraded to `4`lSharpness I`r`b!"/>
+    <trigger filter="sharpness=1" trigger="sharpness-alert-1" scope="player"/>
+    <message id="sharpness-alert-2" text="`bYour sword has been upgraded to `4`lSharpness II`r`b!"/>
+    <trigger filter="sharpness=2" trigger="sharpness-alert-2" scope="player"/>
+    <message id="protection-alert-1" text="`bYour armor has been upgraded to `9`lProtection I`r`b!"/>
+    <trigger filter="protection=1" trigger="protection-alert-1" scope="player"/>
+    <message id="haste-alert-1" text="`bYour team now has `e`lHaste I`r`b!"/>
+    <trigger filter="haste=1" trigger="haste-alert-1" scope="player"/>
+    <message id="haste-alert-2" text="`bYour team now has `e`lHaste II`r`b!"/>
+    <trigger filter="haste=2" trigger="haste-alert-2" scope="player"/>
+    <message id="speed-alert-1" text="`bYour team now has `9`lSpeed I`r`b!"/>
+    <trigger filter="speed=1.." trigger="speed-alert-1" scope="player"/>
+    <message id="speed-alert-2" text="`bYour team now has `9`lForward Spawn`r`b!"/>
+    <trigger filter="speed=2.." trigger="speed-alert-2" scope="player"/>
+    <message id="fatigue-alert-1" text="`bYour team's base now has a `7`lMining Fatigue Trap`r`b!"/>
+    <trigger filter="fatigue=1" trigger="fatigue-alert-1" scope="player"/>
+    <message id="health-alert-1" text="`bYour team now has `7`lHealth Boost I`r`b when in the enemy's base!"/>
+    <trigger filter="healthboost=1" trigger="health-alert-1" scope="player"/>
+    <message id="health-alert-2" text="`bYour team now has `7`lHealth Boost II`r`b when in the enemy's base!"/>
+    <trigger filter="healthboost=2" trigger="health-alert-2" scope="player"/>
+    <message id="kit-alert-1" text="`bYour team's kit has been upgraded to `b`lChainmail`r`b!"/>
+    <trigger filter="armor=1" trigger="kit-alert-1" scope="player"/>
+    <message id="kit-alert-2" text="`bYour team's kit has been upgraded to `f`lIron`r`b!"/>
+    <trigger filter="armor=2" trigger="kit-alert-2" scope="player"/>
+    <message id="kit-alert-3" text="`bYour team's kit has been upgraded to `b`lDiamond`r`b!"/>
+    <trigger filter="armor=3" trigger="kit-alert-3" scope="player"/>
+    <message id="fire-alert-1" text="`bYour team now has `c`lFire Resistance`r`b!"/>
+    <trigger filter="fire_res=1" trigger="fire-alert-1" scope="player"/>
+    <message id="roulette-alert" text="`bYour team's `2`lRoulette Tables`r`b have opened!"/>
+    <trigger filter="haste=1" trigger="roulette-alert" scope="player"/>
+    <message id="jumppad-alert" text="`bYour team's `2`ljump-pads`b have been disabled!"/>
+    <trigger filter="all(only-blue,blue-jumppad-disable)" action="jumppad-alert" scope="player"/>
+    <trigger filter="all(only-red,red-jumppad-disable)" action="jumppad-alert" scope="player"/>
+    <!-- Enchantment triggers -->
+    <trigger filter="apply-ironsword" trigger="ironsword-replacement" scope="player"/>
+    <trigger filter="upgraded-sword" trigger="stonesworddelete" scope="player"/>
+    <trigger filter="upgraded-bow" trigger="bowdelete" scope="player"/>
+    <trigger filter="upgraded-pick" trigger="stonepickdelete" scope="player"/>
+    <trigger filter="upgraded-axe" trigger="stoneaxedelete" scope="player"/>
+    <trigger filter="upgraded-spade" trigger="stonespadedelete" scope="player"/>
+    <trigger filter="all(alive,sharpness=1)" trigger="sharpness-replacements" scope="player"/>
+    <trigger filter="all(alive,sharpness=2)" trigger="sharpness-replacements" scope="player"/>
+    <trigger filter="all(alive,protection=1)" trigger="protection-replacements" scope="player"/>
+    <!-- Armor triggers -->
+    <trigger filter="all(alive,armor=1)" trigger="chainmail-teamreplace" scope="player"/>
+    <trigger filter="all(alive,armor=2)" trigger="iron-teamreplace" scope="player"/>
+    <trigger filter="all(alive,armor=3)" trigger="diamond-teamreplace" scope="player"/>
+    <!-- Chip rewards -->
+    <trigger scope="match">
+        <filter>
+            <pulse period="15m" duration="0.5s" filter="match-running"/>
+        </filter>
+        <action>
+            <set var="chips" value="chips+1" scope="match"/>
+        </action>
+    </trigger>
+    <!-- Remove Shopkeepers -->
+    <kill-entities id="kill-shopkeeper" filter="all(villager,defense-shops)"/>
+    <trigger filter="after-30m" trigger="kill-shopkeeper" scope="match"/>
+    <action id="upgrade-pink" scope="player">
+        <set var="pink_unlocked" value="pink_unlocked+1"/>
+        <switch-scope inner="match">
+            <message text="`aThe `d`lPink Wool Lane`r`a has been unlocked!"/>
+            <kill-entities filter="all(villager,pink-lane-shop)"/>
+        </switch-scope>
+    </action>
+    <action id="upgrade-magenta" scope="player">
+        <set var="magenta_unlocked" value="magenta_unlocked+1"/>
+        <switch-scope inner="match">
+            <message text="`aThe `5`lMagenta Wool Lane`r`a has been unlocked!"/>
+            <kill-entities filter="all(villager,magenta-lane-shop)"/>
+        </switch-scope>
+    </action>
+    <action id="upgrade-cyan" scope="player">
+        <set var="cyan_unlocked" value="cyan_unlocked+1"/>
+        <switch-scope inner="match">
+            <message text="`aThe `3`lCyan Wool Lane`r`a has been unlocked!"/>
+            <kill-entities filter="all(villager,cyan-lane-shop)"/>
+        </switch-scope>
+    </action>
+    <action id="upgrade-lightblue" scope="player">
+        <set var="lightblue_unlocked" value="lightblue_unlocked+1"/>
+        <switch-scope inner="match">
+            <message text="`aThe `b`lLight Blue Wool Lane`r`a has been unlocked!"/>
+            <kill-entities filter="all(villager,lightblue-lane-shop)"/>
+        </switch-scope>
+    </action>
+</actions>
+<structures>
+    <structure id="blue-pad-east" air="true">
+        <region>
+            <cuboid min="32,29,112" max="28,30.5,106"/>
+        </region>
+    </structure>
+    <structure id="blue-pad-west" air="true">
+        <region>
+            <cuboid min="-31,29,112" max="-27,30.5,106"/>
+        </region>
+    </structure>
+    <structure id="red-pad-east" air="true">
+        <region>
+            <cuboid min="32,29,-111" max="28,30.5,-105"/>
+        </region>
+    </structure>
+    <structure id="red-pad-west" air="true">
+        <region>
+            <cuboid min="-31,29,-111" max="-27,30.5,-105"/>
+        </region>
+    </structure>
+    <dynamic structure="blue-pad-east" offset="0,-10,0" trigger="blue-jumppad-disable"/>
+    <dynamic structure="blue-pad-west" offset="0,-10,0" trigger="blue-jumppad-disable"/>
+    <dynamic structure="red-pad-east" offset="0,-10,0" trigger="red-jumppad-disable"/>
+    <dynamic structure="red-pad-west" offset="0,-10,0" trigger="red-jumppad-disable"/>
+</structures>
+<variables>
+    <variable id="haste" scope="team"/>
+    <variable id="speed" scope="team"/>
+    <variable id="ironsword" scope="team"/>
+    <variable id="armor" scope="team"/>
+    <variable id="sharpness" scope="team"/>
+    <variable id="protection" scope="team"/>
+    <variable id="fatigue" scope="team"/>
+    <variable id="healthboost" scope="team"/>
+    <variable id="fire_res" scope="team"/>
+    <variable id="chips" scope="match" default="-1"/>
+    <variable id="bet_green" default="0" scope="player"/>
+    <variable id="bet_black" default="0" scope="player"/>
+    <variable id="bet_red" default="0" scope="player"/>
+    <variable id="roulette_slot" default="0" scope="player"/>
+    <variable id="winnings" default="0" scope="player"/>
+    <variable id="pink_unlocked" default="0" scope="match"/>
+    <variable id="magenta_unlocked" default="0" scope="match"/>
+    <variable id="cyan_unlocked" default="0" scope="match"/>
+    <variable id="lightblue_unlocked" default="0" scope="match"/>
+</variables>
+<filters>
+    <!--Territory Filters-->
+    <all id="blue-in-wr">
+        <team id="only-blue">blue</team>
+        <filter id="wr-filter"/>
+    </all>
+    <all id="red-in-wr">
+        <team id="only-red">red</team>
+        <filter id="wr-filter"/>
+    </all>
+    <blocks region="wool-rooms" id="wr-filter">
+        <any>
+            <material>web</material>
+            <material>air</material>
+        </any>
+    </blocks>
+    <deny id="no-enderchest">
+        <material>ender chest</material>
+    </deny>
+    <!-- Team Upgrade Systems -->
+    <all id="apply-ironsword">
+        <variable var="ironsword">1</variable>
+        <carrying ignore-metadata="true">
+            <item material="stone sword"/>
+        </carrying>
+    </all>
+    <!-- Enemy side effects -->
+    <all id="in-enemy-side">
+        <alive/>
+        <filter id="any(all(blue,red-base-region),all(red,blue-base-region))"/>
+    </all>
+    <all id="apply-fatigue">
+        <filter id="in-enemy-side"/>
+        <filter id="any(all(fatigue-red,not(red)),all(fatigue-blue,not(blue)))"/>
+    </all>
+    <!-- Upgrade visibility filters -->
+    <variable id="fatigue-red" var="fatigue" team="red">1</variable>
+    <variable id="fatigue-blue" var="fatigue" team="blue">1</variable>
+    <!-- Tool visibility filters -->
+    <any id="has-iron-pick">
+        <carrying>
+            <item material="iron pickaxe" unbreakable="true" enchantment="efficiency:1"/>
+        </carrying>
+        <any id="has-gold-pick">
+            <carrying>
+                <item material="gold pickaxe" unbreakable="true"/>
+            </carrying>
+            <carrying id="has-diamond-pick">
+                <item material="diamond pickaxe" unbreakable="true" enchantment="efficiency:2"/>
+            </carrying>
+        </any>
+    </any>
+    <any id="has-iron-axe">
+        <carrying>
+            <item material="iron axe" unbreakable="true" enchantment="efficiency:1"/>
+        </carrying>
+        <any id="has-gold-axe">
+            <carrying>
+                <item material="gold axe" unbreakable="true"/>
+            </carrying>
+            <carrying id="has-diamond-axe">
+                <item material="diamond axe" unbreakable="true" enchantment="efficiency:2"/>
+            </carrying>
+        </any>
+    </any>
+    <any id="has-iron-spade">
+        <carrying>
+            <item material="iron spade" unbreakable="true" enchantment="efficiency:1"/>
+        </carrying>
+        <any id="has-gold-spade">
+            <carrying>
+                <item material="gold spade" unbreakable="true"/>
+            </carrying>
+            <carrying id="has-diamond-spade">
+                <item material="diamond spade" unbreakable="true" enchantment="efficiency:2"/>
+            </carrying>
+        </any>
+    </any>
+    <any id="upgraded-sword">
+        <carrying ignore-metadata="true">
+            <item unbreakable="true" material="iron sword"/>
+        </carrying>
+        <carrying ignore-metadata="true">
+            <item unbreakable="true" material="diamond sword"/>
+        </carrying>
+    </any>
+    <any id="upgraded-bow">
+        <carrying>
+            <item material="bow" unbreakable="true" enchantment="power"/>
+        </carrying>
+        <carrying>
+            <item material="bow" unbreakable="true" enchantment="power:2"/>
+        </carrying>
+        <carrying>
+            <item material="bow" unbreakable="true" enchantment="flame"/>
+        </carrying>
+        <carrying>
+            <item material="bow" unbreakable="true" enchantment="infinity"/>
+        </carrying>
+    </any>
+    <any id="upgraded-pick">
+        <carrying ignore-metadata="true">
+            <item unbreakable="true" material="iron pickaxe"/>
+        </carrying>
+        <carrying ignore-metadata="true">
+            <item unbreakable="true" material="gold pickaxe"/>
+        </carrying>
+        <carrying ignore-metadata="true">
+            <item unbreakable="true" material="diamond pickaxe"/>
+        </carrying>
+    </any>
+    <any id="upgraded-axe">
+        <carrying ignore-metadata="true">
+            <item unbreakable="true" material="iron axe"/>
+        </carrying>
+        <carrying ignore-metadata="true">
+            <item unbreakable="true" material="gold axe"/>
+        </carrying>
+        <carrying ignore-metadata="true">
+            <item unbreakable="true" material="diamond axe"/>
+        </carrying>
+    </any>
+    <any id="upgraded-spade">
+        <carrying ignore-metadata="true">
+            <item unbreakable="true" material="iron spade"/>
+        </carrying>
+        <carrying ignore-metadata="true">
+            <item unbreakable="true" material="gold spade"/>
+        </carrying>
+        <carrying ignore-metadata="true">
+            <item unbreakable="true" material="diamond spade"/>
+        </carrying>
+    </any>
+    <!-- Individual Armor visibility filters -->
+    <wearing id="chainmail-helmet" ignore-metadata="true">
+        <item material="leather helmet"/>
+    </wearing>
+    <wearing id="iron-helmet" ignore-metadata="true">
+        <item material="chainmail helmet"/>
+    </wearing>
+    <wearing id="diamond-helmet" ignore-metadata="true">
+        <item material="iron helmet"/>
+    </wearing>
+    <wearing id="chainmail-chestplate" ignore-metadata="true">
+        <item material="leather chestplate"/>
+    </wearing>
+    <wearing id="iron-chestplate" ignore-metadata="true">
+        <item material="chainmail chestplate"/>
+    </wearing>
+    <wearing id="diamond-chestplate" ignore-metadata="true">
+        <item material="iron chestplate"/>
+    </wearing>
+    <!-- Blocks dropping chips -->
+    <any id="natural-blocks">
+        <material>stone</material>
+        <material>dirt</material>
+        <material>dirt:1</material>
+        <material>grass</material>
+        <material>sandstone</material>
+        <material>stained clay:9</material>
+        <material>gravel</material>
+    </any>
+    <!-- Mob Filters -->
+    <mob id="villager">villager</mob>
+    <!-- Time-based filters -->
+    <time id="after-30m">30m</time>
+    <time id="after-60m">60m</time>
+    <time id="after-90m">90m</time>
+    <!-- Enemy Alert Filters-->
+    <variable id="blue-jumppad-disable" team="red" var="speed">2..</variable>
+    <variable id="red-jumppad-disable" team="blue" var="speed">2..</variable>
+</filters>
+<regions>
+    <point id="blue-spawnpoint">0.5,20,137.5</point>
+    <point id="blue-spawnpoint-forward">0.5,20,117.5</point>
+    <point id="red-spawnpoint">0.5,20,-136.5</point>
+    <point id="red-spawnpoint-forward">0.5,20,-116.5</point>
+    <union id="spawn-protection">
+        <cuboid id="blue-protection" min="58,19,118" max="-57,oo,147"/>
+        <cuboid id="blue-protection2" min="-31,0,105" max="32,oo,118"/>
+        <cuboid id="red-protection" min="58,19,-117" max="-57,oo,-146"/>
+        <cuboid id="red-protection2" min="-31,0,-104" max="32,oo,-117"/>
+    </union>
+    <cuboid id="center-sky" min="-39,27,105" max="40,oo,-104"/>
+    <union id="defense-shops">
+        <cuboid id="blue-defense-east" min="68,12,79" size="1,1,1"/>
+        <cuboid id="blue-defense-west" min="-70,12,74" size="1,1,1"/>
+        <cuboid id="red-defense-east" min="70,12,-74" size="1,1,1"/>
+        <cuboid id="red-defense-west" min="-68,12,-79" size="1,1,1"/>
+    </union>
+    <union id="pink-lane-shop">
+        <cuboid id="pink-lane-shop1" min="63,12,-23" size="1,1,1"/>
+        <cuboid id="pink-lane-shop2" min="63,12,-44" size="1,1,1"/>
+    </union>
+    <union id="magenta-lane-shop">
+        <cuboid id="magenta-lane-shop1" min="-63,12,-23" size="1,1,1"/>
+        <cuboid id="magenta-lane-shop2" min="-63,12,-44" size="1,1,1"/>
+    </union>
+    <union id="cyan-lane-shop">
+        <cuboid id="cyan-lane-shop1" min="-63,12,23" size="1,1,1"/>
+        <cuboid id="cyan-lane-shop2" min="-63,12,44" size="1,1,1"/>
+    </union>
+    <union id="lightblue-lane-shop">
+        <cuboid id="lightblue-lane-shop1" min="63,12,23" size="1,1,1"/>
+        <cuboid id="lightblue-lane-shop2" min="63,12,44" size="1,1,1"/>
+    </union>
+    <union id="spawn-chest-dropoffs">
+        <point id="red-dropoff">-4.5,21,-122</point>
+        <point id="blue-dropoff">4.5,21,122</point>
+    </union>
+    <union id="wool-rooms">
+        <union id="blue-wool-rooms"> <!-- Blue defends -->
+            <cuboid id="lightblue-wool-room" min="70,0,119" max="44,20,137"/>
+            <cuboid id="lightblue-wool-room2" min="70,20,119" max="57,100,137"/>
+            <cuboid id="cyan-wool-room" min="-69,0,119" max="-43,20,137"/>
+            <cuboid id="cyan-wool-room2" min="-69,20,119" max="-56,100,137"/>
+        </union>
+        <union id="red-wool-rooms"> <!-- Red defends -->
+            <cuboid id="pink-wool-room" min="70,0,-118" max="44,20,-136"/>
+            <cuboid id="pink-wool-room2" min="70,20,-118" max="57,100,-136"/>
+            <cuboid id="magenta-wool-room" min="-69,0,-118" max="-43,20,-136"/>
+            <cuboid id="magenta-wool-room2" min="-69,20,-118" max="-56,100,-136"/>
+        </union>
+        <union id="wool-monuments">
+            <cylinder id="pink-monument" base="4.5,20,120.5" radius="2" height="3"/>
+            <cylinder id="magenta-monument" base="-3.5,20,120.5" radius="2" height="3"/>
+            <cylinder id="cyan-monument" base="-3.5,20,-119.5" radius="2" height="3"/>
+            <cylinder id="lightblue-monument" base="4.5,20,-119.5" radius="2" height="3"/>
+        </union>
+    </union>
+    <union id="team-bases">
+        <rectangle id="blue-base-region" min="-71,41" max="72,137"/>
+        <rectangle id="red-base-region" min="-71,-40" max="72,-136"/>
+    </union>
+    <union id="lanes">
+        <rectangle id="middle" min="-29,116" max="30,-116"/>
+        <rectangle id="midacross" min="54,-7" max="-54,7"/>
+        <rectangle id="redacross" min="54,-69" max="-54,-79"/>
+        <rectangle id="blueacross" min="54,69" max="-54,79"/>
+        <rectangle id="west-lane" min="-71,-107" max="-54,107"/>
+        <rectangle id="east-lane" min="72,-107" max="55,107"/>
+    </union>
+    <union id="unlocked-lanes">
+        <rectangle id="pinklane" min="55,-40" max="72,-26"/>
+        <rectangle id="magentalane" min="-54,-40" max="-71,-26"/>
+        <rectangle id="cyanlane" min="-54,41" max="-71,27"/>
+        <rectangle id="lightbluelane" min="55,41" max="72,27"/>
+    </union>
+    <union id="spawners">
+        <union id="west-spawner">
+            <point id="west-point">-63.5,14,0.5</point>
+            <cylinder id="west-player" base="-63.5,13,0.5" radius="5" height="3"/>
+        </union>
+        <union id="east-spawner">
+            <point id="east-point">63.5,14,0.5</point>
+            <cylinder id="east-player" base="63.5,13,0.5" radius="5" height="3"/>
+        </union>
+        <union id="spawner-protection">
+            <cylinder id="west-protection" base="-63.5,0,0.5" radius="9" height="18"/>
+            <cylinder id="east-protection"  base="63.5,0,0.5" radius="9" height="18"/>
+        </union>
+    </union>
+    <union id="jump-pads">
+        <cuboid id="jump-pad-blue-east" min="29,21,107" size="2,1,4"/>
+        <cuboid id="jump-pad-blue-west" min="-30,21,107" size="2,1,4"/>
+        <cuboid id="jump-pad-red-east" min="29,21,-110" size="2,1,4"/>
+        <cuboid id="jump-pad-red-west" min="-30,21,-110" size="2,1,4"/>
+    </union>
+    <negative id="void-area">
+        <region id="spawn-protection"/>
+        <region id="lanes"/>
+    </negative>
+    <apply block="never" region="spawner-protection" message="You may not break or place around the spawner!"/>
+    <apply block="never" region="spawn-protection" message="You may not modify the spawns!"/>
+    <apply block="deny(pink_unlocked=0)" region="pinklane" message="This lane has not been unlocked!"/>
+    <apply block="deny(magenta_unlocked=0)" region="magentalane" message="This lane has not been unlocked!"/>
+    <apply block="deny(cyan_unlocked=0)" region="cyanlane" message="This lane has not been unlocked!"/>
+    <apply block="deny(lightblue_unlocked=0)" region="lightbluelane" message="This lane has not been unlocked!"/>
+    <apply block="no-enderchest" message="You may not break the ender chest!"/>
+    <apply block-break="blue-in-wr" region="red-wool-rooms" message="You may not interact with this block!"/>
+    <apply block-break="red-in-wr" region="blue-wool-rooms" message="You may not interact with this block!"/>
+    <apply block-place="deny(red)" region="red-wool-rooms" message="You may not interact with this block!"/>
+    <apply block-place="deny(blue)" region="blue-wool-rooms" message="You may not interact with this block!"/>
+    <apply block-place="never" region="center-sky" message="You may not build this high over the center!"/>
+    <apply block-place="deny(void)" region="void-area" message="You may not build in the void area!"/>
+    <apply enter="only-blue" region="blue-protection" message="You may not enter the opponent's spawn!"/>
+    <apply enter="only-blue" region="blue-protection2" message="You may not enter the opponent's spawn!"/>
+    <apply enter="only-red" region="red-protection" message="You may not enter the opponent's spawn!"/>
+    <apply enter="only-red" region="red-protection2" message="You may not enter the opponent's spawn!"/>
+    <apply enter="deny(red)" region="red-wool-rooms" message="You may not enter your own wool room!"/>
+    <apply enter="deny(blue)" region="blue-wool-rooms" message="You may not enter your own wool room!"/>
+    <apply enter="never" region="wool-monuments" message="You may not obstruct the Victory Monuments!"/>
+    <apply velocity="3.9,0.5,-1.5" kit="velocity-applied" region="jump-pad-blue-east" filter="not(blue-jumppad-disable)"/>
+    <apply velocity="-3.9,0.5,-1.5" kit="velocity-applied" region="jump-pad-blue-west" filter="not(blue-jumppad-disable)"/>
+    <apply velocity="3.9,0.5,1.5" kit="velocity-applied" region="jump-pad-red-east" filter="not(red-jumppad-disable)"/>
+    <apply velocity="-3.9,0.5,1.5" kit="velocity-applied" region="jump-pad-red-west" filter="not(red-jumppad-disable)"/>
+</regions>
+<spawners>
+    <spawner spawn-region="east-point" player-region="east-player" delay="8s">
+        <item material="nether star" name="Casino Chips" amount="1"/>
+    </spawner>
+    <spawner spawn-region="west-point" player-region="west-player" delay="8s">
+        <item material="nether star" name="Casino Chips" amount="1"/>
+    </spawner>
+    <spawner spawn-region="east-point" player-region="east-player" delay="7s" filter="after-30m">
+        <item material="nether star" name="Casino Chips" amount="1"/>
+    </spawner>
+    <spawner spawn-region="west-point" player-region="west-player" delay="7s" filter="after-30m">
+        <item material="nether star" name="Casino Chips" amount="1"/>
+    </spawner>
+    <spawner spawn-region="east-point" player-region="east-player" delay="6s" filter="after-60m">
+        <item material="nether star" name="Casino Chips" amount="1"/>
+    </spawner>
+    <spawner spawn-region="west-point" player-region="west-player" delay="6s" filter="after-60m">
+        <item material="nether star" name="Casino Chips" amount="1"/>
+    </spawner>
+    <spawner spawn-region="east-point" player-region="east-player" delay="6s" filter="after-90m">
+        <item material="nether star" name="Casino Chips" amount="1"/>
+    </spawner>
+    <spawner spawn-region="west-point" player-region="west-player" delay="6s" filter="after-90m">
+        <item material="nether star" name="Casino Chips" amount="1"/>
+    </spawner>
+</spawners>
+<shopkeepers>
+    <shopkeepers name="`b`lItem Shop" shop="item-shop">
+        <shopkeeper yaw="180">2.5,20,143.5</shopkeeper> <!-- Blue -->
+        <shopkeeper yaw="0">-1.5,20,-142.5</shopkeeper> <!-- Red -->
+        <shopkeeper yaw="180">3.5,12,112.5</shopkeeper> <!-- Blue -->
+        <shopkeeper yaw="0">-2.5,12,-111.5</shopkeeper> <!-- Red -->
+    </shopkeepers>
+    <shopkeepers name="`b`lUpgrade Shop" shop="upgrade-shop">
+        <shopkeeper yaw="180">-1.5,20,143.5</shopkeeper> <!-- Blue -->
+        <shopkeeper yaw="0">2.5,20,-142.5</shopkeeper> <!-- Red -->
+        <shopkeeper yaw="180">-2.5,12,112.5</shopkeeper> <!-- Blue -->
+        <shopkeeper yaw="0">3.5,12,-111.5</shopkeeper> <!-- Red -->
+    </shopkeepers>
+    <shopkeepers name="`b`lDefense Shop" shop="defense-shop">
+        <shopkeeper yaw="90">68.5,12,79.5</shopkeeper> <!-- Blue East -->
+        <shopkeeper yaw="90">70.5,12,-73.5</shopkeeper> <!-- Red East -->
+        <shopkeeper yaw="270">-69.5,12,74.5</shopkeeper> <!-- Blue West -->
+        <shopkeeper yaw="270">-67.5,12,-78.5</shopkeeper> <!-- Red West -->
+    </shopkeepers>
+    <shopkeepers name="`6`l⚠ `4`lLANE CLOSED`6`l ⚠" shop="pinklane-shop">
+        <shopkeeper yaw="0">63.5,12,-22.5</shopkeeper> <!-- Pink -->
+        <shopkeeper yaw="180">63.5,12,-43.5</shopkeeper> <!-- Pink -->
+    </shopkeepers>
+    <shopkeepers name="`6`l⚠ `4`lLANE CLOSED`6`l ⚠" shop="magentalane-shop">
+        <shopkeeper yaw="0">-62.5,12,-22.5</shopkeeper> <!-- Magenta -->
+        <shopkeeper yaw="180">-62.5,12,-43.5</shopkeeper> <!-- Magenta -->
+    </shopkeepers>
+    <shopkeepers name="`6`l⚠ `4`lLANE CLOSED`6`l ⚠" shop="lightbluelane-shop">
+        <shopkeeper yaw="180">63.5,12,23.5</shopkeeper> <!-- Light Blue-->
+        <shopkeeper yaw="0">63.5,12,44.5</shopkeeper> <!-- Light Blue-->
+    </shopkeepers>
+    <shopkeepers name="`6`l⚠ `4`lLANE CLOSED`6`l ⚠" shop="cyanlane-shop">
+        <shopkeeper yaw="180">-62.5,12,23.5</shopkeeper> <!-- Cyan -->
+        <shopkeeper yaw="0">-62.5,12,44.5</shopkeeper> <!-- Cyan -->
+    </shopkeepers>
+    <shopkeepers name="`b`lRoulette" shop="roulette-table">
+        <shopkeeper yaw="315">-5.5,20,125.5</shopkeeper> <!-- Blue -->
+        <shopkeeper yaw="45">6.5,20,125.5</shopkeeper> <!-- Blue -->
+        <shopkeeper yaw="225">-5.5,20,-124.5</shopkeeper> <!-- Red -->
+        <shopkeeper yaw="135">6.5,20,-124.5</shopkeeper> <!-- Red -->
+    </shopkeepers>
+</shopkeepers>
+<shops>
+    <shop id="item-shop" name="Items">
+        <category id="blocks" name="`aBlocks" material="hard clay">
+            <item material="wood" damage="2" amount="32" price="1" currency="nether star"/>
+            <item material="cobblestone" amount="12" price="1" currency="nether star"/>
+            <item material="stained glass" team-color="true" amount="24" price="1" currency="nether star"/>
+            <item material="stained clay" team-color="true" amount="16" price="1" currency="nether star"/>
+        </category>
+        <category id="defense" name="`aDefense Materials" material="iron fence">
+            <item material="log" damage="2" amount="16" price="2" currency="nether star"/>
+            <item material="fence" damage="2" amount="10" price ="2" currency="nether star"/>
+            <item material="fence gate" damage="2" amount="16" price ="6" currency="nether star"/>
+            <item material="iron fence" amount="16" price="4" currency="nether star"/>
+            <item material="redstone block" amount="16" price="4" currency="nether star"/>
+            <item material="piston_base" amount="12" price="4" currency="nether star"/>
+        </category>
+        <category id="weapons" name="`aWeapons" material="gold sword">
+            <item material="diamond sword" unbreakable="true" amount="1" price="24" currency="nether star" kit="diamond-sword-kit"/>
+            <item material="arrow" amount="16" price="1" currency="nether star"/>
+            <item material="bow" unbreakable="true" enchantment="infinity" name="`rInfinity Bow" amount="1" price="16" currency="nether star" kit="infinitybow"/>
+            <item material="bow" unbreakable="true" enchantment="power:1" name="`rPower Bow" amount="1" price="16" currency="nether star" kit="powerbow"/>
+            <item material="bow" unbreakable="true" enchantment="flame:1" name="`rFlame Bow" amount="1" price="20" currency="nether star" kit="flamebow"/>
+            <item material="bow" unbreakable="true" enchantment="power:2" name="`rPower II Bow" amount="1" price="32" currency="nether star" kit="powerbow2"/>
+            <item material= "blaze rod" amount="1" price="16" currency="nether star" enchantment="fire_aspect:1" name="Flaming Hot Stick" lore="Don't die or you'll lose me!"/>
+            <item material= "stick" amount="1" price="8" currency="nether star" enchantment="knockback:1" name="Knockback Stick" lore="Don't die or you'll lose me!"/>
+        </category>
+        <category id="individualarmor" name="`aIndividual Armor" material="chainmail chestplate">
+            <item material="chainmail helmet" name="`rIndividual Chainmail Helmet" price="4" currency="nether star" kit="chainmailhelmet-kit" filter="chainmail-helmet"/>
+            <item material="iron helmet" name="`rIndividual Iron Helmet" price="8" currency="nether star" kit="ironhelmet-kit" filter="iron-helmet"/>
+            <item material="diamond helmet" name="`rIndividual Diamond Helmet" price="16" currency="nether star" kit="diamondhelmet-kit" filter="diamond-helmet"/>
+            <item material="chainmail chestplate" name="`rIndividual Chainmail Chestplate" price="8" currency="nether star" kit="chainmailchestplate-kit" filter="chainmail-chestplate"/>
+            <item material="iron chestplate" name="`rIndividual Iron Chestplate" price="16" currency="nether star" kit="ironchestplate-kit" filter="iron-chestplate"/>
+            <item material="diamond chestplate" name="`rIndividual Diamond Chestplate" price="32" currency="nether star" kit="diamondchestplate-kit" filter="diamond-chestplate"/>
+        </category>
+        <category id="tools" name="`aTools" material="stone pickaxe">
+            <item material="iron pickaxe" unbreakable="true" enchantment="efficiency:1" amount="1" filter="not(has-iron-pick)">
+                <payment price="4" currency="nether star"/>
+                <payment price="1" currency="stone pickaxe"/>
+            </item>
+            <item material="gold pickaxe" unbreakable="true" amount="1" filter="all(has-iron-pick,not(has-gold-pick))">
+                <payment price="8" currency="nether star"/>
+                <payment price="1" currency="iron pickaxe"/>
+            </item>
+            <item material="diamond pickaxe" unbreakable="true" enchantment="efficiency:2" amount="1" filter="all(has-gold-pick,not(has-diamond-pick))">
+                <payment price="16" currency="nether star"/>
+                <payment price="1" currency="gold pickaxe"/>
+            </item>
+            <item material="iron axe" unbreakable="true" enchantment="efficiency:1" amount="1" filter="not(has-iron-axe)">
+                <payment price="4" currency="nether star"/>
+                <payment price="1" currency="stone axe"/>
+            </item>
+            <item material="gold axe" unbreakable="true" amount="1" filter="all(has-iron-axe,not(has-gold-axe))">
+                <payment price="8" currency="nether star"/>
+                <payment price="1" currency="iron axe"/>
+            </item>
+            <item material="diamond axe" unbreakable="true" enchantment="efficiency:2" amount="1" filter="all(has-gold-axe,not(has-diamond-axe))">
+                <payment price="16" currency="nether star"/>
+                <payment price="1" currency="gold axe"/>
+            </item>
+            <item material="iron spade" unbreakable="true" enchantment="efficiency:1" amount="1" filter="not(has-iron-spade)">
+                <payment price="4" currency="nether star"/>
+                <payment price="1" currency="stone spade"/>
+            </item>
+            <item material="gold spade" unbreakable="true" amount="1" filter="all(has-iron-spade,not(has-gold-spade))">
+                <payment price="8" currency="nether star"/>
+                <payment price="1" currency="iron spade"/>
+            </item>
+            <item material="diamond spade" unbreakable="true" enchantment="efficiency:2" amount="1" filter="all(has-gold-spade,not(has-diamond-spade))">
+                <payment price="16" currency="nether star"/>
+                <payment price="1" currency="gold spade"/>
+            </item>
+        </category>
+        <category id="potions" name="`aPotions" material="brewing stand item">
+            <item material="potion" name="`rInstant Health II" damage="16389" amount="1" price="6" currency="nether star">
+                <effect amplifier="2">instant_health</effect>
+            </item>
+            <item material="potion" name="`rJump Boost II (1:00)" damage="11" amount="1" price="8" currency="nether star">
+                <effect duration="60s" amplifier="2">jump_boost</effect>
+            </item>
+            <item material="potion" name="`rStrength I (0:30)" damage="9" amount="1" price="16" currency="nether star">
+                <effect duration="30s" amplifier="1">strength</effect>
+            </item>
+            <item material="potion" name="`rStrength II (0:08)" damage="9" amount="1" price="32" currency="nether star">
+                <effect duration="15s" amplifier="2">strength</effect>
+            </item>
+            <item material="potion" name="`rWeakness I (1:00)" damage="16392" amount="1" price="8" currency="nether star">
+                <effect duration="60s" amplifier="1">weakness</effect>
+            </item>
+            <item material="potion" name="`rWeakness II (0:30)" damage="16392" amount="1" price="16" currency="nether star">
+                <effect duration="30s" amplifier="2">weakness</effect>
+            </item>
+            <item material="potion" name="`rInstant Damage II" damage="16396" amount="1" price="4" currency="nether star">
+                <effect amplifier="2">instant_damage</effect>
+            </item>
+            <item material="potion" name="`rSlowness I (1:00)" damage="16394" amount="1" price="4" currency="nether star">
+                <effect duration="60s" amplifier="1">slowness</effect>
+            </item>
+        </category>
+        <category id="utilities" name="`aUtilities" material="tnt">
+            <item material="golden apple" amount="1" price="5" currency="nether star"/>
+            <item material="tnt" lore="`7Instantly ignites once placed." amount="1" price="8" currency="nether star"/>
+            <item material="sponge" amount="1" price="1" currency="nether star"/>
+            <item material="fireball" amount="1" price="8" currency="nether star"/>
+        </category>
+    </shop>
+    <shop id="upgrade-shop" name="Team Upgrades">
+        <category id="upgrades" name="`aTeam Upgrades" material="beacon">
+            <item material="chainmail boots" name="`7`lChainmail Kit" lore="`7Your team's spawn kit now|`7has chainmail leggings and boots" price="32" currency="nether star" kit="set-armor-chainmail" filter="armor=0"/>
+            <item material="iron boots" name="`f`lIron Kit" lore="`7Your team's spawn kit now|`7has iron leggings, boots, and sword" price="64" currency="nether star" kit="set-armor-iron" filter="armor=1"/>
+            <item material="diamond boots" name="`b`lDiamond Kit" lore="`7Your team's spawn kit now|`7has diamond leggings and boots" price="128" currency="nether star" kit="set-armor-diamond" filter="armor=2"/>
+            <item material="blaze powder" name="`c`lFire Resistance" lore="`7All players on your team|`7permanently gain Fire Resistance!" price="64" currency="nether star" action="add-fireresistance" filter="all(fire_res=0, armor=3)"/>
+            <item material="iron sword" name="`4`lSharpness I" lore="`7Your team permanently gains|`7Sharpness I on all swords" price="128" currency="nether star" action="add-sharpness" filter="sharpness=0"/>
+            <item material="iron sword" name="`4`lSharpness II" lore="`7Your team permanently gains|`7Sharpness II on all swords" price="256" currency="nether star" action="add-sharpness" filter="sharpness=1"/>
+            <item material="anvil" name="`e`lProtection I" lore="`7Your team permanently gains|`7Protection I on all  pieces." price="64" currency="nether star" action="add-protection" filter="protection=0"/>
+            <item material="gold pickaxe" name="`6`lHaste I" lore="`7All players on your team|`7permanently gain Haste I!" price="48" currency="nether star" action="add-haste" filter="haste=0"/>
+            <item material="diamond pickaxe" name="`6`lHaste II" lore="`7All players on your team|`7permanently gain Haste II!" price="64" currency="nether star" action="add-haste" filter="haste=1"/>
+            <item material="feather" name="`c`lSpeed I" lore="`7All players on your team|`7permanently gain Speed I!." price="64" currency="nether star" action="add-speed" filter="speed=0"/>
+            <item material="feather" name="`c`lForward Spawn" lore="`7All players on your team will|`7spawn closer to the frontlines.|`7Also disables the opposing team's |`7defensive jump pads." price="64" currency="nether star" action="add-speed" filter="speed=1"/>
+            <item material="poisonous potato" name="`7`lMining Fatigue Trap" lore="`7Enemies who enter your side will|`7receive Mining Fatigue I." price="48" currency="nether star" action="add-fatigue" filter="fatigue=0"/>
+            <item material="potion" damage="5" name="`4`lOffensive Health boost I" lore="`7Entering enemy territory will|`7grant Health Boost I." price="256" currency="nether star" action="add-healthboost" filter="healthboost=0"/>
+            <item material="potion" damage="5" name="`4`lOffensive Health boost II" lore="`7Entering enemy territory will|`7grant Health Boost II." price="512" currency="nether star" action="add-healthboost" filter="healthboost=1"/>
+        </category>
+    </shop>
+    <shop id="defense-shop" name="Defensive Upgrades">
+        <category id="upgrades" name="`aTeam Upgrades" material="beacon">
+            <item material="chainmail boots" name="`7`lChainmail Kit" lore="`7Your team's spawn kit now|`7has chainmail leggings and boots" price="32" currency="nether star" kit="set-armor-chainmail" filter="armor=0"/>
+            <item material="iron boots" name="`f`lIron Kit" lore="`7Your team's spawn kit now|`7has iron leggings, boots, and sword" price="64" currency="nether star" kit="set-armor-iron" filter="armor=1"/>
+            <item material="diamond boots" name="`b`lDiamond Kit" lore="`7Your team's spawn kit now|`7has diamond leggings and boots" price="128" currency="nether star" kit="set-armor-diamond" filter="armor=2"/>
+            <item material="blaze powder" name="`c`lFire Resistance" lore="`7All players on your team|`7permanently gain Fire Resistance!" price="64" currency="nether star" action="add-fireresistance" filter="all(fire_res=0, armor=3)"/>
+            <item material="gold pickaxe" name="`6`lHaste I" lore="`7All players on your team|`7permanently gain Haste I!" price="48" currency="nether star" action="add-haste" filter="haste=0"/>
+            <item material="diamond pickaxe" name="`6`lHaste II" lore="`7All players on your team|`7permanently gain Haste II!" price="64" currency="nether star" action="add-haste" filter="haste=1"/>
+            <item material="feather" name="`c`lSpeed I" lore="`7All players on your team|`7permanently gain Speed I!." price="64" currency="nether star" action="add-speed" filter="speed=0"/>
+            <item material="feather" name="`c`lForward Spawn" lore="`7All players on your team will|`7spawn closer to the frontlines." price="64" currency="nether star" action="add-speed" filter="speed=1"/>
+            <item material="poisonous potato" name="`7`lMining Fatigue Trap" lore="`7Enemies who enter your side will|`7receive Mining Fatigue I." price="48" currency="nether star" action="add-fatigue" filter="fatigue=0"/>
+        </category>
+        <category id="utilities" name="`aUtilities" material="tnt">
+            <item material="golden apple" amount="1" price="5" currency="nether star"/>
+            <item material="tnt" lore="`7Instantly ignites once placed." amount="1" price="8" currency="nether star"/>
+            <item material="sponge" amount="1" price="1" currency="nether star"/>
+            <item material="fireball" amount="1" price="8" currency="nether star"/>
+        </category>
+        <category id="individualarmor" name="`aIndividual Armor" material="chainmail chestplate">
+            <item material="chainmail helmet" name="`rIndividual Chainmail Helmet" price="4" currency="nether star" kit="chainmailhelmet-kit" filter="chainmail-helmet"/>
+            <item material="iron helmet" name="`rIndividual Iron Helmet" price="8" currency="nether star" kit="ironhelmet-kit" filter="iron-helmet"/>
+            <item material="diamond helmet" name="`rIndividual Diamond Helmet" price="16" currency="nether star" kit="diamondhelmet-kit" filter="diamond-helmet"/>
+            <item material="chainmail chestplate" name="`rIndividual Chainmail Chestplate" price="8" currency="nether star" kit="chainmailchestplate-kit" filter="chainmail-chestplate"/>
+            <item material="iron chestplate" name="`rIndividual Iron Chestplate" price="16" currency="nether star" kit="ironchestplate-kit" filter="iron-chestplate"/>
+            <item material="diamond chestplate" name="`rIndividual Diamond Chestplate" price="32" currency="nether star" kit="diamondchestplate-kit" filter="diamond-chestplate"/>
+        </category>
+        <category id="tools" name="`aTools" material="stone pickaxe">
+            <item material="iron pickaxe" unbreakable="true" enchantment="efficiency:1" amount="1" filter="not(has-iron-pick)">
+                <payment price="4" currency="nether star"/>
+                <payment price="1" currency="stone pickaxe"/>
+            </item>
+            <item material="gold pickaxe" unbreakable="true" amount="1" filter="all(has-iron-pick,not(has-gold-pick))">
+                <payment price="8" currency="nether star"/>
+                <payment price="1" currency="iron pickaxe"/>
+            </item>
+            <item material="diamond pickaxe" unbreakable="true" enchantment="efficiency:2" amount="1" filter="all(has-gold-pick,not(has-diamond-pick))">
+                <payment price="16" currency="nether star"/>
+                <payment price="1" currency="gold pickaxe"/>
+            </item>
+            <item material="iron axe" unbreakable="true" enchantment="efficiency:1" amount="1" filter="not(has-iron-axe)">
+                <payment price="4" currency="nether star"/>
+                <payment price="1" currency="stone axe"/>
+            </item>
+            <item material="gold axe" unbreakable="true" amount="1" filter="all(has-iron-axe,not(has-gold-axe))">
+                <payment price="8" currency="nether star"/>
+                <payment price="1" currency="iron axe"/>
+            </item>
+            <item material="diamond axe" unbreakable="true" enchantment="efficiency:2" amount="1" filter="all(has-gold-axe,not(has-diamond-axe))">
+                <payment price="16" currency="nether star"/>
+                <payment price="1" currency="gold axe"/>
+            </item>
+            <item material="iron spade" unbreakable="true" enchantment="efficiency:1" amount="1" filter="not(has-iron-spade)">
+                <payment price="4" currency="nether star"/>
+                <payment price="1" currency="stone spade"/>
+            </item>
+            <item material="gold spade" unbreakable="true" amount="1" filter="all(has-iron-spade,not(has-gold-spade))">
+                <payment price="8" currency="nether star"/>
+                <payment price="1" currency="iron spade"/>
+            </item>
+            <item material="diamond spade" unbreakable="true" enchantment="efficiency:2" amount="1" filter="all(has-gold-spade,not(has-diamond-spade))">
+                <payment price="16" currency="nether star"/>
+                <payment price="1" currency="gold spade"/>
+            </item>
+        </category>
+        <category id="potions" name="`aPotions" material="brewing stand item">
+            <item material="potion" name="`rWeakness I (1:00)" damage="16392" amount="1" price="8" currency="nether star">
+                <effect duration="60s" amplifier="1">weakness</effect>
+            </item>
+            <item material="potion" name="`rWeakness II (0:30)" damage="16392" amount="1" price="16" currency="nether star">
+                <effect duration="30s" amplifier="2">weakness</effect>
+            </item>
+            <item material="potion" name="`rInstant Damage II" damage="16396" amount="1" price="4" currency="nether star">
+                <effect amplifier="2">instant_damage</effect>
+            </item>
+            <item material="potion" name="`rSlowness I (1:00)" damage="16394" amount="1" price="4" currency="nether star">
+                <effect duration="60s" amplifier="1">slowness</effect>
+            </item>
+        </category>
+        <category id="defense" name="`aDefense Materials" material="iron fence">
+            <item material="log" damage="2" amount="16" price="2" currency="nether star"/>
+            <item material="fence" damage="2" amount="10" price ="2" currency="nether star"/>
+            <item material="fence gate" damage="2" amount="16" price ="6" currency="nether star"/>
+            <item material="iron fence" amount="16" price="4" currency="nether star"/>
+            <item material="redstone block" amount="16" price="4" currency="nether star"/>
+            <item material="piston_base" amount="12" price="4" currency="nether star"/>
+        </category>
+    </shop>
+    <shop id="pinklane-shop" name="Pink Lane Unlock">
+        <category id="lane" name="`aLane Locked" material="wool" damage="14">
+            <item material="wool" damage="6" price="24" name="`l`4Lane Locked" lore="Purchase to unlock this lane" currency="nether star" action="upgrade-pink" filter="pink_unlocked=0"/>
+        </category>
+    </shop>
+    <shop id="magentalane-shop" name="Magenta Lane Unlock">
+        <category id="lane" name="`aLane Locked" material="wool" damage="14">
+            <item material="wool" damage="2" price="24" name="`l`4Lane Locked" lore="Purchase to unlock this lane" currency="nether star" action="upgrade-magenta" filter="magenta_unlocked=0"/>
+        </category>
+    </shop>
+    <shop id="cyanlane-shop" name="Cyan Lane Unlock">
+        <category id="lane" name="`aLane Locked" material="wool" damage="14">
+            <item material="wool" damage="9" price="24" name="`l`4Lane Locked" lore="Purchase to unlock this lane" currency="nether star" action="upgrade-cyan" filter="cyan_unlocked=0"/>
+        </category>
+    </shop>
+    <shop id="lightbluelane-shop" name="Light Blue Lane Unlock">
+        <category id="lane" name="`aLane Locked" material="wool" damage="14">
+            <item material="wool" damage="3" price="24" name="`l`4Lane Locked" lore="Purchase to unlock this lane" currency="nether star" action="upgrade-lightblue" filter="lightblue_unlocked=0"/>
+        </category>
+    </shop>
+    <shop id="roulette-table" name="Roulette">
+        <category id="upgrades" name="`2Roulette `ais `clocked`a" lore="`7Purchase upgrades to unlock" material="beacon" filter="haste=0">
+            <item material="gold pickaxe" name="`6`lHaste I" lore="`7All players on your team|`7permanently gain Haste I!." price="48" currency="nether star" action="add-haste" filter="haste=0"/>
+        </category>
+        <category id="black" name="`aBet on Black - 2x Payout" material="wool" damage="15" filter="all(haste=1..,can-bet)">
+            <item material="wool" damage="15" name="`7`lWager 4" lore="`7|Just for Fun" price="4" currency="nether star" action="bet-4_black"/>
+            <item material="wool" damage="15" name="`7`lWager 8" lore="`7|Lets push it a little" price="8" currency="nether star" action="bet-8_black"/>
+            <item material="wool" damage="15" name="`7`lWager 16" lore="`7|I'm feeling lucky" price="16" currency="nether star" action="bet-16_black"/>
+            <item material="wool" damage="15" name="`7`lWager 32" lore="`7|Now I just feel confident" price="32" currency="nether star" action="bet-32_black"/>
+            <item material="wool" damage="15" name="`7`lWager 64" lore="`7|This is not a good idea..." price="64" currency="nether star" action="bet-64_black"/>
+            <item material="wool" damage="15" name="`7`lWager 128" lore="`7|I hope your teammates know you're doing this!" price="128" currency="nether star" action="bet-128_black"/>
+        </category>
+        <category id="red" name="`aBet on Red - 2x Payout" material="wool" damage="14" filter="all(haste=1..,can-bet)">
+            <item material="wool" damage="14" name="`7`lWager 4" lore="`7|Just for Fun" price="4" currency="nether star" action="bet-4_red"/>
+            <item material="wool" damage="14" name="`7`lWager 8" lore="`7|Lets push it a little" price="8" currency="nether star" action="bet-8_red"/>
+            <item material="wool" damage="14" name="`7`lWager 16" lore="`7|I'm feeling lucky" price="16" currency="nether star" action="bet-16_red"/>
+            <item material="wool" damage="14" name="`7`lWager 32" lore="`7|Now I just feel confident" price="32" currency="nether star" action="bet-32_red"/>
+            <item material="wool" damage="14" name="`7`lWager 64" lore="`7|This is not a good idea..." price="64" currency="nether star" action="bet-64_red"/>
+            <item material="wool" damage="14" name="`7`lWager 128" lore="`7|I hope your teammates know you're doing this!" price="128" currency="nether star" action="bet-128_red"/>
+        </category>
+        <category id="green" name="`aBet on Green - 35x Payout" material="wool" damage="13" filter="all(haste=1..,can-bet)">
+            <item material="wool" damage="13" name="`7`lWager 4" lore="`7|Not a good idea..." price="4" currency="nether star" action="bet-4_green"/>
+            <item material="wool" damage="13" name="`7`lWager 8" lore="`7|I wouldn't wager past this..." price="8" currency="nether star" action="bet-8_green"/>
+            <item material="wool" damage="13" name="`7`lWager 16" lore="`7|You're not going to make up your debt" price="16" currency="nether star" action="bet-16_green"/>
+            <item material="wool" damage="13" name="`7`lWager 32" lore="`7|If you win it will be legendary" price="32" currency="nether star" action="bet-32_green"/>
+            <item material="wool" damage="13" name="`7`lWager 64" lore="`7|Go big or go home?" price="64" currency="nether star" action="bet-64_green"/>
+            <item material="wool" damage="13" name="`7`lWager 128" lore="`7|Do it, you won't." price="128" currency="nether star" action="bet-128_green"/>
+        </category>
+    </shop>
+</shops>
+<wools craftable="false">
+    <!-- Blue Team -->
+    <wool team="blue" color="pink" location="4,21,132">
+        <monument>
+            <block>4,21,120</block>
+        </monument>
+    </wool>
+    <wool team="blue" color="magenta" location="-4,21,132">
+        <monument>
+            <block>-4,21,120</block>
+        </monument>
+    </wool>
+    <!-- Red Team -->
+    <wool team="red" color="cyan" location="-4,21,-132">
+        <monument>
+            <block>-4,21,-120</block>
+        </monument>
+    </wool>
+    <wool team="red" color="light_blue" location="4,21,-132">
+        <monument>
+            <block>4,21,-120</block>
+        </monument>
+    </wool>
+</wools>
+<toolrepair>
+    <tool>stone pickaxe</tool>
+    <tool>gold pickaxe</tool>
+    <tool>iron pickaxe</tool>
+    <tool>diamond pickaxe</tool>
+    <tool>stone axe</tool>
+    <tool>gold axe</tool>
+    <tool>iron axe</tool>
+    <tool>diamond axe</tool>
+    <tool>stone spade</tool>
+    <tool>gold spade</tool>
+    <tool>iron spade</tool>
+    <tool>diamond spade</tool>
+    <tool>stone sword</tool>
+    <tool>iron sword</tool>
+    <tool>diamond sword</tool>
+    <tool>shears</tool>
+    <tool>bow</tool>
+</toolrepair>
+<itemremove>
+    <item>string</item>
+    <item>seeds</item>
+    <item>long grass</item>
+    <item>stick</item>
+    <item>redstone</item>
+    <item>redstone torch off</item>
+    <item>glowstone dust</item>
+    <item>sapling</item>
+    <item>water lily</item>
+    <item>sugar cane</item>
+    <item>red rose</item>
+    <item>water bucket</item>
+    <item>redstone lamp off</item>
+    <item>redstone lamp on</item>
+    <item>yellow flower</item>
+    <item>red rose</item>
+    <item>arrow</item>
+    <item>gold block</item>
+    <item>emerald block</item>
+    <item>lapis block</item>
+    <item>coal block</item>
+    <item>quartz block</item>
+    <item>dirt</item>
+    <item>stone</item>
+    <item>sandstone</item>
+    <item>sandstone stairs</item>
+    <item>double step</item>
+    <item>step</item>
+    <item>smooth brick</item>
+    <item>brick</item>
+    <item>brick stairs</item>
+    <item>nether brick</item>
+    <item>nether brick stairs</item>
+    <item>nether fence</item>
+    <item>hopper</item>
+    <item>smooth stairs</item>
+    <item>cobble wall</item>
+    <item>prismarine</item>
+    <item>prismarine crystals</item>
+    <item>carpet</item>
+    <item>quartz</item>
+    <item>quartz stairs</item>
+    <item>flower pot item</item>
+    <item>iron trapdoor</item>
+    <item>leaves</item>
+    <item>cobblestone</item>
+    <item>stained clay</item>
+    <item>gravel</item>
+    <item>wood</item>
+    <item>log</item>
+    <item>jungle wood stairs</item>
+    <item>wool:1</item> <!--Orange-->
+    <item>wool:4</item> <!--Yellow-->
+    <item>wool:5</item> <!--Lime-->
+    <item>wool:8</item> <!--Light Gray-->
+    <item>wool:11</item> <!--Blue-->
+    <item>wool:13</item> <!--Green-->
+    <item>wool:14</item> <!--Red-->
+    <item>wool:15</item> <!--Black-->
+    <item>stained glass</item>
+    <item>sponge</item>
+    <item>clay ball</item>
+    <item>leather helmet</item>
+    <item>leather chestplate</item>
+    <item>leather leggings</item>
+    <item>leather boots</item>
+    <item>chainmail helmet</item>
+    <item>chainmail chestplate</item>
+    <item>chainmail leggings</item>
+    <item>chainmail boots</item>
+    <item>iron helmet</item>
+    <item>iron chestplate</item>
+    <item>iron leggings</item>
+    <item>iron boots</item>
+    <item>diamond helmet</item>
+    <item>diamond chestplate</item>
+    <item>diamond leggings</item>
+    <item>diamond boots</item>
+    <item>stone pickaxe</item>
+    <item>stone axe</item>
+    <item>stone spade</item>
+    <item>stone sword</item>
+    <item>iron sword</item>
+    <item>bucket</item>
+    <item>shears</item>
+    <item>blaze rod</item>
+    <item>golden apple</item>
+</itemremove>
+<itemkeep>
+    <item>gold pickaxe</item>
+    <item>iron pickaxe</item>
+    <item>diamond pickaxe</item>
+    <item>gold axe</item>
+    <item>iron axe</item>
+    <item>diamond axe</item>
+    <item>gold spade</item>
+    <item>iron spade</item>
+    <item>diamond spade</item>
+    <item>diamond sword</item>
+    <item>shears</item>
+    <item>bow</item>
+</itemkeep>
+<armorkeep>
+    <item>leather helmet</item>
+    <item>leather chestplate</item>
+    <item>leather leggings</item>
+    <item>leather boots</item>
+    <item>chainmail helmet</item>
+    <item>chainmail chestplate</item>
+    <item>chainmail leggings</item>
+    <item>chainmail boots</item>
+    <item>iron helmet</item>
+    <item>iron chestplate</item>
+    <item>iron leggings</item>
+    <item>iron boots</item>
+    <item>diamond helmet</item>
+    <item>diamond chestplate</item>
+    <item>diamond leggings</item>
+    <item>diamond boots</item>
+</armorkeep>
+<block-drops>
+    <rule filter="all(natural-blocks,not(after-30m))">  <!-- First 30m -->
+        <drops>
+            <item chance="0.075" material="nether star" name="Casino Chips"/>
+        </drops>
+    </rule>
+    <rule filter="all(natural-blocks,after-30m,not(after-60m))">  <!-- From 30m to 60m -->
+        <drops>
+            <item chance="0.10" material="nether star" name="Casino Chips"/>
+        </drops>
+    </rule>
+    <rule filter="all(natural-blocks,after-60m,not(after-90m))">  <!-- From 60m to 90m -->
+        <drops>
+            <item chance="0.20" material="nether star" name="Casino Chips"/>
+        </drops>
+    </rule>
+    <rule filter="all(natural-blocks,after-90m)">  <!-- 90m onwards -->
+        <drops>
+            <item chance="0.30" material="nether star" name="Casino Chips"/>
+        </drops>
+    </rule>
+</block-drops>
+<tnt>
+    <instantignite>on</instantignite>
+</tnt>
+<enderchest>
+    <dropoff region="red-dropoff" filter="only-red"/>
+    <dropoff region="blue-dropoff" filter="only-blue"/>
+</enderchest>
+<kill-rewards>
+    <kill-reward>
+        <item amount="16" material="wood" damage="2"/>
+        <item amount="8" material="stained glass" team-color="true"/>
+        <item amount="16" material="arrow"/>
+        <action>
+            <repeat times="bound(chips, 2, 32)">
+                <kit deduct-items="false">
+                    <item amount="1" material="nether star" name="Casino Chips"/>
+                </kit>
+            </repeat>
+        </action>
+    </kill-reward>
+</kill-rewards>
+<maxbuildheight>32</maxbuildheight>
+<hunger>
+    <depletion>off</depletion>
+</hunger>
+</map>

@@ -16,6 +16,7 @@ final class ChatRules {
     }
     static String plain(String s){return FORMAT.matcher(s).replaceAll("");}
     static Route classify(String formatted){
+        if(formatted.length()>1024)return new Route(ALL,null,false);
         String text=plain(formatted).trim();Matcher pm=PM.matcher(privateText(formatted));
         if(pm.matches()&&privatePrefix(privateText(formatted)))return new Route("pm:"+pm.group(2).toLowerCase(Locale.ROOT),pm.group(2),pm.group(1).equalsIgnoreCase("To"));
         Matcher group=GROUP.matcher(text);
@@ -34,7 +35,7 @@ final class ChatRules {
     private static String privateText(String text){return PRIVATE_SPACES.matcher(plain(text)).replaceAll(" ").trim();}
     // Bare prose such as "to your monument!" is not evidence of a private message.
     private static boolean privatePrefix(String text){return text.matches("(?is)^(From|To)\\s*:.*")||text.matches("(?is)^(From|To)\\s+(?:\\[[^\\]\\r\\n]+\\]\\s*)*<?[A-Za-z0-9_]{1,16}>?\\s*[:>\u00bb].*");}
-    static String privateBody(String text){Matcher m=PM.matcher(privateText(text));return m.matches()&&privatePrefix(privateText(text))?m.group(3).trim():"";}
+    static String privateBody(String text){if(text.length()>1024)return "";Matcher m=PM.matcher(privateText(text));return m.matches()&&privatePrefix(privateText(text))?m.group(3).trim():"";}
     static String groupTeam(String text){Matcher m=GROUP.matcher(plain(text).trim());return m.matches()&&!m.group(1).equalsIgnoreCase("Party")?m.group(1).trim():null;}
     static String groupBody(String text){Matcher m=GROUP.matcher(plain(text).trim());return m.matches()?m.group(3).trim():"";}
     static boolean authoredBy(String formatted,String player){
@@ -48,4 +49,5 @@ final class ChatRules {
         return c.equals("/g")?ALL:c.equals("/t")||c.equals("/team")?TEAM:c.equals("/party chat")?PARTY:null;
     }
     static String outgoing(String selected,String text){if(text.startsWith("/"))return text;return (selected.startsWith("pm:")?"/msg "+selected.substring(3):TEAM.equals(selected)?"/t":PARTY.equals(selected)?"/party chat":"/g")+" "+text;}
+    static int inputLimit(String selected,String text,boolean fullChat){return !fullChat||text.startsWith("/")?100:100-outgoing(selected,"").length();}
 }

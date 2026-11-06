@@ -1,0 +1,115 @@
+<map proto="1.5.0">
+<name>West Rider</name>
+<version>1.1.8</version>
+<variant id="5v5">5v5</variant>
+<unless variant="5v5">
+    <include id="kotf"/>
+</unless>
+<if variant="5v5">
+    <include id="kotf-comp"/>
+    <constant id="respawn-timer">5s</constant>
+</if>
+<constant id="damage-resistance">6s</constant>
+<objective>Control the flag for ${score} seconds to win!</objective>
+<authors>
+    <author uuid="97d1cc45-0f69-482b-9974-09351aef9dfa"/> <!-- lunaceee -->
+    <author uuid="ec5ec930-5cf3-4f8a-ad9f-09056aeed71b"/> <!-- Tundren -->
+    <author uuid="38ef938a-7020-4c04-9d12-4875ed0598ca"/> <!-- Kazoha -->
+    <author uuid="f6f5dce8-a158-461d-b26d-dc8acfaeedd7"/> <!-- Kallowy -->
+</authors>
+<contributors>
+    <contributor uuid="6c5d7783-27fd-4ac5-8a1d-ba35206edf53"/> <!-- _Nathy -->
+    <contributor uuid="430ec559-364a-4363-ac7a-2529050440ac" contribution="XML"/> <!-- mameBT -->
+</contributors>
+<broadcasts>
+    <alert after="1s">Flag spawns depend on the team who last held the flag!</alert>
+    <alert after="2s">If Blue holds the flag, it spawns at Red's flag post, and if Red holds the flag, it spawns at Blue's flag post.</alert>
+</broadcasts>
+<teams>
+    <unless variant="5v5">
+        <team id="blue" color="blue" max="16">Blue</team>
+        <team id="red" color="dark red" max="16">Red</team>
+    </unless>
+    <if variant="5v5">
+        <team id="blue" color="blue" max="5" max-overfill="5">Blue</team>
+        <team id="red" color="dark red" max="5" max-overfill="5">Red</team>
+    </if>
+</teams>
+<kits>
+    <kit id="spawn-kit" parent="base-kit">
+        <if variant="default">
+            <action>
+                <replace-item>
+                    <find unbreakable="true" material="iron boots"/>
+                    <replace unbreakable="true" enchantment="feather_falling" material="iron boots"/>
+                </replace-item>
+            </action>
+        </if>
+    </kit>
+    <kit id="flag-kit-set-variables" parent="flag-kit">
+        <action filter="blue-team">
+            <set var="flag_held_by" value="1"/>
+        </action>
+        <action filter="red-team">
+            <set var="flag_held_by" value="2"/>
+        </action>
+    </kit>
+</kits>
+<spawns>
+    <default>
+        <region yaw="90">
+            <block>77,32,1</block>
+        </region>
+    </default>
+    <spawn team="blue" kit="spawn-kit" filter="has-flag">
+        <region yaw="180">
+            <block>25,8,46</block>
+        </region>
+    </spawn>
+    <spawn team="red" kit="spawn-kit" filter="has-flag">
+        <region yaw="0">
+            <block>-17,8,-44</block>
+        </region>
+    </spawn>
+</spawns>
+<variables>
+    <variable id="flag_held_by" scope="match"/> <!-- blue sets 1, red sets 2 -->
+</variables>
+<filters>
+    <team id="blue-team">blue</team>
+    <team id="red-team">red</team>
+    <variable id="held-by-blue" var="flag_held_by">1</variable>
+    <variable id="held-by-red" var="flag_held_by">2</variable>
+</filters>
+<regions>
+    <union id="spawns">
+        <union id="blue-spawn">
+            <cuboid min="20,0,32" max="48,oo,50"/>
+            <cuboid min="42,0,17" max="47,oo,32"/>
+        </union>
+        <union id="red-spawn">
+            <cuboid min="-39,0,-47" max="-11,oo,-29"/>
+            <cuboid min="-38,0,-29" max="-33,oo,-14"/>
+        </union>
+    </union>
+    <apply use="never" block="never"/>
+    <apply enter="deny-flag-carrier" region="spawns" message="You may not enter the spawns with the flag."/>
+</regions>
+<flags>
+    <flag id="flag"
+          name="Flag"
+          color="orange"
+          shared="true"
+          points-rate="1"
+          pickup-kit="flag-kit-set-variables"
+          drop-kit="reset-health"
+          flag-proximity-metric="none"
+          show-respawn-on-pickup="${announce-post-pickup}">
+        <post return-time="0s" respawn-time="${flag-respawn-timer}">
+            <post name="Mid Post" respawn-filter="never">4.5,17,1.5</post>
+            <post name="Blue's Post" respawn-filter="held-by-red" yaw="180">-14.5,14,14.5</post>
+            <post name="Red's Post" respawn-filter="held-by-blue" yaw="0">23.5,14,-11.5</post>
+        </post>
+    </flag>
+</flags>
+</map>

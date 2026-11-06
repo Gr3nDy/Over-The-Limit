@@ -1,0 +1,257 @@
+<map proto="1.5.1">
+<name>Shifty Sands</name>
+<version>1.1.1</version>
+<objective>Capture the most flags!</objective>
+<variant id="default" world="default"/>
+<variant id="halloween" world="halloween" override="true">Tricky Sands</variant>
+<created>2025-10-14</created>
+<include id="gapple-kill-reward"/>
+<authors>
+    <author uuid="f690a591-348b-482e-a18d-7779d0c0a28c"/> <!-- mitchiii -->
+</authors>
+<teams>
+    <team id="blue" color="blue" max="6">Blue</team>
+    <team id="red" color="dark red" max="6">Red</team>
+</teams>
+<spawns>
+    <spawn team="blue" region="blue-spawn" yaw="0" kit="main-kit"/>
+    <spawn team="red" region="red-spawn" yaw="180" kit="main-kit"/>
+    <default>
+        <regions>
+            <point yaw="-90">-43.5,27,-7.5</point>
+            <point yaw="90">43.5,27,8.5</point>
+        </regions>
+    </default>
+</spawns>
+<kits>
+    <kit id="main-kit">
+        <clear/>
+        <item slot="0" material="stone sword" unbreakable="true"/>
+        <item slot="1" material="bow" unbreakable="true"/>
+        <item slot="2" material="stone pickaxe" unbreakable="true"/>
+        <item slot="3" material="stone axe" unbreakable="true">
+            <enchantment level="2">efficiency</enchantment>
+        </item>
+        <item slot="4" material="wood" amount="64" damage="1"/>
+        <item slot="5" material="stained glass" amount="32" team-color="true"/>
+        <item slot="8" material="golden apple"/>
+        <item slot="28" material="arrow" amount="36"/>
+        <item slot="30" material="stone spade" unbreakable="true">
+            <enchantment level="2">efficiency</enchantment>
+        </item>
+        <helmet material="leather helmet" unbreakable="true" team-color="true"/>
+        <chestplate material="chainmail chestplate" unbreakable="true"/>
+        <leggings material="leather leggings" unbreakable="true" team-color="true"/>
+        <boots unbreakable="true" material="iron boots"/>
+    </kit>
+    <kit id="gold-kit" deduct-items="false">
+        <item material="gold ingot" amount="9"/>
+    </kit>
+</kits>
+<kill-rewards>
+    <kill-reward>
+        <item material="arrow" amount="8"/>
+        <item material="wood" amount="12" damage="1"/>
+        <item material="stained glass" amount="6" team-color="true"/>
+    </kill-reward>
+    <kill-reward>
+        <filter>
+            <kill-streak count="3" repeat="true"/>
+        </filter>
+        <item material="tnt"/>
+    </kill-reward>
+</kill-rewards>
+<spawners>
+    <spawner spawn-region="spawner" player-region="everywhere" delay="6s" max-entities="1">
+        <item material="golden apple"/>
+    </spawner>
+</spawners>
+<filters>
+    <material id="gold-block">gold block</material>
+    <material id="spruce-fence">spruce fence</material>
+    <material id="redstone-lamp">redstone lamp on</material>
+    <material id="tnt">tnt</material>
+    <all id="bottom-solid-blocks">
+        <below y="1"/>
+        <any id="bottom-layer-materials">
+            <if variant="default">
+                <material id="smooth-sandstone">double step:9</material>
+                <material>hard clay</material>
+            </if>
+            <if variant="halloween">
+                <material id="smooth-sandstone">double stone slab2:8</material>
+                <material>netherrack</material>
+            </if>
+        </any>
+    </all>
+    <offset id="blue-trap-active" vector="-39,18,-8" filter="redstone-lamp"/>
+    <offset id="red-trap-active" vector="39,18,8" filter="redstone-lamp"/>
+</filters>
+<regions>
+    <cylinder id="blue-spawn" base="-42.5,4,-3.5" radius="1" height="1"/>
+    <cylinder id="red-spawn" base="43.5,4,4.5" radius="1" height="1"/>
+    <point id="spawner">0.5,3,0.5</point>
+    <cuboid id="spawner-protection" min="0,0,0" size="1,4,1"/>
+    <union id="spawn-protection">
+        <cuboid id="blue-spawn-protection" min="-47,0,-8" size="9,11,14"/>
+        <cuboid id="red-spawn-protection" min="39,0,-5" size="9,11,14"/>
+    </union>
+    <union id="post-protection">
+        <cuboid id="blue-post-protection" min="-35,0,-9" size="3,12,3"/>
+        <cuboid id="red-post-protection" min="33,0,7" size="3,12,3"/>
+    </union>
+    <negative id="restricted-void">
+        <rectangle id="buildable-void" min="23,14" max="-22,-13"/>
+    </negative>
+    <union id="blue-capture">
+        <region id="blue-spawn-protection"/>
+        <cylinder base="-34,9,-8" radius="3" height="3"/>
+    </union>
+    <union id="red-capture">
+        <region id="red-spawn-protection"/>
+        <cylinder base="34,9,8" radius="3" height="3"/>
+    </union>
+    <cylinder id="blue-trap-region" base="-34.5,18,-7.5" radius="5" height="5"/>
+    <cylinder id="red-trap-region" base="35.5,18,8.5" radius="5" height="5"/>
+    <apply region="blue-spawn-protection" enter="blue" message="You may not enter the enemy spawn!"/>
+    <apply region="red-spawn-protection" enter="red" message="You may not enter the enemy spawn!"/>
+    <apply region="spawn-protection" block="never" message="You may not modify the spawn area!"/>
+    <apply region="post-protection" block="tnt" message="You may not modify the flag post!"/>
+    <apply region="spawner-protection" block="never"/>
+    <apply region="restricted-void" block-place="not(void)"/>
+    <apply block-break="deny(bottom-solid-blocks)"/>
+</regions>
+<maxbuildheight>20</maxbuildheight>
+<flags>
+    <flag id="blue-flag" name="Flag" color="blue" owner="blue">
+        <post pickup-filter="red" yaw="-90" recover-time="20s" respawn-time="8s">-34,9,-8</post>
+        <net points="1" region="red-capture" capture-filter="red"/>
+    </flag>
+    <flag id="red-flag" name="Flag" color="red" owner="red">
+        <post pickup-filter="blue" yaw="90" recover-time="20s" respawn-time="8s">34,9,8</post>
+        <net points="1" region="blue-capture" capture-filter="blue"/>
+    </flag>
+</flags>
+<score>
+    <mercy>3</mercy>
+</score>
+<time result="score" overtime="1m" max-overtime="5m">7m</time>
+<block-drops>
+    <rule wrong-tool="true" filter="gold-block" kit="gold-kit"/>
+    <rule wrong-tool="false" filter="bottom-layer-materials">
+        <drops>
+            <if variant="default">
+                <item material="sandstone"/>
+            </if>
+            <if variant="halloween">
+                <item material="red sandstone"/>
+            </if>
+        </drops>
+    </rule>
+</block-drops>
+<item-mods>
+    <rule>
+        <match>
+            <material>bow</material>
+        </match>
+        <modify unbreakable="true"/>
+    </rule>
+</item-mods>
+<actions>
+    <trigger scope="match" filter="blue-trap-active">
+        <action>
+            <switch-scope inner="player" filter="blue-trap-region">
+                <sound key="${block.wood.break}" volume="1" pitch="1.5"/>
+            </switch-scope>
+            <fill region="blue-trap-region" filter="spruce-fence" material="air"/>
+            <fill region="blue-trap-region" filter="redstone-lamp" material="sandstone"/>
+        </action>
+    </trigger>
+    <trigger scope="match" filter="red-trap-active">
+        <action>
+            <switch-scope inner="player" filter="red-trap-region">
+                <sound key="${block.wood.break}" volume="1" pitch="1.5"/>
+            </switch-scope>
+            <fill region="red-trap-region" filter="spruce-fence" material="air"/>
+            <fill region="red-trap-region" filter="redstone-lamp" material="sandstone"/>
+        </action>
+    </trigger>
+</actions>
+<if variant="halloween">
+    <regions>
+        <cylinder id="ghost-spawn-region" base="0.5,3,0.5" radius="2" height="1"/>
+    </regions>
+    <kits>
+        <kit id="ghost-kit">
+            <chestplate material="chainmail chestplate" drop-chance="0"/>
+            <boots material="golden apple" drop-chance="1"/>
+            <effect>invisibility</effect>
+        </kit>
+        <kit id="freako-kit" parent="ghost-kit">
+            <helmet material="skull item" uuid="488b5fac-a30a-4649-b973-978b1106d406" skin="eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNzU3MzM1YjUyNmI4YTY1NWJlZWY5ZDUxOTc4MDA1OTVlZTBkNjE2NTY5ZWZmNGRjNTE2MTk5YjgxZjI1NWVmMiJ9fX0=" drop-chance="0"/>
+        </kit>
+        <kit id="meako-kit" parent="ghost-kit">
+            <helmet material="skull item" uuid="a72afd30-f36c-4018-b79d-aad9fb6fac2b" skin="eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYzdmNjQxZTY1MmRlZTQ0OWU3MjhmMTVkNDY4MTU5ZDY1YjBlZWY4N2U5ZDMwZjQxMGRhNDZhY2NjZjdiMjQ0In19fQ==" drop-chance="0"/>
+        </kit>
+        <kit id="shreako-kit" parent="ghost-kit">
+            <helmet material="skull item" uuid="d4e88898-30f0-4b40-9243-76614ab2baaf" skin="eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYjZmMTI2OTdkNmQxM2E3YzI4OGQ3NDA1OTA3OTA2YTUwMDNhOGIxMTdlMzRmYTRiNTUxY2FlYjczYzQxN2E2NyJ9fX0=" drop-chance="0"/>
+        </kit>
+    </kits>
+    <spawners>
+        <spawner spawn-region="ghost-spawn-region" player-region="everywhere" delay="30s" max-entities="3">
+            <mob type="Skeleton" kit="freako-kit" custom-name="Freako" can-pickup-items="false" max-health="6"/>
+        </spawner>
+        <spawner spawn-region="ghost-spawn-region" player-region="everywhere" delay="60s" max-entities="3">
+            <mob type="Skeleton" kit="meako-kit" custom-name="Meako" can-pickup-items="false" max-health="6"/>
+        </spawner>
+        <spawner spawn-region="ghost-spawn-region" player-region="everywhere" delay="60s" max-entities="3">
+            <mob type="Skeleton" kit="shreako-kit" custom-name="Shreako" can-pickup-items="false" max-health="6"/>
+        </spawner>
+    </spawners>
+</if>
+<tnt>
+    <instantignite>true</instantignite>
+</tnt>
+<damage>
+    <deny>
+        <region id="spawn-protection"/>
+    </deny>
+</damage>
+<toolrepair>
+    <tool>bow</tool>
+    <tool>iron chestplate</tool>
+    <tool>stone sword</tool>
+    <tool>stone pickaxe</tool>
+    <tool>stone axe</tool>
+    <tool>stone spade</tool>
+    <tool>gold helmet</tool>
+    <tool>gold chestplate</tool>
+    <tool>gold leggings</tool>
+    <tool>gold boots</tool>
+    <tool>gold sword</tool>
+    <tool>gold pickaxe</tool>
+    <tool>gold axe</tool>
+    <tool>gold spade</tool>
+</toolrepair>
+<itemremove>
+    <item>leather helmet</item>
+    <item>chainmail chestplate</item>
+    <item>leather leggings</item>
+    <item>iron boots</item>
+    <item>sapling</item>
+    <item>apple</item>
+    <item>emerald block</item>
+    <item>gold block</item>
+    <item>stained clay</item>
+</itemremove>
+<itemkeep>
+    <item>stained clay</item>
+    <item>stained glass</item>
+    <item>wood</item>
+    <item>arrow</item>
+    <item>golden apple</item>
+</itemkeep>
+<hunger>
+    <depletion>off</depletion>
+</hunger>
+</map>

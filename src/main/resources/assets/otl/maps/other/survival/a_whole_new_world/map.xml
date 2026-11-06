@@ -1,0 +1,93 @@
+<map proto="1.5.0" game="`eSurvival">
+<name>A Whole New World</name>
+<version>1.1.3</version>
+<objective>Enjoy this painstakingly crafted replica survival experience</objective>
+<created>2020-11-23</created>
+<phase>staging</phase>
+<authors>
+    <author uuid="a9f11454-beac-4cc3-a138-1780802c8794"/> <!-- Crazy_ -->
+</authors>
+<contributors>
+    <contributor uuid="f54a1b17-3167-4162-948a-9c95d65a18a5" contribution="I ripped off his map idea"/> <!-- applenick -->
+</contributors>
+<rules>
+    <rule>Have fun</rule>
+</rules>
+<players min="1" max="100" colors="true">Dummies</players>
+<kits>
+    <kit id="survive">
+        <item slot="0" material="wood sword"/>
+        <item slot="1" material="wood pickaxe"/>
+        <item slot="2" material="wood axe"/>
+        <item slot="3" amount="16" material="cooked beef"/>
+        <helmet unbreakable="true" material="chainmail helmet"/>
+    </kit>
+</kits>
+<spawns>
+    <spawn kit="survive" spread="true" safe="true">
+        <region>
+            <cylinder base="-541,64,769" radius="100" height="5"/>
+        </region>
+    </spawn>
+    <default>
+        <region>
+            <point>-541,64,769</point>
+        </region>
+    </default>
+</spawns>
+<regions>
+    <cylinder id="wheeeeeeeeeeeeeee" base="-541,200,769" radius="100" height="5"/>
+</regions>
+<score>
+    <box>
+        <region>
+            <below y="0"/>
+        </region>
+        <redeemables>
+            <item points="1">wool</item>
+            <item points="2">iron ore</item>
+            <item points="3">log</item>
+            <item points="4">potato</item>
+            <item points="5">sapling</item>
+            <item points="6">red rose</item>
+            <item points="7">carrot</item>
+            <item points="8">book</item>
+            <item points="9">lever</item>
+            <item points="10">pumpkin</item>
+            <item points="11">glass</item>
+            <item points="12">obsidian</item>
+            <item points="13">slime block</item>
+            <item points="14">hay block</item>
+            <item points="15">saddle</item>
+            <item points="1000">dragon egg</item>
+        </redeemables>
+    </box>
+</score>
+<time show="false">1h</time>
+<portals>
+    <portal destination="wheeeeeeeeeeeeeee">
+        <region>
+            <below y="-5"/>
+        </region>
+        <filter>
+            <not>
+                <score>0</score>
+            </not>
+        </filter>
+    </portal>
+</portals>
+<mobs filter="always"/>
+<difficulty>hard</difficulty>
+<toolrepair>
+    <tool>wood sword</tool>
+    <tool>wood pickaxe</tool>
+    <tool>wood axe</tool>
+</toolrepair>
+<itemremove>
+    <item>cooked beef</item>
+    <item>chainmail helmet</item>
+</itemremove>
+<respawns>
+    <respawn auto="true" delay="1.5s"/>
+</respawns>
+</map>

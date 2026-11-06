@@ -1,0 +1,1309 @@
+<map proto="1.5.0" min-server-version="1.21.11">
+<name>Survive or Die: Oracle</name>
+<version>0.2.4</version>
+<objective>Be the last player standing!</objective>
+<created>2026-01-01</created>
+<gamemode>ffa</gamemode>
+<gamemode>blitz</gamemode>
+<gamemode>arcade</gamemode>
+<include id="void-death"/>
+<authors>
+    <author uuid="f690a591-348b-482e-a18d-7779d0c0a28c"/> <!-- mitchiii -->
+    <author uuid="1aad55f7-2dea-4f22-85ca-ad9de3a78609"/> <!-- Technodono -->
+</authors>
+<players max="32" colors="true"/>
+<spawns>
+    <spawn kit="all-kits" region="spawnable" angle="0,12,0" spread="true" safe="true" outdoors="true" filter="spawn-delay"/>
+    <default yaw="135">
+        <regions>
+            <cuboid min="-1,39,-1" max="1,39,1"/>
+        </regions>
+    </default>
+</spawns>
+<kits>
+    <kit id="all-kits" parents="spawn-kit,tutorial-kit"/>
+    <kit id="spawn-kit" filter="game_phase=2.." force="true">
+        <clear effects="true"/>
+        <item slot="0" material="copper sword" unbreakable="true"/>
+        <item slot="1" material="copper pickaxe" unbreakable="true"/>
+        <item slot="2" material="copper shovel" unbreakable="true">
+            <enchantment level="2">efficiency</enchantment>
+        </item>
+        <item slot="3" material="wool" amount="32" team-color="true"/>
+        <item slot="7" material="compass"/>
+        <item slot="8" amount="1" material="beetroot" name="`eHeal Beet" components="max_stack_size=3,rarity='uncommon',food={can_always_eat:true,nutrition:2,saturation:0.6f},consumable={on_consume_effects:[{type:'minecraft:apply_effects',effects:[{show_icon:true,duration:1,id:'minecraft:instant_health'}]}]}"/>
+        <helmet material="leather helmet" unbreakable="true" team-color="true"/>
+        <chestplate material="chainmail chestplate" unbreakable="true"/>
+        <leggings material="leather leggings" unbreakable="true" team-color="true"/>
+        <boots unbreakable="true" material="iron boots"/>
+    </kit>
+    <kit id="reset-tutorial-kit" parents="spawn-kit" filter="game_phase=2.." force="true">
+        <game-mode>survival</game-mode>
+        <walk-speed>1</walk-speed>
+        <attribute operation="base" amount="1">jump_strength</attribute>
+    </kit>
+    <kit id="tutorial-kit" filter="game_phase=1" force="true">
+        <effect duration="15s" amplifier="0">darkness</effect>
+        <effect duration="oo" amplifier="255">resistance</effect>
+        <attribute operation="base" amount="-1">jump_strength</attribute>
+        <walk-speed>0</walk-speed>
+        <game-mode>adventure</game-mode>
+    </kit>
+    <kit id="wool" repair-tools="true" deduct-tools="false" deduct-items="false">
+        <item amount="16" material="white wool" team-color="true"/>
+    </kit>
+    <kit id="snowball" repair-tools="true" deduct-tools="false" deduct-items="false">
+        <item amount="3" material="snowball"/>
+    </kit>
+    <kit id="loaded-crossbow" repair-tools="true" deduct-tools="false" deduct-items="false">
+        <item material="crossbow" components="max_damage=1,charged_projectiles=[{id:'minecraft:arrow',count:1,components:{'minecraft:intangible_projectile':{}}}]"/>
+    </kit>
+    <kit id="shears" repair-tools="true" deduct-tools="true" deduct-items="false">
+        <item material="shears" components="max_damage=32"/>
+    </kit>
+
+    <kit id="tnt" repair-tools="true" deduct-tools="false" deduct-items="false">
+        <item material="tnt" components="rarity='uncommon'"/>
+    </kit>
+    <kit id="shield-breaker" repair-tools="true" deduct-tools="true" deduct-items="false">
+        <item material="golden axe" name="`eShield Breaker" components="rarity='uncommon',max_damage=16"/>
+    </kit>
+    <kit id="iron-sword" repair-tools="true" deduct-tools="true" deduct-items="false">
+        <item material="iron sword" components="rarity='uncommon'"/>
+    </kit>
+    <kit id="iron-chestplate" repair-tools="true" deduct-tools="true" deduct-items="false">
+        <item material="iron chestplate" components="rarity='uncommon'"/>
+    </kit>
+    <kit id="tracking-crossbow" repair-tools="true" deduct-tools="false" deduct-items="false">
+        <item material="crossbow" name="`eTracking Crossbow" components="max_damage=1,rarity='uncommon',charged_projectiles=[{id:'minecraft:spectral_arrow',count:1,components:{'minecraft:intangible_projectile':{}}}]"/>
+    </kit>
+    <kit id="gooey-crossbow" repair-tools="true" deduct-tools="false" deduct-items="false">
+        <item material="crossbow" name="`eGooey Crossbow" components="max_damage=1,rarity='uncommon',charged_projectiles=[{id:'minecraft:tipped_arrow',count:1,components:{'minecraft:intangible_projectile':{},'minecraft:potion_contents':{potion:'minecraft:oozing'}}}]"/>
+    </kit>
+    <kit id="super-beet" repair-tools="true" deduct-tools="false" deduct-items="false">
+        <item amount="2" material="beetroot" name="`eHeal Beet" components="max_stack_size=3,rarity='uncommon',food={can_always_eat:true,nutrition:2,saturation:0.6f},consumable={on_consume_effects:[{type:'minecraft:apply_effects',effects:[{show_icon:true,duration:1,id:'minecraft:instant_health'}]}]}"/>
+    </kit>
+    <kit id="cobweb" repair-tools="true" deduct-tools="false" deduct-items="false">
+        <item amount="2" material="cobweb" components="rarity='uncommon'"/>
+    </kit>
+ 
+
+    <kit id="fire-charge" repair-tools="true" deduct-tools="false" deduct-items="false">
+        <item material="fire charge" projectile="throwable-fireball" components="rarity='rare'"/>
+    </kit>
+    <kit id="teleportation-juice" repair-tools="true" deduct-tools="false" deduct-items="false">
+        <item material="ominous_bottle" name="`bTeleportation Juice" components="max_stack_size=1,rarity='rare',consumable={consume_seconds:1f,on_consume_effects:[{type:'minecraft:teleport_randomly',diameter:48.0f},{type:'minecraft:play_sound',sound:'minecraft:entity.enderman.teleport'}],sound:'minecraft:entity.generic.drink',animation:'drink'},use_cooldown={seconds:5.0f},!ominous_bottle_amplifier"/>
+    </kit>
+    <kit id="shield" repair-tools="true" deduct-tools="true" deduct-items="false">
+        <item material="shield" name="`bShield" components="rarity='rare',max_damage=6"/>
+    </kit>
+    <kit id="diamond-sword" repair-tools="true" deduct-tools="true" deduct-items="false">
+        <item material="diamond sword" components="rarity='rare'"/>
+    </kit>
+    <kit id="fish-slap" repair-tools="true" deduct-tools="true" deduct-items="false">
+        <item material="cod" name="`bFish Slap" components="max_stack_size=1,rarity='rare',weapon={item_damage_per_attack:2},max_damage=16,enchantments={'minecraft:knockback':1},damage=0,tool={rules:[],can_destroy_blocks_in_creative:false}"/>
+    </kit>
+    <kit id="boom-bow" repair-tools="true" deduct-tools="false" deduct-items="false">
+        <item material="crossbow" name="`bBoom-bow" components="max_damage=1,rarity='rare',charged_projectiles=[{id:'minecraft:firework_rocket',count:1,components:{'minecraft:fireworks':{explosions:[{shape:'small_ball',colors:[16711680]},{shape:'small_ball',colors:[16729088]},{shape:'small_ball',colors:[16742917]},{shape:'small_ball',colors:[16757504]},{shape:'small_ball',colors:[16759086]},{has_twinkle:true,has_trail:true,shape:'small_ball',colors:[6375753]}]}}}]"/>
+    </kit>
+    <kit id="thorny-chestplate" repair-tools="true" deduct-tools="true" deduct-items="false">
+        <item material="iron chestplate" name="`bThorny Chestplate" components="rarity='rare',trim={material:'minecraft:diamond',pattern:'minecraft:rib'},enchantments={'minecraft:thorns':1}"/>
+    </kit>
+    <kit id="super-soup" repair-tools="true" deduct-tools="false" deduct-items="false">
+        <item material="beetroot_soup" name="`bSuper Soup" components="!use_remainder,rarity='rare',food={can_always_eat:true,nutrition:6,saturation:1.2f},consumable={consume_seconds:3.2f,on_consume_effects:[{type:'minecraft:apply_effects',effects:[{amplifier:2,id:'minecraft:instant_health',show_icon:true,duration:1}]},{type:'minecraft:play_sound',sound:'minecraft:block.brewing_stand.brew'}]}"/>
+    </kit>
+
+    <kit id="potion-of-strength" repair-tools="true" deduct-tools="false" deduct-items="false">
+        <item material="potion" name="`dPotion of Strength" components="potion_contents={custom_effects:[{show_icon:true,duration:400,id:'minecraft:strength'}]},!use_remainder,rarity='epic'"/>
+    </kit>
+    <kit id="potion-of-agility" repair-tools="true" deduct-tools="false" deduct-items="false">
+        <item material="potion" name="`dPotion of Agility" components="potion_contents={custom_color:393115,custom_effects:[{amplifier:2,id:'minecraft:jump_boost',show_icon:true,duration:400},{amplifier:1,id:'minecraft:speed',show_icon:true,duration:400}]},!use_remainder,rarity='epic'"/>
+    </kit>
+    <kit id="extra-time-10s" repair-tools="true" deduct-tools="false" deduct-items="false">
+        <item material="clock" name="`dExtra Time `8[`7Right-Click`8]" consumable="10s-time" components="max_stack_size=1,rarity='epic',max_damage=10,enchantments={'minecraft:vanishing_curse':1}"/>
+    </kit>
+    <kit id="poseidons-trident" repair-tools="true" deduct-tools="true" deduct-items="false">
+        <item material="trident" name="`dPoseidon's Trident" components="rarity='epic',max_damage=10,enchantments={'minecraft:loyalty':3}"/>
+    </kit>
+    <kit id="lunge-master" repair-tools="true" deduct-tools="true" deduct-items="false">
+        <item material="golden spear" name="`dLunge Master" components="rarity='epic',max_damage=10,enchantments={'minecraft:lunge':3}"/>
+    </kit>
+    <kit id="netherite-sword" repair-tools="true" deduct-tools="true" deduct-items="false">
+        <item material="netherite sword" components="rarity='epic'"/>
+    </kit>
+    <kit id="kaboom-bow" repair-tools="true" deduct-tools="false" deduct-items="false">
+        <item material="crossbow" name="`dKaBoom-bow" components="max_damage=1,rarity='epic',charged_projectiles=[{id:'minecraft:firework_rocket',count:1,components:{'minecraft:fireworks':{explosions:[{shape:'small_ball',colors:[16711680]},{shape:'small_ball',colors:[16729088]},{shape:'small_ball',colors:[16742917]},{shape:'small_ball',colors:[16757504]},{shape:'small_ball',colors:[16759086]},{has_twinkle:true,has_trail:true,shape:'small_ball',colors:[6375753]}]}}},{id:'minecraft:firework_rocket',count:1,components:{'minecraft:fireworks':{explosions:[{shape:'small_ball',colors:[16711680]},{shape:'small_ball',colors:[16729088]},{shape:'small_ball',colors:[16742917]},{shape:'small_ball',colors:[16757504]},{shape:'small_ball',colors:[16759086]},{has_twinkle:true,has_trail:true,shape:'small_ball',colors:[6375753]}]}}},{id:'minecraft:firework_rocket',count:1,components:{'minecraft:fireworks':{explosions:[{shape:'small_ball',colors:[16711680]},{shape:'small_ball',colors:[16729088]},{shape:'small_ball',colors:[16742917]},{shape:'small_ball',colors:[16757504]},{shape:'small_ball',colors:[16759086]},{has_twinkle:true,has_trail:true,shape:'small_ball',colors:[6375753]}]}}}],enchantments={'minecraft:multishot':1}"/>
+    </kit>
+    <kit id="diamond-chestplate" repair-tools="true" deduct-tools="true" deduct-items="false">
+        <item material="diamond chestplate" components="rarity='epic'"/>
+    </kit>
+
+    <kit id="loot-bundle" deduct-items="false">
+        <item material="bundle" name="`cLoot Bundle `8[`7Right-Click`8]" consumable="loot-egg" components="max_stack_size=10,!bundle_contents"/>
+    </kit>
+    <kit id="block-drop" deduct-items="false">
+        <item material="white wool" team-color="true"/>
+    </kit>
+</kits>
+<projectiles>
+    <projectile id="throwable-fireball" name="fireball" projectile="LargeFireball" velocity=".6" click="right" damage="6" cooldown="1s" destroy-filter="always"/>
+</projectiles>
+<tnt>
+    <instantignite>on</instantignite>
+    <fuse>2s</fuse>
+    <yield>0</yield>
+</tnt>
+<kill-rewards>
+    <kill-reward>
+        <kit>
+            <action>
+                <set var="health" value="${recoveryHeartBeat}"/>
+                <action id="update-health-displays"/>
+                <kit id="loot-bundle"/>
+            </action>
+        </kit>
+        <item amount="1" material="beetroot" name="`eHeal Beet" components="max_stack_size=3,rarity='uncommon',food={can_always_eat:true,nutrition:2,saturation:0.6f},consumable={on_consume_effects:[{type:'minecraft:apply_effects',effects:[{show_icon:true,duration:1,id:'minecraft:instant_health'}]}]}"/>
+        <item material="wool" amount="8" team-color="true"/>
+    </kill-reward>
+</kill-rewards>
+<consumables>
+    <consumable id="loot-egg" action="open-loot" on="right click"/>
+    <consumable id="10s-time" action="add-time" on="right click"/>
+</consumables>
+<compass show-distance="true">
+    <player filter="always" show-player="true" name="`7Nearest"/>
+</compass>
+<toolrepair>
+    <tool>copper sword</tool>
+    <tool>copper pickaxe</tool>
+    <tool>copper shovel</tool>
+    <tool>golden axe</tool>
+    <tool>iron sword</tool>
+    <tool>diamond sword</tool>
+    <tool>netherite sword</tool>
+    <tool>leather helmet</tool>
+    <tool>leather leggings</tool>
+    <tool>iron boots</tool>
+    <tool>chainmail chestplate</tool>
+    <tool>iron chestplate</tool>
+    <tool>diamond chestplate</tool>
+    <tool>golden spear</tool>
+    <tool>trident</tool>
+    <tool>cod</tool>
+    <tool>shield</tool>
+    <tool>shears</tool>
+</toolrepair>
+<item-keep>
+    <item>wool</item>
+    <item>beetroot</item>
+    <item>beetroot soup</item>
+    <item>compass</item>
+</item-keep>
+<item-remove>
+    <item>bush</item>
+    <item>short dry grass</item>
+    <item>tall dry grass</item>
+    <item>bamboo</item>
+    <item>torchflower seeds</item>
+    <item>torchflower</item>
+    <item>stone button</item>
+    <item>dark oak button</item>
+    <item>string</item>
+</item-remove>
+<block-drops>
+    <rule>
+        <filter>
+            <material>sniffer egg</material>
+        </filter>
+        <kit id="loot-bundle"/>
+    </rule>
+    <rule>
+        <filter>
+            <all>
+                <not>
+                    <any>
+                        <material>sniffer egg</material>
+                        <material>bush</material>
+                        <material>short dry grass</material>
+                        <material>tall dry grass</material>
+                        <material>bamboo</material>
+                        <material>torchflower seeds</material>
+                        <material>torchflower</material>
+                        <material>stone button</material>
+                        <material>dark oak button</material>
+                        <material>cobweb</material>
+                    </any>
+                </not>
+                <cause>mine</cause> 
+            </all>
+        </filter>
+        <kit id="block-drop"/>
+    </rule>
+</block-drops>
+<score/>
+<blitz lightning="true">
+    <broadcastLives>false</broadcastLives>
+    <filter>
+        <any>
+            <variable var="game_phase">3</variable>
+            <variable var="health">..2</variable> <!--Based on a respawn time of 2s -->
+        </any>
+    </filter>
+</blitz>
+<respawns>
+    <respawn auto="true" blackout="true" message="" filter="game_phase=..1"/>
+    <respawn auto="true" filter="game_phase=2.."/>
+</respawns>
+<filters>
+    <time id="spawn-delay">1s</time>
+    <pulse id="constant-pulse-filter" period="0.1s" duration="0.05s" filter="game_phase=2.."/>
+    <pulse id="heart-beat" period="1s" duration="0.1s" filter="health=1.."/>
+    <all id="in-tutorial">
+        <participating/>
+        <match-started/>
+        <variable var="game_phase">1</variable>
+    </all>
+    <all id="blitz-mode-trigger">
+        <filter id="players=..${suddenDeathPlayerCap}"/>
+        <variable var="game_phase">2</variable>
+        <match-running/>
+    </all>
+    <carrying id="carrying-shears">
+        <item material="shears"/>
+    </carrying>
+    <carrying id="carrying-iron-sword">
+        <item material="iron sword"/>
+    </carrying>
+    <carrying id="carrying-iron-chestplate">
+        <item material="iron chestplate"/>
+    </carrying>
+    <carrying id="carrying-thorny-chestplate">
+        <item material="iron chestplate">
+            <enchantment level="1">thorns</enchantment>
+        </item>
+    </carrying>
+    <carrying id="carrying-diamond-sword">
+        <item material="diamond sword"/>
+    </carrying>
+    <carrying id="carrying-diamond-chestplate">
+        <item material="diamond chestplate"/>
+    </carrying>
+    <carrying id="carrying-netherite-sword">
+        <item material="netherite sword"/>
+    </carrying>
+    <carrying id="carrying-golden-axe">
+        <item material="golden axe"/>
+    </carrying>
+    <carrying id="carrying-trident">
+        <item material="trident"/>
+    </carrying>
+    <carrying id="carrying-golden-spear">
+        <item material="golden spear"/>
+    </carrying>
+    <carrying id="carrying-cod">
+        <item material="cod"/>
+    </carrying>
+    <carrying id="carrying-shield">
+        <item material="shield"/>
+    </carrying>
+    <any id="only-explosives">
+        <material>tnt</material>
+    </any>
+</filters>
+<regions>
+    <block id="centre" location="0,16,0"/>
+    <cuboid id="tile-grass-0-0" min="${tileOrigin}" size="${tileSizeX},${tileSizeY},${tileSizeZ}"/>
+    <translate id="tile-grass-1-0" region="tile-grass-0-0" offset="${tileOffsetX},0,0"/>
+    <translate id="tile-grass-2-0" region="tile-grass-1-0" offset="${tileOffsetX},0,0"/>
+    <translate id="tile-grass-3-0" region="tile-grass-2-0" offset="${tileOffsetX},0,0"/>
+    <translate id="tile-grass-4-0" region="tile-grass-3-0" offset="${tileOffsetX},0,0"/>
+    <translate id="tile-grass-5-0" region="tile-grass-4-0" offset="${tileOffsetX},0,0"/>
+    <translate id="tile-grass-6-0" region="tile-grass-5-0" offset="${tileOffsetX},0,0"/>
+    <translate id="tile-grass-7-0" region="tile-grass-6-0" offset="${tileOffsetX},0,0"/>
+    <translate id="tile-grass-8-0" region="tile-grass-7-0" offset="${tileOffsetX},0,0"/>
+    <translate id="tile-grass-9-0" region="tile-grass-8-0" offset="${tileOffsetX},0,0"/>
+    <translate id="tile-grass-0-1" region="tile-grass-0-0" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-1-1" region="tile-grass-1-0" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-2-1" region="tile-grass-2-0" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-3-1" region="tile-grass-3-0" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-4-1" region="tile-grass-4-0" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-5-1" region="tile-grass-5-0" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-6-1" region="tile-grass-6-0" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-7-1" region="tile-grass-7-0" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-8-1" region="tile-grass-8-0" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-9-1" region="tile-grass-9-0" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-0-2" region="tile-grass-0-1" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-1-2" region="tile-grass-1-1" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-2-2" region="tile-grass-2-1" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-3-2" region="tile-grass-3-1" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-4-2" region="tile-grass-4-1" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-5-2" region="tile-grass-5-1" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-6-2" region="tile-grass-6-1" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-7-2" region="tile-grass-7-1" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-8-2" region="tile-grass-8-1" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-9-2" region="tile-grass-9-1" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-0-3" region="tile-grass-0-2" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-1-3" region="tile-grass-1-2" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-2-3" region="tile-grass-2-2" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-3-3" region="tile-grass-3-2" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-4-3" region="tile-grass-4-2" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-5-3" region="tile-grass-5-2" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-6-3" region="tile-grass-6-2" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-7-3" region="tile-grass-7-2" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-8-3" region="tile-grass-8-2" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-9-3" region="tile-grass-9-2" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-0-4" region="tile-grass-0-3" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-1-4" region="tile-grass-1-3" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-2-4" region="tile-grass-2-3" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-3-4" region="tile-grass-3-3" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-4-4" region="tile-grass-4-3" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-5-4" region="tile-grass-5-3" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-6-4" region="tile-grass-6-3" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-7-4" region="tile-grass-7-3" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-8-4" region="tile-grass-8-3" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-9-4" region="tile-grass-9-3" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-0-5" region="tile-grass-0-4" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-1-5" region="tile-grass-1-4" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-2-5" region="tile-grass-2-4" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-3-5" region="tile-grass-3-4" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-4-5" region="tile-grass-4-4" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-5-5" region="tile-grass-5-4" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-6-5" region="tile-grass-6-4" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-7-5" region="tile-grass-7-4" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-8-5" region="tile-grass-8-4" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-9-5" region="tile-grass-9-4" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-0-6" region="tile-grass-0-5" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-1-6" region="tile-grass-1-5" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-2-6" region="tile-grass-2-5" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-3-6" region="tile-grass-3-5" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-4-6" region="tile-grass-4-5" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-5-6" region="tile-grass-5-5" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-6-6" region="tile-grass-6-5" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-7-6" region="tile-grass-7-5" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-8-6" region="tile-grass-8-5" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-9-6" region="tile-grass-9-5" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-0-7" region="tile-grass-0-6" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-1-7" region="tile-grass-1-6" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-2-7" region="tile-grass-2-6" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-3-7" region="tile-grass-3-6" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-4-7" region="tile-grass-4-6" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-5-7" region="tile-grass-5-6" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-6-7" region="tile-grass-6-6" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-7-7" region="tile-grass-7-6" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-8-7" region="tile-grass-8-6" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-9-7" region="tile-grass-9-6" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-0-8" region="tile-grass-0-7" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-1-8" region="tile-grass-1-7" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-2-8" region="tile-grass-2-7" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-3-8" region="tile-grass-3-7" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-4-8" region="tile-grass-4-7" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-5-8" region="tile-grass-5-7" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-6-8" region="tile-grass-6-7" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-7-8" region="tile-grass-7-7" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-8-8" region="tile-grass-8-7" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-9-8" region="tile-grass-9-7" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-0-9" region="tile-grass-0-8" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-1-9" region="tile-grass-1-8" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-2-9" region="tile-grass-2-8" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-3-9" region="tile-grass-3-8" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-4-9" region="tile-grass-4-8" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-5-9" region="tile-grass-5-8" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-6-9" region="tile-grass-6-8" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-7-9" region="tile-grass-7-8" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-8-9" region="tile-grass-8-8" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-grass-9-9" region="tile-grass-9-8" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-spike-0-0" region="tile-grass-9-0" offset="${tileOffsetX},0,0"/>
+    <translate id="tile-spike-1-0" region="tile-spike-0-0" offset="${tileOffsetX},0,0"/>
+    <translate id="tile-spike-2-0" region="tile-spike-1-0" offset="${tileOffsetX},0,0"/>
+    <translate id="tile-spike-3-0" region="tile-spike-2-0" offset="${tileOffsetX},0,0"/>
+    <translate id="tile-spike-0-1" region="tile-spike-0-0" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-spike-1-1" region="tile-spike-1-0" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-spike-2-1" region="tile-spike-2-0" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-spike-3-1" region="tile-spike-3-0" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-spike-0-2" region="tile-spike-0-1" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-spike-1-2" region="tile-spike-1-1" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-spike-2-2" region="tile-spike-2-1" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-spike-3-2" region="tile-spike-3-1" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-spike-0-3" region="tile-spike-0-2" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-spike-1-3" region="tile-spike-1-2" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-spike-2-3" region="tile-spike-2-2" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-spike-3-3" region="tile-spike-3-2" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-spike-0-4" region="tile-spike-0-3" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-spike-1-4" region="tile-spike-1-3" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-spike-2-4" region="tile-spike-2-3" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-spike-3-4" region="tile-spike-3-3" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-spike-0-5" region="tile-spike-0-4" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-spike-1-5" region="tile-spike-1-4" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-spike-2-5" region="tile-spike-2-4" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-spike-3-5" region="tile-spike-3-4" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-spike-0-6" region="tile-spike-0-5" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-spike-1-6" region="tile-spike-1-5" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-spike-2-6" region="tile-spike-2-5" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-spike-3-6" region="tile-spike-3-5" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-spike-0-7" region="tile-spike-0-6" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-spike-1-7" region="tile-spike-1-6" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-spike-2-7" region="tile-spike-2-6" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-spike-3-7" region="tile-spike-3-6" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-spike-0-8" region="tile-spike-0-7" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-spike-1-8" region="tile-spike-1-7" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-spike-2-8" region="tile-spike-2-7" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-spike-3-8" region="tile-spike-3-7" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-spike-0-9" region="tile-spike-0-8" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-spike-1-9" region="tile-spike-1-8" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-spike-2-9" region="tile-spike-2-8" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-spike-3-9" region="tile-spike-3-8" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-stone-0-0" region="tile-spike-3-0" offset="${tileOffsetX},0,0"/>
+    <translate id="tile-stone-1-0" region="tile-stone-0-0" offset="${tileOffsetX},0,0"/>
+    <translate id="tile-stone-2-0" region="tile-stone-1-0" offset="${tileOffsetX},0,0"/>
+    <translate id="tile-stone-3-0" region="tile-stone-2-0" offset="${tileOffsetX},0,0"/>
+    <translate id="tile-stone-0-1" region="tile-stone-0-0" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-stone-1-1" region="tile-stone-1-0" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-stone-2-1" region="tile-stone-2-0" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-stone-3-1" region="tile-stone-3-0" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-stone-0-2" region="tile-stone-0-1" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-stone-1-2" region="tile-stone-1-1" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-stone-2-2" region="tile-stone-2-1" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-stone-3-2" region="tile-stone-3-1" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-stone-0-3" region="tile-stone-0-2" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-stone-1-3" region="tile-stone-1-2" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-stone-2-3" region="tile-stone-2-2" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-stone-3-3" region="tile-stone-3-2" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-stone-0-4" region="tile-stone-0-3" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-stone-1-4" region="tile-stone-1-3" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-stone-2-4" region="tile-stone-2-3" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-stone-3-4" region="tile-stone-3-3" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-stone-0-5" region="tile-stone-0-4" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-stone-1-5" region="tile-stone-1-4" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-stone-2-5" region="tile-stone-2-4" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-stone-3-5" region="tile-stone-3-4" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-stone-0-6" region="tile-stone-0-5" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-stone-1-6" region="tile-stone-1-5" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-stone-2-6" region="tile-stone-2-5" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-stone-3-6" region="tile-stone-3-5" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-stone-0-7" region="tile-stone-0-6" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-stone-1-7" region="tile-stone-1-6" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-stone-2-7" region="tile-stone-2-6" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-stone-3-7" region="tile-stone-3-6" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-stone-0-8" region="tile-stone-0-7" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-stone-1-8" region="tile-stone-1-7" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-stone-2-8" region="tile-stone-2-7" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-stone-3-8" region="tile-stone-3-7" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-stone-0-9" region="tile-stone-0-8" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-stone-1-9" region="tile-stone-1-8" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-stone-2-9" region="tile-stone-2-8" offset="0,0,${tileOffsetZ}"/>
+    <translate id="tile-stone-3-9" region="tile-stone-3-8" offset="0,0,${tileOffsetZ}"/>
+    <above id="maxbuild" y="18"/>
+    <apply block-place="only-explosives" block-break="never" region="maxbuild" message="You may only place TNT here!"/>
+</regions>
+<structures air="false" clear="true">
+    <structure id="structure-grass-0-0" region="tile-grass-0-0"/>
+    <structure id="structure-grass-1-0" region="tile-grass-1-0"/>
+    <structure id="structure-grass-2-0" region="tile-grass-2-0"/>
+    <structure id="structure-grass-3-0" region="tile-grass-3-0"/>
+    <structure id="structure-grass-4-0" region="tile-grass-4-0"/>
+    <structure id="structure-grass-5-0" region="tile-grass-5-0"/>
+    <structure id="structure-grass-6-0" region="tile-grass-6-0"/>
+    <structure id="structure-grass-7-0" region="tile-grass-7-0"/>
+    <structure id="structure-grass-8-0" region="tile-grass-8-0"/>
+    <structure id="structure-grass-9-0" region="tile-grass-9-0"/>
+    <structure id="structure-grass-0-1" region="tile-grass-0-1"/>
+    <structure id="structure-grass-1-1" region="tile-grass-1-1"/>
+    <structure id="structure-grass-2-1" region="tile-grass-2-1"/>
+    <structure id="structure-grass-3-1" region="tile-grass-3-1"/>
+    <structure id="structure-grass-4-1" region="tile-grass-4-1"/>
+    <structure id="structure-grass-5-1" region="tile-grass-5-1"/>
+    <structure id="structure-grass-6-1" region="tile-grass-6-1"/>
+    <structure id="structure-grass-7-1" region="tile-grass-7-1"/>
+    <structure id="structure-grass-8-1" region="tile-grass-8-1"/>
+    <structure id="structure-grass-9-1" region="tile-grass-9-1"/>
+    <structure id="structure-grass-0-2" region="tile-grass-0-2"/>
+    <structure id="structure-grass-1-2" region="tile-grass-1-2"/>
+    <structure id="structure-grass-2-2" region="tile-grass-2-2"/>
+    <structure id="structure-grass-3-2" region="tile-grass-3-2"/>
+    <structure id="structure-grass-4-2" region="tile-grass-4-2"/>
+    <structure id="structure-grass-5-2" region="tile-grass-5-2"/>
+    <structure id="structure-grass-6-2" region="tile-grass-6-2"/>
+    <structure id="structure-grass-7-2" region="tile-grass-7-2"/>
+    <structure id="structure-grass-8-2" region="tile-grass-8-2"/>
+    <structure id="structure-grass-9-2" region="tile-grass-9-2"/>
+    <structure id="structure-grass-0-3" region="tile-grass-0-3"/>
+    <structure id="structure-grass-1-3" region="tile-grass-1-3"/>
+    <structure id="structure-grass-2-3" region="tile-grass-2-3"/>
+    <structure id="structure-grass-3-3" region="tile-grass-3-3"/>
+    <structure id="structure-grass-4-3" region="tile-grass-4-3"/>
+    <structure id="structure-grass-5-3" region="tile-grass-5-3"/>
+    <structure id="structure-grass-6-3" region="tile-grass-6-3"/>
+    <structure id="structure-grass-7-3" region="tile-grass-7-3"/>
+    <structure id="structure-grass-8-3" region="tile-grass-8-3"/>
+    <structure id="structure-grass-9-3" region="tile-grass-9-3"/>
+    <structure id="structure-grass-0-4" region="tile-grass-0-4"/>
+    <structure id="structure-grass-1-4" region="tile-grass-1-4"/>
+    <structure id="structure-grass-2-4" region="tile-grass-2-4"/>
+    <structure id="structure-grass-3-4" region="tile-grass-3-4"/>
+    <structure id="structure-grass-4-4" region="tile-grass-4-4"/>
+    <structure id="structure-grass-5-4" region="tile-grass-5-4"/>
+    <structure id="structure-grass-6-4" region="tile-grass-6-4"/>
+    <structure id="structure-grass-7-4" region="tile-grass-7-4"/>
+    <structure id="structure-grass-8-4" region="tile-grass-8-4"/>
+    <structure id="structure-grass-9-4" region="tile-grass-9-4"/>
+    <structure id="structure-grass-0-5" region="tile-grass-0-5"/>
+    <structure id="structure-grass-1-5" region="tile-grass-1-5"/>
+    <structure id="structure-grass-2-5" region="tile-grass-2-5"/>
+    <structure id="structure-grass-3-5" region="tile-grass-3-5"/>
+    <structure id="structure-grass-4-5" region="tile-grass-4-5"/>
+    <structure id="structure-grass-5-5" region="tile-grass-5-5"/>
+    <structure id="structure-grass-6-5" region="tile-grass-6-5"/>
+    <structure id="structure-grass-7-5" region="tile-grass-7-5"/>
+    <structure id="structure-grass-8-5" region="tile-grass-8-5"/>
+    <structure id="structure-grass-9-5" region="tile-grass-9-5"/>
+    <structure id="structure-grass-0-6" region="tile-grass-0-6"/>
+    <structure id="structure-grass-1-6" region="tile-grass-1-6"/>
+    <structure id="structure-grass-2-6" region="tile-grass-2-6"/>
+    <structure id="structure-grass-3-6" region="tile-grass-3-6"/>
+    <structure id="structure-grass-4-6" region="tile-grass-4-6"/>
+    <structure id="structure-grass-5-6" region="tile-grass-5-6"/>
+    <structure id="structure-grass-6-6" region="tile-grass-6-6"/>
+    <structure id="structure-grass-7-6" region="tile-grass-7-6"/>
+    <structure id="structure-grass-8-6" region="tile-grass-8-6"/>
+    <structure id="structure-grass-9-6" region="tile-grass-9-6"/>
+    <structure id="structure-grass-0-7" region="tile-grass-0-7"/>
+    <structure id="structure-grass-1-7" region="tile-grass-1-7"/>
+    <structure id="structure-grass-2-7" region="tile-grass-2-7"/>
+    <structure id="structure-grass-3-7" region="tile-grass-3-7"/>
+    <structure id="structure-grass-4-7" region="tile-grass-4-7"/>
+    <structure id="structure-grass-5-7" region="tile-grass-5-7"/>
+    <structure id="structure-grass-6-7" region="tile-grass-6-7"/>
+    <structure id="structure-grass-7-7" region="tile-grass-7-7"/>
+    <structure id="structure-grass-8-7" region="tile-grass-8-7"/>
+    <structure id="structure-grass-9-7" region="tile-grass-9-7"/>
+    <structure id="structure-grass-0-8" region="tile-grass-0-8"/>
+    <structure id="structure-grass-1-8" region="tile-grass-1-8"/>
+    <structure id="structure-grass-2-8" region="tile-grass-2-8"/>
+    <structure id="structure-grass-3-8" region="tile-grass-3-8"/>
+    <structure id="structure-grass-4-8" region="tile-grass-4-8"/>
+    <structure id="structure-grass-5-8" region="tile-grass-5-8"/>
+    <structure id="structure-grass-6-8" region="tile-grass-6-8"/>
+    <structure id="structure-grass-7-8" region="tile-grass-7-8"/>
+    <structure id="structure-grass-8-8" region="tile-grass-8-8"/>
+    <structure id="structure-grass-9-8" region="tile-grass-9-8"/>
+    <structure id="structure-grass-0-9" region="tile-grass-0-9"/>
+    <structure id="structure-grass-1-9" region="tile-grass-1-9"/>
+    <structure id="structure-grass-2-9" region="tile-grass-2-9"/>
+    <structure id="structure-grass-3-9" region="tile-grass-3-9"/>
+    <structure id="structure-grass-4-9" region="tile-grass-4-9"/>
+    <structure id="structure-grass-5-9" region="tile-grass-5-9"/>
+    <structure id="structure-grass-6-9" region="tile-grass-6-9"/>
+    <structure id="structure-grass-7-9" region="tile-grass-7-9"/>
+    <structure id="structure-grass-8-9" region="tile-grass-8-9"/>
+    <structure id="structure-grass-9-9" region="tile-grass-9-9"/>
+    <structure id="structure-spike-0-0" region="tile-spike-0-0"/>
+    <structure id="structure-spike-1-0" region="tile-spike-1-0"/>
+    <structure id="structure-spike-2-0" region="tile-spike-2-0"/>
+    <structure id="structure-spike-3-0" region="tile-spike-3-0"/>
+    <structure id="structure-spike-0-1" region="tile-spike-0-1"/>
+    <structure id="structure-spike-1-1" region="tile-spike-1-1"/>
+    <structure id="structure-spike-2-1" region="tile-spike-2-1"/>
+    <structure id="structure-spike-3-1" region="tile-spike-3-1"/>
+    <structure id="structure-spike-0-2" region="tile-spike-0-2"/>
+    <structure id="structure-spike-1-2" region="tile-spike-1-2"/>
+    <structure id="structure-spike-2-2" region="tile-spike-2-2"/>
+    <structure id="structure-spike-3-2" region="tile-spike-3-2"/>
+    <structure id="structure-spike-0-3" region="tile-spike-0-3"/>
+    <structure id="structure-spike-1-3" region="tile-spike-1-3"/>
+    <structure id="structure-spike-2-3" region="tile-spike-2-3"/>
+    <structure id="structure-spike-3-3" region="tile-spike-3-3"/>
+    <structure id="structure-spike-0-4" region="tile-spike-0-4"/>
+    <structure id="structure-spike-1-4" region="tile-spike-1-4"/>
+    <structure id="structure-spike-2-4" region="tile-spike-2-4"/>
+    <structure id="structure-spike-3-4" region="tile-spike-3-4"/>
+    <structure id="structure-spike-0-5" region="tile-spike-0-5"/>
+    <structure id="structure-spike-1-5" region="tile-spike-1-5"/>
+    <structure id="structure-spike-2-5" region="tile-spike-2-5"/>
+    <structure id="structure-spike-3-5" region="tile-spike-3-5"/>
+    <structure id="structure-spike-0-6" region="tile-spike-0-6"/>
+    <structure id="structure-spike-1-6" region="tile-spike-1-6"/>
+    <structure id="structure-spike-2-6" region="tile-spike-2-6"/>
+    <structure id="structure-spike-3-6" region="tile-spike-3-6"/>
+    <structure id="structure-spike-0-7" region="tile-spike-0-7"/>
+    <structure id="structure-spike-1-7" region="tile-spike-1-7"/>
+    <structure id="structure-spike-2-7" region="tile-spike-2-7"/>
+    <structure id="structure-spike-3-7" region="tile-spike-3-7"/>
+    <structure id="structure-spike-0-8" region="tile-spike-0-8"/>
+    <structure id="structure-spike-1-8" region="tile-spike-1-8"/>
+    <structure id="structure-spike-2-8" region="tile-spike-2-8"/>
+    <structure id="structure-spike-3-8" region="tile-spike-3-8"/>
+    <structure id="structure-spike-0-9" region="tile-spike-0-9"/>
+    <structure id="structure-spike-1-9" region="tile-spike-1-9"/>
+    <structure id="structure-spike-2-9" region="tile-spike-2-9"/>
+    <structure id="structure-spike-3-9" region="tile-spike-3-9"/>
+    <structure id="structure-stone-0-0" region="tile-stone-0-0"/>
+    <structure id="structure-stone-1-0" region="tile-stone-1-0"/>
+    <structure id="structure-stone-2-0" region="tile-stone-2-0"/>
+    <structure id="structure-stone-3-0" region="tile-stone-3-0"/>
+    <structure id="structure-stone-0-1" region="tile-stone-0-1"/>
+    <structure id="structure-stone-1-1" region="tile-stone-1-1"/>
+    <structure id="structure-stone-2-1" region="tile-stone-2-1"/>
+    <structure id="structure-stone-3-1" region="tile-stone-3-1"/>
+    <structure id="structure-stone-0-2" region="tile-stone-0-2"/>
+    <structure id="structure-stone-1-2" region="tile-stone-1-2"/>
+    <structure id="structure-stone-2-2" region="tile-stone-2-2"/>
+    <structure id="structure-stone-3-2" region="tile-stone-3-2"/>
+    <structure id="structure-stone-0-3" region="tile-stone-0-3"/>
+    <structure id="structure-stone-1-3" region="tile-stone-1-3"/>
+    <structure id="structure-stone-2-3" region="tile-stone-2-3"/>
+    <structure id="structure-stone-3-3" region="tile-stone-3-3"/>
+    <structure id="structure-stone-0-4" region="tile-stone-0-4"/>
+    <structure id="structure-stone-1-4" region="tile-stone-1-4"/>
+    <structure id="structure-stone-2-4" region="tile-stone-2-4"/>
+    <structure id="structure-stone-3-4" region="tile-stone-3-4"/>
+    <structure id="structure-stone-0-5" region="tile-stone-0-5"/>
+    <structure id="structure-stone-1-5" region="tile-stone-1-5"/>
+    <structure id="structure-stone-2-5" region="tile-stone-2-5"/>
+    <structure id="structure-stone-3-5" region="tile-stone-3-5"/>
+    <structure id="structure-stone-0-6" region="tile-stone-0-6"/>
+    <structure id="structure-stone-1-6" region="tile-stone-1-6"/>
+    <structure id="structure-stone-2-6" region="tile-stone-2-6"/>
+    <structure id="structure-stone-3-6" region="tile-stone-3-6"/>
+    <structure id="structure-stone-0-7" region="tile-stone-0-7"/>
+    <structure id="structure-stone-1-7" region="tile-stone-1-7"/>
+    <structure id="structure-stone-2-7" region="tile-stone-2-7"/>
+    <structure id="structure-stone-3-7" region="tile-stone-3-7"/>
+    <structure id="structure-stone-0-8" region="tile-stone-0-8"/>
+    <structure id="structure-stone-1-8" region="tile-stone-1-8"/>
+    <structure id="structure-stone-2-8" region="tile-stone-2-8"/>
+    <structure id="structure-stone-3-8" region="tile-stone-3-8"/>
+    <structure id="structure-stone-0-9" region="tile-stone-0-9"/>
+    <structure id="structure-stone-1-9" region="tile-stone-1-9"/>
+    <structure id="structure-stone-2-9" region="tile-stone-2-9"/>
+    <structure id="structure-stone-3-9" region="tile-stone-3-9"/>
+</structures>
+<constants>
+    <constant id="tileOrigin">73,0,1</constant>
+    <constant id="tileSizeX">12</constant>
+    <constant id="tileSizeZ">12</constant>
+    <constant id="tileSizeY">24</constant>
+    <constant id="tileOffsetX">13</constant>
+    <constant id="tileOffsetZ">13</constant>
+    <constant id="gridOriginX">-6</constant>
+    <constant id="gridOriginZ">-6</constant>
+    <constant id="maxHeartBeat">60</constant>
+    <constant id="recoveryHeartBeat">60</constant>
+    <constant id="suddenDeathPlayerCap">6</constant>
+</constants>
+<variables scope="match">
+    <cuboid id="spawnable" min="0,4,0" max="0,9,0"/>
+    <variable id="distance" default="16"/>
+    <variable id="players"/>
+    <variable id="layers"/>
+    <variable id="current_layer"/>
+    <variable id="layer_calc"/>
+    <variable id="steps"/>
+    <variable id="step_length"/>
+    <variable id="chance_x"/>
+    <variable id="chance_z"/>
+    <variable id="position_x"/>
+    <variable id="position_z"/>
+    <variable id="variance_x"/>
+    <variable id="variance_z"/>
+    <variable id="direction"/>
+    <variable id="direction_x"/>
+    <variable id="direction_z"/>
+    <variable id="loot_rng"/>
+    <variable id="loot_modulus"/>
+    <variable id="game_phase"/>
+</variables>
+<variables scope="player">
+    <variable id="health"/>
+</variables>
+<actions>
+    <action scope="player" id="open-loot">
+        <sound key="minecraft:item.bundle.drop_contents" pitch="1" volume="2"/>
+        <!-- Give one free common item -->
+        <set var="loot_rng" value="ceil(random() * 100)"/>
+        <set var="loot_modulus" value="loot_rng % 4"/>
+        <action filter="loot_modulus=0">
+            <kit id="wool"/>
+        </action>
+        <action filter="loot_modulus=1">
+            <kit id="snowball"/>
+        </action>
+        <action filter="loot_modulus=2">
+            <kit id="loaded-crossbow"/>
+        </action>
+        <action filter="loot_modulus=3">
+            <action filter="not(carrying-shears)">
+                <kit id="shears"/>
+            </action>
+            <action filter="carrying-shears">
+                <kit id="wool"/>
+            </action>
+        </action>
+        <!-- Give two additional items -->
+        <repeat times="2">
+            <set var="loot_rng" value="ceil(random() * 100)"/>
+            <action filter="loot_rng=1..15">
+                <!-- Common items -->
+                <set var="loot_modulus" value="loot_rng % 4"/>
+                <action filter="loot_modulus=0">
+                    <kit id="wool"/>
+                </action>
+                <action filter="loot_modulus=1">
+                    <kit id="snowball"/>
+                </action>
+                <action filter="loot_modulus=2">
+                    <kit id="loaded-crossbow"/>
+                </action>
+                <action filter="not(carrying-shears)">
+                    <kit id="shears"/>
+                </action>
+                <action filter="carrying-shears">
+                    <kit id="wool"/>
+                </action>
+            </action>
+            <set var="loot_modulus" value="loot_rng % 8"/>
+            <action filter="loot_rng=16..65">
+                <action filter="loot_modulus=0">
+                    <kit id="tnt"/>
+                </action>
+                <action filter="loot_modulus=1">
+                    <action filter="not(carrying-golden-axe)">
+                        <kit id="shield-breaker"/>
+                    </action>
+                    <action filter="carrying-golden-axe">
+                        <kit id="super-beet"/>
+                    </action>
+                </action>
+                <action filter="loot_modulus=2">
+                    <action filter="not(carrying-iron-sword)">
+                        <kit id="iron-sword"/>
+                    </action>
+                    <action filter="carrying-iron-sword">
+                        <kit id="tracking-crossbow"/>
+                    </action>
+                </action>
+                <action filter="loot_modulus=3">
+                    <action filter="not(carrying-iron-chestplate)">
+                        <kit id="iron-chestplate"/>
+                    </action>
+                    <action filter="carrying-iron-chestplate">
+                        <kit id="gooey-crossbow"/>
+                    </action>
+                </action>
+                <action filter="loot_modulus=4">
+                    <kit id="tracking-crossbow"/>
+                </action>
+                <action filter="loot_modulus=5">
+                    <kit id="gooey-crossbow"/>
+                </action>
+                <action filter="loot_modulus=6">
+                    <kit id="super-beet"/>
+                </action>
+                <action filter="loot_modulus=7">
+                    <kit id="cobweb"/>
+                </action>
+            </action>
+            <set var="loot_modulus" value="loot_rng % 8"/>
+            <action filter="loot_rng=66..95">
+                <action filter="loot_modulus=0">
+                    <kit id="fire-charge"/>
+                </action>
+                <action filter="loot_modulus=1">
+                    <kit id="teleportation-juice"/>
+                </action>
+                <action filter="loot_modulus=2">
+                    <kit id="super-soup"/>
+                </action>
+                <action filter="loot_modulus=3">
+                    <kit id="boom-bow"/>
+                </action>
+                <action filter="loot_modulus=4">
+                    <action filter="not(carrying-shield)">
+                        <kit id="shield"/>
+                    </action>
+                    <action filter="carrying-shield">
+                        <kit id="fire-charge"/>
+                    </action>
+                </action>
+                <action filter="loot_modulus=5">
+                    <action filter="not(carrying-diamond-sword)">
+                        <kit id="diamond-sword"/>
+                    </action>
+                    <action filter="carrying-diamond-sword">
+                        <kit id="teleportation-juice"/>
+                    </action>
+                </action>
+                <action filter="loot_modulus=6">
+                    <action filter="not(carrying-cod)">
+                        <kit id="fish-slap"/>
+                    </action>
+                    <action filter="carrying-cod">
+                        <kit id="super-soup"/>
+                    </action>
+                </action>
+                <action filter="loot_modulus=7">
+                    <action filter="not(carrying-thorny-chestplate)">
+                        <kit id="thorny-chestplate"/>
+                    </action>
+                    <action filter="carrying-thorny-chestplate">
+                        <kit id="boom-bow"/>
+                    </action>
+                </action>
+            </action>
+            <set var="loot_modulus" value="loot_rng % 8"/>
+            <action filter="loot_rng=96..100">
+                <action filter="loot_modulus=0">
+                    <kit id="potion-of-strength"/>
+                </action>
+                <action filter="loot_modulus=1">
+                    <kit id="potion-of-agility"/>
+                </action>
+                <action filter="loot_modulus=2">
+                    <kit id="extra-time-10s"/>
+                </action>
+                <action filter="loot_modulus=3">
+                    <kit id="kaboom-bow"/>
+                </action>
+                <action filter="loot_modulus=4">
+                    <action filter="not(carrying-trident)">
+                        <kit id="poseidons-trident"/>
+                    </action>
+                    <action filter="carrying-trident">
+                        <kit id="potion-of-strength"/>
+                    </action>
+                </action>
+                <action filter="loot_modulus=5">
+                    <action filter="not(carrying-golden-spear)">
+                        <kit id="lunge-master"/>
+                    </action>
+                    <action filter="carrying-golden-spear">
+                        <kit id="potion-of-agility"/>
+                    </action>
+                </action>
+                <action filter="loot_modulus=6">
+                    <action filter="not(carrying-netherite-sword)">
+                        <kit id="netherite-sword"/>
+                    </action>
+                    <action filter="carrying-netherite-sword">
+                        <kit id="extra-time-10s"/>
+                    </action>
+                </action>
+                <action filter="loot_modulus=7">
+                    <action filter="not(carrying-diamond-chestplate)">
+                        <kit id="diamond-chestplate"/>
+                    </action>
+                    <action filter="carrying-diamond-chestplate">
+                        <kit id="kaboom-bow"/>
+                    </action>
+                </action>
+            </action>
+        </repeat>
+    </action>
+    <action id="enable-blitz-mode" scope="match">
+        <sound key="block.trial_spawner.ominous_activate" pitch="1" volume="100"/>
+        <sound key="entity.warden.death" pitch="0.7" volume="100"/>
+        <sound key="entity.warden.sonic_boom" pitch="2" volume="100"/>
+        <set var="game_phase" value="3"/>
+        <message text="`8`l---===---"/>
+        <message text="`aBlitz Enabled: `c`lLast Life`7!" actionbar="aBlitz Enabled: `c`lLast Life`7!"/>
+        <message text="`8`l---===---"/>
+    </action>
+    <trigger scope="match" action="enable-blitz-mode">
+        <filter>
+                <after duration="15s" message="Blitz Enabled in: {0}"><all><filter id="blitz-mode-trigger"/></all></after>
+        </filter>
+    </trigger>
+    <trigger scope="player" filter="all(match-started,participating)">
+        <action>
+            <set var="game_phase" value="1"/>
+            <schedule after="1.2s">
+                <message title="`lTutorial" subtitle="`7-=| `6Welcome to survive or die: `boracle`7! |=-"/>
+            </schedule>
+            <schedule after="4s">
+                <message fade-in="0s" stay="6s" title="`lTutorial" subtitle="`8`l- `7Every second your `axp meter `7ticks down. `8`l-"/>
+                <sound preset="alert" volume="0.75" pitch="1"/>
+            </schedule>
+            <schedule after="7s">
+                <message fade-in="0s" stay="6s" title="`lTutorial" subtitle="`8`l- `7If it reaches `czero `7you `cdie permanently`7! `8`l-"/>
+                <sound preset="alert" volume="0.75" pitch="1"/>
+            </schedule>
+            <schedule after="10s">
+                <message fade-in="0s" stay="5s" title="`lTutorial" subtitle="`8`l- `dKill enemy players `7to refill your `axp meter`7. `8`l-"/>
+                <sound preset="alert" volume="0.75" pitch="1"/>
+            </schedule>
+            <schedule after="13s">
+                <message fade-in="0s" stay="5s" title="`lTutorial" subtitle="`8`l- `cSniffer eggs `7contain loot.`8`l-"/>
+                <sound preset="alert" volume="0.75" pitch="1"/>
+            </schedule>
+            <schedule after="16s">
+                <message fade-in="0s" title="`lMatch starting in:"/>
+                <sound preset="alert" volume="0.75" pitch="0.6"/>
+            </schedule>
+            <schedule after="17s">
+                <message fade-in="0s" title="`lMatch starting in:" subtitle="`e`l3"/>
+                <sound preset="alert" volume="0.75" pitch="0.8"/>
+            </schedule>
+            <schedule after="18s">
+                <message fade-in="0s" title="`lMatch starting in:" subtitle="`6`l2"/>
+                <sound preset="alert" volume="0.75" pitch="1.2"/>
+            </schedule>
+            <schedule after="19s">
+                <message fade-in="0s" title="`lMatch starting in:" subtitle="`c`l1"/>
+                <sound preset="alert" volume="0.75" pitch="1.6"/>
+            </schedule>
+            <schedule after="20s">
+                <message fade-in="0s" title="`a`l`oGo`7`l`o!"/>
+                <sound preset="alert" volume="0.75" pitch="2"/>
+                <set var="game_phase" value="2"/>
+                <kit id="reset-tutorial-kit"/>
+            </schedule>
+        </action>
+    </trigger>
+    <trigger scope="player" filter="always">
+        <action>
+            <set var="health" value="${maxHeartBeat}"/>
+            <action id="update-health-displays">
+                <set var="score" value="health"/>
+                <set var="player.level" value="health"/>
+                <set var="player.exp_progress" value="min(health / ${maxHeartBeat}, 1)"/>
+            </action>
+        </action>
+    </trigger>
+    <action scope="player" id="add-time">
+        <set var="health" value="health + 10"/>
+        <action id="update-health-displays"/>
+        <sound key="minecraft:entity.player.levelup" volume="1" pitch="1.5"/>
+        <message actionbar="`8[`610s `aExtra time added`8]"/>
+    </action>
+    <trigger scope="player" filter="heart-beat">
+        <action filter="game_phase = 2..">
+            <set var="health" value="health - 1"/>
+            <sound key="entity.warden.heartbeat"/>
+            <schedule after="0.5s" filter="all(participating, player.exp_progress=..0.2)">
+                <sound key="entity.warden.heartbeat"/>
+            </schedule>
+            <action id="update-health-displays"/>
+            <action filter="health=0">
+                <kit force="true">
+                    <effect amplifier="100">instant damage</effect>
+                </kit>
+            </action>
+        </action>
+    </trigger>
+    <trigger scope="match" filter="constant-pulse-filter">
+        <action>
+            <set var="players" value="0"/>
+            <switch-scope inner="player" filter="participating">
+                <set var="players" value="players+1"/>
+            </switch-scope>              
+        </action>
+    </trigger>
+    <trigger scope="match" filter="match-started">
+        <action>
+            <switch-scope inner="player">
+                <set var="players" value="players + 1"/>
+            </switch-scope>
+            <set var="layers" value="1"/>
+            <action filter="players=4.."><set var="layers" value="2"/></action>
+            <action filter="players=8.."><set var="layers" value="3"/></action>
+            <action filter="players=16.."><set var="layers" value="4"/></action>
+            <action filter="players=24.."><set var="layers" value="5"/></action>
+            <set var="spawnable.max_x" value="(spawnable.max_x + ${tileOffsetX} * (layers + 1.5))"/>
+            <set var="spawnable.max_z" value="(spawnable.max_z + ${tileOffsetZ} * (layers + 1.5))"/>
+            <set var="spawnable.min_x" value="spawnable.max_x * -1"/>
+            <set var="spawnable.min_z" value="spawnable.max_z * -1"/>
+            <set var="position_x" value="${gridOriginX}"/> 
+            <set var="position_z" value="${gridOriginZ}"/>
+            <set var="layer_calc" value="layers - current_layer"/>
+            <set var="step_length" value="1"/>
+            <repeat times="10" filter="layer_calc=0..">
+                <set var="current_layer" value="current_layer + 1"/>
+                <set var="direction" value="0"/>
+                <repeat times="4" filter="any(layer_calc=1.., all(layer_calc=0, direction=0))">
+                    <action filter="direction=0">
+                        <set var="direction_x" value="distance"/>
+                        <set var="direction_z" value="0"/>
+                    </action>
+                    <action filter="direction=1">
+                        <set var="direction_x" value="0"/>
+                        <set var="direction_z" value="distance"/>
+                    </action>
+                    <action filter="direction=2">
+                        <set var="direction_x" value="distance * -1"/>
+                        <set var="direction_z" value="0"/>
+                    </action>
+                    <action filter="direction=3">
+                        <set var="direction_x" value="0"/>
+                        <set var="direction_z" value="distance * -1"/>
+                    </action>
+                    <set var="steps" value="step_length"/>
+                    <action filter="all(layer_calc=0, direction=0)"><set var="steps" value="steps - 1"/></action>
+                    <repeat times="99" filter="steps=1..">
+                        <set var="position_x" value="position_x + direction_x"/>
+                        <set var="position_z" value="position_z + direction_z"/>
+                        <set var="variance_x" value="floor(random() * 9) - 4"/>
+                        <set var="variance_z" value="floor(random() * 9) - 4"/>
+                        <!--
+                            tile: spikes
+                            x: 0..3
+                            y: 0..9
+                            50% chance to place spike
+                        -->
+                        <set var="chance_x" value="floor(random() * 8)"/>
+                        <set var="chance_z" value="floor(random() * 10)"/>
+                        <action filter="chance_x=0">
+                            <action filter="chance_z=0"><paste-structure structure="structure-spike-0-0" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            <action filter="chance_z=1"><paste-structure structure="structure-spike-0-1" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            <action filter="chance_z=2"><paste-structure structure="structure-spike-0-2" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            <action filter="chance_z=3"><paste-structure structure="structure-spike-0-3" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            <action filter="chance_z=4"><paste-structure structure="structure-spike-0-4" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            <action filter="chance_z=5"><paste-structure structure="structure-spike-0-5" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            <action filter="chance_z=6"><paste-structure structure="structure-spike-0-6" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            <action filter="chance_z=7"><paste-structure structure="structure-spike-0-7" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            <action filter="chance_z=8"><paste-structure structure="structure-spike-0-8" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            <action filter="chance_z=9"><paste-structure structure="structure-spike-0-9" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                        </action>
+                        <action filter="chance_x=1">
+                            <action filter="chance_z=0"><paste-structure structure="structure-spike-1-0" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            <action filter="chance_z=1"><paste-structure structure="structure-spike-1-1" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            <action filter="chance_z=2"><paste-structure structure="structure-spike-1-2" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            <action filter="chance_z=3"><paste-structure structure="structure-spike-1-3" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            <action filter="chance_z=4"><paste-structure structure="structure-spike-1-4" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            <action filter="chance_z=5"><paste-structure structure="structure-spike-1-5" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            <action filter="chance_z=6"><paste-structure structure="structure-spike-1-6" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            <action filter="chance_z=7"><paste-structure structure="structure-spike-1-7" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            <action filter="chance_z=8"><paste-structure structure="structure-spike-1-8" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            <action filter="chance_z=9"><paste-structure structure="structure-spike-1-9" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                        </action>
+                        <action filter="chance_x=2">
+                            <action filter="chance_z=0"><paste-structure structure="structure-spike-2-0" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            <action filter="chance_z=1"><paste-structure structure="structure-spike-2-1" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            <action filter="chance_z=2"><paste-structure structure="structure-spike-2-2" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            <action filter="chance_z=3"><paste-structure structure="structure-spike-2-3" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            <action filter="chance_z=4"><paste-structure structure="structure-spike-2-4" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            <action filter="chance_z=5"><paste-structure structure="structure-spike-2-5" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            <action filter="chance_z=6"><paste-structure structure="structure-spike-2-6" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            <action filter="chance_z=7"><paste-structure structure="structure-spike-2-7" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            <action filter="chance_z=8"><paste-structure structure="structure-spike-2-8" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            <action filter="chance_z=9"><paste-structure structure="structure-spike-2-9" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                        </action>
+                        <action filter="chance_x=3">
+                            <action filter="chance_z=0"><paste-structure structure="structure-spike-3-0" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            <action filter="chance_z=1"><paste-structure structure="structure-spike-3-1" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            <action filter="chance_z=2"><paste-structure structure="structure-spike-3-2" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            <action filter="chance_z=3"><paste-structure structure="structure-spike-3-3" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            <action filter="chance_z=4"><paste-structure structure="structure-spike-3-4" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            <action filter="chance_z=5"><paste-structure structure="structure-spike-3-5" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            <action filter="chance_z=6"><paste-structure structure="structure-spike-3-6" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            <action filter="chance_z=7"><paste-structure structure="structure-spike-3-7" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            <action filter="chance_z=8"><paste-structure structure="structure-spike-3-8" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            <action filter="chance_z=9"><paste-structure structure="structure-spike-3-9" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                        </action>
+                        <!--
+                            70% chance grass tile
+                            30% chance stone tile
+                        -->
+                        <set var="chance_x" value="floor(random() + 0.7)"/>
+                        <action filter="chance_x=1">
+                            <!--
+                                tile: grass
+                                x: 0..9
+                                y: 0..9
+                            -->
+                            <set var="chance_x" value="floor(random() * 10)"/>
+                            <set var="chance_z" value="floor(random() * 10)"/>
+                            <action filter="chance_x=0">
+                                <action filter="chance_z=0"><paste-structure structure="structure-grass-0-0" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=1"><paste-structure structure="structure-grass-0-1" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=2"><paste-structure structure="structure-grass-0-2" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=3"><paste-structure structure="structure-grass-0-3" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=4"><paste-structure structure="structure-grass-0-4" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=5"><paste-structure structure="structure-grass-0-5" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=6"><paste-structure structure="structure-grass-0-6" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=7"><paste-structure structure="structure-grass-0-7" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=8"><paste-structure structure="structure-grass-0-8" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=9"><paste-structure structure="structure-grass-0-9" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            </action>
+                            <action filter="chance_x=1">
+                                <action filter="chance_z=0"><paste-structure structure="structure-grass-1-0" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=1"><paste-structure structure="structure-grass-1-1" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=2"><paste-structure structure="structure-grass-1-2" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=3"><paste-structure structure="structure-grass-1-3" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=4"><paste-structure structure="structure-grass-1-4" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=5"><paste-structure structure="structure-grass-1-5" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=6"><paste-structure structure="structure-grass-1-6" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=7"><paste-structure structure="structure-grass-1-7" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=8"><paste-structure structure="structure-grass-1-8" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=9"><paste-structure structure="structure-grass-1-9" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            </action>
+                            <action filter="chance_x=2">
+                                <action filter="chance_z=0"><paste-structure structure="structure-grass-2-0" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=1"><paste-structure structure="structure-grass-2-1" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=2"><paste-structure structure="structure-grass-2-2" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=3"><paste-structure structure="structure-grass-2-3" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=4"><paste-structure structure="structure-grass-2-4" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=5"><paste-structure structure="structure-grass-2-5" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=6"><paste-structure structure="structure-grass-2-6" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=7"><paste-structure structure="structure-grass-2-7" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=8"><paste-structure structure="structure-grass-2-8" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=9"><paste-structure structure="structure-grass-2-9" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            </action>
+                            <action filter="chance_x=3">
+                                <action filter="chance_z=0"><paste-structure structure="structure-grass-3-0" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=1"><paste-structure structure="structure-grass-3-1" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=2"><paste-structure structure="structure-grass-3-2" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=3"><paste-structure structure="structure-grass-3-3" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=4"><paste-structure structure="structure-grass-3-4" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=5"><paste-structure structure="structure-grass-3-5" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=6"><paste-structure structure="structure-grass-3-6" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=7"><paste-structure structure="structure-grass-3-7" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=8"><paste-structure structure="structure-grass-3-8" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=9"><paste-structure structure="structure-grass-3-9" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            </action>
+                            <action filter="chance_x=4">
+                                <action filter="chance_z=0"><paste-structure structure="structure-grass-4-0" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=1"><paste-structure structure="structure-grass-4-1" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=2"><paste-structure structure="structure-grass-4-2" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=3"><paste-structure structure="structure-grass-4-3" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=4"><paste-structure structure="structure-grass-4-4" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=5"><paste-structure structure="structure-grass-4-5" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=6"><paste-structure structure="structure-grass-4-6" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=7"><paste-structure structure="structure-grass-4-7" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=8"><paste-structure structure="structure-grass-4-8" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=9"><paste-structure structure="structure-grass-4-9" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            </action>
+                            <action filter="chance_x=5">
+                                <action filter="chance_z=0"><paste-structure structure="structure-grass-5-0" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=1"><paste-structure structure="structure-grass-5-1" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=2"><paste-structure structure="structure-grass-5-2" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=3"><paste-structure structure="structure-grass-5-3" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=4"><paste-structure structure="structure-grass-5-4" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=5"><paste-structure structure="structure-grass-5-5" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=6"><paste-structure structure="structure-grass-5-6" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=7"><paste-structure structure="structure-grass-5-7" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=8"><paste-structure structure="structure-grass-5-8" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=9"><paste-structure structure="structure-grass-5-9" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            </action>
+                            <action filter="chance_x=6">
+                                <action filter="chance_z=0"><paste-structure structure="structure-grass-6-0" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=1"><paste-structure structure="structure-grass-6-1" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=2"><paste-structure structure="structure-grass-6-2" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=3"><paste-structure structure="structure-grass-6-3" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=4"><paste-structure structure="structure-grass-6-4" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=5"><paste-structure structure="structure-grass-6-5" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=6"><paste-structure structure="structure-grass-6-6" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=7"><paste-structure structure="structure-grass-6-7" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=8"><paste-structure structure="structure-grass-6-8" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=9"><paste-structure structure="structure-grass-6-9" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            </action>
+                            <action filter="chance_x=7">
+                                <action filter="chance_z=0"><paste-structure structure="structure-grass-7-0" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=1"><paste-structure structure="structure-grass-7-1" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=2"><paste-structure structure="structure-grass-7-2" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=3"><paste-structure structure="structure-grass-7-3" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=4"><paste-structure structure="structure-grass-7-4" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=5"><paste-structure structure="structure-grass-7-5" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=6"><paste-structure structure="structure-grass-7-6" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=7"><paste-structure structure="structure-grass-7-7" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=8"><paste-structure structure="structure-grass-7-8" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=9"><paste-structure structure="structure-grass-7-9" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            </action>
+                            <action filter="chance_x=8">
+                                <action filter="chance_z=0"><paste-structure structure="structure-grass-8-0" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=1"><paste-structure structure="structure-grass-8-1" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=2"><paste-structure structure="structure-grass-8-2" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=3"><paste-structure structure="structure-grass-8-3" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=4"><paste-structure structure="structure-grass-8-4" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=5"><paste-structure structure="structure-grass-8-5" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=6"><paste-structure structure="structure-grass-8-6" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=7"><paste-structure structure="structure-grass-8-7" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=8"><paste-structure structure="structure-grass-8-8" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=9"><paste-structure structure="structure-grass-8-9" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            </action>
+                            <action filter="chance_x=9">
+                                <action filter="chance_z=0"><paste-structure structure="structure-grass-9-0" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=1"><paste-structure structure="structure-grass-9-1" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=2"><paste-structure structure="structure-grass-9-2" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=3"><paste-structure structure="structure-grass-9-3" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=4"><paste-structure structure="structure-grass-9-4" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=5"><paste-structure structure="structure-grass-9-5" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=6"><paste-structure structure="structure-grass-9-6" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=7"><paste-structure structure="structure-grass-9-7" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=8"><paste-structure structure="structure-grass-9-8" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=9"><paste-structure structure="structure-grass-9-9" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            </action>
+                            <set var="chance_x" value="-1"/>
+                        </action>
+                        <action filter="chance_x=0">
+                            <!--
+                                tile: stone
+                                x: 0..3
+                                y: 0..9
+                            -->
+                            <set var="chance_x" value="floor(random() * 4)"/>
+                            <set var="chance_z" value="floor(random() * 10)"/>
+                            <action filter="chance_x=0">
+                                <action filter="chance_z=0"><paste-structure structure="structure-stone-0-0" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=1"><paste-structure structure="structure-stone-0-1" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=2"><paste-structure structure="structure-stone-0-2" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=3"><paste-structure structure="structure-stone-0-3" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=4"><paste-structure structure="structure-stone-0-4" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=5"><paste-structure structure="structure-stone-0-5" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=6"><paste-structure structure="structure-stone-0-6" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=7"><paste-structure structure="structure-stone-0-7" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=8"><paste-structure structure="structure-stone-0-8" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=9"><paste-structure structure="structure-stone-0-9" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            </action>
+                            <action filter="chance_x=1">
+                                <action filter="chance_z=0"><paste-structure structure="structure-stone-1-0" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=1"><paste-structure structure="structure-stone-1-1" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=2"><paste-structure structure="structure-stone-1-2" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=3"><paste-structure structure="structure-stone-1-3" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=4"><paste-structure structure="structure-stone-1-4" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=5"><paste-structure structure="structure-stone-1-5" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=6"><paste-structure structure="structure-stone-1-6" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=7"><paste-structure structure="structure-stone-1-7" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=8"><paste-structure structure="structure-stone-1-8" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=9"><paste-structure structure="structure-stone-1-9" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            </action>
+                            <action filter="chance_x=2">
+                                <action filter="chance_z=0"><paste-structure structure="structure-stone-2-0" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=1"><paste-structure structure="structure-stone-2-1" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=2"><paste-structure structure="structure-stone-2-2" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=3"><paste-structure structure="structure-stone-2-3" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=4"><paste-structure structure="structure-stone-2-4" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=5"><paste-structure structure="structure-stone-2-5" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=6"><paste-structure structure="structure-stone-2-6" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=7"><paste-structure structure="structure-stone-2-7" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=8"><paste-structure structure="structure-stone-2-8" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=9"><paste-structure structure="structure-stone-2-9" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            </action>
+                            <action filter="chance_x=3">
+                                <action filter="chance_z=0"><paste-structure structure="structure-stone-3-0" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=1"><paste-structure structure="structure-stone-3-1" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=2"><paste-structure structure="structure-stone-3-2" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=3"><paste-structure structure="structure-stone-3-3" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=4"><paste-structure structure="structure-stone-3-4" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=5"><paste-structure structure="structure-stone-3-5" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=6"><paste-structure structure="structure-stone-3-6" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=7"><paste-structure structure="structure-stone-3-7" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=8"><paste-structure structure="structure-stone-3-8" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                                <action filter="chance_z=9"><paste-structure structure="structure-stone-3-9" x="position_x + variance_x" y="0" z="position_z + variance_z" update="false"/></action>
+                            </action>
+                        </action>
+                        <set var="steps" value="steps - 1"/>
+                    </repeat>
+                    <action filter="direction % 2 = 1">
+                        <set var="step_length" value="step_length + 1"/>
+                    </action>
+                    <set var="direction" value="direction + 1"/>
+                </repeat>
+                <set var="layer_calc" value="layers - current_layer"/>
+            </repeat>
+        </action>
+    </trigger>
+</actions>
+<hunger>
+    <depletion>off</depletion>
+</hunger>
+<timelock>on</timelock>
+</map>

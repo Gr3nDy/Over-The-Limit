@@ -1,0 +1,248 @@
+<map proto="1.5.0">
+<name>Huanxiang</name>
+<version>1.0.4</version>
+<include id="gapple-kill-reward"/>
+<objective>Capture the enemy team's two wools!</objective>
+<created>2021-12-24</created>
+<authors>
+    <author uuid="f1ff7ecc-2e79-4320-85de-adb392eb2822"/> <!-- DerStiv -->
+</authors>
+<contributors>
+    <contributor uuid="6863869b-4b8c-4445-b778-a8e016775ae4"/> <!-- Cazadorian -->
+</contributors>
+<teams>
+    <team id="blue-team" color="blue" max="12">Blue</team>
+    <team id="red-team" color="dark red" max="12">Red</team>
+</teams>
+<kits>
+    <kit id="spawn-kit">
+        <clear/>
+        <item slot="0" unbreakable="true" material="iron sword"/>
+        <item slot="1" unbreakable="true" material="bow"/>
+        <item slot="2" unbreakable="true" material="iron pickaxe"/>
+        <item slot="28" amount="64" material="arrow"/>
+        <item slot="3" unbreakable="true" material="iron axe"/>
+        <item slot="4" amount="64" material="wood" damage="3"/>
+        <item slot="5" material="glass" amount="32"/>
+        <item slot="7" material="bucket"/>
+        <item slot="8" material="golden apple"/>
+        <item slot="29" material="shears" unbreakable="true"/>
+        <item slot="30" material="iron spade" unbreakable="true"/>
+        <effect duration="4" amplifier="255">damage resistance</effect>
+        <helmet unbreakable="true" team-color="true" material="leather helmet"/>
+        <chestplate unbreakable="true" team-color="true" material="leather chestplate"/>
+        <leggings unbreakable="true" material="chainmail leggings">
+            <enchantment level="1">projectile_protection</enchantment>
+        </leggings>
+        <boots material="leather boots" team-color="true" unbreakable="true"/>
+    </kit>
+</kits>
+<spawns>
+    <default>
+        <regions>
+            <point>148.5,20,-49.5</point>
+        </regions>
+    </default>
+    <spawn team="red-team" kit="spawn-kit" yaw="-90">
+        <regions>
+            <point>75.5,9,7.5</point>
+        </regions>
+    </spawn>
+    <spawn team="blue-team" kit="spawn-kit" yaw="90">
+        <regions>
+            <point>221.5,9,7.5</point>
+        </regions>
+    </spawn>
+</spawns>
+<wools craftable="false">
+    <wool team="red-team" color="pink" location="221,7,21">
+        <monument>
+            <block>75,10,13</block>
+        </monument>
+    </wool>
+    <wool team="red-team" color="purple" location="221,7,-6">
+        <monument>
+            <block>75,10,1</block>
+        </monument>
+    </wool>
+    <wool team="blue-team" color="orange" location="78,10,58">
+        <monument>
+            <block>221,10,13</block>
+        </monument>
+   </wool>
+    <wool team="blue-team" color="yellow" location="78,10,-53">
+        <monument>
+            <block>221,10,1</block>
+        </monument>
+    </wool>
+</wools>
+<filters>
+    <deny id="deny-players">
+        <participating/>
+    </deny>
+    <not id="blue-in-wr">
+        <any>
+            <team id="only-red">red-team</team>
+            <material>chest</material>
+            <material>stained clay:14</material>
+            <material>stained clay:9</material>
+            <material>jungle wood stairs</material>
+            <material>step</material>
+            <material>trap door</material>
+            <material>note block</material>
+            <material>jungle fence</material>
+            <material>stained glass</material>
+            <material>prismarine</material>
+            <material>wool</material>
+            <material>leaves</material>
+            <material>stained glass pane</material>
+            <material>daylight detector</material>
+            <material>daylight detector inverted</material>
+            <material>sea lantern</material>
+            <material>smooth stairs</material>
+            <material>double step</material>
+            <material>smooth brick</material>
+        </any>
+    </not>
+    <not id="red-in-wr">
+        <any>
+            <team id="only-blue">blue-team</team>
+            <material>chest</material>
+            <material>stained clay:11</material>
+            <material>stained clay:9</material>
+            <material>jungle wood stairs</material>
+            <material>step</material>
+            <material>trap door</material>
+            <material>note block</material>
+            <material>jungle fence</material>
+            <material>stained glass</material>
+            <material>prismarine</material>
+            <material>wool</material>
+            <material>leaves</material>
+            <material>stained glass pane</material>
+            <material>daylight detector</material>
+            <material>daylight detector inverted</material>
+            <material>sea lantern</material>
+            <material>smooth stairs</material>
+            <material>double step</material>
+            <material>smooth brick</material>
+        </any>
+    </not>
+    <not id="only-blue-usage">
+        <any>
+            <filter id="only-red"/>
+            <material>beacon</material>
+        </any>
+    </not>
+    <not id="only-red-usage">
+        <any>
+            <filter id="only-blue"/>
+            <material>beacon</material>
+        </any>
+    </not>
+</filters>
+<regions>
+    <union id="spawn-protection">
+        <rectangle id="red-protection" min="94,1" max="70,14"/>
+        <rectangle id="blue-protection" min="203,1" max="227,14"/>
+    </union>
+    <complement id="void-area">
+        <everywhere/>
+        <!-- Middle-->
+        <rectangle min="107,41" max="190,-26"/>
+        <region id="spawn-protection"/>
+        <region id="wool-rooms"/>
+    </complement>
+    <union id="wool-rooms">
+        <union id="blue-wool-rooms"> <!-- blue defends -->
+            <rectangle min="216,-8" max="226,1"/> <!-- Purple -->
+            <rectangle min="216,23" max="226,14"/> <!-- Pink -->
+        </union>
+        <union id="red-wool-rooms"> <!-- red defends -->
+            <rectangle min="80,-8" max="71,1"/> <!-- Yellow -->
+            <rectangle min="80,23" max="71,14"/> <!-- Orange -->
+        </union>
+    </union>
+    <cuboid id="gapple" min="147,6,9" max="150,11,6"/>
+    <cuboid id="gapple-point" min="148.5,8.5,7.5" max="148.5,8.5,7.5"/>
+    <apply enter="only-blue" region="blue-protection" message="You may not enter the opponent's spawn!"/>
+    <apply enter="only-red" region="red-protection" message="You may not enter the opponent's spawn!"/>
+    <apply enter="only-blue" region="red-wool-rooms" message="You may not enter your own wool room!"/>
+    <apply enter="only-red" region="blue-wool-rooms" message="You may not enter your own wool room!"/>
+    <apply block="blue-in-wr" use="only-blue-usage" region="red-wool-rooms"/>
+    <apply block="red-in-wr" use="only-red-usage" region="blue-wool-rooms"/>
+    <apply block-break="never" block-place="never" region="spawn-protection" message="You may not modify the spawns!"/>
+    <apply block-break="never" block-place="never" region="gapple" message="You may not modify the spawner area!"/>
+    <apply block-place="deny(void)" region="void-area" message="You may not build in the void area!"/>
+</regions>
+<spawners>
+    <spawner spawn-region="gapple-point" player-region="gapple" delay="5s">
+        <item amount="1" material="golden apple"/>
+    </spawner>
+</spawners>
+<toolrepair>
+    <tool>iron sword</tool>
+    <tool>bow</tool>
+    <tool>iron pickaxe</tool>
+    <tool>iron axe</tool>
+    <tool>shears</tool>
+    <tool>iron spade</tool>
+</toolrepair>
+<itemremove>
+    <item>leather helmet</item>
+    <item>leather chestplate</item>
+    <item>chainmail leggings</item>
+    <item>leather boots</item>
+    <item>long grass</item>
+    <item>red rose</item>
+    <item>double plant</item>
+    <item>sugar cane</item>
+    <item>emerald</item>
+    <item>yellow flower</item>
+    <item>string</item>
+    <item>redstone</item>
+    <item>redstone torch on</item>
+    <item>seeds</item>
+    <item>gold plate</item>
+    <item>torch</item>
+    <item>bucket</item>
+</itemremove>
+<block-drops>
+    <rule>
+        <filter>
+            <any>
+                <material>wood</material>
+                <material>stained clay</material>
+            </any>
+        </filter>
+        <drops>
+            <item chance="0" material="wood"/>
+        </drops>
+    </rule>
+</block-drops>
+<itemkeep>
+    <item>iron sword</item>
+    <item>bow</item>
+    <item>iron pickaxe</item>
+    <item>iron axe</item>
+    <item>shears</item>
+    <item>iron spade</item>
+    <item>wood</item>
+    <item>glass</item>
+    <item>golden apple</item>
+    <item>arrow</item>
+</itemkeep>
+<kill-rewards>
+    <kill-reward>
+        <item amount="16" material="wood" damage="3"/>
+        <item amount="12" material="glass"/>
+    </kill-reward>
+</kill-rewards>
+<world>
+    <timeset>6000</timeset>
+</world>
+<hunger>
+    <depletion>off</depletion>
+</hunger>
+<maxbuildheight>24</maxbuildheight>
+</map>

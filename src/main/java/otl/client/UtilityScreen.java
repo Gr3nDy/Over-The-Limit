@@ -30,7 +30,8 @@ final class UtilityScreen extends GuiScreen {
             for(int i=0;i<OtlModule.ALL.size()&&i<4;i++){
                 OtlModule m=OtlModule.ALL.get(i);
                 buttonList.add(new NeutralButton(20+i,x+14,y+64+i*42,w-112,20,m.name+": "+state(m.enabled()),false));
-                buttonList.add(new NeutralButton(40+i,x+w-94,y+64+i*42,80,20,"Settings",false));
+                GuiButton options=new NeutralButton(40+i,x+w-94,y+64+i*42,80,20,"Settings",false);
+                options.enabled=m.settings(this)!=null;buttonList.add(options);
             }
         }
         buttonList.add(new NeutralButton(3,x+w-94,y+h-27,80,19,chatSettings?"Back":"Done",false));
@@ -72,7 +73,8 @@ final class UtilityScreen extends GuiScreen {
             else if(page==1){
                 drawString(fontRendererObj,"Two lines, above names, never through walls.",x+14,y+132,0xFFAAAAAA);
                 drawString(fontRendererObj,"Shift-click reduces duration or text limit.",x+14,y+145,0xFFAAAAAA);
-                drawString(fontRendererObj,fontRendererObj.trimStringToWidth("Team: "+(TeamBubbles.team()==null?"not detected yet":TeamBubbles.team()),w-28),x+14,y+162,0xFFAAAAAA);
+                drawString(fontRendererObj,"Source: (Team Name) Player: message",x+14,y+162,0xFFAAAAAA);
+                drawString(fontRendererObj,"Cooldown: 2 seconds per sender (fixed).",x+14,y+175,0xFFAAAAAA);
             }else{
                 drawString(fontRendererObj,"Default: transparent. Text opacity is unchanged.",x+14,y+103,0xFFAAAAAA);
                 drawString(fontRendererObj,"Click +10%. Shift-click -10%.",x+14,y+117,0xFFAAAAAA);

@@ -45,6 +45,11 @@ abstract class OtlModule {
                 boolean enabled() { return UtilitySettings.mapPreview; }
                 void setEnabled(boolean on) { UtilitySettings.mapPreview = on; }
                 GuiScreen settings(GuiScreen back) { return new MapPreviewSettings(back); }
+            },
+            new OtlModule("left_hand", "Prefered Hand") {
+                boolean enabled() { return UtilitySettings.leftHand; }
+                void setEnabled(boolean on) { UtilitySettings.leftHand = on; }
+                GuiScreen settings(GuiScreen back) { return new PreferedHandSettings(back); }
             }
     );
 }

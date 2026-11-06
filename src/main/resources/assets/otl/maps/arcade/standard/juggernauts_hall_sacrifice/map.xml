@@ -1,0 +1,240 @@
+<map proto="1.5.0">
+<name>Juggernaut's Hall: Sacrifice</name>
+<version>1.0.6</version>
+<objective>Escape from the Juggernauts!</objective>
+<gamemode>arcade</gamemode>
+<created>2021-04-28</created>
+<phase>staging</phase>
+<authors>
+    <author uuid="ffd655e7-9c56-46fb-9551-be3069839381"/> <!-- CredensJustitiam -->
+</authors>
+<contributors>
+    <contributor uuid="9d4779a8-d35f-45d2-b51c-95de7a77e128" contribution="XML fixes"/> <!-- zzuf -->
+    <contributor uuid="343183ef-3dfb-4a32-a2d3-e5d4d94a085f" contribution="Tester"/> <!-- Ammzzy -->
+    <contributor uuid="e79fbdc9-627e-4dac-97a6-81a3046220d7" contribution="Juggernaut's Hall Author"/> <!-- AtlasGames -->
+</contributors>
+<broadcasts>
+    <alert after="1s">`6`lRun from the Juggernauts!</alert>
+    <alert after="15s">`6`lThe Juggernauts have been released!</alert>
+</broadcasts>
+<time result="juggernaut">5m</time>
+<blitz>
+    <lives>1</lives>
+    <broadcastLives>true</broadcastLives>
+</blitz>
+<score>
+    <limit>1</limit>
+</score>
+<teams>
+    <team id="runners" min="9" max="64" color="red" plural="true" show-name-tags="true">Runners</team>
+    <team id="juggernaut" min="1" max="2" color="blue" plural="true" show-name-tags="true">Juggernauts</team>
+</teams>
+<kits>
+    <kit id="runner-kit">
+        <boots unbreakable="true" material="iron boots" locked="true"/>
+        <chestplate unbreakable="true" material="iron chestplate" locked="true"/>
+        <item slot="0" material="stick" enchantment="knockback:2" name="Slap Stick">
+            <can-destroy>
+                <material>ender stone</material>
+                <material>torch</material>
+            </can-destroy>
+        </item>
+        <item slot="2" material="iron pickaxe" enchantment="dig speed" unbreakable="true">
+            <can-destroy>
+                <material>ender stone</material>
+                <material>torch</material>
+            </can-destroy>
+        </item>
+        <effect>invisibility</effect>
+        <item slot="1" projectile="slowball" name="`aSlowball" amount="8" material="egg"/>
+        <game-mode>adventure</game-mode>
+    </kit>
+    <kit id="juggernaut-kit" force="true">
+        <double-jump power="1.8" recharge-time="4s"/>
+        <foodlevel>6</foodlevel>
+        <helmet material="diamond helmet" unbreakable="true" enchantment="protection environmental:4" locked="true"/>
+        <chestplate material="diamond chestplate" unbreakable="true" enchantment="protection environmental:4" locked="true">
+            <attribute operation="multiply" amount="-0.46">generic.movementSpeed</attribute>
+        </chestplate>
+        <leggings material="diamond leggings" unbreakable="true" enchantment="protection environmental:4" locked="true">
+            <attribute operation="add" amount="0.3">generic.knockbackResistance</attribute>
+        </leggings>
+        <boots material="diamond boots" unbreakable="true" enchantment="protection environmental:4" locked="true"/>
+        <item slot="0" material="diamond sword">
+            <enchantment level="4">damage all</enchantment>
+            <enchantment level="2">knockback</enchantment>
+            <can-destroy>
+                <material>web</material>
+                <material>stained glass</material>
+            </can-destroy>
+        </item>
+        <effect amplifier="-10">jump</effect>
+        <effect amplifier="10">resistance</effect>
+        <game-mode>adventure</game-mode>
+    </kit>
+    <kit id="remove-kit" force="true">
+        <clear effects="true"/>
+    </kit>
+</kits>
+<spawns>
+    <spawn team="runners" kit="runner-kit">
+        <region>
+            <cuboid min="-462,68,112" max="-464,68,114"/>
+        </region>
+    </spawn>
+    <spawn team="juggernaut" kit="juggernaut-kit" yaw="-90">
+        <region>
+            <cuboid min="-469,68,117" max="-467,68,119"/>
+        </region>
+    </spawn>
+    <default>
+        <region>
+            <cuboid min="-462,68,112" max="-464,68,114"/>
+        </region>
+    </default>
+</spawns>
+<destroyables>
+    <destroyable owner="juggernaut" materials="iron fence" name="Juggernaut Cage" show="false" mode-changes="true" sparks="true">
+       <region>
+            <cuboid min="-466,68,117" max="-465,71,119"/>
+        </region>
+    </destroyable>
+</destroyables>
+<modes>
+    <mode after="15s" material="air" name="Juggernauts will be released" show-before="10s"/>
+</modes>
+<projectiles>
+    <projectile id="slowball" name="Slowball" projectile="Egg" velocity="3.5" damage="0" throwable="true">
+        <potion duration="2" amplifier="10">blindness</potion>
+        <potion duration="2" amplifier="5">slow</potion>
+    </projectile>
+</projectiles>
+<control-points>
+    <control-point id="win-platform" capture-time="0s" show="false" points="1" permanent="true">
+        <capture-filter>
+            <team>runners</team>
+        </capture-filter>
+        <capture>
+            <cuboid min="-486,96,156" max="-488,98,158"/>
+        </capture>
+    </control-point>
+</control-points>
+<filters>
+    <any id="only-some">
+        <all>
+            <team>juggernaut</team>
+            <material>web</material>
+        </all>
+        <all>
+            <team>runners</team>
+            <material>ender stone</material>
+        </all>
+        <all>
+            <not>
+                <any>
+                    <team>juggernaut</team>
+                    <team>runners</team>
+                </any>
+            </not>
+            <any>
+                <material>stone</material>
+                <material>redstone block</material>
+                <material>redstone lamp off</material>
+                <material>redstone lamp on</material>
+                <material>sand</material>
+                <material>piston base</material>
+                <material>piston extension</material>
+                <material>piston moving piece</material>
+                <material>redstone wire</material>
+                <material>iron fence</material>
+                <material>diode block on</material>
+                <material>diode block off</material>
+                <material>redstone torch on</material>
+                <material>redstone torch off</material>
+                <material>redstone block</material>
+            </any>
+        </all>
+    </any>
+    <not id="allowed-use">
+        <material>dispenser</material>
+    </not>
+    <team id="juggernaut-only">juggernaut</team>
+    <team id="runners-only">runners</team>
+</filters>
+<regions>
+    <apply block-break="only-some" use="allowed-use"/>
+    <apply enter="juggernaut-only" message="Only the juggernauts can go here.">
+        <region>
+            <cuboid min="-447,68,147" max="-449,70,148"/>
+            <cuboid min="-440,68,188" max="-442,70,189"/>
+            <cuboid min="-450,76,186" max="-448,78,185"/>
+            <cuboid min="-479,75,84" max="-477,77,83"/>
+        </region>
+    </apply>
+    <apply enter="runners-only" message="Only the runners can go here.">
+        <region>
+            <cuboid min="-430,60,153" max="-426,72,157"/> <!-- First Sacrifice area -->
+            <cuboid min="-456,76,147" max="-455,78,146"/>
+            <cuboid min="-454,76,147" max="-453,78,146"/>
+            <cuboid min="-486,70,122" max="-485,72,124"/>
+            <cuboid min="-451,80,90" max="-450,82,92"/>
+            <cuboid min="-480,92,147" max="-479,94,151"/>
+            <cuboid min="-494,92,151" max="-495,94,147"/>
+        </region>
+    </apply>
+    <apply kit="remove-kit">
+        <region>
+            <cuboid min="-450,75,175" max="-459,73,165"/>
+        </region>
+    </apply>
+</regions>
+<itemremove>
+    <item>iron pickaxe</item>
+    <item>iron boots</item>
+    <item>iron chestplate</item>
+    <item>stick</item>
+    <item>diamond helmet</item>
+    <item>string</item>
+    <item>diamond chestplate</item>
+    <item>diamond leggings</item>
+    <item>diamond boots</item>
+    <item>diamond sword</item>
+    <item>ender stone</item>
+    <item>egg</item>
+    <item>minecart</item>
+    <item>sand</item>
+    <item>stone:6</item>
+    <item>diode</item>
+    <item>redstone</item>
+</itemremove>
+<disabledamage>
+    <damage>fall</damage>
+</disabledamage>
+<hunger>
+    <depletion>off</depletion>
+</hunger>
+<mobs>
+    <filter>
+        <all>
+            <mob>blaze</mob>
+            <mob>cave spider</mob>
+            <mob>chicken</mob>
+            <mob>cow</mob>
+            <mob>ghast</mob>
+            <mob>magma cube</mob>
+            <mob>mushroom cow</mob>
+            <mob>ocelot</mob>
+            <mob>pig</mob>
+            <mob>pig zombie</mob>
+            <mob>sheep</mob>
+            <mob>skeleton</mob>
+            <mob>slime</mob>
+            <mob>spider</mob>
+            <mob>squid</mob>
+            <mob>wolf</mob>
+            <mob>zombie</mob>
+            <spawn>spawner egg</spawn>
+        </all>
+    </filter>
+</mobs>
+</map>

@@ -1,0 +1,77 @@
+<map proto="1.5.0">
+<name>Boulevard</name>
+<version>1.0.7</version>
+<include id="kotf"/>
+<constant id="score">180</constant>
+<constant id="damage-resistance">3.5s</constant>
+<constant id="respawn-timer">3.5s</constant>
+<constant id="flag-respawn-timer">15s</constant>
+<objective>Hold the flag for ${score} seconds to win!</objective>
+<authors>
+    <author uuid="74948888-fdb8-4446-9340-f7688c2435cc"/> <!-- Zero_Frosty -->
+</authors>
+<contributors>
+    <contributor uuid="430ec559-364a-4363-ac7a-2529050440ac" contribution="XML"/> <!-- mameBT -->
+</contributors>
+<teams>
+    <team id="blue" color="blue" max="10">Blue</team>
+    <team id="red" color="dark red" max="10">Red</team>
+</teams>
+<spawns>
+    <default>
+        <region yaw="90">
+            <point>39.5,50,0.5</point>
+        </region>
+    </default>
+    <spawn team="blue" kit="base-kit" filter="has-flag">
+        <region yaw="180">
+            <point>0.5,9,39.5</point>
+        </region>
+    </spawn>
+    <spawn team="red" kit="base-kit" filter="has-flag">
+        <region yaw="0">
+            <point>0.5,9,-38.5</point>
+        </region>
+    </spawn>
+</spawns>
+<regions>
+    <apply block="never" use="never"/>
+    <apply enter="never">
+        <region>
+            <above y="19"/>
+        </region>
+    </apply>
+    <apply enter="deny(flag-carrier)" message="You may not go into spawn areas with the flag!">
+        <region>
+            <intersect>
+                <above y="3"/>
+                <union>    
+                    <union id="blue-spawn-area">
+                        <cuboid min="15,15,25" max="-14,oo,28"/>
+                        <cuboid min="19,0,28" max="-18,oo,35"/>
+                        <above z="35"/>
+                    </union>
+                    <mirror region="blue-spawn-area" origin="0.5,0,0.5" normal="0,0,1"/>
+                </union>
+            </intersect>
+        </region>
+    </apply>
+</regions>
+<flags>
+    <flag id="flag"
+          name="Flag"
+          color="purple"
+          shared="true"
+          points-rate="1"
+          pickup-kit="flag-kit"
+          drop-kit="reset-health"
+          flag-proximity-metric="none"
+          show-respawn-on-pickup="${announce-post-pickup}">
+        <post return-time="0s" respawn-time="${flag-respawn-timer}">
+            <post name="Mid Post" respawn-filter="never">0.5,13,0.5</post>
+            <post name="West Post" yaw="-90">-11.5,15,0.5</post>
+            <post name="East Post" yaw="90">12.5,15,0.5</post>
+        </post>
+    </flag>
+</flags>
+</map>

@@ -1,0 +1,84 @@
+<map proto="1.5.0">
+<include id="infection"/>
+<name>Infection: Cityscape</name>
+<version>1.0.13</version>
+<created>2022-10-07</created>
+<constants>
+    <constant id="time-limit">6</constant>
+    <constant id="compass-distribution-time">5</constant>
+</constants>
+<authors>
+    <author uuid="ec5ec930-5cf3-4f8a-ad9f-09056aeed71b"/> <!-- Tundren -->
+    <author uuid="b2539be1-8f98-4375-b653-9d91cd04c30e"/> <!-- Mewzzy -->
+    <author uuid="6ff4ade9-e968-4acd-80eb-1a6fa89629fb" contribution="XML"/> <!-- _Pear -->
+</authors>
+<broadcasts>
+    <alert after="2s">The ${zombie-team-name} will deploy in `c13 seconds`r!</alert>
+    <tip after="20s" every="2m">${zombie-team-name} are able to double-jump every 7 seconds.</tip>
+</broadcasts>
+<kits>
+    <kit id="zombie-spawn-kit" parent="default-zombie-kit" force="true">
+        <double-jump recharge-time="7s"/>
+    </kit>
+</kits>
+<spawns>
+    <default region="obs-spawn" yaw="180"/>
+    <!-- Human Spawns -->
+    <spawn filter="before-release" team="human-team" kit="default-human-kit" region="human-spawn-1" yaw="-45"/>
+    <spawn filter="after-release" team="human-team" kit="zombie-switch-kit" region="human-spawn-1" yaw="-45"/>
+    <spawn filter="before-release" team="human-team" kit="default-human-kit" region="human-spawn-2" yaw="-135"/>
+    <spawn filter="after-release" team="human-team" kit="zombie-switch-kit" region="human-spawn-2" yaw="-135"/>
+    <!-- Zombie Spawns -->
+    <spawn team="zombie-team" kit="zombie-spawn-kit" region="zombie-spawn-1" yaw="180"/>
+    <spawn team="zombie-team" kit="zombie-spawn-kit" region="zombie-spawn-2"/>
+</spawns>
+<filters>
+    <not id="after-release">
+        <countdown id="before-release" duration="13" message="Zombies will be released in {0}">
+            <match-running/>
+        </countdown>
+    </not>
+</filters>
+<regions>
+    <point id="obs-spawn">0.5,57,1.5</point>
+    <point id="human-spawn-1">-21.5,6,-20.5</point>
+    <point id="human-spawn-2">-21.5,6,-23.5</point>
+    <point id="zombie-spawn-1">0.5,56,14.5</point>
+    <point id="zombie-spawn-2">0.5,56,6.5</point>
+    <cuboid id="zombie-cage" min="2.5,53,8.5" max="-1.5,55,12.5"/>
+    <!-- Launchpads -->
+    <apply velocity="0,2.0,0">
+        <region>
+            <cuboid id="brick-building-pad" min="-39,8,36" max="-35,9,40"/>
+        </region>
+    </apply>
+    <apply velocity="0,1.8,0">
+        <region>
+            <cuboid id="bank-building-pad" min="43,10,48" max="39,11,44"/>
+        </region>
+    </apply>
+</regions>
+<actions>
+    <action id="zombie-release" scope="match">
+        <fill id="cage" region="zombie-cage" material="air"/>
+        <message title="`c${zombie-team-name} have been released!"/>
+    </action>
+    <trigger action="zombie-release" scope="match">
+        <filter>
+            <time>13s</time>
+        </filter>
+    </trigger>
+</actions>
+<kill-rewards>
+    <kill-reward filter="human-team">
+        <kit id="human-kill-reward">
+            <effect duration="5s" amplifier="2">regeneration</effect>
+        </kit>
+    </kill-reward>
+</kill-rewards>
+<itemremove>
+    <item>lever</item>
+    <item>trap door</item>
+    <item>iron trapdoor</item>
+</itemremove>
+</map>

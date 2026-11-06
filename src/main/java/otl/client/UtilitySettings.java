@@ -10,6 +10,11 @@ import net.minecraft.client.Minecraft;
 final class UtilitySettings {
     private static boolean loaded;
     static boolean chat=true, counts=true, fullscreen=false, otherFaces=true, showTabChat=true, mapPreview=true;
+    static boolean previewOnCommand=true;
+    static boolean largeMapPreview=false;
+    static boolean leftHand=false;
+    static boolean mainHandLeft=false;
+    static LeftHand.Type handType=LeftHand.Type.ALL;
     static int tabChatPosition=0;
     static String tabPositionLabel(){
         return new String[]{"Bottom Left","Bottom Right","Top Left","Top Right"}[Math.max(0,Math.min(3,tabChatPosition))];
@@ -34,6 +39,11 @@ final class UtilitySettings {
             if(j.has("other_faces"))otherFaces=j.get("other_faces").getAsBoolean();
             if(j.has("show_tab_chat"))showTabChat=j.get("show_tab_chat").getAsBoolean();
             if(j.has("map_preview"))mapPreview=j.get("map_preview").getAsBoolean();
+            if(j.has("preview_on_command"))previewOnCommand=j.get("preview_on_command").getAsBoolean();
+            if(j.has("large_map_preview"))largeMapPreview=j.get("large_map_preview").getAsBoolean();
+            if(j.has("left_hand"))leftHand=j.get("left_hand").getAsBoolean();
+            if(j.has("main_hand_left"))mainHandLeft=j.get("main_hand_left").getAsBoolean();
+            if(j.has("hand_type"))handType=LeftHand.Type.parse(j.get("hand_type").getAsString());
             if(j.has("tab_chat_position"))tabChatPosition=Math.max(0,Math.min(3,j.get("tab_chat_position").getAsInt()));
             if(j.has("remember_drafts"))rememberDrafts=j.get("remember_drafts").getAsBoolean();
             if(j.has("unlimited_history"))unlimitedHistory=j.get("unlimited_history").getAsBoolean();
@@ -54,11 +64,15 @@ final class UtilitySettings {
         load();try{
             JsonObject j=new JsonObject();j.addProperty("schema_version",1);j.addProperty("reliable_chat",chat);j.addProperty("unread_counts",counts);j.addProperty("fullscreen_menu",fullscreen);j.addProperty("other_faces",otherFaces);j.addProperty("show_tab_chat",showTabChat);j.addProperty("map_preview",mapPreview);j.addProperty("tab_chat_position",tabChatPosition);
             j.addProperty("face_rig",faceRig);
+            j.addProperty("preview_on_command",previewOnCommand);
+            j.addProperty("large_map_preview",largeMapPreview);
+            j.addProperty("left_hand",leftHand);
+            j.addProperty("main_hand_left",mainHandLeft);j.addProperty("hand_type",handType.name());
             j.addProperty("remember_drafts",rememberDrafts);j.addProperty("unlimited_history",unlimitedHistory);j.addProperty("shift_tab",cycleTabs);j.addProperty("team_bubbles",bubbles);j.addProperty("bubble_characters",bubbleCharacters);j.addProperty("bubble_seconds",bubbleSeconds);
             j.addProperty("chat_background_opacity",chatBackground);
             JsonObject channels=new JsonObject();selected.forEach(channels::addProperty);j.add("selected_channels",channels);
             JsonArray hosts=new JsonArray();for(String h:devHosts)hosts.add(new JsonPrimitive(h));j.add("dev_hosts",hosts);
-            Files.createDirectories(path().getParent());Files.write(path(),new GsonBuilder().setPrettyPrinting().create().toJson(j).getBytes(StandardCharsets.UTF_8));
+            AtomicFiles.write(path(),new GsonBuilder().setPrettyPrinting().create().toJson(j).getBytes(StandardCharsets.UTF_8));
         }catch(Exception e){System.err.println("Overcast Utilities: could not save settings: "+e.getMessage());}
     }
 }

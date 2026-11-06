@@ -1,0 +1,153 @@
+<map proto="1.5.0">
+<name>Infection: Clue</name>
+<version>1.1.6</version>
+<created>2021-05-21</created>
+<include id="infection"/>
+<constants>
+    <constant id="time-limit">4</constant>
+    <constant id="compass-distribution-time">3</constant>
+</constants>
+<authors>
+    <author uuid="4979849b-1c14-46a9-ad9e-3bff3f387fe8"/> <!-- BlanchePanda -->
+    <author uuid="ffd655e7-9c56-46fb-9551-be3069839381" contribution="Map Additions"/> <!-- CredensJustitiam -->
+</authors>
+<contributors>
+    <contributor uuid="a2ca96a1-aafb-4259-8602-ae6e4ccbe2cf" contribution="XML Help"/> <!-- archenswag9001 -->
+</contributors>
+<broadcasts>
+    <alert after="1s">${zombie-team-name} are released after 20 seconds!</alert>
+    <alert after="20s">${zombie-team-name} have been released!</alert>
+</broadcasts>
+<rules>
+    <rule>Fall damage is off</rule>
+    <rule>${human-team-name} name tags don't show</rule>
+    <rule>${zombie-team-name} have Speed I</rule>
+</rules>
+<kits>
+    <kit id="blindness">
+        <effect>blindness</effect>
+    </kit>
+    <kit id="seeker-kit" force="true">
+        <game-mode>adventure</game-mode>
+        <item slot="0" unbreakable="true" material="stone sword" name="`2`lInfection Sword"/>
+        <helmet locked="true" material="skull item" damage="2"/>
+        <chestplate locked="true" unbreakable="true" material="leather chestplate"/>
+        <leggings locked="true" unbreakable="true" material="leather leggings"/>
+        <boots locked="true" unbreakable="true" material="leather boots"/>
+        <effect duration="1">blindness</effect>
+        <effect>speed</effect>
+    </kit>
+    <kit id="hiders-kit">
+        <game-mode>adventure</game-mode>
+        <helmet locked="true" unbreakable="true" material="chainmail helmet"/>
+        <chestplate locked="true" unbreakable="true" material="chainmail chestplate"/>
+        <leggings locked="true" unbreakable="true" material="chainmail leggings"/>
+        <boots locked="true" unbreakable="true" material="iron boots"/>
+        <item slot="0" unbreakable="true" material="iron sword"/>
+        <item slot="1" unbreakable="true" material="bow"/>
+        <item slot="2" material="arrow" amount="64"/>
+    </kit>
+    <!-- Tunnel magic voodoo -->
+    <kit id="clear-speed" force="true">
+        <effect duration="1" amplifier="6">speed</effect>
+    </kit>
+    <kit id="give-speed" force="true">
+        <effect amplifier="6">speed</effect>
+    </kit>
+</kits>
+<spawns>
+    <spawn filter="before-20s" team="human-team" kit="hiders-kit" yaw="180" safe="true">
+        <regions>
+            <cuboid min="15.5,16,11.5" max="34.5,16.5,22.5"/>
+        </regions>
+    </spawn>
+    <spawn filter="before-20s" team="zombie-team" kit="blindness" yaw="180">
+        <regions>
+            <cuboid min="24.5,95,16.5" max="25.5,95.5,17.5"/>
+        </regions>
+    </spawn>
+    <!-- After 20 seconds -->
+    <spawn filter="after-20s" team="human-team" kit="zombie-switch-kit" yaw="180" safe="true">
+        <regions>
+            <cuboid min="15.5,16,11.5" max="34.5,16.5,22.5"/>
+        </regions>
+    </spawn>
+    <spawn filter="after-20s" team="zombie-team" kit="seeker-kit" yaw="180">
+        <regions>
+            <cuboid min="24.5,95,16.5" max="25.5,95.5,17.5"/>
+        </regions>
+    </spawn>
+    <default yaw="180">
+        <regions>
+            <cuboid min="23.5,38,57.5" max="26.5,38.5,60.5"/>
+        </regions>
+    </default>
+</spawns>
+<filters>
+    <not id="before-20s">
+        <time id="after-20s">21s</time>
+    </not>
+</filters>
+<regions>
+    <cuboid id="seeker-kit-zone" min="10,30,0" max="40,50,40"/>
+    <!-- When seekers fall onto map, they recieve their kit and lose blindness -->
+    <apply kit="seeker-kit" region="seeker-kit-zone" filter="zombie-team"/>
+    <complement id="map-without-tunnels"> <!-- This subtracts the tunnels union from the map so you're left with a region that emcompasses everything else -->
+        <everywhere/>
+        <union id="tunnels">
+            <cuboid id="tunnel-a1" min="31,11,0" max="24,12,-49"/>
+            <cuboid id="tunnel-a2" min="23,11,-45" max="10,12,-49"/>
+            <cuboid id="tunnel-b1" min="6,11,-1" max="0,12,-56"/>
+            <cuboid id="tunnel-b2" min="0,11,-60" max="34,12,-50"/>
+        </union>
+    </complement>
+    <apply kit="give-speed" region="tunnels"/> <!-- This gives speed 4 when entering tunnels regions -->
+    <apply kit="clear-speed" region="map-without-tunnels"/> <!-- This gives speed 4 for 1 second once leaving tunnel regions, thus clearing the effect -->
+</regions>
+<!-- TODO: migrate fake destroyables to structure or fill actions -->
+<modes show-before="20s">
+    <mode id="start-game" after="20s" material="air" name="The initial group of ${zombie-team-name} are being released"/>
+</modes>
+<destroyables name="cage" materials="glass" required="false" show="false" owner="human-team">
+    <destroyable id="cage" modes="start-game">
+        <region>
+            <cuboid min="23,93,19" max="27,100,15"/>
+        </region>
+    </destroyable>
+</destroyables>
+<kill-rewards>
+    <kill-reward>
+        <kit>
+            <effect duration="5" amplifier="2">regeneration</effect>
+        </kit>
+        <filter>
+            <all>
+                <team>human-team</team>
+                <kill-streak count="1" repeat="true"/>
+            </all>
+        </filter>
+    </kill-reward>
+</kill-rewards>
+<itemremove>
+    <item>arrow</item>
+    <item>leather helmet</item>
+    <item>leather chestplate</item>
+    <item>leather leggings</item>
+    <item>leather boots</item>
+    <item>chainmail chestplate</item>
+    <item>chainmail leggings</item>
+    <item>chainmail boots</item>
+    <item>chainmail helmet</item>
+    <item>skull item</item>
+    <item>stone sword</item>
+    <item>iron sword</item>
+    <item>armor stand</item>
+    <item>bow</item>
+    <item>iron boots</item>
+    <item>potion</item>
+    <item>stick</item>
+    <item>stone button</item>
+    <item>wood button</item>
+    <item>web</item>
+</itemremove>
+</map>

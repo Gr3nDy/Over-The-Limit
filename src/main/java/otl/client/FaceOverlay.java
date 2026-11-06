@@ -42,7 +42,7 @@ public final class FaceOverlay implements LayerRenderer<AbstractClientPlayer> {
         Minecraft mc=MinecraftAccess.get();
         boolean own=p==mc.thePlayer;
         boolean preview=FaceDoll.preview;
-        if(!preview&&p.isSneaking())return;
+        if(!preview&&(p.isSneaking()||p.isInvisibleToPlayer(mc.thePlayer)))return;
         UtilitySettings.load();FaceConfig.load();
         if(!preview){
             if(!UtilitySettings.faceRig||!ServerScope.active())return;
@@ -327,24 +327,6 @@ public final class FaceOverlay implements LayerRenderer<AbstractClientPlayer> {
         return best==null?0xFFC8A078:0xFF000000|(best[1]/best[0])<<16|(best[2]/best[0])<<8|best[3]/best[0];
     }
     private static int colourDistance(int a,int b){return Math.abs((a>>16&255)-(b>>16&255))+Math.abs((a>>8&255)-(b>>8&255))+Math.abs((a&255)-(b&255));}
-
-    private static int skinCell(Group g,int[] marks,int[] face){
-        int cx=g.minC+g.maxC,cy=g.minR+g.maxR;
-        int best=-1,bestD=Integer.MAX_VALUE;
-        for(int r=0;r<8;r++)for(int c=0;c<8;c++){
-            int i=r*8+c;
-            if(marks[i]!=0||(face[i]>>>24)<200)continue;
-            int d=(2*c-cx)*(2*c-cx)+(2*r-cy)*(2*r-cy);
-            if(r<g.minR)d+=6; // prefer a temple or cheek over the forehead/hair
-            if(d<bestD){bestD=d;best=i;}
-        }
-        if(best>=0)return best;
-        for(int r=Math.min(7,g.maxR+1);r>=0;r--){
-            int i=r*8+Math.max(0,Math.min(7,(g.minC+g.maxC)/2));
-            if((face[i]>>>24)>=64)return i;
-        }
-        return Math.max(0,Math.min(63,g.maxR*8+g.minC));
-    }
 
     private static int srcPx(int[] face,int[] hat,int i){
         int f=face[i];

@@ -1,0 +1,366 @@
+<map proto="1.5.1">
+<version>1.0.4</version>
+<name>Strange Dreams I</name>
+<objective>Destroy the enemy's monument to win!</objective>
+<created>2026-07-11</created>
+<gamemode>dtm</gamemode>
+<phase>development</phase>
+<authors>
+    <author uuid="4d6ecfd1-2e0e-49b6-83c6-e230efe448d4"/> <!-- 3lii3 -->
+</authors>
+<contributors>
+    <contributor uuid="fe3608b7-d105-4029-8800-34b3147065b6" contribution="Borrowed trees from"/> <!-- rockymine -->
+    <contributor uuid="ca25df12-cc0b-4812-a85b-7aa134561f88" contribution="Feedback"/> <!-- eunsoule -->
+    <contributor uuid="63ddf58a-ba2c-4d39-8481-6358bb46c63a" contribution="Feedback"/> <!-- samschaap -->
+</contributors>
+<constants>
+    <constant id="eff.modes-preset">every-5m</constant>
+    <constant id="eff.efficiency-tool">diamond pickaxe</constant>
+    <constant id="eff.team-1">blue</constant>
+    <constant id="eff.team-2">red</constant>
+    <constant id="eff.t1-m1-region">red-monument</constant>
+    <constant id="eff.t2-m1-region">blue-monument</constant>
+    <constant id="entity.generic.extinguish_fire">entity.generic.extinguish_fire</constant>
+</constants>
+<include id="efficiency-variables"/>
+<include id="gapple-kill-reward"/>
+<include id="lava-buckets"/>
+<maxbuildheight>70</maxbuildheight>
+<teams>
+    <team id="red" color="RED" max="24">Red</team>
+    <team id="blue" color="BLUE" max="24">Blue</team>
+</teams>
+<broadcasts>
+    <tip after="5s" every="7m30s">You can trade gold ingots with villagers for items!</tip>
+    <tip after="30s" every="7m30s">There are books which lead you to mounds of loot!</tip>
+    <tip after="1m" every="7m30s">There are gold ores and coal ores everywhere, mine them to trade!</tip>
+    <tip after="1m30s" every="7m30s">There are gold ores and coal ores everywhere, mine them to trade!</tip>
+    <tip after="2m" every="7m30s">You get a TNT at 5 killstreak!</tip>
+    <tip after="2m30s" every="7m30s">You get 1 gold ingot after each kill, you could use them to trade!</tip>
+</broadcasts>
+<kits>
+    <kit id="default-kit">
+        <item slot="0" material="iron sword" unbreakable="true"/>
+        <item slot="1" material="bow" unbreakable="true"/>
+        <item slot="2" material="diamond pickaxe" unbreakable="true"/>
+        <item slot="3" material="iron axe" unbreakable="true"/>
+        <item slot="30" material="iron shovel" unbreakable="true"/>
+        <item slot="4" material="dark oak planks" team-color="true" amount="64"/>
+        <item slot="31" material="dark oak planks" team-color="true" amount="64"/>
+        <item slot="5" material="glass" amount="16"/>
+        <item slot="8" material="golden apple" amount="1"/>
+        <item slot="28" material="arrow" amount="48"/>
+        <chestplate team-color="true" material="leather chestplate" unbreakable="true"/>
+        <leggings team-color="true" material="leather leggings" unbreakable="true"/>
+        <boots team-color="true" material="leather boots" unbreakable="true"/>
+        <effect duration="2" amplifier="10">damage resistance</effect>
+    </kit>
+</kits>
+<spawns>
+    <default>
+        <region yaw="0">
+            <point id="default-spawn-point">0.5,110,0.5</point>
+        </region>
+    </default>
+    <spawn team="red" kit="default-kit">
+        <region yaw="0">
+            <point id="red-spawn-point">-98.5,31,-68.5</point>
+        </region>
+    </spawn>
+    <spawn team="blue" kit="default-kit">
+        <region yaw="180">
+            <point id="blue-spawn-point">99.5,31,69.5</point> 
+        </region>
+    </spawn>
+</spawns>
+<filters>
+    <material id="lava">lava</material>
+</filters>
+<regions>
+    <union id="team-spawns">
+        <union id="blue-spawn" >
+            <rectangle min="64,38" max="99,76"/>
+            <rectangle min="116,57" max="92,76"/>
+        </union>
+        <union id="red-spawn">
+            <rectangle min="-63,-37" max="-98,-75"/>
+            <rectangle min="-115,-56" max="-91,-75"/>
+        </union>
+    </union>
+    <negative id="outside-gameplay-area">
+        <rectangle id="gameplay-area" min="-175,-75" max="176,76"/>
+    </negative>
+    <apply block-physics="deny(lava)" region="everywhere"/>
+    <cuboid id="blue-monument" min="94,44,0" max="95,41,1"/>
+    <cuboid id="red-monument" min="-93,44,1" max="-94,41,0"/>
+    <apply block-place="never" block-break="never" region="team-spawns" message="Thou shalt not edit spawns!"/>
+    <apply enter="blue" region="blue-spawn" message="Thou shalt not enter other team's spawn!"/>
+    <apply enter="red" region="red-spawn" message="Thou shalt not enter other team's spawn!"/>
+    <apply block="never" region="outside-gameplay-area" message="You may not build outside the map!"/>
+</regions>
+<destroyables>
+    <destroyable name="Monument" required="true" materials="obsidian" owner="red" show-progress="true" repairable="false"  region="red-monument"/>
+    <destroyable name="Monument" required="true" materials="obsidian" owner="blue" show-progress="true" repairable="false"  region="blue-monument"/>
+</destroyables>
+<shops>
+    <shop id="butcher-shop" name="`8`lJack Ketch">
+        <category id="default" name="`eDeals" material="gold ingot">
+            <item material="gold axe" amount="1" price="12" currency="gold ingot">
+                <attribute operation="multiply" amount="-0.2">generic.movementSpeed</attribute>
+                <attribute operation="base" amount="8">generic.attackDamage</attribute>
+            </item>
+            <item material="stone hoe" amount="1" price="8" currency="gold ingot">
+                <attribute operation="multiply" amount="0.2">generic.movementSpeed</attribute>
+                <attribute operation="base" amount="5">generic.attackDamage</attribute>
+            </item>
+            <item material="gunpowder" amount="1" price="3" currency="gold ingot"/>
+            <item material="sand" amount="1" price="2" currency="gold ingot"/>
+        </category>
+    </shop>
+    <shop id="blacksmith-shop" name="`8`lEnvil Heed">
+        <category id="default" name="`eDeals" material="gold ingot">
+            <item material="iron helmet" amount="1" price="8" currency="gold ingot">
+                <enchantment level="3">respiration</enchantment>
+                <enchantment>aqua affinity</enchantment>
+            </item>
+            <item material="iron chestplate" amount="1" price="8" currency="gold ingot">
+                <enchantment>projectile protection</enchantment>
+            </item>
+            <item material="iron leggings" amount="1" price="8" currency="gold ingot">
+                <enchantment>depth strider</enchantment>
+            </item>
+            <item material="iron boots" amount="1" price="8" currency="gold ingot">
+                <enchantment>feather falling</enchantment>
+            </item>
+            <item material="gold ingot" amount="1" price="4" currency="flint"/>
+            <item material="gold ingot" amount="1" price="4" currency="iron block"/>
+        </category>
+    </shop>
+    <shop id="street-shop" name="`8`lKerrot Eattar">
+        <category id="default" name="`eDeals" material="gold ingot">
+            <item material="gold ingot" amount="1" price="8" currency="carrot item"/>
+            <item material="redstone" amount="2" price="1" currency="gold ingot"/>
+            <item material="string" amount="2" price="1" currency="gold ingot"/>
+        </category>
+    </shop>
+    <shop id="fisher-shop" name="`8`lStanki Feesh">
+        <category id="default" name="`eDeals" material="gold ingot">
+            <item material="gold ingot" amount="1" price="2" currency="raw fish"/>
+            <item material="fishing rod" amount="1" price="24" currency="gold ingot">
+                <enchantment>lure</enchantment>
+                <enchantment>luck of the sea</enchantment>
+            </item>
+        </category>
+    </shop>
+    <shop id="liberarian-shop" name="`8`lBaak Keepria">
+        <category id="default" name="`eDeals" material="gold ingot">
+            <item material="enchanted book" amount="1" price="48" currency="gold ingot">
+                <stored-enchantment>efficiency</stored-enchantment>
+            </item>
+            <item material="enchanted book" amount="1" price="48" currency="gold ingot">
+                <stored-enchantment>fortune</stored-enchantment>
+            </item>
+            <item material="enchanted book" amount="1" price="36" currency="gold ingot">
+                <stored-enchantment>fire aspect</stored-enchantment>
+            </item>
+            <item material="enchanted book" amount="1" price="36" currency="gold ingot">
+                <stored-enchantment>flame</stored-enchantment>
+            </item>
+        </category>
+    </shop>
+    <shop id="witch-shop" name="`8`lDahck Weit">
+        <category id="default" name="`eDeals" material="gold ingot">
+            <item material="potion" amount="1" damage="5" price="4" currency="gold ingot">
+                <effect amplifier="1">instant_health</effect>
+            </item>
+            <item material="potion" amount="1" damage="16386" price="6" currency="gold ingot">
+                <effect duration="45s">speed</effect>
+            </item>
+            <item material="potion" amount="1" damage="16395" price="6" currency="gold ingot">
+                <effect duration="45s">jump_boost</effect>
+            </item>
+            <item material="potion" amount="1" damage="9" price="8" currency="gold ingot">
+                <effect duration="30s">strength</effect>
+            </item>
+            <item material="potion" amount="1" damage="14" price="16" currency="gold ingot">
+                <effect duration="30s">invisibility</effect>
+                <effect duration="35s">slow_digging</effect>
+            </item>
+            <item material="potion" amount="1" damage="16391" price="16" currency="gold ingot">
+                <effect duration="10s">blindness</effect>
+                <effect duration="5s">slowness</effect>
+            </item>
+        </category>
+    </shop>
+</shops>
+<shopkeepers>
+    <!--Blue-->
+    <shopkeeper name="`9`lJack Ketch" shop="butcher-shop">
+        <point yaw="180">124.5,38,44.5</point>
+    </shopkeeper>
+    <shopkeeper name="`9`lEnvil Heed" shop="blacksmith-shop">
+        <point>86.5,37,-66.5</point>
+    </shopkeeper>
+    <shopkeeper name="`9`lKerrot Eattar" shop="street-shop">
+        <point yaw="180">109,34,-49.5</point>
+    </shopkeeper>
+    <shopkeeper name="`9`lBaak Keepria" shop="liberarian-shop">
+        <point yaw="-135">155.5,41,20.5</point>
+    </shopkeeper>
+    <shopkeeper name="`9`lDahck Weit" mob="Witch" shop="witch-shop">
+        <point yaw="180">167.5,33,17.5</point>
+    </shopkeeper>
+    <shopkeeper name="`9`lStanki Feesh" shop="fisher-shop">
+        <point yaw="135">62.5,30,4.5</point>
+    </shopkeeper>
+    <!--Red-->
+    <shopkeeper name="`c`lJack Ketch" shop="butcher-shop">
+        <point>-123.5,38,-43.5</point>
+    </shopkeeper>
+    <shopkeeper name="`c`lEnvil Heed" shop="blacksmith-shop">
+        <point yaw="180">-85.5,37,67.5</point>
+    </shopkeeper>
+    <shopkeeper name="`c`lKerrot Eattar" shop="street-shop">
+        <point>-108,34,50.5</point>
+    </shopkeeper>
+    <shopkeeper name="`c`lBaak Keepria" shop="liberarian-shop">
+        <point yaw="45">-154.5,41,-19.5</point>
+    </shopkeeper>
+    <shopkeeper name="`c`lDahck Weit" mob="Witch" shop="witch-shop">
+        <point>-166.5,33,-16.5</point>
+    </shopkeeper>
+    <shopkeeper name="`c`lStanki Feesh" shop="fisher-shop">
+        <point yaw="-45">-61.5,30,-3.5</point>
+    </shopkeeper>
+</shopkeepers>
+<kill-rewards>
+    <kill-reward>
+        <item amount="1" material="gold ingot"/>
+        <item amount="12" material="arrow"/>
+        <item amount="12" material="dark oak planks"/>
+    </kill-reward>
+    <kill-reward>
+        <filter>
+            <kill-streak count="5"/>
+        </filter>
+        <item material="tnt"/>
+    </kill-reward>
+</kill-rewards>
+<itemkeep>
+    <item>golden apple</item>
+    <item>arrow</item>
+</itemkeep>
+<itemremove>
+    <item>leather boots</item>
+    <item>leather chestplate</item>
+    <item>leather leggings</item>
+    <item>glass</item>
+    <item>obsidian</item>
+    <item>tnt</item>
+</itemremove>
+<block-drops>
+    <rule>
+        <filter>
+            <material>stone</material>
+        </filter>
+        <drops>
+            <item chance="0.25" material="cobblestone"/>
+        </drops>
+    </rule>
+    <rule>
+        <filter>
+            <material>andesite</material>
+        </filter>
+        <drops>
+            <item chance="0.25" material="cobblestone"/>
+        </drops>
+    </rule>
+    <rule>
+        <filter>
+            <material>diorite</material>
+        </filter>
+        <drops>
+            <item chance="0.25" material="cobblestone"/>
+        </drops>
+    </rule>
+    <rule>
+        <filter>
+            <material>stained clay:5</material>
+        </filter>
+        <drops>
+            <item chance="0.25" material="stained clay:5"/>
+        </drops>
+    </rule>
+    <rule>
+        <filter>
+            <material>stained clay:12</material>
+        </filter>
+        <drops>
+            <item chance="0.25" material="stained clay:12"/>
+        </drops>
+    </rule>
+    <rule>
+        <filter>
+            <material>stained clay:9</material>
+        </filter>
+        <drops>
+            <item chance="0.25" material="stained clay:9"/>
+        </drops>
+    </rule>
+    <rule>
+        <filter>
+            <material>clay ball</material>
+        </filter>
+        <drops>
+            <item chance="0.25" material="clay ball"/>
+        </drops>
+    </rule>
+    <rule>
+        <filter>
+            <material>spruce planks</material>
+        </filter>
+        <drops>
+            <item chance="0.25" material="spruce planks"/>
+        </drops>
+    </rule>
+    <rule>
+        <filter>
+            <material>coarse dirt</material>
+        </filter>
+        <drops>
+            <item chance="0.25" material="dirt"/>
+        </drops>
+    </rule>
+    <rule>
+        <filter>
+            <material>dirt</material>
+        </filter>
+        <drops>
+            <item chance="0.25" material="dirt"/>
+        </drops>
+    </rule>
+    <rule>
+        <filter>
+            <material>gravel</material>
+        </filter>
+        <drops>
+            <item chance="0.05" material="flint"/>
+        </drops>
+    </rule>
+</block-drops>
+<toolrepair>
+    <tool>iron sword</tool>
+    <tool>bow</tool>
+    <tool>diamond pickaxe</tool>
+    <tool>iron axe</tool>
+    <tool>iron shovel</tool>
+</toolrepair>
+<gamerules>
+    <doFireTick>false</doFireTick>
+    <randomTickSpeed>0</randomTickSpeed>
+</gamerules>
+<hunger>
+    <depletion>off</depletion>
+</hunger>
+<respawn delay="3s"/>
+</map>

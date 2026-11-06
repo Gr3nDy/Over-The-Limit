@@ -1,0 +1,223 @@
+<map proto="1.5.0">
+<name>Celestial Islands</name>
+<version>1.1.4</version>
+<phase>staging</phase>
+<objective>Take the enemy's wools located near their base and place them back at your spawn!</objective>
+<created>2022-10-20</created>
+<include id="gapple-kill-reward"/>
+<constants>
+    <constant id="height-limit">27</constant>
+</constants>
+<authors>
+    <author uuid="654a9fe7-c75c-4b45-91df-8d48c4a5e072" contribution="Map Builder"/> <!-- Flamiix -->
+    <author uuid="0dcb9fb5-bd18-4cd9-a265-0c24eb41e086" contribution="Map Builder"/> <!-- Aaewe -->
+</authors>
+<contributors> 
+    <contributor uuid="9d4779a8-d35f-45d2-b51c-95de7a77e128" contribution="Map Packaging, Minor Fixes, and XML"/> <!-- zzuf -->
+</contributors>
+<broadcasts>
+    <tip after="2s" every="4m">For each kill, along with a golden apple and some blocks, you also get 3 iron ingots!</tip>
+</broadcasts>
+<teams>
+    <team id="red-team" color="dark red" dye-color="red" max="16">Red</team>
+    <team id="blue-team" color="blue" dye-color="blue" max="16">Blue</team>
+</teams>
+<spawns>
+    <spawn team="red-team" kit="spawn-kit" yaw="-90">
+        <region>
+            <point>-109.5,16,-139.5</point>
+        </region>
+    </spawn>
+    <spawn team="blue-team" kit="spawn-kit" yaw="90">
+        <region>
+            <point>70.5,16,-67.5</point>
+        </region>
+    </spawn>
+    <default yaw="90">
+        <region>
+            <point>-18.5,98,-103.5</point>
+        </region>
+    </default>
+</spawns>
+<kits>
+    <kit id="spawn-kit">
+        <clear/>
+        <item slot="0" material="stone sword" unbreakable="true"/>
+        <item slot="1" material="bow" unbreakable="true"/>
+        <item slot="2" material="iron pickaxe" unbreakable="true"/>
+        <item slot="3" material="iron axe" unbreakable="true"/>
+        <item slot="4" material="wood" damage="2" amount="64"/>
+        <item slot="5" material="smooth brick" damage="2" amount="32"/>
+        <item slot="7" material="water bucket"/>
+        <item slot="8" material="golden apple"/>
+        <item slot="28" material="arrow" amount="48"/>
+        <item slot="29" material="shears" enchantment="dig speed" unbreakable="true"/>
+        <item slot="30" material="stone spade" unbreakable="true"/>
+        <item slot="31" material="wood" damage="2" amount="64"/>
+        <item slot="32" material="workbench" amount="16"/>
+        <helmet material="leather helmet" team-color="true" unbreakable="true"/>
+        <chestplate material="leather chestplate" team-color="true" unbreakable="true"/>
+        <leggings material="chainmail leggings" unbreakable="true"/>
+        <boots material="leather boots" team-color="true" enchantment="protection fall" unbreakable="true"/>
+        <effect duration="2s" amplifier="255">damage resistance</effect>
+    </kit>
+</kits>
+<filters>
+    <deny id="deny-players">
+        <participating/>
+    </deny>
+    <material id="only-gold">gold block</material>
+    <all id="blue-in-wr">
+        <team id="only-blue">blue-team</team>
+        <filter id="woolrooms-filter"/>
+    </all>
+    <all id="red-in-wr">
+        <team id="only-red">red-team</team>
+        <filter id="woolrooms-filter"/>
+    </all>
+    <blocks id="woolrooms-filter" region="wool-room-blocks">
+        <any>
+            <material>air</material>
+            <material>web</material>
+            <material>long grass</material>
+            <material>red rose</material>
+            <material>yellow flower</material>
+            <material>stained glass</material>
+        </any>
+    </blocks>
+</filters>
+<regions>
+    <negative id="void-area">
+        <region id="buildable-area"/>
+        <region id="victory-monuments"/>
+        <region id="spawn-areas"/>
+        <region id="wool-room-blocks"/>
+    </negative>
+    <union id="buildable-area">
+        <!-- starts from blue south side -->
+        <rectangle min="37,7" max="50,-39"/>
+        <rectangle min="-19,-18" max="39,-39"/>
+        <rectangle min="-43,-38" max="28,-68"/>
+        <complement>
+            <rectangle min="-67,-68" max="28,-139"/>
+            <rectangle min="-25,-96" max="-14,-111"/>
+        </complement>
+        <rectangle min="-67,-139" max="4,-169"/>
+        <rectangle min="-78,-168" max="-20,-189"/>
+        <rectangle min="-89,-168" max="-76,-214"/>
+        <!-- orange lane -->
+        <rectangle min="-85,-80" max="-67,-97"/>
+        <rectangle min="-67,-97" max="-77,-128"/>
+        <!-- cyan lane -->
+        <rectangle min="46,-127" max="28,-110"/>
+        <rectangle min="28,-110" max="38,-79"/>
+    </union>
+    <union id="victory-monuments">
+        <union id="red-victory-monuments">
+            <block id="blue-victory-monument">-115,17,-135</block>
+            <block id="cyan-victory-monument">-115,17,-140</block>
+        </union>
+        <union id="blue-victory-monuments">
+            <block id="yellow-victory-monument">75,17,-68</block>
+            <block id="orange-victory-monument">75,17,-73</block>
+        </union>
+    </union>
+    <complement id="wool-rooms">
+        <union>
+            <union id="red-wool-rooms"> <!-- Wools on Red side -->
+                <rectangle min="-85,-97" max="-136,-80"/> <!-- Orange -->
+                <rectangle min="-89,-214" max="-112,-200"/> <!-- Yellow -->
+            </union>
+            <union id="blue-wool-rooms"> <!-- Wools on Blue side -->
+                <rectangle min="46,-110" max="97,-127"/> <!-- Cyan -->
+                <rectangle min="50,7" max="73,-7"/> <!-- Blue -->
+            </union>
+        </union>
+        <region id="wool-room-blocks"/>
+    </complement>
+    <union id="wool-room-blocks">
+        <union id="red-wool-room-blocks"> <!-- Wools on Red side -->
+            <cuboid min="-85,0,-97" max="-136,${height-limit},-80"/> <!-- Orange -->
+            <cuboid min="-89,0,-214" max="-112,${height-limit},-200"/> <!-- Yellow -->
+        </union>
+        <union id="blue-wool-room-blocks"> <!-- Wools on Blue side -->
+            <cuboid min="46,0,-110" max="97,${height-limit},-127"/> <!-- Cyan -->
+            <cuboid min="50,0,7" max="73,${height-limit},-7"/> <!-- Blue -->
+        </union>
+    </union>
+    <apply enter="only-red" region="blue-wool-rooms" message="You may not enter your own wool room!"/>
+    <apply enter="only-blue" region="red-wool-rooms" message="You may not enter your own wool room!"/>
+    <apply block="red-in-wr" region="blue-wool-room-blocks" message="You may not edit the wool room!"/>
+    <apply block="blue-in-wr" region="red-wool-room-blocks" message="You may not edit the wool room!"/>
+    <apply block="never" region="wool-rooms" message="You may not edit the wool room!"/>
+    <apply block="only-red" enter="only-red" region="blue-wool-rooms" message="You may not modify nor enter your team's wool rooms!"/>
+    <apply block="only-blue" enter="only-blue" region="red-wool-rooms" message="You may not modify nor enter your team's wool rooms!"/>
+    <union id="spawn-areas">
+        <complement id="red-spawn-area">
+            <rectangle min="-60,-188" max="-143,-106"/>
+            <region id="red-victory-monuments"/>
+            <region id="buildable-area"/>
+        </complement>
+        <complement id="blue-spawn-area">
+            <rectangle min="21,-19" max="104,-101"/>
+            <region id="blue-victory-monuments"/>
+            <region id="buildable-area"/>
+        </complement>
+    </union>
+    <apply block-place="deny-players" block-break="only-gold" region="spawn-areas" message="You may only break gold blocks in spawn areas."/>
+    <apply enter="only-blue" region="blue-spawn-area" message="You may not enter your enemies' spawn!"/>
+    <apply enter="only-red" region="red-spawn-area" message="You may not enter your enemies' spawn!"/>
+    <apply block="never" region="void-area" message="You may not edit the void!"/>
+</regions>
+<wools craftable="false">
+    <wool team="red-team" color="blue" location="59.5,19,-1.5" monument="blue-victory-monument"/>
+    <wool team="red-team" color="cyan" location="83.5,13,-120.5" monument="cyan-victory-monument"/>
+    <wool team="blue-team" color="yellow" location="-98.5,19,-205.5" monument="yellow-victory-monument"/>
+    <wool team="blue-team" color="orange" location="-122.5,13,-86.5" monument="orange-victory-monument"/>
+</wools>
+<renewables>
+    <renewable region="spawn-areas" renew-filter="only-gold" rate="1" avoid-players="1"/>
+</renewables>
+<itemkeep>
+    <item>stone sword</item>
+    <item>bow</item>
+    <item>iron pickaxe</item>
+    <item>iron axe</item>
+    <item>stone spade</item>
+    <item>arrow</item>
+    <item>wood</item>
+    <item>smooth brick</item>
+    <item>golden apple</item>
+    <item>water bucket</item>
+    <item>workbench</item>
+</itemkeep>
+<itemremove>
+    <item>leather helmet</item>
+    <item>leather chestplate</item>
+    <item>chainmail leggings</item>
+    <item>leather boots</item>
+    <item>wool:0</item>
+    <item>shears</item>
+    <item>wood</item>
+    <item>smooth brick</item>
+    <item>brown mushroom</item>
+</itemremove>
+<toolrepair>
+    <tool>stone sword</tool>
+    <tool>bow</tool>
+    <tool>iron pickaxe</tool>
+    <tool>iron axe</tool>
+    <tool>stone spade</tool>
+    <tool>arrow</tool>
+</toolrepair>
+<kill-rewards>
+    <kill-reward>
+        <item material="iron ingot" amount="3"/>
+        <item material="wood" damage="2" amount="16"/>
+    </kill-reward>
+</kill-rewards>
+<hunger>
+    <depletion>off</depletion>
+</hunger>
+<maxbuildheight>${height-limit}</maxbuildheight>
+</map>

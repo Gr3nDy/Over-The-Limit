@@ -3,7 +3,20 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class ChatRulesTest {
+    @Test public void channelPrefixesFitThePacketLimit(){
+        for(String key:new String[]{"all","team","party","pm:abcdefghijklmnop"}){
+            int limit=ChatRules.inputLimit(key,"hello",true);
+            String body=String.join("",java.util.Collections.nCopies(limit,"x"));
+            assertEquals(100,ChatRules.outgoing(key,body).length());
+            assertEquals(100,ChatRules.inputLimit(key,"/command",true));
+            assertEquals(100,ChatRules.inputLimit(key,"lobby text",false));
+        }
+        assertEquals(88,ChatRules.inputLimit("party","hello",true));
+    }
     @Test public void allowlistIsExact(){
+        assertEquals("172.65.223.142",ServerScope.host("172.65.223.142"));
+        assertEquals("172.65.223.142",ServerScope.host("172.65.223.142:25565"));
+        assertEquals("",ServerScope.host("172.65.223.142.evil.net"));
         assertEquals("play.oc.tc",ServerScope.host("PLAY.OC.TC:25565"));assertEquals("vanish.oc.tc",ServerScope.host("vanish.oc.tc"));
         for(String s:new String[]{"oc.tc","evilplay.oc.tc","play.oc.tc.evil.net","localhost","127.0.0.1","play.oc.tc:notaport",""})assertEquals("",ServerScope.host(s));
     }

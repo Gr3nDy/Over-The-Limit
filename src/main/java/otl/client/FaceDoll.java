@@ -5,8 +5,6 @@ import net.minecraft.client.entity.AbstractClientPlayer;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.RenderHelper;
-import net.minecraft.client.renderer.entity.RenderManager;
-import net.minecraft.client.gui.ScaledResolution;
 import org.lwjgl.opengl.GL11;
 import net.minecraft.client.model.ModelPlayer;
 import net.minecraft.client.model.ModelRenderer;
@@ -52,45 +50,4 @@ final class FaceDoll {
         }
     }
 
-    static void draw(int x, int y, int scale, float mouseX, float mouseY, AbstractClientPlayer player) {
-        if (player == null || scale <= 0) return;
-        Minecraft client = MinecraftAccess.get();
-        RenderManager manager = client.getRenderManager();
-        float yawOffset = player.renderYawOffset;
-        float yaw = player.rotationYaw;
-        float pitch = player.rotationPitch;
-        float prevHead = player.prevRotationYawHead;
-        float head = player.rotationYawHead;
-        GlStateManager.enableColorMaterial();
-        GlStateManager.pushMatrix();
-        try {
-            GlStateManager.translate((float)x, (float)y, 50.0F);
-            GlStateManager.scale((float)(-scale), (float)scale, (float)scale);
-            GlStateManager.rotate(180.0F, 0.0F, 0.0F, 1.0F);
-            GlStateManager.rotate(135.0F, 0.0F, 1.0F, 0.0F);
-            RenderHelper.enableStandardItemLighting();
-            GlStateManager.rotate(-135.0F, 0.0F, 1.0F, 0.0F);
-            player.renderYawOffset = 0;
-            player.rotationYaw = 0;
-            player.rotationPitch = 0;
-            player.rotationYawHead = player.rotationYaw;
-            player.prevRotationYawHead = player.rotationYaw;
-            GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
-            OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, 240.0F, 240.0F);
-            manager.setPlayerViewY(180.0F);
-            manager.setRenderShadow(false);
-            manager.doRenderEntity(player, 0.0D, 0.0D, 0.0D, 0.0F, 1.0F, false);
-        } finally {
-            manager.setRenderShadow(true);
-            player.renderYawOffset = yawOffset;
-            player.rotationYaw = yaw;
-            player.rotationPitch = pitch;
-            player.prevRotationYawHead = prevHead;
-            player.rotationYawHead = head;
-            RenderHelper.disableStandardItemLighting();
-            GlStateManager.disableRescaleNormal();
-            GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
-            GlStateManager.popMatrix();
-        }
-    }
 }

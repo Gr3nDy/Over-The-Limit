@@ -1,0 +1,115 @@
+<map proto="1.5.0">
+<name>Turnstile</name>
+<version>1.0.3</version>
+<objective>Capture the Control Points to be the first team to reach 1250 points!</objective>
+<created>2024-03-03</created>
+<include id="gapple-kill-reward"/>
+<phase>staging</phase>
+<authors>
+    <author uuid="7755ac32-2fba-4ef6-a85b-93c354267a91"/> <!-- confect1on -->
+</authors>
+<score>
+    <limit>1250</limit>
+</score>
+<respawn delay="2.5s" auto="true"/>
+<teams>
+    <team id="blue-team" color="blue" max="18">Blue</team>
+    <team id="red-team" color="dark red" max="18">Red</team>
+</teams>
+<kits>
+    <kit id="default-kit">
+        <effect>night vision</effect>
+    </kit>
+    <kit id="spawn-kit" parent="default-kit">
+        <item slot="0" material="stone sword" unbreakable="true"/>
+        <item slot="1" material="bow" unbreakable="true"/>
+        <item slot="28" amount="16" material="arrow"/>
+        <helmet team-color="true" material="leather helmet" unbreakable="true"/>
+        <chestplate team-color="true" material="leather chestplate" unbreakable="true"/>
+        <leggings color="000000" material="leather leggings" unbreakable="true"/>
+        <boots color="000000" material="leather boots" unbreakable="true"/>
+        <game-mode>adventure</game-mode>
+    </kit>
+</kits>
+<spawns>
+    <spawn team="blue-team" kit="spawn-kit" region="blue-spawn"/>
+    <spawn team="red-team" kit="spawn-kit" region="red-spawn"/>
+    <default kit="default-kit" region="default-spawn" yaw="180"/>
+</spawns>
+<regions>
+    <cuboid id="tarmac" min="-6,1,86" max="-11,5,81"/>
+    <cuboid id="hangar" min="-2,1,50" max="3,5,45"/>
+    <union id="walls">
+        <cuboid id="red-wall" min="11,14,-2" max="5,18,-7"/>
+        <cuboid id="blue-wall" min="-10,14,11" max="-4,18,16"/>
+    </union>
+    <union id="spawns">
+        <cuboid id="red-spawn" min="4,2.5,-1" max="3,2.5,-3"/>
+        <cuboid id="blue-spawn" min="-2,2.5,-1" max="-3,2.5,-3"/>
+        <cylinder id="default-spawn" base="-13.5,18,69.5" radius="1" height="0"/>
+    </union>
+    <union id="portals">
+        <cuboid id="red-portal" min="13,9,17" max="16,5,19"/>
+        <cuboid id="blue-portal" min="-15,9,17" max="-11,6,19"/>
+        <cuboid id="red-crate" min="1,1,20" max="2,3,23"/>
+        <cuboid id="blue-crate" min="0,1,20" max="-1,3,23"/>
+        <cuboid id="vent-inside-red" min="3,24,15" max="4,25,16"/>
+        <cuboid id="vent-inside-blue" min="-2,24,-6" max="-3,25,-7"/>
+        <cuboid id="vent-outside-red" min="-16,10,29" max="-17,11,30"/>
+        <cuboid id="vent-outside-blue" min="19,10,40" max="20,11,41"/>
+    </union>
+    <cuboid id="crates-spawner" min="-14,2,64" size="3,1,3"/>
+    <cuboid id="inside-spawner" min="0,11,4" size="3,1,3"/>
+    <apply block="never"/>
+</regions>
+<control-points capture-rule="lead" show-progress="true" required="false" capture-time="5s">
+    <control-point name="Tarmac" capture="tarmac" progress="tarmac" captured="tarmac"/>
+    <control-point name="Hangar" capture="hangar" progress="hangar" captured="hangar"/>
+    <control-point name="Red Wall" capture="red-wall" progress="red-wall" captured="red-wall"/>
+    <control-point name="Blue Wall" capture="blue-wall" progress="blue-wall" captured="blue-wall"/>
+</control-points>
+<portals>
+    <portal region="blue-portal" x="@-13" y="@12" z="@-1"/>
+    <portal region="red-portal" x="@14" y="@13" z="@13"/>
+    <portal region="blue-crate" x="@-30" y="@6" z="@98"/>
+    <portal region="red-crate" x="@-2" y="@6" z="@105"/>
+    <portal region="vent-inside-red" x="@-16.5" y="@10.2" z="@30.5" yaw="@0"/>
+    <portal region="vent-inside-blue" x="@18.5" y="@10.2" z="@40.5" yaw="@90"/>
+    <portal region="vent-outside-red" x="@3.5" y="@24.2" z="@16.5" yaw="@0"/>
+    <portal region="vent-outside-blue" x="@-2.5" y="@24.2" z="@-7.5" yaw="@180"/>
+</portals>
+<spawners>
+    <spawner spawn-region="crates-spawner" player-region="everywhere" max-entities="1" delay="20s">
+        <item amount="1" name="`cGrenade" grenade="true" grenade-power="1.2" grenade-destroy="false" grenade-fire="false" material="snow ball"/>
+    </spawner>
+    <spawner spawn-region="inside-spawner" player-region="everywhere" max-entities="1" delay="20s">
+        <item amount="1" name="`cGrenade" grenade="true" grenade-power="1.2" grenade-destroy="false" grenade-fire="false" material="snow ball"/>
+    </spawner>
+</spawners>
+<kill-rewards>
+    <kill-reward>
+        <item amount="8" material="arrow"/>
+    </kill-reward>
+</kill-rewards>
+<toolrepair>
+    <tool>stone sword</tool>
+    <tool>bow</tool>
+</toolrepair>
+<itemremove>
+    <item>leather helmet</item>
+    <item>leather chestplate</item>    
+    <item>leather leggings</item>
+    <item>leather boots</item>
+    <item>golden apple</item>
+    <item>stone sword</item>
+    <item>bow</item>
+    <item>arrow</item>
+</itemremove>
+<gamerules>
+    <doDaylightCycle>false</doDaylightCycle>
+    <doFireTick>false</doFireTick>
+</gamerules>
+<hunger>
+    <depletion>off</depletion>
+</hunger>
+</map>

@@ -1,0 +1,157 @@
+<map proto="1.5.0">
+<name>Domo CTF</name>
+<version>1.2.4</version>
+<created>2016-01-28</created>
+<objective>Score points by delivering flags to the score box on the enemy's side!</objective>
+<include id="gapple-kill-reward"/>
+<authors>
+    <author uuid="2ca8072f-74be-4798-85b8-bbce03aa91af"/> <!-- Tywnis -->
+</authors>
+<broadcasts>
+    <tip after="6s" every="2m">`bThe 4 Flags `6are in the `bCentral Dome`6!</tip>
+    <tip after="8s" every="2m">`6You must bring them `bto the enemy side!</tip>
+    <!-- <tip after="10s" every="2m">`eWools in the Wool Dome will regenerate in `fWhite `euntil you re-capture the `bDome.</tip> -->
+</broadcasts>
+<teams>
+   <team id="red" color="dark red" max="16" max-overfill="28">Red</team>
+   <team id="blue" color="blue" max="16" max-overfill="28">Blue</team>
+</teams>
+<kits>
+    <kit id="spawn-kit">
+        <item slot="0" material="iron sword"/>
+        <item slot="1" material="bow"/>
+        <item slot="2" enchantment="durability;dig speed" material="iron axe"/>
+        <item slot="3" enchantment="durability;dig speed" material="iron pickaxe"/>
+        <item slot="4" amount="64" material="grilled pork"/>
+        <item slot="5" amount="2" material="golden apple"/>
+        <item slot="6" damage="4" amount="40" material="wood"/>
+        <item slot="8" amount="40" material="arrow"/>
+        <helmet team-color="true" unbreakable="true" material="leather helmet"/>
+        <chestplate team-color="true" unbreakable="true" material="leather chestplate"/>
+        <leggings color="ffffff" unbreakable="true" material="leather leggings"/>
+        <boots team-color="true" unbreakable="true" material="leather boots"/>
+        <effect duration="6" amplifier="3">heal</effect>
+        <effect duration="6">speed</effect>
+        <effect duration="6" amplifier="3">damage resistance</effect>
+    </kit>
+    <kit id="scoring">
+        <effect duration="3" amplifier="3">heal</effect>
+    </kit>
+</kits>
+<spawns>
+    <spawn team="blue" kit="spawn-kit" yaw="90">
+        <region>
+            <point>88.5,6,-104.5</point>
+        </region>
+    </spawn>
+    <spawn team="red" kit="spawn-kit" yaw="-90">
+        <region>
+            <point>-87.5,6,105.5</point>
+        </region>
+    </spawn>
+    <default yaw="90">
+        <region>
+            <point>100.5,71,0.5</point>
+        </region>
+    </default>
+</spawns>
+<filters>
+    <team id="only-red">red</team>
+    <team id="only-blue">blue</team>
+    <!-- Renewables filter for replacing blocks -->
+    <material id="only-air">air</material>
+    <!-- Various blocks that should never be broken -->
+    <deny id="blacklisted-blocks">
+        <any>
+            <material>beacon</material>
+            <material>diamond block</material>
+        </any>
+    </deny>
+</filters>
+<regions>
+    <!-- Spawn point for portals -->
+    <cylinder id="blue spawn point" base="88.5,7,-104.5" radius="1" height="1"/>
+    <cylinder id="red spawn point" base="-87.5,7,105.5" radius="1" height="1"/>
+    <!-- References of regions -->
+    <union id="score boxes">
+        <cylinder id="blue box" base="-2.5,0,174.5" radius="8" height="50"/>
+        <cylinder id="red box" base="3.5,0,-173.5" radius="8" height="50"/>
+    </union>
+    <union id="spawn proximity">
+        <cylinder id="blue spawn" base="88.5,0,-104.5" radius="8" height="50"/>
+        <cylinder id="red spawn" base="-87.5,0,105.5" radius="8" height="50"/>
+    </union>
+    <union id="dome protection">
+        <cylinder id="base of the dome" base="0.5,0,0.5" radius="13" height="7"/>
+        <!-- <cylinder id="base of the generator" base="0.5,6,0.5" radius="4" height="2"/> -->
+        <!-- <cylinder id="above generator" base="0.5,9,0.5" radius="4" height="2"/> -->
+    </union>
+    <union id="progress">
+        <cylinder base="0.5,0,0.5" radius="20" height="8"/>
+        <cylinder base="0.5,9,0.5" radius="20" height="40"/>
+    </union>
+    <complement id="exempt-void"> <!-- Regions are excluded from the void filter -->
+        <cylinder id="entire zone" base="0.5,0,0.5" radius="80" height="25"/>
+        <cylinder id="inside substraction" base="0.5,0,0.5" radius="20" height="25"/>
+    </complement>
+    <!-- Kit Applications -->
+    <apply kit="scoring" region="score boxes"/>
+    <!-- Entry Applications -->
+    <apply enter="only-blue" region="blue box" message="You may not enter your own score box!"/>
+    <apply enter="only-red" region="red box" message="You may not enter your own score box!"/>
+    <apply enter="only-blue" region="blue spawn" message="You may not enter the enemy spawn!"/>
+    <apply enter="only-red" region="red spawn" message="You may not enter the enemy spawn!"/>
+    <!-- Usage Applications -->
+    <apply use="blacklisted-blocks" message="You are not allowed to use this block!"/>
+    <!-- Block Applications -->
+    <apply block="never" region="spawn proximity" message="You may not interact with blocks at spawn!"/>
+    <apply block="never" region="dome protection"/> <!-- Dome Protections -->
+    <apply block="never" region="score boxes" message="You may not interact with blocks in the score area!"/>
+    <apply block-break="blacklisted-blocks" message="You are not allowed to break this block!"/>
+    <apply region="exempt-void"/>
+    <apply block="deny(void)" message="You may not place blocks here."/>
+</regions>
+<score>
+    <limit>8</limit>
+</score>
+<flags>
+    <post id="Pflag" return-time="25s">
+        <block>-4.5,7,5.5</block>
+    </post>
+    <post id="Bflag" return-time="25s">
+        <block>5.5,7,-4.5</block>
+    </post>
+    <post id="Oflag" return-time="25s">
+        <block>5.5,7,5.5</block>
+    </post>
+    <post id="Gflag" return-time="25s">
+        <block>-4.5,7,-4.5</block>
+    </post>
+    <flag name="Pink Flag" id="Pinkoflag" color="pink" shared="true" post="Pflag" carry-message="Carrying `dPink Flag`b. `6Deliver it to the enemy side!"/>
+    <flag name="Blue Flag" id="Blueoflag" color="light_blue" shared="true" post="Bflag" carry-message="Carrying `9Blue Flag`b. `6Deliver it to the enemy side!"/>
+    <flag name="Orange Flag" id="Orangeoflag" color="orange" shared="true" post="Oflag" carry-message="Carrying `6Orange Flag`b. `6Deliver it to the enemy side!"/>
+    <flag name="Green Flag" id="Greenoflag" color="lime" shared="true" post="Gflag" carry-message="Carrying `aGreen Flag`b. `6Deliver it to the enemy side!"/>
+    <net points="1" region="blue box" capture-filter="only-blue"/>
+    <net points="1" region="red box" capture-filter="only-red"/>
+</flags>
+<portals>
+    <portal region="blue box" destination="blue spawn point"/>
+    <portal region="red box" destination="red spawn point"/>
+</portals>
+<toolrepair>
+    <tool>iron sword</tool>
+    <tool>bow</tool>
+    <tool>iron axe</tool>
+    <tool>iron pickaxe</tool>
+</toolrepair>
+<itemremove>
+    <item>apple</item>
+    <item>leather helmet</item>
+    <item>leather chestplate</item>
+    <item>leather boots</item>
+    <item>leather leggings</item>
+    <item>grilled pork</item>
+</itemremove>
+<timelock>on</timelock>
+<maxbuildheight>20</maxbuildheight>
+</map>

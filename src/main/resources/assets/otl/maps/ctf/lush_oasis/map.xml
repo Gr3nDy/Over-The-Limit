@@ -1,0 +1,133 @@
+<map proto="1.5.0">
+<name>Lush Oasis</name>
+<version>1.0.9</version>
+<objective>Capture the enemy's flag 3 times to win!</objective>
+<gamemode>ctf</gamemode>
+<created>2023-05-10</created>
+<include id="gapple-kill-reward"/>
+<authors>
+    <author uuid="1fd982ab-8941-474b-b51e-6ce2346f4cd5"/> <!-- Zynnphony -->
+</authors>
+<contributors>
+    <contributor uuid="9d4779a8-d35f-45d2-b51c-95de7a77e128" contribution="XML"/> <!-- zzuf -->
+</contributors>
+<rules>
+    <rule>Players may not take fall damage.</rule>
+    <rule>Players who carry a flag get everything but their golden apples removed.</rule>
+</rules>
+<teams>
+    <team id="red-team" color="dark red" max="8">Red</team>
+    <team id="blue-team" color="blue" max="8">Blue</team>
+</teams>
+<broadcasts>
+    <alert after="5s" every="5m">While you're carrying a flag, your bow and arrow are `nremoved`r! You'll get a wooden sword.</alert>
+</broadcasts>
+<kits>
+    <kit id="spawn-kit">
+        <clear/>
+        <item slot="0" material="stone sword" unbreakable="true"/>
+        <item slot="1" material="bow" unbreakable="true">
+            <enchantment>infinity</enchantment>
+        </item>
+        <item slot="8" material="golden apple"/>
+        <item slot="28" material="arrow"/>
+        <helmet team-color="true" unbreakable="true" material="leather helmet"/>
+        <chestplate team-color="true" unbreakable="true" material="leather chestplate"/>
+        <leggings team-color="true" unbreakable="true" material="leather leggings"/>
+        <boots team-color="true" unbreakable="true" material="leather boots"/>
+        <game-mode>adventure</game-mode>
+        <effect duration="1s" amplifier="255">resistance</effect>
+    </kit>
+    <kit id="drop-kit">
+        <action scope="player">
+            <message text="`e⚠ `aYour regular weapons are back!"/>
+            <replace-item>
+                <find material="wood sword" unbreakable="true"/>
+                <replace material="air"/>
+            </replace-item>
+        </action>
+        <item slot="0" material="stone sword" unbreakable="true"/>
+        <item slot="1" material="bow" unbreakable="true">
+            <enchantment>infinity</enchantment>
+        </item>
+        <item slot="28" material="arrow"/>
+    </kit>
+    <kit id="flag-kit">
+        <action scope="player"> <!-- keeps gapples -->
+            <message text=" `e⚠ `cYour bow and arrow are removed while holding the flag! You've been given a wooden sword."/>
+            <replace-item>
+                <find material="stone sword" unbreakable="true"/>
+                <replace material="wood sword" unbreakable="true"/>
+            </replace-item>
+            <replace-item>
+                <find material="bow" unbreakable="true" enchantment="infinity"/>
+                <replace material="air"/>
+            </replace-item>
+            <replace-item>
+                <find material="arrow"/>
+                <replace material="air"/>
+            </replace-item>
+        </action>
+    </kit>
+</kits>
+<spawns>
+    <spawn team="blue-team" kit="spawn-kit" yaw="90">
+        <region>
+            <point>29.5,7,-40.5</point>
+        </region>
+    </spawn>
+    <spawn team="red-team" kit="spawn-kit" yaw="90">
+        <region>
+            <point>29.5,7,41.5</point>
+        </region>
+    </spawn>
+    <default yaw="-90">
+        <region>
+            <cylinder base="-69.5,29,0.5" height="0" radius="1"/>
+        </region>
+    </default>
+</spawns>
+<filters>
+    <team id="only-blue">blue-team</team>
+    <team id="only-red">red-team</team>
+</filters>
+<regions>
+    <cuboid id="red-net" min="0,8,72" size="3,3,3"/>
+    <cuboid id="blue-net" min="0,8,-74" size="3,3,3"/>
+    <apply block="deny(participating)" use="never"/>
+</regions>
+<flags>
+    <!-- Blue flag -->
+    <flag id="blue-flag" name="Blue Flag" color="blue" post="blue-flag-post" pickup-kit="flag-kit" drop-kit="drop-kit"/>
+    <post id="blue-flag-post" owner="blue-team" pickup-filter="only-red" respawn-time="0.1s" recover-time="0s">1.5,8,-72.5</post>
+    <net post="blue-flag-post" points="1" region="red-net" capture-filter="only-red" flag="blue-flag"/>
+    <!-- Red flag -->
+    <flag id="red-flag" name="Red Flag" color="red" post="red-flag-post" pickup-kit="flag-kit" drop-kit="drop-kit"/>
+    <post id="red-flag-post" owner="red-team" pickup-filter="only-blue" respawn-time="0.1s" recover-time="0s">1.5,8,73.5</post>
+    <net post="red-flag-post" points="1" region="blue-net" capture-filter="only-blue" flag="red-flag"/>
+</flags>
+<score>
+    <limit>5</limit>
+    <mercy>3</mercy>
+</score>
+<itemkeep>
+    <item>golden apple</item>
+</itemkeep>
+<itemremove>
+    <item>stone sword</item>
+    <item>wood sword</item>
+    <item>bow</item>
+    <item>arrow</item>
+    <item>leather helmet</item>
+    <item>leather chestplate</item>
+    <item>leather leggings</item>
+    <item>leather boots</item>
+    <item>banner</item>
+</itemremove>
+<disabledamage>
+    <damage>fall</damage>
+</disabledamage>
+<hunger>
+    <depletion>off</depletion>
+</hunger>
+</map>

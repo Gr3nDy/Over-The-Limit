@@ -1,0 +1,298 @@
+<map proto="1.5.1">
+<name>Station X</name>
+<version>1.0.4</version>
+<objective>Capture the two wools of the enemy team!</objective>
+<created>2026-01-10</created>
+<constants>
+    <constant id="unbreakable-armor">true</constant>
+</constants>
+<include id="gapple-kill-reward"/>
+<include id="iron-bulkcrafting"/>
+<authors>
+    <author uuid="1af9f952-e33e-42a5-8e1e-296757747fdc"/> <!-- Alphaboy98yt -->
+</authors>
+<contributors>
+    <contributor uuid="84d0f14a-1aae-447f-838c-8ac742667d67" contribution="XML"/> <!-- limefox3054 -->
+</contributors>
+<teams>
+    <team id="blue-team" color="blue" max="28">Blue</team>
+    <team id="red-team" color="dark red" max="28">Red</team>
+</teams>
+<kits>
+    <kit id="spawn-kit">
+        <clear/>
+        <item slot="0" material="iron sword" unbreakable="true"/>
+        <item slot="1" material="bow" unbreakable="true" enchantment="infinity"/>
+        <item slot="2" material="iron pickaxe" unbreakable="true" enchantment="efficiency"/>
+        <item slot="3" material="iron axe" unbreakable="true"/>
+        <item slot="4" material="chiseled stone bricks" amount="64"/>
+        <item slot="5" material="glass" amount="32"/>
+        <item slot="7" material="water bucket"/>
+        <item slot="8" material="golden apple"/>
+        <item slot="28" material="arrow"/>
+        <item slot="31" material="chiseled stone bricks" amount="64"/>
+        <helmet material="leather helmet" unbreakable="true" team-color="true"/>
+        <chestplate material="leather chestplate" unbreakable="true" team-color="true"/>
+        <leggings material="chainmail leggings" unbreakable="true" enchantment="projectile protection:2"/>
+        <boots material="leather boots" unbreakable="true" team-color="true"/>
+        <effect duration="3s" amplifier="5">damage resistance</effect>
+    </kit>
+    <kit id="speed-kit" force="true">
+        <effect>speed</effect>
+    </kit>
+    <lend kit="speed-kit" filter="spawns"/>
+</kits>
+<spawns>
+    <spawn team="blue-team" kit="spawn-kit" region="blue-spawn-point"/>
+    <spawn team="red-team" kit="spawn-kit" yaw="180" region="red-spawn-point"/>
+    <default yaw="90" region="obs-spawn-point"/>
+</spawns>
+<filters>
+    <!-- used with deny inline filters to prevent block destruction caused by water flow -->
+    <all id="not-water-cause-world">
+        <not>
+            <any>
+                <material>water</material>
+                <material>stationary water</material>
+            </any>
+        </not>
+        <cause>world</cause>
+    </all>
+    <blocks id="wool-room-blocks" region="wool-rooms">
+        <any> <!-- breakable blocks -->
+            <material>air</material>
+            <material>web</material>
+            <material id="only-redstone">redstone wire</material>
+        </any>
+    </blocks>
+    <all id="only-iron-renew">
+        <material id="only-iron">iron block</material>
+        <cause>world</cause>
+    </all>
+    <completed id="pink-wool-captured">pink-wool</completed>
+    <completed id="purple-wool-captured">purple-wool</completed>
+    <completed id="yellow-wool-captured">yellow-wool</completed>
+    <completed id="orange-wool-captured">orange-wool</completed>
+    <material id="only-crafting-table">crafting table</material>
+    <material id="only-chest">chest</material>
+    <material id="only-obsidian">obsidian</material>
+    <material id="only-iron-trapdoor">iron trapdoor</material>
+    <material id="only-chiseled-stone-bricks">chiseled stone bricks</material>
+    <material id="only-coal-ore">coal ore</material>
+</filters>
+<regions>
+    <!-- team spawn points -->
+    <cylinder id="blue-spawn-point" base="-14.5,19,-527.5" radius="1" height="0"/>
+    <cylinder id="red-spawn-point" base="-15.5,19,-211.5" radius="1" height="0"/>
+    <cylinder id="obs-spawn-point" base="78.5,59,-369.5" radius="2.5" height="0"/>
+    <!-- victory monuments -->
+    <block id="victory-monument-pink">-9,16,-514</block>
+    <block id="victory-monument-purple">-21,16,-514</block>
+    <block id="victory-monument-yellow">-22,16,-226</block>
+    <block id="victory-monument-orange">-10,16,-226</block>
+    <!-- victory monument protection areas -->
+    <rectangle id="victory-monument-area-pink" min="-7,-514" max="-10,-512"/>
+    <rectangle id="victory-monument-area-purple" min="-19,-514" max="-22,-512"/>
+    <rectangle id="victory-monument-area-yellow" min="-23,-225" max="-20,-227"/>
+    <rectangle id="victory-monument-area-orange" min="-11,-225" max="-8,-227"/>
+    <!-- wool spawns -->
+    <point id="pink-wool-spawn">63,12.7,-242</point>
+    <point id="purple-wool-spawn">-98,16.7,-210</point>
+    <point id="yellow-wool-spawn">-93,12.7,-497</point>
+    <point id="orange-wool-spawn">68,16.7,-529</point>
+    <union id="spawns">
+        <union id="blue-spawn">
+            <rectangle min="-1,-540" max="-28,-488"/>
+            <rectangle min="-10,-489" max="-19,-474"/>
+        </union>
+        <union id="red-spawn">
+            <rectangle min="-29,-199" max="-2,-251"/>
+            <rectangle min="-20,-250" max="-11,-265"/>
+        </union>
+    </union>
+    <union id="wool-rooms">
+        <union id="blue-wool-rooms"> <!-- red capture, blue defend -->
+            <complement id="yellow-wool-room">
+                <cuboid min="-99,0,-479" max="-73,58,-505"/>
+                <half origin="-89.5,0,-479" normal="1,0,1"/>
+                <half origin="-87,0,-482" normal="4,0,9"/>
+                <half origin="-76,0,-493" normal="9,0,4"/>
+                <half origin="-95.5,0,-478" normal="-3,0,1"/>
+                <half origin="-72,0,-501.5" normal="1,0,-3"/>
+            </complement>
+            <cuboid id="orange-wool-room" min="54,0,-536" max="74,47,-517"/>
+        </union>
+        <union id="red-wool-rooms"> <!-- blue capture, red defend -->
+            <complement id="pink-wool-room">
+                <cuboid min="69,0,-260" max="43,58,-234"/>
+                <half origin="59.5,0,-260" normal="-1,0,-1"/>
+                <half origin="57,0,-257" normal="-4,0,-9"/>
+                <half origin="46,0,-246" normal="-9,0,-4"/>
+                <half origin="65.5,0,-261" normal="3,0,-1"/>
+                <half origin="42,0,-237.5" normal="-1,0,3"/>
+            </complement>
+            <cuboid id="purple-wool-room" min="-84,0,-203" max="-104,47,-222"/>
+        </union>
+    </union>
+    <negative id="restricted-void-area">
+        <union> <!-- buildable void area -->
+            <!-- blue side right -->
+            <rectangle min="-22,-473" max="-63,-410"/>
+            <rectangle min="-49,-473" max="-67,-455"/>
+            <!-- blue side left -->
+            <rectangle min="33,-474" max="-2,-404"/>
+            <complement>
+                <rectangle min="4,-473" max="26,-495"/>
+                <half origin="3.5,0,-473" normal="-1,0,-1"/>
+            </complement>
+            <rectangle min="45,-500" max="24,-486"/>
+            <rectangle min="44,-486" max="24,-480"/>
+            <!-- middle lane -->
+            <rectangle min="17,-355" max="33,-384"/>
+            <rectangle min="-47,-384" max="-63,-355"/>
+            <!-- red side right -->
+            <rectangle min="-8,-266" max="33,-329"/>
+            <rectangle min="19,-266" max="37,-284"/>
+            <!-- red side left -->
+            <rectangle min="-63,-265" max="-28,-335"/>
+            <complement>
+                <rectangle min="-34,-266" max="-56,-244"/>
+                <half origin="-33.5,0,-266" normal="1,0,1"/>
+            </complement>
+            <rectangle min="-75,-239" max="-54,-253"/>
+            <rectangle min="-74,-253" max="-54,-259"/>
+        </union>
+    </negative>
+    <union id="chiseled-stone-bricks-chests">
+        <block>-9,14,-493</block>
+        <block>-21,14,-493</block>
+        <block>-22,14,-247</block>
+        <block>-10,14,-247</block>
+    </union>
+    <union id="infested-blocks-chests">
+        <cuboid min="56,14,-243" size="1,1,2"/>
+        <cuboid min="-91,18,-211" size="1,1,2"/>
+        <cuboid min="-87,14,-498" size="1,1,2"/>
+        <cuboid min="60,18,-530" size="1,1,2"/>
+    </union>
+    <apply use="any(only-crafting-table,only-chest)" region="spawns"/>
+    <apply enter="blue-team" region="blue-spawn" message="You may not enter the enemy team's spawn!"/>
+    <apply enter="red-team" region="red-spawn" message="You may not enter the enemy team's spawn!"/>
+    <apply enter="blue-team" region="red-wool-rooms" message="You may not enter your team's own wool rooms!"/>
+    <apply enter="red-team" region="blue-wool-rooms" message="You may not enter your team's own wool rooms!"/>
+    <apply enter="pink-wool-captured" region="victory-monument-area-pink" message="You may not obstruct the victory monument!"/>
+    <apply enter="purple-wool-captured" region="victory-monument-area-purple" message="You may not obstruct the victory monument!"/>
+    <apply enter="yellow-wool-captured" region="victory-monument-area-yellow" message="You may not obstruct the victory monument!"/>
+    <apply enter="orange-wool-captured" region="victory-monument-area-orange" message="You may not obstruct the victory monument!"/>
+    <apply block-place="only-iron-renew" block-break="only-iron" region="spawns" message="You may only break iron blocks in the spawn area!"/>
+    <apply block="deny(not-water-cause-world)" region="wool-rooms"/>
+    <apply block="deny(red-team)" use="deny(red-team)" region="red-wool-rooms" message="You may not modify your team's own wool rooms!"/>
+    <apply block="deny(blue-team)" use="deny(blue-team)" region="blue-wool-rooms" message="You may not modify your team's own wool rooms!"/>
+    <apply block="wool-room-blocks" region="wool-rooms" message="You may not break this block in the wool rooms!"/>
+    <apply block="deny(void)" region="restricted-void-area" message="You may not modify the void area!"/>
+    <apply block="deny(only-obsidian)" early-warning="true" message="You may not break this block!"/>
+    <apply block-physics="deny(any(only-redstone,only-iron-trapdoor))" region="wool-rooms"/>
+</regions>
+<wools craftable="false">
+    <wool id="pink-wool" team="blue-team" color="pink" monument="victory-monument-pink" location="63,12.5,-242"/>
+    <wool id="purple-wool" team="blue-team" color="purple" monument="victory-monument-purple" location="-98,16.5,-210"/>
+    <wool id="yellow-wool" team="red-team" color="yellow" monument="victory-monument-yellow" location="-93,12.5,-497"/>
+    <wool id="orange-wool" team="red-team" color="orange" monument="victory-monument-orange" location="68,16.5,-529"/>
+</wools>
+<spawners>
+    <spawner spawn-region="yellow-wool-spawn" player-region="yellow-wool-room" delay="3s" max-entities="8">
+        <item material="yellow wool" amount="2"/>
+    </spawner>
+    <spawner spawn-region="orange-wool-spawn" player-region="orange-wool-room" delay="3s" max-entities="8">
+        <item material="orange wool" amount="2"/>
+    </spawner>
+    <spawner spawn-region="purple-wool-spawn" player-region="purple-wool-room" delay="3s" max-entities="8">
+        <item material="purple wool" amount="2"/>
+    </spawner>
+    <spawner spawn-region="pink-wool-spawn" player-region="pink-wool-room" delay="3s" max-entities="8">
+        <item material="pink wool" amount="2"/>
+    </spawner>
+</spawners>
+<renewables>
+    <renewable region="spawns" renew-filter="only-iron" rate="0.5" avoid-players="1"/>
+</renewables>
+<lootables>
+    <loot id="chiseled-stone-bricks-loot">
+        <item material="chiseled stone bricks" amount="64"/>
+    </loot>
+    <loot id="infested-chiseled-stone-bricks-loot">
+        <item material="infested chiseled stone bricks" amount="64"/>
+    </loot>
+    <fill loot="chiseled-stone-bricks-loot" filter="chiseled-stone-bricks-chests" refill-interval="1m" refill-clear="false"/>
+    <fill loot="infested-chiseled-stone-bricks-loot" filter="infested-blocks-chests" refill-interval="1m" refill-clear="false"/>
+</lootables>
+<toolrepair>
+    <tool>iron sword</tool>
+    <tool>bow</tool>
+    <tool>iron pickaxe</tool>
+    <tool>iron axe</tool>
+    <tool>arrow</tool>
+</toolrepair>
+<itemremove>
+    <item>leather helmet</item>
+    <item>leather chestplate</item>
+    <item>chainmail leggings</item>
+    <item>leather boots</item>
+    <item>string</item>
+    <item>redstone</item>
+    <item>brown mushroom</item>
+</itemremove>
+<itemkeep>
+    <item>chiseled stone bricks</item>
+    <item>infested chiseled stone bricks</item>
+    <item>glass</item>
+    <item>water bucket</item>
+    <item>bucket</item>
+    <item>golden apple</item>
+</itemkeep>
+<block-drops>
+    <rule filter="only-chiseled-stone-bricks">
+        <drops>
+            <item chance="0" material="chiseled stone bricks"/>
+        </drops>
+    </rule>
+    <rule filter="only-coal-ore">
+        <drops>
+            <item material="coal"/>
+        </drops>
+    </rule>
+</block-drops>
+<item-mods>
+    <rule>
+        <match>
+            <material>iron sword</material>
+            <material>iron axe</material>
+            <material>iron spade</material>
+            <material>shears</material>
+            <material>bow</material>
+            <material>diamond chestplate</material>
+        </match>
+        <modify unbreakable="true"/>
+    </rule>
+    <rule>
+        <match>
+            <material>iron pickaxe</material>
+        </match>
+        <modify unbreakable="true" enchantment="efficiency"/>
+    </rule>
+</item-mods>
+<kill-rewards>
+    <kill-reward>
+        <item material="chiseled stone bricks" amount="32"/>
+        <item material="glass" amount="8"/>
+    </kill-reward>
+</kill-rewards>
+<gamerules>
+    <doFireTick>false</doFireTick>
+    <doMobLoot>false</doMobLoot>
+</gamerules>
+<hunger>
+    <depletion>off</depletion>
+</hunger>
+<maxbuildheight>27</maxbuildheight>
+</map>

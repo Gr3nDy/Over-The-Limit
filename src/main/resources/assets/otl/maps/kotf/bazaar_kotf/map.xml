@@ -1,0 +1,59 @@
+<map proto="1.5.0">
+<name>Bazaar KotF</name>
+<version>1.0.4</version>
+<include id="kotf"/>
+<constant id="score">150</constant>
+<constant id="damage-resistance">0s</constant>
+<constant id="flag-respawn-timer">12s</constant>
+<objective>Control the flag for ${score} seconds to win!</objective>
+<authors>
+    <author uuid="1fd982ab-8941-474b-b51e-6ce2346f4cd5"/> <!-- Zynnphony -->
+</authors>
+<contributors>
+    <contributor uuid="9d4779a8-d35f-45d2-b51c-95de7a77e128" contribution="XML"/> <!-- zzuf -->
+</contributors>
+<teams>
+    <team id="blue" color="blue" max="8">Blue</team>
+    <team id="red" color="dark red" max="8">Red</team>
+</teams>
+<spawns>
+    <default>
+        <region yaw="-90">
+            <point>-32.5,25,0.5</point>
+        </region>
+    </default>
+    <spawn team="blue" kit="base-kit" filter="has-flag">
+        <region yaw="0">
+            <point>0.5,2,-43.5</point>
+        </region>
+    </spawn>
+    <spawn team="red" kit="base-kit" filter="has-flag">
+        <region yaw="180">
+            <point>0.5,2,44.5</point>
+        </region>
+    </spawn>
+</spawns>
+<regions>
+    <apply block="never"/>
+</regions>
+<flags>
+    <flag id="flag"
+          name="Flag"
+          color="white"
+          shared="true"
+          points-rate="1"
+          pickup-kit="flag-kit"
+          drop-kit="reset-health"
+          flag-proximity-metric="none"
+          show-respawn-on-pickup="${announce-post-pickup}">
+        <post return-time="0s" respawn-time="${flag-respawn-timer}">
+            <post name="Mid Post" yaw="180">0.5,5,0.5</post>
+            <post name="East Post" yaw="90">24.5,7,0.5</post>
+            <post name="West Post" yaw="-90">-23.5,7,0.5</post>
+        </post>
+    </flag>
+</flags>
+<world>
+    <timeset>12750</timeset>
+</world>
+</map>

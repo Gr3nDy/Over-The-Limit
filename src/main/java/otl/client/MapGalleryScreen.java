@@ -7,31 +7,193 @@ import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.input.Mouse;
 
-/** Searchable gallery of the bundled CommunityMaps previews. */
+/** Bundled community previews plus the cached catalogs of both repositories. */
 final class MapGalleryScreen extends GuiScreen {
     private final GuiScreen parent;
     private GuiTextField search;
-    private int scroll;
-    MapGalleryScreen(GuiScreen parent){this.parent=parent;}
-    public boolean doesGuiPauseGame(){return false;}
-    public void initGui(){search=new GuiTextField(0,fontRendererObj,width/2-150,18,300,20);search.setMaxStringLength(80);search.setFocused(true);buttonList.clear();buttonList.add(new GuiButton(1,width/2-40,height-28,80,20,"Back"));}
-    private List<String> paths(){
-        String q=search==null?"":search.getText().toLowerCase(Locale.ROOT).trim();List<String> out=new ArrayList<>();
-        for(String p:MapPreviewIndex.PATHS)if(p.endsWith("/map.png")){
-            String dir=p.substring(0,p.length()-8);
-            if(q.isEmpty()||p.toLowerCase(Locale.ROOT).contains(q)){out.add(p);continue;}
-            String name=MapPreview.displayName(dir).toLowerCase(Locale.ROOT);
-            if(name.contains(q))out.add(p);
+    private int page;
+    private Grid grid;
+    private List<String> filtered=Collections.emptyList(), catalogVersion;
+    private String lastSearch;
+    private boolean namesVersion;
+
+    static final class Grid {
+        final int columns,rows,cellWidth,cellHeight,image,left;
+        final int top=48;
+        Grid(int width,int height){
+            columns=Math.max(1,Math.min(4,(width-16)/120));
+            rows=Math.max(1,Math.min(3,(height-96)/104));
+            cellWidth=Math.min(120,(width-16)/columns);
+            cellHeight=Math.min(120,(height-96)/rows);
+            image=Math.max(1,Math.min(80,Math.min(cellWidth-12,cellHeight-28)));
+            left=(width-columns*cellWidth)/2;
         }
-        return out;
+        int perPage(){return columns*rows;}
+        int x(int i){return left+i%columns*cellWidth;}
+        int y(int i){return top+i/columns*cellHeight;}
+        int indexAt(int x,int y){
+            x-=left;y-=top;
+            return x<0||y<0||x>=columns*cellWidth||y>=rows*cellHeight?-1:y/cellHeight*columns+x/cellWidth;
+        }
     }
-    protected void actionPerformed(GuiButton b){if(b.id==1)mc.displayGuiScreen(parent);}
-    protected void keyTyped(char c,int key)throws IOException{if(key==1){mc.displayGuiScreen(parent);return;}search.textboxKeyTyped(c,key);}
-    public void handleMouseInput()throws IOException{super.handleMouseInput();int wheel=Mouse.getDWheel();if(wheel!=0)scroll=Math.max(0,scroll-(wheel>0?1:-1));}
+
+    MapGalleryScreen(GuiScreen parent){this.parent=parent;}
+
+    public boolean doesGuiPauseGame(){return false;}
+
+    public void initGui(){
+        MapRemote.requestCatalog();
+        String query=search==null?"":search.getText();
+        grid=new Grid(width,height);
+        int searchWidth=Math.min(300,width-24);
+        search=new GuiTextField(0,fontRendererObj,(width-searchWidth)/2,18,searchWidth,20);
+        search.setMaxStringLength(80);
+        search.setText(query);
+        search.setFocused(true);
+        buttonList.clear();
+        buttonList.add(new GuiButton(1,width/2-160,height-28,60,20,"Prev"));
+        buttonList.add(new GuiButton(2,width/2-40,height-28,80,20,"Back"));
+        buttonList.add(new GuiButton(3,width/2+100,height-28,60,20,"Next"));
+    }
+
+    /** Return map paths matching the current search text. */
+    List<String> paths(){
+        String q=search==null?"":search.getText().toLowerCase(Locale.ROOT).trim();
+        List<String> catalog=MapRemote.catalog;
+        if(q.equals(lastSearch)&&catalogVersion==catalog&&namesVersion==MapPreview.namesReady)return filtered;
+        lastSearch=q;catalogVersion=catalog;namesVersion=MapPreview.namesReady;
+        String normalized=MapInfo.norm(q);
+        List<String> out=new ArrayList<>();
+        Set<String> paths=new LinkedHashSet<>();
+        for(String p:MapPreviewIndex.PATHS){
+            if(p.endsWith("/map.png"))paths.add("CommunityMaps/master/"+p);
+            else if(p.endsWith("/map.xml"))paths.add("CommunityMaps/master/"+p.substring(0,p.length()-8)+"/map.png");
+        }
+        for(String dir:catalog)paths.add(dir+"/map.png");
+        for(String p:paths){
+            String dir=p.substring(0,p.length()-8);
+            if(q.isEmpty()){
+                out.add(p);
+            } else {
+                String name=mapName(dir).toLowerCase(Locale.ROOT);
+                if(name.contains(q)||dir.toLowerCase(Locale.ROOT).contains(q)||(!normalized.isEmpty()&&MapInfo.norm(name).contains(normalized))){
+                    out.add(p);
+                }
+            }
+        }
+        filtered=out;return filtered;
+    }
+
+    protected void actionPerformed(GuiButton b){
+        List<String> list=paths();
+        int maxPage=pages(list.size());
+        if(b.id==1){ // Prev
+            page=Math.max(0,page-1);
+        } else if(b.id==2){ // Back
+            mc.displayGuiScreen(parent);
+        } else if(b.id==3){ // Next
+            page=Math.min(maxPage-1,page+1);
+        }
+    }
+
+    protected void keyTyped(char c,int key) throws IOException{
+        if(key==1){
+            mc.displayGuiScreen(parent);
+            return;
+        }
+        String before=search.getText();
+        search.textboxKeyTyped(c,key);
+        if(!before.equals(search.getText()))page=0;
+    }
+
+    /** Mouse wheel scrolls pages. */
+    public void handleMouseInput() throws IOException{
+        super.handleMouseInput();
+        int wheel=Mouse.getEventDWheel();
+        if(wheel!=0){
+            List<String> list=paths();
+            int maxPage=pages(list.size());
+            if(wheel>0) page=Math.max(0,page-1);
+            else page=Math.min(maxPage-1,page+1);
+        }
+    }
+
+    /** Mouse click on a map cell opens the info card. */
+    protected void mouseClicked(int mx,int my,int button) throws IOException{
+        super.mouseClicked(mx,my,button);
+        search.mouseClicked(mx,my,button);
+        if(mc.currentScreen!=this)return;
+        if(button!=0) return;
+        List<String> list=paths();
+        int i=grid.indexAt(mx,my),idx=page*grid.perPage()+i;
+        if(i>=0&&idx<list.size())openMapCard(list.get(idx));
+    }
+
+    /** Open the map info card for the given path. */
+    private void openMapCard(String path){
+        mc.displayGuiScreen(new MapInfoScreen(path.substring(0,path.length()-8),this));
+    }
+
+    private String mapName(String dir){
+        String name=MapPreview.displayName(dir);
+        return name==null||name.isEmpty()?dir.substring(dir.lastIndexOf('/')+1).replace('_',' '):name;
+    }
+
+    private int pages(int size){return Math.max(1,(size+grid.perPage()-1)/grid.perPage());}
+
     public void drawScreen(int mx,int my,float partial){
-        drawDefaultBackground();drawString(fontRendererObj,"Map Gallery",12,6,0xFFFFFFFF);search.drawTextBox();
-        List<String> list=paths();int cols=4,cellW=Math.max(110,(width-24)/cols),cellH=100,start=scroll*cols;
-        for(int n=start;n<list.size();n++){int i=n-start,col=i%cols,row=i/cols,x=12+col*cellW,y=48+row*cellH;if(y+cellH>height-32)break;String path=list.get(n);ResourceLocation tex=MapPreview.galleryTexture(path);drawRect(x,y,x+cellW-10,y+78,0xAA101010);int imgW=cellW-20,imgH=52;if(tex!=null){int[] size=MapPreview.gallerySize(path);if(size!=null&&size[0]>0&&size[1]>0){float ar=(float)size[0]/size[1];if(ar>1){imgH=Math.max(20,(int)(imgW/ar));if(imgH>52){imgH=52;imgW=Math.max(24,(int)(52*ar));}}else{imgW=Math.max(24,(int)(52*ar));if(imgW>cellW-20){imgW=cellW-20;imgH=Math.max(20,(int)((cellW-20)/ar));}}}}int ix=x+(cellW-imgW)/2,iy=y+6;GlStateManager.enableTexture2D();GlStateManager.enableBlend();GlStateManager.color(1,1,1,1);mc.getTextureManager().bindTexture(tex);Gui.drawModalRectWithCustomSizedTexture(ix,iy,0,0,imgW,imgH,imgW,imgH);String dir=path.substring(0,path.length()-8);String name=MapPreview.displayName(dir);if(name==null||name.isEmpty())name=path.substring(path.lastIndexOf('/')+1,path.length()-8);drawString(fontRendererObj,fontRendererObj.trimStringToWidth(name,cellW-14),x+3,y+imgH+12,0xFFFFFFFF);}
-        drawString(fontRendererObj,(start/cols+1)+" / "+Math.max(1,(list.size()+cols-1)/cols),12,height-20,0xFFAAAAAA);super.drawScreen(mx,my,partial);
+        drawDefaultBackground();
+        drawString(fontRendererObj,"Map Gallery",12,6,0xFFFFFFFF);
+        drawString(fontRendererObj,fontRendererObj.trimStringToWidth(MapRemote.catalogStatus,width-110),108,6,0xFFAAAAAA);
+        search.drawTextBox();
+
+        List<String> list=paths();
+        int maxPage=pages(list.size());
+        page=Math.min(page,maxPage-1);
+        int start=page*grid.perPage();
+
+        // draw maps
+        for(int i=0;i<grid.perPage();i++){
+            int idx=start+i;
+            if(idx>=list.size()) break;
+            int x=grid.x(i),y=grid.y(i),cellW=grid.cellWidth,cellH=grid.cellHeight,side=grid.image;
+
+            String path=list.get(idx);
+            ResourceLocation tex=MapPreview.galleryTexture(path);
+
+            // draw background rect (click hitbox)
+            drawRect(x+1,y+1,x+cellW-1,y+cellH-1,0xAA202020);
+
+            // draw square thumbnail (1:1 ratio)
+            int ix=x+(cellW-side)/2;
+            int iy=y+6;
+            if(tex!=null){
+                GlStateManager.enableTexture2D();
+                GlStateManager.enableBlend();
+                GlStateManager.color(1,1,1,1);
+                mc.getTextureManager().bindTexture(tex);
+                Gui.drawModalRectWithCustomSizedTexture(ix,iy,0,0,side,side,side,side);
+            } else {
+                drawRect(ix,iy,ix+side,iy+side,0x55000000);
+            }
+
+            // draw name below image
+            String dir=path.substring(0,path.length()-8);
+            String name=mapName(dir);
+            drawString(fontRendererObj,fontRendererObj.trimStringToWidth(name,cellW-8),x+4,y+side+12,0xFFFFFFFF);
+
+            // hover highlight (semi-transparent border, not fully covering)
+            if(grid.indexAt(mx,my)==i){
+                drawRect(x+1,y+1,x+cellW-1,y+2,0x80FFFFFF);
+                drawRect(x+1,y+cellH-2,x+cellW-1,y+cellH-1,0x80FFFFFF);
+                drawRect(x+1,y+1,x+2,y+cellH-1,0x80FFFFFF);
+                drawRect(x+cellW-2,y+1,x+cellW-1,y+cellH-1,0x80FFFFFF);
+            }
+        }
+
+        // pagination info
+        drawCenteredString(fontRendererObj,"Page "+(page+1)+" / "+maxPage+"  ("+list.size()+" maps)",width/2,height-43,0xFFAAAAAA);
+        for(GuiButton b:buttonList){if(b.id==1)b.enabled=page>0;else if(b.id==3)b.enabled=page<maxPage-1;}
+        super.drawScreen(mx,my,partial);
     }
 }

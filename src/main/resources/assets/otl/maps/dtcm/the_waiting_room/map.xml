@@ -1,0 +1,513 @@
+<map proto="1.5.0">
+<name>The Waiting Room</name>
+<variant id="halloween" world="halloween" override="true">The Carving Room</variant>
+<version>1.3.5</version>
+<objective>Destroy the other team's side ladder monuments to win!</objective>
+<gamemode>dtm</gamemode>
+<if variant="default">
+    <created>2023-06-18</created>
+</if>
+<if variant="halloween">
+    <created>2023-09-29</created>
+</if>
+<include id="gapple-kill-reward"/>
+<include id="void-death"/>
+<authors>
+    <author uuid="2d1ed8d4-6346-4654-9cb7-19941c05820a"/> <!-- Lowie375 -->
+</authors>
+<contributors>
+    <contributor uuid="59655bfd-1fda-4e15-b6f7-eb6b6f84b406" contribution="Original in-game reference build + map support"/> <!-- Digitalight -->
+</contributors>
+<constants>
+    <constant id="void-plane">17.5</constant>
+    <constant id="affect-obs">never</constant>
+</constants>
+<broadcasts>
+    <alert after="3s">The floor is `c`ldeadly`r! Blocks can not be placed onto it.</alert>
+    <tip after="7s" every="55s" count="2">Indestructible blocks will turn into bedrock or obsidian when punched.</tip>
+    <tip after="9s" every="81s" count="2">Every `f`l2`r kills, you will get `f`l4 iron blocks`r, which can be used to `e`lrepair`r broken monuments!</tip>
+    <if variant="default">
+        <alert after="5s" every="55s" count="2">Some parts of this map, such as the `7`lgray walls`r and `6`lcenter tables`r, are `e`lindestructible`r!</alert>
+    </if>
+    <if variant="halloween">
+        <alert after="5s" every="55s" count="2">Some parts of this map, such as the `6`lpumpkin walls`r and `f`lcenter tables`r, are `e`lindestructible`r!</alert>
+    </if>
+</broadcasts>
+<teams>
+    <if variant="default">
+        <team id="team-ladder" color="green" max="16">Lime Ladder</team>
+        <team id="team-sign" color="yellow" max="16">Yellow Sign</team>
+    </if>
+    <if variant="halloween">
+        <team id="team-sign" color="dark gray" max="16">Trickers</team>
+        <team id="team-ladder" color="yellow" max="16">Treaters</team>
+    </if>
+</teams>
+<kits>
+    <kit id="night-vision">
+        <effect ambient="true">night vision</effect>
+    </kit>
+    <kit id="kit-base">
+        <clear effects="true" items="false" armor="false"/>
+        <effect ambient="true">night vision</effect>
+        <effect duration="3" amplifier="10" ambient="true">damage_resistance</effect>
+        <item slot="1" unbreakable="true" enchantment="arrow infinite" material="bow"/>
+        <item slot="2" unbreakable="true" enchantment="efficiency" material="diamond pickaxe"/>
+        <item slot="3" amount="64" material="stained clay" team-color="true"/>
+        <item slot="30" amount="64" material="stained clay" team-color="true"/>
+        <item slot="21" amount="64" material="stained clay" team-color="true"/>
+        <item slot="12" amount="64" material="stained clay" team-color="true"/>
+        <item slot="4" amount="64" material="redstone"/>
+        <item slot="5" amount="64" material="tnt"/>
+        <item slot="32" amount="64" material="tnt"/>
+        <item slot="23" amount="64" material="tnt"/>
+        <item slot="14" amount="64" material="tnt"/>
+        <item slot="6" material="water bucket"/>
+        <item slot="33" material="water bucket"/>
+        <item slot="24" material="water bucket"/>
+        <item slot="15" material="water bucket"/>
+        <item slot="7" amount="32" material="stone button"/>
+        <item slot="8" amount="32" material="ladder"/>
+        <item slot="11" unbreakable="true" material="shears"/>
+        <item slot="16" amount="32" material="lever"/>
+        <item slot="17" amount="32" material="trap door"/>
+        <item slot="25" amount="16" material="diode"/>
+        <item slot="26" amount="32" material="stone plate"/>
+        <item slot="28" material="arrow"/>
+        <item slot="29" unbreakable="true" enchantment="efficiency:2" material="iron axe"/>
+        <item slot="31" amount="64" material="redstone"/>
+        <item slot="34" amount="32" material="nether fence"/>
+        <item slot="35" amount="64" material="step"/>
+        <chestplate unbreakable="true" material="iron chestplate"/>
+        <leggings unbreakable="true" material="chainmail leggings"/>
+        <if variant="default">
+            <item slot="0" unbreakable="true" material="iron sword"/>
+            <item slot="20" unbreakable="true" enchantment="efficiency" material="iron spade"/>
+        </if>
+        <if variant="halloween">
+            <item slot="0" unbreakable="true" material="iron sword" name="Pumpkin Carver"/>
+            <item slot="20" unbreakable="true" enchantment="efficiency" material="iron spade" name="Pumpkin Seed Scooper"/>
+        </if>
+    </kit>
+    <kit id="kit-ladder" parents="kit-base"> <!-- drop-overflow="true" -->
+        <if variant="default">
+            <helmet unbreakable="true" color="0CF24C" material="leather helmet"/>
+            <boots unbreakable="true" color="0CF24C" material="leather boots"/>
+        </if>
+        <if variant="halloween">
+            <helmet unbreakable="true" color="F2E53F" material="leather helmet"/>
+            <boots unbreakable="true" color="F2E53F" material="leather boots"/>
+        </if>
+    </kit>
+    <kit id="kit-sign" parents="kit-base"> <!-- drop-overflow="true" -->
+        <if variant="default">
+            <helmet unbreakable="true" color="F2E53F" material="leather helmet"/>
+            <boots unbreakable="true" color="F2E53F" material="leather boots"/>
+        </if>
+        <if variant="halloween">
+            <helmet unbreakable="true" color="3F3F3F" material="leather helmet"/>
+            <boots unbreakable="true" color="3F3F3F" material="leather boots"/>
+        </if>
+    </kit>
+</kits>
+<spawns>
+    <default kit="night-vision" yaw="180">
+        <region>
+            <cuboid min="10.4,27.5,183.4" max="12.6,27.5,185.6"/>
+        </region>
+    </default>
+    <spawn team="team-ladder" kit="kit-ladder" yaw="-90">
+        <regions>
+            <cuboid min="-46,33,98" max="-44,33,100"/>
+            <cuboid min="-46,33,108" max="-44,33,110"/>
+        </regions>
+    </spawn>
+    <spawn team="team-sign" kit="kit-sign" yaw="90">
+        <regions>
+            <cuboid min="60,33,108" max="62,33,110"/>
+            <cuboid min="60,33,98" max="62,33,100"/>
+        </regions>
+    </spawn>
+</spawns>
+<filters>
+    <not id="player-explosion">
+        <cause>explosion</cause>
+    </not>
+    <not id="not-obby-replace">
+        <any>
+            <any id="obby-replace">
+                <material>log:3</material>
+                <material>log:7</material>
+                <material>log:11</material>
+                <material>log:15</material>
+                <if variant="default">
+                    <material>wood:1</material>
+                    <material>wood:5</material>
+                </if>
+                <if variant="halloween">
+                    <material>nether brick</material>
+                    <material>stained clay:15</material>
+                    <material>iron block</material>
+                </if>
+            </any>
+            <material id="obby">obsidian</material>
+            <material id="brock">bedrock</material>
+        </any>
+    </not>
+    <all id="mon-explosion">
+        <any>
+            <material>emerald block</material>
+            <material>gold block</material>
+            <material>coal block</material>
+            <material>iron block</material>
+            <material>ender stone</material>
+        </any>
+        <filter id="player-explosion"/>
+    </all>
+    <deny id="ladder-mon-explosion">
+        <all>
+            <filter id="mon-explosion"/>
+            <team id="only-ladder">team-ladder</team>
+        </all>
+    </deny>
+    <deny id="sign-mon-explosion">
+        <all>
+            <filter id="mon-explosion"/>
+            <team id="only-sign">team-sign</team>
+        </all>
+    </deny>
+    <not id="all-but-iron">
+        <material>iron block</material>
+    </not>
+    <not id="all-but-water">
+        <any>
+            <material>water bucket</material>
+            <material>water</material>
+        </any>
+    </not>
+</filters>
+<regions>
+    <!-- build height limits -->
+    <below id="lower-build-limit" y="17"/>
+    <above id="upper-build-limit" y="49"/>
+    <above id="upper-bar-build-limit" y="49"/> <!-- build limit under iron bars -->
+    <!-- general regions -->
+    <union id="spawns">
+        <cuboid id="spawn-ladder" min="-48,32,96" max="-32,48,112"/>
+        <cuboid id="spawn-sign" min="48,32,96" max="64,48,112"/>
+    </union>
+    <union id="play-area">
+        <complement> <!-- main play area -->
+            <complement id="destroyable-area">
+                <cuboid  min="-32,16,64" max="48,64,144"/>
+                <region id="lower-build-limit"/>
+            </complement>
+            <region id="upper-build-limit"/>
+        </complement>
+        <complement> <!-- play area behind iron bars-->
+            <union>    
+                <cuboid min="-32,16,64" max="-23,64,137"/>
+                <cuboid min="-32,16,64" max="48,64,73"/>
+                <cuboid min="40,16,64" max="48,64,137"/>
+            </union>
+            <region id="upper-bar-build-limit"/>
+            <region id="lower-build-limit"/>
+        </complement>
+    </union>
+    <cuboid id="floor" min="-32,15,64" max="48,16,176"/>
+    <union id="main-area">
+        <region id="spawns"/>
+        <region id="play-area"/>
+    </union>
+    <negative id="not-main-area">
+        <region id="main-area"/>
+    </negative>
+    <negative id="not-destroyable-area">
+        <region id="destroyable-area"/>
+    </negative>
+    <union id="tables">
+        <cuboid id="table-fence-1" min="6,16,86" max="10,32,90"/>
+        <cuboid id="table-fence-2" min="6,16,102" max="10,32,106"/>
+        <cuboid id="table-fence-3" min="6,16,118" max="10,32,122"/>
+        <cuboid id="table-fence-beam-top" min="7,28,90" max="9,31,118"/>
+        <cuboid id="table-fence-beam-bot" min="7,22,90" max="9,25,118"/>
+        <cuboid id="table-top-1" min="1,32,81" max="15,33,95"/>
+        <cuboid id="table-top-2" min="1,32,97" max="15,33,111"/>
+        <cuboid id="table-top-3" min="1,32,113" max="15,33,127"/>
+    </union>
+    <union id="unbreakable-wood">
+        <region id="tables"/>
+        <!-- team-ladder couch -->
+        <cuboid min="-32,16,64" max="-16,24,72"/>
+        <cuboid min="-32,16,136" max="-16,24,144"/>
+        <cuboid min="-32,16,64" max="-24,24,144"/>
+        <cuboid min="-24,16,72" max="-16,20,136"/>
+        <!-- team-ladder spawn ramp -->
+        <cuboid min="-28,24,102" max="-32,32,106"/>
+        <cuboid min="-28,24,101" max="-32,31,107"/>
+        <cuboid min="-28,24,100" max="-32,30,108"/>
+        <cuboid min="-28,24,99" max="-32,29,109"/>
+        <cuboid min="-28,24,98" max="-32,28,110"/>
+        <cuboid min="-28,24,97" max="-32,27,111"/>
+        <cuboid min="-28,24,96" max="-32,26,112"/>
+        <cuboid min="-28,24,95" max="-32,25,113"/>
+        <!-- team-sign couch -->
+        <cuboid min="32,16,64" max="48,24,72"/>
+        <cuboid min="32,16,136" max="48,24,144"/>
+        <cuboid min="40,16,64" max="48,24,144"/>
+        <cuboid min="32,16,72" max="40,20,136"/>
+        <!-- team-sign spawn ramp -->
+        <cuboid min="44,24,102" max="48,32,106"/>
+        <cuboid min="44,24,101" max="48,31,107"/>
+        <cuboid min="44,24,100" max="48,30,108"/>
+        <cuboid min="44,24,99" max="48,29,109"/>
+        <cuboid min="44,24,98" max="48,28,110"/>
+        <cuboid min="44,24,97" max="48,27,111"/>
+        <cuboid min="44,24,96" max="48,26,112"/>
+        <cuboid min="44,24,95" max="48,25,113"/>
+    </union>
+    <union id="ladder-monuments">
+        <union id="mon-ladder-emerald">
+            <cuboid min="-32,32,82" max="-31,48,84"/>
+            <cuboid min="-32,32,92" max="-31,48,94"/>
+            <cuboid min="-32,45,81" max="-31,47,95"/>
+            <cuboid min="-32,41,81" max="-31,43,95"/>
+            <cuboid min="-32,37,81" max="-31,39,95"/>
+            <cuboid min="-32,33,81" max="-31,35,95"/>
+        </union>
+        <union id="mon-ladder-endstone">
+            <cuboid min="-32,32,114" max="-31,48,116"/>
+            <cuboid min="-32,32,124" max="-31,48,126"/>
+            <cuboid min="-32,45,113" max="-31,47,127"/>
+            <cuboid min="-32,41,113" max="-31,43,127"/>
+            <cuboid min="-32,37,113" max="-31,39,127"/>
+            <cuboid min="-32,33,113" max="-31,35,127"/>
+        </union>
+    </union>
+    <union id="sign-monuments">
+        <union id="mon-sign-gold">
+            <cuboid min="47,32,82" max="48,48,84"/>
+            <cuboid min="47,32,92" max="48,48,94"/>
+            <cuboid min="47,45,81" max="48,47,95"/>
+            <cuboid min="47,41,81" max="48,43,95"/>
+            <cuboid min="47,37,81" max="48,39,95"/>
+            <cuboid min="47,33,81" max="48,35,95"/>
+        </union>
+        <union id="mon-sign-endstone">
+            <cuboid min="47,32,114" max="48,48,116"/>
+            <cuboid min="47,32,124" max="48,48,126"/>
+            <cuboid min="47,45,113" max="48,47,127"/>
+            <cuboid min="47,41,113" max="48,43,127"/>
+            <cuboid min="47,37,113" max="48,39,127"/>
+            <cuboid min="47,33,113" max="48,35,127"/>
+        </union>
+    </union>
+    <negative id="not-monuments">
+        <union id="monuments">
+            <region id="ladder-monuments"/>
+            <region id="sign-monuments"/>
+        </union>
+    </negative>
+    <apply region="spawn-ladder" enter="only-ladder" message="You may not enter the enemy's spawn!"/>
+    <apply region="spawn-sign" enter="only-sign" message="You may not enter the enemy's spawn!"/>
+    <apply region="spawns" block="never" message="You may not modify the spawn area!" early-warning="true"/>
+    <apply region="unbreakable-wood" block-break="player-explosion" message="You may not destroy the unbreakable wood blocks!"/>
+    <apply region="ladder-monuments" block-break="sign-mon-explosion" message="The monuments must be destroyed with TNT!" early-warning="true"/>
+    <apply region="sign-monuments" block-break="ladder-mon-explosion" message="The monuments must be destroyed with TNT!" early-warning="true"/>
+    <apply region="floor" block-place-against="never" message="You may not place blocks against the floor!"/>
+    <apply region="not-destroyable-area" block="never" message="You may not modify the void area!" early-warning="true"/>
+    <apply region="not-main-area" block-place="never" message="You have reached the maximum build height!"/>
+    <apply region="not-monuments" block-place="all-but-iron" message="Iron blocks may only be used to repair monuments!"/>
+    <apply region="monuments" block-place="all-but-water" message="You may not place water inside the monument area!"/>
+</regions>
+<destroyables required="true" show-progress="true" repairable="true">
+    <destroyable name="Endstone Ladder" region="mon-ladder-endstone" owner="team-ladder" materials="ender stone;iron block"/>
+    <destroyable name="Endstone Ladder" region="mon-sign-endstone" owner="team-sign" materials="ender stone;iron block"/>
+    <if variant="default">
+        <destroyable name="Emerald Ladder" region="mon-ladder-emerald" owner="team-ladder" materials="emerald block;iron block"/>
+        <destroyable name="Golden Ladder" region="mon-sign-gold" owner="team-sign" materials="gold block;iron block"/>
+    </if>
+    <if variant="halloween">
+        <destroyable name="Golden Ladder" region="mon-ladder-emerald" owner="team-ladder" materials="gold block;iron block"/>
+        <destroyable name="Coal Ladder" region="mon-sign-gold" owner="team-sign" materials="coal block;iron block"/>
+    </if>
+</destroyables>
+<kill-rewards>
+    <!-- general -->
+    <kill-reward>
+        <!-- if variant="halloween">
+            <item material="golden apple" name="Candy Apple"/>
+        </if -->
+        <item amount="32" material="tnt"/>
+        <item amount="16" material="ladder"/>
+    </kill-reward>
+    <kill-reward>
+        <filter>
+            <kill-streak count="2"/>
+        </filter>
+        <item amount="4" material="iron block"/>
+    </kill-reward>
+    <!-- team-ladder -->
+    <kill-reward> 
+        <filter>
+            <team>team-ladder</team>
+        </filter>
+        <if variant="default">
+            <item material="gold ingot"/>
+        </if>
+        <if variant="halloween">
+            <item material="coal" name="Trick!"/>
+        </if>
+    </kill-reward>
+    <!-- team-sign -->
+    <kill-reward> 
+        <filter>
+            <team>team-sign</team>
+        </filter>
+        <if variant="default">
+            <item material="emerald"/>
+        </if>
+        <if variant="halloween">
+            <item material="gold ingot" name="Treat!"/>
+        </if>
+    </kill-reward> 
+</kill-rewards>
+<block-drops>
+    <rule region="unbreakable-wood" filter="obby-replace">
+        <replacement>obsidian</replacement>
+        <punch>true</punch>
+    </rule>
+    <rule region="unbreakable-wood" filter="not-obby-replace">
+        <replacement>bedrock</replacement>
+        <punch>true</punch>
+    </rule>
+    <rule region="unbreakable-wood" filter="obby">
+        <replacement>obsidian</replacement>
+    </rule>
+    <rule region="unbreakable-wood" filter="brock">
+        <replacement>bedrock</replacement>
+    </rule>
+    <rule region="destroyable-area">
+        <filter>
+            <any>
+                <material>double step:8</material>
+                <material>double step:9</material>
+                <material>double stone slab2:8</material>
+            </any>
+        </filter>
+        <drops>
+            <item chance="0" material="step"/>
+            <item chance="0" material="stone slab2"/>
+        </drops>
+    </rule>
+</block-drops>
+<toolrepair>
+    <tool>iron sword</tool>
+    <tool>diamond pickaxe</tool>
+    <tool>iron axe</tool>
+    <tool>iron spade</tool>
+    <tool>shears</tool>
+    <tool>bow</tool>
+    <tool>arrow</tool>
+</toolrepair>
+<itemkeep>
+    <item>step</item>
+    <item>ladder</item>
+    <item>water bucket</item>
+    <item>stone plate</item>
+    <item>diode</item>
+    <item>lever</item>
+    <item>tnt</item>
+    <item>stone button</item>
+    <item>redstone</item>
+    <item>trap door</item>
+    <item>fence gate</item>
+    <item>nether fence</item>
+    <item>stained clay</item>
+</itemkeep>
+<itemremove>
+    <item>leather helmet</item>
+    <item>iron chestplate</item>
+    <item>chainmail leggings</item>
+    <item>leather boots</item>
+    <!-- map blocks -->
+    <item>log</item>
+    <item>log 2</item>
+    <item>wood</item>
+    <item>huge mushroom 1</item>
+    <item>wool</item>
+    <item>stained clay</item>
+    <item>hard clay</item>
+    <item>double step:8</item>
+    <item>double step:9</item>
+    <item>double stone slab2:8</item>
+    <item>packed ice</item>
+    <item>nether brick</item>
+    <item>nether brick stairs</item>
+    <item>step:6</item>
+    <item>slime block</item>
+    <item>melon block</item>
+    <item>stone</item>
+    <item>cobblestone</item>
+    <item>mossy cobblestone</item>
+    <item>sponge</item>
+    <item>prismarine</item>
+    <item>hay block</item>
+    <item>iron block</item>
+    <item>emerald block</item>
+    <item>gold block</item>
+    <item>redstone block</item>
+    <item>quartz block</item>
+    <item>ender stone</item>
+    <item>snow block</item>
+    <item>brown mushroom</item>
+    <item>clay</item>
+    <item>clay ball</item>
+    <item>dirt</item>
+    <item>tripwire hook</item>
+    <item>pumpkin</item>
+    <item>brick</item>
+    <item>netherrack</item>
+    <!-- unbreakables -->
+    <item>bedrock</item>
+    <item>obsidian</item>
+    <!-- kit (indirect) -->
+    <item>bucket</item>
+</itemremove>
+<tnt>
+    <dispenser-tnt-limit>0</dispenser-tnt-limit>
+    <yield>0</yield>
+</tnt>
+<disabledamage>
+    <damage ally="false" self="false" enemy="false" other="false">block explosion</damage>
+</disabledamage>
+<if variant="halloween">
+    <gamerules>
+        <doFireTick>false</doFireTick>
+    </gamerules>
+    <world>
+        <timeset>18000</timeset>
+    </world>
+</if>
+<item-mods>
+    <rule>
+        <match>
+            <material>leather boots</material>
+        </match>
+        <modify>
+            <enchantment level="5">protection fall</enchantment>
+        </modify>
+    </rule>
+    <rule>
+        <match>
+            <material>iron chestplate</material>
+        </match>
+        <modify>
+            <enchantment level="5">protection explosions</enchantment>
+        </modify>
+    </rule>
+</item-mods>
+<hunger>
+    <depletion>off</depletion>
+</hunger>
+</map>
