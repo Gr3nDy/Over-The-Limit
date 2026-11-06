@@ -175,7 +175,19 @@ otl/                         (repo root: Over The Limit)
 5. Optional: `settings(back)` screen using `CompactScreen`/`NeutralButton`.
 6. Smoke: toggle on/off, rejoin a world, confirm no stray listeners or GL state.
 
-## 8. Known debt and the next scale step
+## 8. Build and deploy
+
+```
+gradlew.bat build        # compile + jar (dev/MCP names) + unit tests
+gradlew.bat deploy       # reobfJar, verify, copy OTL.jar to the Lunar mods folder
+gradlew.bat runClient -PotlSmoke   # in-client smoke harness
+```
+
+**Always deploy through `deploy`.** `runClient` depends on `jar`, and `jar` overwrites `build/libs/OTL.jar` with a dev jar whose calls use MCP names (`Minecraft.getRenderManager`). That jar starts fine in the dev workspace but dies on a real client with `NoSuchMethodError: net.minecraft.client.Minecraft.getRenderManager()` during `Loader.initializeMods`. `deploy` runs `reobfJar` first (so the jar carries `func_175598_ae`), refuses to copy if it still sees an MCP name or the `OtlSmoke` classes, then copies to `~/.lunarclient/profiles/1.8/mods/forge-1.8.9`. Override the folder with `-PdeployDir=<path>`.
+
+`getSkinMap()` stays unrenamed on purpose: it is a Forge-added method (`RenderManager` in forgeSrc declares it), so it resolves at runtime. Only vanilla members need SRG names.
+
+## 9. Known debt and the next scale step
 
 - Module list is a static `Arrays.asList` — compile-time only, no dynamic loading. Fine while everything ships in one JAR; a service loader only pays off when modules become separate artifacts.
 - Public-repo lookup uses unauthenticated GitHub API (60 requests/hour) and slug-only matching, so a badly spelled name falls back to "Server book".

@@ -24,6 +24,29 @@ jar {
     inputs.property 'otlSmoke', project.hasProperty('otlSmoke')
     if (!project.hasProperty('otlSmoke')) exclude '**/OtlSmoke*'
 }
+// Always deploy through this task: `jar` (and therefore `runClient`) overwrites build/libs/OTL.jar
+// with MCP-named dev classes, which crash Forge/Lunar with NoSuchMethodError.
+task deploy(dependsOn: 'reobfJar') {
+    doLast {
+        def target = project.hasProperty('deployDir')
+                ? file(project.property('deployDir'))
+                : file("${System.getProperty('user.home')}/.lunarclient/profiles/1.8/mods/forge-1.8.9")
+        if (!target.isDirectory()) throw new GradleException("Mods folder not found: ${target} (pass -PdeployDir=<folder>)")
+        def jarFile = file("${buildDir}/libs/OTL.jar")
+        def zip = new java.util.zip.ZipFile(jarFile)
+        try {
+            def entry = zip.getEntry('otl/client/Otl.class')
+            if (entry == null) throw new GradleException("otl/client/Otl.class missing from ${jarFile}")
+            def bytes = zip.getInputStream(entry).getBytes()
+            if (new String(bytes, 'ISO-8859-1').contains('getRenderManager'))
+                throw new GradleException("${jarFile} is not reobfuscated (MCP name getRenderManager); rebuild with reobfJar")
+            if (zip.getEntry('otl/client/OtlSmoke.class') != null)
+                throw new GradleException("${jarFile} contains the smoke harness; rebuild without -PotlSmoke")
+        } finally { zip.close() }
+        copy { from jarFile; into target }
+        println "Deployed ${jarFile.name} (${jarFile.length()} bytes) to ${target}"
+    }
+}
 sourceJar {
     archiveName = 'OTL-source.jar'
     from sourceSets.main.allSource
