@@ -39,6 +39,7 @@ final class TeamBubbles {
         EntityPlayer sender=null;
         for(EntityPlayer p:MinecraftAccess.get().theWorld.playerEntities)if(p.getName().equalsIgnoreCase(chat.name)){if(sender!=null)return;sender=p;}
         if(sender==null)return;
+        if(MinecraftAccess.get().thePlayer!=null&&MinecraftAccess.get().thePlayer.getDistanceSqToEntity(sender)>32*32)return;
         String body=TeamBubbleRules.limit(chat.body,UtilitySettings.bubbleCharacters);
         if(!body.isEmpty()&&cooldown.accept(sender.getUniqueID(),System.nanoTime()))bubbles.put(sender.getUniqueID(),new Bubble(body));
     }
