@@ -9,7 +9,7 @@ import net.minecraft.client.Minecraft;
 /** Preferences only. Chat content, private names and drafts are never serialized. */
 final class UtilitySettings {
     private static boolean loaded;
-    static boolean chat=true, counts=true, fullscreen=false, otherFaces=true, showTabChat=true, mapPreview=true;
+    static boolean chat=true, counts=true, fullscreen=false, otherFaces=true, showTabChat=true, mapPreview=true, nonPlayerChat=false;
     static boolean previewOnCommand=true;
     static boolean largeMapPreview=false;
     static boolean leftHand=false;
@@ -52,6 +52,7 @@ final class UtilitySettings {
             if(j.has("bubble_characters"))bubbleCharacters=Math.max(20,Math.min(200,j.get("bubble_characters").getAsInt()));
             if(j.has("bubble_seconds"))bubbleSeconds=Math.max(1,Math.min(15,j.get("bubble_seconds").getAsInt()));
             if(j.has("chat_background_opacity"))chatBackground=Math.max(0,Math.min(100,j.get("chat_background_opacity").getAsInt()));
+            if(j.has("non_player_chat"))nonPlayerChat=j.get("non_player_chat").getAsBoolean();
             if(j.has("selected_channels"))for(Map.Entry<String,JsonElement> e:j.getAsJsonObject("selected_channels").entrySet()){
                 String v=e.getValue().getAsString();if(ChatRules.channel(v)!=null)selected.put(e.getKey(),v);
             }
@@ -69,7 +70,7 @@ final class UtilitySettings {
             j.addProperty("left_hand",leftHand);
             j.addProperty("main_hand_left",mainHandLeft);j.addProperty("hand_type",handType.name());
             j.addProperty("remember_drafts",rememberDrafts);j.addProperty("unlimited_history",unlimitedHistory);j.addProperty("shift_tab",cycleTabs);j.addProperty("team_bubbles",bubbles);j.addProperty("bubble_characters",bubbleCharacters);j.addProperty("bubble_seconds",bubbleSeconds);
-            j.addProperty("chat_background_opacity",chatBackground);
+            j.addProperty("chat_background_opacity",chatBackground);j.addProperty("non_player_chat",nonPlayerChat);
             JsonObject channels=new JsonObject();selected.forEach(channels::addProperty);j.add("selected_channels",channels);
             JsonArray hosts=new JsonArray();for(String h:devHosts)hosts.add(new JsonPrimitive(h));j.add("dev_hosts",hosts);
             AtomicFiles.write(path(),new GsonBuilder().setPrettyPrinting().create().toJson(j).getBytes(StandardCharsets.UTF_8));

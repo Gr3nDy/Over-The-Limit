@@ -299,6 +299,22 @@ final class ReliableChat {
         if(e.type!=RenderGameOverlayEvent.ElementType.CHAT||installed==null||!active()||!UtilitySettings.showTabChat)return;
         if(MinecraftAccess.get().currentScreen instanceof ReliableChatScreen)return;
         installed.drawTabs();
+        if(UtilitySettings.nonPlayerChat){
+            drawNonPlayerChat();
+        }
+    }
+    
+    private static void drawNonPlayerChat(){
+        Minecraft mc=MinecraftAccess.get();
+        if(mc.currentScreen instanceof ReliableChatScreen)return;
+        ScaledResolution sr=new ScaledResolution(mc);
+        int x=2,y=2;
+        int width=sr.getScaledWidth()-4;
+        int height=sr.getScaledHeight()/3;
+        // Draw background
+        Gui.drawRect(x-2,y-2,x+width+2,y+height+2,0xA0202020);
+        // Draw simple text "Non-Player Chat" label
+        mc.fontRendererObj.drawStringWithShadow("Non-Player Chat",x+2,y+10,0xFFFFFF);
     }
     static final class RoutingHud extends GuiNewChat {
         final GuiNewChat original;
