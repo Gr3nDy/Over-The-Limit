@@ -6,7 +6,7 @@ buildscript {
     dependencies { classpath 'net.minecraftforge.gradle:ForgeGradle:2.1-SNAPSHOT' }
 }
 apply plugin: 'net.minecraftforge.gradle.forge'
-version = '0.3.2'
+version = '0.3.3'
 group = 'otl'
 archivesBaseName = 'OTL'
 sourceCompatibility = targetCompatibility = '1.8'
@@ -23,6 +23,7 @@ if (project.hasProperty('otlSmoke')) { sourceSets.main.java.srcDir 'src/otlSmoke
 if (project.hasProperty('otlSmokeRemote')) { runClient.jvmArgs '-Dotl.smoke.remote=true' }
 if (project.hasProperty('otlSmokeServer')) { runClient.jvmArgs '-Dotl.smoke.server=true' }
 if (project.hasProperty('otlSmokeServerOnly')) { runClient.jvmArgs '-Dotl.smoke.server=true', '-Dotl.smoke.serverOnly=true' }
+if (project.hasProperty('otlSmokeScope')) { runClient.jvmArgs "-Dotl.smoke.scope=${project.property('otlSmokeScope')}" }
 jar {
     destinationDir = file("${buildDir}/dev-libs")
     inputs.property 'otlSmoke', project.hasProperty('otlSmoke')

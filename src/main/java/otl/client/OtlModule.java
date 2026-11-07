@@ -39,7 +39,7 @@ abstract class OtlModule {
             new OtlModule("reliable_chat", "Reliable Chat") {
                 boolean enabled() { return UtilitySettings.chat; }
                 void setEnabled(boolean on) { UtilitySettings.chat = on; ReliableChat.applyPreferences(); }
-                GuiScreen settings(GuiScreen back) { return new UtilityScreen(true); }
+                GuiScreen settings(GuiScreen back) { return new UtilityScreen(true,back); }
             },
             new OtlModule("map_preview", "Map Preview") {
                 boolean enabled() { return UtilitySettings.mapPreview; }
@@ -50,6 +50,21 @@ abstract class OtlModule {
                 boolean enabled() { return UtilitySettings.leftHand; }
                 void setEnabled(boolean on) { UtilitySettings.leftHand = on; }
                 GuiScreen settings(GuiScreen back) { return new PreferedHandSettings(back); }
+            },
+            new OtlModule("kill_feed", "Kill Feed") {
+                boolean enabled() { return UtilitySettings.killFeed; }
+                void setEnabled(boolean on) { UtilitySettings.killFeed=on; }
+                GuiScreen settings(GuiScreen back) { return new KillFeedSettings(back); }
+            },
+            new OtlModule("kill_confirm", "Kill Confirm") {
+                boolean enabled() { return UtilitySettings.killConfirm; }
+                void setEnabled(boolean on) { UtilitySettings.killConfirm=on;KillConfirm.state.clear(); }
+                GuiScreen settings(GuiScreen back) { return new KillConfirmSettings(back); }
+            },
+            new OtlModule("server_notices", "Server Notices") {
+                boolean enabled() { return UtilitySettings.nonPlayerChat; }
+                void setEnabled(boolean on) { UtilitySettings.nonPlayerChat=on; }
+                GuiScreen settings(GuiScreen back) { return new ServerNoticeSettings(back); }
             }
     );
 }

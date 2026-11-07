@@ -1,1 +1,1 @@
-[{"modid":"otl","name":"Over The Limit","description":"Face Rig and Reliable Chat for play.oc.tc and vanish.oc.tc. P opens OTL, J opens Face Rig. Client-side only.","version":"0.3.1","mcversion":"1.8.9","authorList":["OTL"],"dependencies":[]}]
+[{"modid":"otl","name":"Over The Limit","description":"Client-side utilities for the Overcast Community server. P opens the HUD editor, J opens Face Rig.","version":"0.3.3","mcversion":"1.8.9","authorList":["OTL"],"dependencies":[]}]

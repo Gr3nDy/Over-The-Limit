@@ -1,6 +1,5 @@
 package otl.client;
 
-import java.util.UUID;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
@@ -20,11 +19,14 @@ public class TeamBubbleRulesTest {
         assertNull(TeamBubbleRules.chat("You joined Blue"));
         assertNull(TeamBubbleRules.chat("<Alex>: (Blue) Bob: quoted text"));
     }
-    @Test public void cooldownIsPerSenderAndSpamDoesNotExtendIt(){
-        TeamBubbleRules.Cooldown cooldown=new TeamBubbleRules.Cooldown();UUID a=UUID.randomUUID(),b=UUID.randomUUID();
-        assertTrue(cooldown.accept(a,0));assertFalse(cooldown.accept(a,500000000L));assertTrue(cooldown.accept(b,500000000L));
-        assertFalse(cooldown.accept(a,1999999999L));assertTrue(cooldown.accept(a,2000000000L));
-        cooldown.expire(3000000000L);assertTrue(cooldown.accept(b,3000000000L));assertFalse(cooldown.accept(a,3000000000L));
-        cooldown.clear();assertTrue(cooldown.accept(a,3000000000L));
+    @Test public void stacksThreeMessagesAndSlidesOlderOnesUp(){
+        TeamBubbleRules.Stack stack=new TeamBubbleRules.Stack();stack.add("first",0,4000000000L);
+        stack.add("second",200000000L,4000000000L);
+        assertEquals("first",stack.items.get(1).text);assertEquals(0,stack.items.get(1).slot(200000000L),.001);
+        assertTrue(stack.items.get(1).slot(300000000L)>0);assertEquals(1,stack.items.get(1).slot(400000000L),.001);
+        stack.add("third",400000000L,4000000000L);stack.add("fourth",500000000L,4000000000L);
+        assertEquals(3,stack.items.size());assertEquals("fourth",stack.items.get(0).text);assertEquals("second",stack.items.get(2).text);
+        assertEquals(2,stack.items.get(2).slot(700000000L),.001);
+        stack.expire(5000000000L);assertTrue(stack.items.isEmpty());
     }
 }

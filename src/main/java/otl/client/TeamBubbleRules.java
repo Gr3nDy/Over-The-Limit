@@ -19,14 +19,22 @@ final class TeamBubbleRules {
         String body=group.group(3)!=null?group.group(3).trim():null;
         return new Chat(player,team,body);
     }
-    static final class Cooldown {
-        private final Map<UUID,Long> next=new HashMap<>();
-        boolean accept(UUID player,long now){
-            if(now<next.getOrDefault(player,Long.MIN_VALUE))return false;
-            next.put(player,now+2000000000L);return true;
+    static final class Message {
+        final String text;final long until;
+        private float from,target;private long movedAt;
+        Message(String text,long now,long duration){this.text=text;until=now+duration;from=-.25F;movedAt=now;}
+        float slot(long now){float t=Math.max(0,Math.min(1,(now-movedAt)/200000000F));return from+(target-from)*(1-(1-t)*(1-t)*(1-t));}
+        void move(int slot,long now){from=slot(now);target=slot;movedAt=now;}
+    }
+    static final class Stack {
+        final List<Message> items=new ArrayList<>();
+        void add(String text,long now,long duration){
+            expire(now);items.add(0,new Message(text,now,duration));if(items.size()>3)items.remove(3);
+            for(int i=1;i<items.size();i++)items.get(i).move(i,now);
         }
-        void expire(long now){next.values().removeIf(until->until<=now);}
-        void clear(){next.clear();}
+        void expire(long now){
+            if(items.removeIf(m->m.until<=now))for(int i=0;i<items.size();i++)items.get(i).move(i,now);
+        }
     }
     static String limit(String text,int max){
         String s=ChatRules.plain(text).replace('\n',' ').replace('\r',' ').trim();

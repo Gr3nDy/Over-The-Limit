@@ -17,7 +17,7 @@ import net.minecraftforge.fml.common.network.FMLNetworkEvent;
 import net.minecraftforge.fml.relauncher.ReflectionHelper;
 import net.minecraftforge.event.world.WorldEvent;
 
-/** Routes copies into bounded vanilla chat views; the original All feed is never filtered. */
+/** Routes original components into bounded vanilla-compatible chat views. */
 final class ReliableChat {
     static final ReliableChat INSTANCE=new ReliableChat();
     static final Map<String,Session> sessions=new HashMap<>();
@@ -36,7 +36,7 @@ final class ReliableChat {
         if(!contextDirty&&observedWorld==mc.theWorld&&observedConnection==connection&&observedHost.equals(host))return;
         boolean changed=observedConnection!=connection||!observedHost.equals(host);
         if(changed)welcomeGate.reset();else welcomeGate.worldChanged();
-        contextDirty=false;contextVersion++;pending.clear();recentSend=null;
+        contextDirty=false;contextVersion++;pending.clear();recentSend=null;recentCommand=null;
         observedWorld=mc.theWorld;observedConnection=connection;observedHost=host;
         Session next=sessions.get(host);if(next!=null&&changed)next.selected=ChatRules.ALL;
     }
@@ -60,10 +60,12 @@ final class ReliableChat {
             boolean reading=active()&&session().selected.equals(key);
             if(!own&&!reading)unread=Math.min(100,unread+1);
             if(scroll()>0&&!own)newBelow++;
-            hud.printChatMessageWithOptionalDeletion(text.createCopy(),id);activity=++clock;
+            hud.printChatMessageWithOptionalDeletion(text,id);activity=++clock;
         }
         int scroll(){return ReflectionHelper.getPrivateValue(GuiNewChat.class,hud,"scrollPos","field_146250_j");}
         void bottom(){hud.resetScroll();newBelow=0;unread=0;}
+        int totalLines(){return ((QuietChat)hud).drawn.size();}
+        void scrollTo(int offset){((QuietChat)hud).position(offset);if(scroll()==0)newBelow=0;}
     }
     static final class TimedLine extends ChatLine {
         final long receivedAt;
@@ -108,13 +110,6 @@ final class ReliableChat {
                     GlStateManager.enableBlend();GlStateManager.tryBlendFuncSeparate(770,771,1,0);
                     mc.fontRendererObj.drawStringWithShadow(line.getChatComponent().getFormattedText(),0,y-8,0xFFFFFF|(alpha<<24));
                     GlStateManager.disableAlpha();GlStateManager.disableBlend();
-                }
-                if(open&&shown>0){
-                    GlStateManager.translate(-3,0,0);
-                    int total=drawn.size()*(mc.fontRendererObj.FONT_HEIGHT+1),visible=shown*(mc.fontRendererObj.FONT_HEIGHT+1);
-                    int top=offset*visible/drawn.size(),thumb=visible*visible/total;
-                    if(total!=visible){int color=offset>0?0xCCCCCC:0x777777,alpha=top>0?170:96;
-                        Gui.drawRect(0,-top,2,-top-thumb,color|(alpha<<24));Gui.drawRect(2,-top,1,-top-thumb,0xDDDDDD|(alpha<<24));}
                 }
             }finally{GlStateManager.popMatrix();}
         }
@@ -194,7 +189,12 @@ final class ReliableChat {
         if(!UtilitySettings.bubbles)TeamBubbles.clearBubbles();
     }
     static void receive(IChatComponent text,int id){
-        Session s=session();boolean own=ChatRules.authoredBy(text.getFormattedText(),MinecraftAccess.get().thePlayer.getName());s.views.get(ChatRules.ALL).append(text,id,own);
+        if(ServerNotices.route(text,id))return;
+        Session s=session();String formatted=text.getFormattedText();
+        if(fullChat()&&ChatRules.commandWarning(formatted)&&recentCommand!=null&&recentCommand.host.equals(ServerScope.current())&&System.nanoTime()-recentCommand.time<8000000000L&&s.views.containsKey(recentCommand.key)){
+            s.views.get(recentCommand.key).append(text,id,true);return;
+        }
+        boolean own=ChatRules.authoredBy(formatted,MinecraftAccess.get().thePlayer.getName());s.views.get(ChatRules.ALL).append(text,id,own);
         if(!fullChat())return;
         TeamBubbles.receive(text);
         ChatRules.Route r=ChatRules.classify(text.getFormattedText());
@@ -226,18 +226,21 @@ final class ReliableChat {
     }
     static final class SendContext {final String host=ServerScope.current(),key;final long time=System.nanoTime();SendContext(String key){this.key=key;}}
     static volatile SendContext recentSend;
+    static volatile SendContext recentCommand;
     static void noteSend(String key){recentSend=key==null?null:new SendContext(key);}
     static final class Pending {final int id;final String body,name;final long time=System.nanoTime();Pending(int id,String body,String name){this.id=id;this.body=body;this.name=name;}}
     static final Map<String,Deque<Pending>> pending=new HashMap<>();
     static void expirePending(long now){
         pending.values().removeIf(queue->{queue.removeIf(p->now-p.time>30000000000L);return queue.isEmpty();});
         if(recentSend!=null&&now-recentSend.time>8000000000L)recentSend=null;
+        if(recentCommand!=null&&now-recentCommand.time>8000000000L)recentCommand=null;
     }
     static int localId=-10000;
     private static final Pattern SEND_PM=Pattern.compile("^/(?:msg|message|tell|w)\\s+([A-Za-z0-9_]{1,16})\\s+(.+)$",Pattern.CASE_INSENSITIVE);
     static String send(String text){
-        if(!fullChat()){noteSend(null);return text;}
+        if(!fullChat()){noteSend(null);recentCommand=null;return text;}
         Session s=session();String result=ChatRules.outgoing(s.selected,text);
+        recentCommand=text.startsWith("/")?new SendContext(s.selected):null;
         String channel=ChatRules.commandChannel(result);if(channel!=null)s.select(channel);
         Matcher m=SEND_PM.matcher(result);
         noteSend(channel!=null?channel:!text.startsWith("/")?s.selected:null);
@@ -253,12 +256,12 @@ final class ReliableChat {
     @SubscribeEvent(priority=EventPriority.LOWEST) public void serverChat(ClientChatReceivedEvent event){
         if(event.type==2)return;
         observeWelcome(event.message);
+        if(ServerNotices.route(event.message,0)){event.setCanceled(true);return;}
         if(!active())return;
         Minecraft mc=MinecraftAccess.get();GuiNewChat hud=mc.ingameGUI.getChatGUI();
         GuiNewChat fallback=hud instanceof RoutingHud?((RoutingHud)hud).original:hud;
         try{
             storeFallback(fallback,event.message);
-            org.apache.logging.log4j.LogManager.getLogger(GuiNewChat.class).info("[CHAT] "+event.message.getUnformattedText());
             receive(event.message,0);
             event.setCanceled(true);
         }catch(Exception e){
@@ -266,13 +269,8 @@ final class ReliableChat {
         }
     }
     private static void storeFallback(GuiNewChat hud,IChatComponent message){
-        // Keep vanilla OFF/fallback history, without invoking external/global print side effects.
-        List<ChatLine> history=ReflectionHelper.getPrivateValue(GuiNewChat.class,hud,"chatLines","field_146252_h");
-        List<ChatLine> drawn=ReflectionHelper.getPrivateValue(GuiNewChat.class,hud,"drawnChatLines","field_146253_i");
-        int ticks=MinecraftAccess.get().ingameGUI.getUpdateCounter();IChatComponent copy=message.createCopy();
-        history.add(0,new ChatLine(ticks,copy,0));
-        for(IChatComponent part:GuiUtilRenderComponents.splitText(copy,Math.max(1,(int)(hud.getChatWidth()/hud.getChatScale())),MinecraftAccess.get().fontRendererObj,false,false))drawn.add(0,new ChatLine(ticks,part,0));
-        while(history.size()>100)history.remove(history.size()-1);while(drawn.size()>100)drawn.remove(drawn.size()-1);
+        // Let client chat extensions observe the original component through vanilla's print hook.
+        hud.printChatMessage(message);
     }
     @SubscribeEvent public void open(GuiOpenEvent e){
         if(active()&&e.gui!=null&&e.gui.getClass()==GuiChat.class){
@@ -290,36 +288,43 @@ final class ReliableChat {
             ReflectionHelper.setPrivateValue(GuiIngame.class,mc.ingameGUI,installed,"persistantChatGUI","field_73840_e");
         }
         if(mc.currentScreen instanceof ReliableChatScreen&&!active())mc.displayGuiScreen(new GuiChat(((ReliableChatScreen)mc.currentScreen).text()));
+        if(installed!=null)installed.mirror();
     }
     /** Draw the channel strip as a real HUD overlay; GuiNewChat is not rendered on every launcher. */
     @SubscribeEvent public void overlay(RenderGameOverlayEvent.Post e){
         // HOTBAR is emitted reliably by vanilla and Lunar, unlike the aggregate ALL event.
         // CHAT is posted after the chat lines, keeping the strip visible instead of
         // letting the chat renderer paint over it.
-        if(e.type!=RenderGameOverlayEvent.ElementType.CHAT||installed==null||!active()||!UtilitySettings.showTabChat)return;
+        if(e.type!=RenderGameOverlayEvent.ElementType.CHAT||installed==null||!active())return;
+        if(MinecraftAccess.get().currentScreen instanceof HudEditor)return;
         if(MinecraftAccess.get().currentScreen instanceof ReliableChatScreen)return;
-        installed.drawTabs();
-        if(UtilitySettings.nonPlayerChat){
-            drawNonPlayerChat();
-        }
+        if(UtilitySettings.showTabChat)installed.drawTabs();
     }
     
-    private static void drawNonPlayerChat(){
-        Minecraft mc=MinecraftAccess.get();
-        if(mc.currentScreen instanceof ReliableChatScreen)return;
-        ScaledResolution sr=new ScaledResolution(mc);
-        int x=2,y=2;
-        int width=sr.getScaledWidth()-4;
-        int height=sr.getScaledHeight()/3;
-        // Draw background
-        Gui.drawRect(x-2,y-2,x+width+2,y+height+2,0xA0202020);
-        // Draw simple text "Non-Player Chat" label
-        mc.fontRendererObj.drawStringWithShadow("Non-Player Chat",x+2,y+10,0xFFFFFF);
+    static HudLayout.Rect tabBounds(){
+        int total=156;
+        if(ServerScope.active()){
+            total=0;Session s=session();
+            for(String key:tabKeys()){View v=s.views.get(key);if(v==null)continue;String label=v.name+(v.unread>0?" "+v.unread:"");total+=key.startsWith("pm:")?Math.min(110,Math.max(52,MinecraftAccess.get().fontRendererObj.getStringWidth(label)+12)):52;}
+        }
+        return HudLayout.bounds(HudLayout.TABS,(int)Math.ceil(total*UtilitySettings.tabHudSize/100F),(int)Math.ceil(16*UtilitySettings.tabHudSize/100F));
+    }
+    static void drawTabsPreview(){
+        if(installed!=null&&active()){installed.drawTabs();return;}
+        HudLayout.Rect r=tabBounds();int x=0;float scale=UtilitySettings.tabHudSize/100F;GlStateManager.pushMatrix();
+        try{GlStateManager.translate(r.x,r.y,0);GlStateManager.scale(scale,scale,1);
+            for(String label:new String[]{"All","Team","Party"}){Gui.drawRect(x,0,x+50,16,ChatAppearance.tabColor(0xCC202020,UtilitySettings.tabBackgroundOpacity));if(x==0)Gui.drawRect(x,15,x+50,16,0xFFFFFFFF);MinecraftAccess.get().fontRendererObj.drawStringWithShadow(label,x+4,4,0xFFFFFFFF);x+=52;}
+        }finally{GlStateManager.popMatrix();}
     }
     static final class RoutingHud extends GuiNewChat {
         final GuiNewChat original;
         RoutingHud(Minecraft mc,GuiNewChat original){super(mc);this.original=original;}
         GuiNewChat target(){return active()?currentView().hud:original;}
+        void mirror(){
+            GuiNewChat view=target();
+            for(String[] field:new String[][]{{"chatLines","field_146252_h"},{"drawnChatLines","field_146253_i"},{"scrollPos","field_146250_j"},{"isScrolled","field_146251_k"}})
+                ReflectionHelper.setPrivateValue(GuiNewChat.class,this,ReflectionHelper.getPrivateValue(GuiNewChat.class,view,field),field);
+        }
         @Override public void drawChat(int ticks){
             if(active()){
                 drawAt(System.nanoTime());
@@ -333,29 +338,31 @@ final class ReliableChat {
                 String label=v.name+(v.unread>0?" "+v.unread:"");
                 total+=key.startsWith("pm:")?Math.min(110,Math.max(width,font(mc,label)+12)):width;
             }
-            boolean right=UtilitySettings.tabChatPosition==1||UtilitySettings.tabChatPosition==3;
-            boolean top=UtilitySettings.tabChatPosition==2||UtilitySettings.tabChatPosition==3;
-            int left=right?Math.max(2,sr.getScaledWidth()-total-2):2;
-            // Gameplay tabs use the very bottom edge; chat-screen tabs have their own layout.
-            int topY=top?2:sr.getScaledHeight()-20;
+            HudLayout.Rect box=tabBounds();int left=0,topY=0;float scale=UtilitySettings.tabHudSize/100F;
+            GlStateManager.pushMatrix();try{GlStateManager.translate(box.x,box.y,0);GlStateManager.scale(scale,scale,1);
             for(String key:tabKeys()){
                 View v=s.views.get(key);if(v==null)continue;
                 String label=v.name+(v.unread>0?" "+v.unread:"");
                 int w=key.startsWith("pm:")?Math.min(110,Math.max(width,font(mc,label)+12)):width;
-                Gui.drawRect(left,topY,left+w-2,topY+16,key.equals(s.selected)?0xEE404040:0xCC202020);
+                w=Math.min(w,(int)(box.w/scale)-left);if(w<12)break;
+                Gui.drawRect(left,topY,left+w-2,topY+16,ChatAppearance.tabColor(key.equals(s.selected)?0xEE404040:0xCC202020,UtilitySettings.tabBackgroundOpacity));
+                if(key.equals(s.selected))Gui.drawRect(left,topY+15,left+w-2,topY+16,0xFFFFFFFF);
                 mc.fontRendererObj.drawStringWithShadow(mc.fontRendererObj.trimStringToWidth(label,w-8),left+4,topY+4,0xFFFFFFFF);
-                left+=w;if(left>=sr.getScaledWidth()-20)break;
+                left+=w;if(left>=box.w/scale)break;
             }
             View current=s.view();
-            if(current.newBelow>0)mc.fontRendererObj.drawStringWithShadow("New messages",right?Math.max(2,sr.getScaledWidth()-font(mc,"New messages")-2):2,top?topY+19:topY-12,0xFFFFFF55);
+            if(current.newBelow>0)mc.fontRendererObj.drawStringWithShadow("New messages",0,box.y+30*scale<sr.getScaledHeight()?19:-12,0xFFFFFF55);
+            }finally{GlStateManager.popMatrix();}
         }
         private int font(Minecraft mc,String s){return mc.fontRendererObj.getStringWidth(s);}
         void drawAt(long now){
+            mirror();
             GlStateManager.pushMatrix();
             try{if(MinecraftAccess.get().currentScreen instanceof ReliableChatScreen)GlStateManager.translate(0,-18,0);((QuietChat)currentView().hud).drawAt(now);}
             finally{GlStateManager.popMatrix();}
         }
         @Override public void printChatMessageWithOptionalDeletion(IChatComponent text,int id){
+            if(ServerNotices.route(text,id))return;
             original.printChatMessageWithOptionalDeletion(text,id);
             if(active())receive(text,id);
             else if(ServerScope.active())session().views.get(ChatRules.ALL).append(text,id,ChatRules.authoredBy(text.getFormattedText(),MinecraftAccess.get().thePlayer.getName()));
@@ -371,6 +378,7 @@ final class ReliableChat {
         @Override public void scroll(int n){target().scroll(n);if(active()&&currentView().scroll()==0)currentView().newBelow=0;}
         @Override public void resetScroll(){if(!active())original.resetScroll();}
         @Override public IChatComponent getChatComponent(int x,int y){
+            mirror();
             if(active()&&MinecraftAccess.get().currentScreen instanceof ReliableChatScreen)y-=18*new ScaledResolution(MinecraftAccess.get()).getScaleFactor();
             return target().getChatComponent(x,y);
         }

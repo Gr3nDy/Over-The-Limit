@@ -3,6 +3,21 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class ChatRulesTest {
+    @org.junit.Test public void commandWarningsAreAnchoredAndFormattingIndependent(){
+        org.junit.Assert.assertTrue(ChatRules.commandWarning("\u00a7c\u26a0 Unknown command"));
+        org.junit.Assert.assertTrue(ChatRules.commandWarning(" \u26a0\ufe0f No permission"));
+        org.junit.Assert.assertFalse(ChatRules.commandWarning("<Alex>: \u26a0 No permission"));
+        org.junit.Assert.assertFalse(ChatRules.commandWarning("(Blue) Alex: \u26a0 No permission"));
+    }
+    @org.junit.Test public void noticesExcludePlayerChat(){
+        org.junit.Assert.assertTrue(ChatRules.playerMessage("\u00a79<Alex>: hello"));
+        org.junit.Assert.assertTrue(ChatRules.playerMessage("[Member] <Alex> hello"));
+        org.junit.Assert.assertTrue(ChatRules.playerMessage("(Blue Team) Alex: defend"));
+        org.junit.Assert.assertTrue(ChatRules.playerMessage("\u00a7e(Party) Alex: hello"));
+        org.junit.Assert.assertTrue(ChatRules.playerMessage("From Alex: secret"));
+        org.junit.Assert.assertFalse(ChatRules.playerMessage("\u00a7c\u26a0 Unknown command"));
+        org.junit.Assert.assertFalse(ChatRules.playerMessage("Match starts in 10 seconds"));
+    }
     @Test public void channelPrefixesFitThePacketLimit(){
         for(String key:new String[]{"all","team","party","pm:abcdefghijklmnop"}){
             int limit=ChatRules.inputLimit(key,"hello",true);

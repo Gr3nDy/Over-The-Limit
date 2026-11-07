@@ -15,6 +15,14 @@ final class ChatRules {
         Route(String key,String name,boolean outgoing){this.key=key;this.name=name;this.outgoing=outgoing;}
     }
     static String plain(String s){return FORMAT.matcher(s).replaceAll("");}
+    static boolean commandWarning(String text){return plain(text).trim().startsWith("\u26a0");}
+    static boolean playerMessage(String text){
+        Route route=classify(text);
+        String value=plain(text).replaceAll("\\p{Zs}"," ").trim();
+        return !ALL.equals(route.key)||value.matches("(?s)^(?:\\[[^\\]\\r\\n]{1,48}\\]\\s*)*<[^<>\\r\\n]{1,128}>\\s*:?\\s*\\S.*$")
+            ||value.matches("(?s)^\\([^)\\r\\n]{1,48}\\)\\s*[^:\\r\\n]{1,128}[:\u00bb]\\s*\\S.*$")
+            ||value.matches("(?s)^(?:\\[[^\\]\\r\\n]{1,48}\\]\\s*)*[^\\p{L}\\p{N}\\r\\n<>:]{0,8}[A-Za-z0-9_]{1,16}\\s*[:\u00bb]\\s*\\S.*$");
+    }
     static Route classify(String formatted){
         if(formatted.length()>1024)return new Route(ALL,null,false);
         String text=plain(formatted).trim();Matcher pm=PM.matcher(privateText(formatted));
