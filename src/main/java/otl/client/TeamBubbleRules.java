@@ -1,14 +1,23 @@
 package otl.client;
+
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 final class TeamBubbleRules {
     static final class Chat {
-        final String name,body;
-        Chat(String name,String body){this.name=name;this.body=body;}
+        final String name,team,body;
+        Chat(String name,String team,String body){this.name=name;this.team=team;this.body=body;}
     }
     static Chat chat(String formatted){
         ChatRules.Route route=ChatRules.classify(formatted);
-        return ChatRules.TEAM.equals(route.key)?new Chat(route.name,ChatRules.groupBody(formatted)):null;
+        if(!ChatRules.TEAM.equals(route.key))return null;
+        Matcher group=Pattern.compile("^\\(([^)\\r\\n]{1,32})\\)\\s*(?:\\[[^\\]\\r\\n]+\\]\\s*)*<?([A-Za-z0-9_]{1,16})>?\\s*[:>\\u00bb]\\s*(.+)$",Pattern.CASE_INSENSITIVE).matcher(ChatRules.plain(formatted).trim());
+        if(!group.matches())return null;
+        String player=group.group(2)!=null?group.group(2).trim():null;
+        String team=group.group(1)!=null?group.group(1).trim():null;
+        String body=group.group(3)!=null?group.group(3).trim():null;
+        return new Chat(player,team,body);
     }
     static final class Cooldown {
         private final Map<UUID,Long> next=new HashMap<>();
