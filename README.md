@@ -1,6 +1,6 @@
-# Overcast Community Server Utilities
+# Over The Limit
 
-![Over The Limit: crosshair, EXP and queued kill confirmations](docs/assets/otl-banner.svg)
+![OVER THE LIMIT](docs/assets/otl-banner.svg)
 
 **Over The Limit (OTL) v0.3.3** is a client-side Forge 1.8.9 mod for the Overcast Community server. Press **P** for the HUD editor and modules; press **J** for Face Rig. [Download the release](https://github.com/Gr3nDy/Over-The-Limit/releases/tag/v0.3.3) · [What's new](CHANGELOG.md)
 
