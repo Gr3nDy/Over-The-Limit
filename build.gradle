@@ -6,7 +6,7 @@ buildscript {
     dependencies { classpath 'net.minecraftforge.gradle:ForgeGradle:2.1-SNAPSHOT' }
 }
 apply plugin: 'net.minecraftforge.gradle.forge'
-version = '0.3.3'
+version = '0.3.4'
 group = 'otl'
 archivesBaseName = 'OTL'
 sourceCompatibility = targetCompatibility = '1.8'

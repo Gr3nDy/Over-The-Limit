@@ -7,12 +7,12 @@ import java.util.regex.*;
 final class KillConfirmRules {
     private static final Pattern REWARD=Pattern.compile("^\\+([0-9]{1,6})\\s+raindrops\\s*\\|\\s*(Kill Assist|Kill)$",Pattern.CASE_INSENSITIVE);
     private static final long PAIR_NANOS=2000000000L,MULTI_NANOS=3000000000L,DUEL_NANOS=8000000000L;
-    static final long POP_NANOS=220000000L,ROW_NANOS=650000000L,REVEAL_NANOS=220000000L,SLIDE_NANOS=130000000L;
+    static final long POP_NANOS=380000000L,ROW_NANOS=650000000L,REVEAL_NANOS=220000000L,SLIDE_NANOS=130000000L;
     static final float FLAWLESS_HEALTH=18F;
-    static final int LONG_SHOT_BLOCKS=30,SHUTDOWN_STREAK=5,COMEBACK_DEATHS=3,MAX_BONUS_RANK=3;
+    static final int LONG_SHOT_BLOCKS=30,SHUTDOWN_STREAK=5,UNDERDOG_KILLS=10,COMEBACK_DEATHS=3,MAX_BONUS_RANK=3;
     static final class Reward {
         final int points;final boolean assist;
-        boolean bow,revenge,survivor,lastBreath,flawless,longShot,shutdown,underdog,firstBlood,comeback,airborne,sneak;
+        boolean bow,revenge,survivor,lastBreath,flawless,longShot,shutdown,underdog,firstBlood,comeback,airborne,jumpShot,sneak;
         int multi;
         long time;
         int streakAt;
@@ -31,6 +31,7 @@ final class KillConfirmRules {
             if(underdog)tags.add("UNDERDOG");
             if(firstBlood)tags.add("FIRST BLOOD");
             if(comeback)tags.add("COMEBACK");
+            if(jumpShot)tags.add("JUMPSHOT");
             if(airborne)tags.add("AIRBORNE");
             if(sneak)tags.add("SNEAK");
             for(int i=0;i<Math.min(MAX_BONUS_RANK,tags.size());i++)result.add(tags.get(i));
@@ -40,14 +41,14 @@ final class KillConfirmRules {
     }
     /** Facts captured at the kill, attached to whichever reward line follows it. */
     private static final class Tags {
-        final long time;final boolean bow,revenge,survivor,lastBreath,flawless,longShot,shutdown,underdog,firstBlood,comeback,airborne,sneak;final int multi;
-        Tags(long time,boolean bow,boolean revenge,boolean survivor,boolean lastBreath,boolean flawless,boolean longShot,boolean shutdown,boolean underdog,boolean firstBlood,boolean comeback,boolean airborne,boolean sneak,int multi){
+        final long time;final boolean bow,revenge,survivor,lastBreath,flawless,longShot,shutdown,underdog,firstBlood,comeback,airborne,jumpShot,sneak;final int multi;
+        Tags(long time,boolean bow,boolean revenge,boolean survivor,boolean lastBreath,boolean flawless,boolean longShot,boolean shutdown,boolean underdog,boolean firstBlood,boolean comeback,boolean airborne,boolean jumpShot,boolean sneak,int multi){
             this.time=time;this.bow=bow;this.revenge=revenge;this.survivor=survivor;this.lastBreath=lastBreath;this.flawless=flawless;this.longShot=longShot;
-            this.shutdown=shutdown;this.underdog=underdog;this.firstBlood=firstBlood;this.comeback=comeback;this.airborne=airborne;this.sneak=sneak;this.multi=multi;
+            this.shutdown=shutdown;this.underdog=underdog;this.firstBlood=firstBlood;this.comeback=comeback;this.airborne=airborne;this.jumpShot=jumpShot;this.sneak=sneak;this.multi=multi;
         }
         void apply(Reward reward){
             reward.bow=bow;reward.revenge=revenge;reward.survivor=survivor;reward.lastBreath=lastBreath;reward.flawless=flawless;reward.longShot=longShot;
-            reward.shutdown=shutdown;reward.underdog=underdog;reward.firstBlood=firstBlood;reward.comeback=comeback;reward.airborne=airborne;reward.sneak=sneak;reward.multi=multi;
+            reward.shutdown=shutdown;reward.underdog=underdog;reward.firstBlood=firstBlood;reward.comeback=comeback;reward.airborne=airborne;reward.jumpShot=jumpShot;reward.sneak=sneak;reward.multi=multi;
         }
     }
     static Reward parse(String text){
@@ -98,6 +99,9 @@ final class KillConfirmRules {
         void damaged(){if(duelVictim!=null)duelClean=false;}
         void receive(String text,String local,long now,float health){receive(text,local,now,health,false,false);}
         void receive(String text,String local,long now,float health,boolean airborne,boolean sneaking){
+            receive(text,local,now,health,airborne,false,sneaking);
+        }
+        void receive(String text,String local,long now,float health,boolean airborne,boolean jumping,boolean sneaking){
             while(!pendingTags.isEmpty()&&now-pendingTags.peekFirst().time>PAIR_NANOS)pendingTags.removeFirst();
             while(!pendingRewards.isEmpty()&&now-pendingRewards.peekFirst().time>PAIR_NANOS)pendingRewards.removeFirst();
             KillFeedRules.Death death=KillFeedRules.parse(text);
@@ -111,8 +115,8 @@ final class KillConfirmRules {
                         &&victimKey.equals(duelVictim)&&duelHealth>=FLAWLESS_HEALTH&&now-duelAt<=DUEL_NANOS;
                     int shot=distance(death);
                     Tags tags=new Tags(now,isBow(death),revenge,health>0&&health<=4,health>0&&health<=2,flawless,
-                        isBow(death)&&shot>=LONG_SHOT_BLOCKS,victimStreak>=SHUTDOWN_STREAK,victimKills>localKills,
-                        localKills==0,deathsInARow>=COMEBACK_DEATHS,airborne,sneaking,
+                        isBow(death)&&shot>=LONG_SHOT_BLOCKS,victimStreak>=SHUTDOWN_STREAK,(long)victimKills-localKills>=UNDERDOG_KILLS,
+                         localKills==0,deathsInARow>=COMEBACK_DEATHS,airborne,isBow(death)&&jumping,sneaking,
                         lastKillAt>0&&now-lastKillAt<=MULTI_NANOS?multi+1:1);
                     if(revenge)lastAttacker=null;
                     if(victimKey.equals(duelVictim)){duelVictim=null;duelConfirmed=false;duelClean=false;}
@@ -137,8 +141,8 @@ final class KillConfirmRules {
                 if(!pendingTags.isEmpty())pendingTags.removeFirst().apply(next);
                 else{pendingRewards.addLast(next);if(pendingRewards.size()>16)pendingRewards.removeFirst();}
                 if(streak<Integer.MAX_VALUE)streak++;
-                streakExp=(int)Math.min(Integer.MAX_VALUE,(long)streakExp+next.points);
             }
+            streakExp=(int)Math.min(Integer.MAX_VALUE,(long)streakExp+next.points);
             next.streakAt=streak;
             entries.addLast(next);
             while(!entries.isEmpty()&&now-entries.peekFirst().time>3400000000L)entries.removeFirst();
@@ -169,7 +173,10 @@ final class KillConfirmRules {
     static float alpha(long age){return Math.max(0,Math.min(1,(3400000000L-age)/400000000F));}
     /** Ease-out: most of the travel happens immediately, then settles instead of crawling. */
     private static float easeOut(float t){t=Math.max(0,Math.min(1,t));return 1-(1-t)*(1-t)*(1-t);}
-    static float pop(long age){return 1+.25F*(1-easeOut(age/(float)POP_NANOS));}
+    static float pop(long age){
+        float t=age/(float)POP_NANOS;
+        return 1+.45F*(t<.25F?easeOut(t*4):1-easeOut((t-.25F)/.75F));
+    }
     static String streakLabel(int streak,boolean assist){
         if(assist||streak<2)return "";
         if(streak>=20)return "LEGENDARY";

@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.3.4 — 2026-11-08
+
+- Kill and assist rewards now add to the same gold EXP total until death; assists still do not advance the kill streak or receive bonus tags.
+- Kill Confirm's gold EXP now pulses outward more visibly and settles back with the `+` anchored on the crosshair. White rows align with EXP, and KILL/BOW KILL rows have a pixel skull prefix.
+- Added **JUMPSHOT** for bow kills while off the ground. **AIRBORNE** now requires two blocks of clearance beneath the player; bow kills can earn both tags. **UNDERDOG** requires the victim to have at least 10 more observed kills than you.
+- Added separate built-in kill and assist sounds behind one **OFF-by-default** Kill Confirm setting.
+- Expanded Kill Confirm tests and focused Forge smoke coverage. Live Lunar/OCC behavior has not been verified.
+
 ## v0.3.3 — 2026-11-08
 
 - Added **Kill Feed** with weapon/cause icons, colored outlines, independent background/outline opacity, 1–5 visible rows, adjustable lifetime, 1,000-message session history, hover originals and an optional slide animation (OFF by default).

@@ -20,17 +20,17 @@ public class KillConfirmRulesTest {
     }
     @Test public void onlyKillsIncreaseStreakAndLocalDeathResets(){
         KillConfirmRules.State state=new KillConfirmRules.State();
-        state.receive("+3 raindrops | Kill Assist","Local",1,20);assertEquals(0,state.streak);assertTrue(state.reward.assist);assertEquals(0,state.streakExp);
-        state.receive("+5 raindrops | Kill","Local",2,20);state.receive("+5 raindrops | Kill","Local",3,20);assertEquals(2,state.streak);assertEquals(10,state.streakExp);
-        state.receive("+3 raindrops | Kill Assist","Local",4,20);assertEquals(2,state.streak);assertEquals(10,state.streakExp);assertTrue(state.reward.assist);assertEquals(4,state.receivedAt);
+        state.receive("+3 raindrops | Kill Assist","Local",1,20);assertEquals(0,state.streak);assertTrue(state.reward.assist);assertEquals(3,state.streakExp);
+        state.receive("+5 raindrops | Kill","Local",2,20);state.receive("+5 raindrops | Kill","Local",3,20);assertEquals(2,state.streak);assertEquals(13,state.streakExp);
+        state.receive("+3 raindrops | Kill Assist","Local",4,20);assertEquals(2,state.streak);assertEquals(16,state.streakExp);assertTrue(state.reward.assist);assertEquals(4,state.receivedAt);
         assertEquals("",KillConfirmRules.streakLabel(state.streak,state.reward.assist));
         state.receive("Other died","Local",5,20);assertEquals(2,state.streak);
         state.receive("Local was slain by Enemy's Iron Sword","local",6000000000L,20);assertEquals(0,state.streak);assertEquals(0,state.streakExp);assertNull(state.reward);
         state.receive("+5 raindrops | Kill","Local",8000000000L,20);state.clear();assertEquals(0,state.streak);assertEquals(0,state.streakExp);assertNull(state.reward);
     }
     @Test public void animationPopsThenFadesOut(){
-        assertEquals(1.25,KillConfirmRules.pop(0),.001);assertEquals(1,KillConfirmRules.pop(220000000),.001);
-        assertEquals(1.031,KillConfirmRules.pop(110000000),.001);
+        assertEquals(1,KillConfirmRules.pop(0),.001);assertEquals(1.45,KillConfirmRules.pop(95000000),.001);
+        assertEquals(1.133,KillConfirmRules.pop(190000000),.001);assertEquals(1,KillConfirmRules.pop(380000000),.001);
         assertEquals(1,KillConfirmRules.alpha(0),0);assertEquals(.5,KillConfirmRules.alpha(3200000000L),.001);assertEquals(0,KillConfirmRules.alpha(3400000000L),0);
         assertEquals(0,KillConfirmRules.reveal(400000000,450000000),0);assertEquals(.875,KillConfirmRules.reveal(560000000,450000000),.001);assertEquals(1,KillConfirmRules.reveal(670000000,450000000),.001);
         assertEquals(0,KillConfirmRules.slideIn(0,0),.001);assertEquals(1,KillConfirmRules.slideIn(130000000,0),.001);
@@ -83,13 +83,25 @@ public class KillConfirmRulesTest {
     }
     @Test public void shutdownUnderdogFirstBloodAndMultiComeFromDeathStream(){
         KillConfirmRules.State state=new KillConfirmRules.State();
-        for(int i=0;i<5;i++)state.receive("Feed"+i+" was slain by Enemy's Iron Sword","Local",i,20);
+        for(int i=0;i<10;i++)state.receive("Feed"+i+" was slain by Enemy's Iron Sword","Local",i,20);
         state.receive("Enemy was slain by Local's Iron Sword","Local",10,20);
         state.receive("+5 raindrops | Kill","Local",11,20);
         assertEquals(java.util.Arrays.asList("KILL","SHUTDOWN","UNDERDOG","FIRST BLOOD"),state.reward.labels(1));
         state.receive("A was slain by Local's Iron Sword","Local",2000000000L,20);
         state.receive("+5 raindrops | Kill","Local",2000000001L,20);
         assertEquals("DOUBLE KILL",state.reward.labels(2).get(1));
+    }
+    @Test public void underdogNeedsTenMoreKillsThanTheLocalPlayer(){
+        KillConfirmRules.State state=new KillConfirmRules.State();
+        for(int i=0;i<9;i++)state.receive("Feed"+i+" was slain by Enemy's Iron Sword","Local",i,20);
+        state.receive("Enemy was slain by Local's Iron Sword","Local",10,20);
+        state.receive("+5 raindrops | Kill","Local",11,20);
+        assertFalse(state.reward.underdog);
+        state.clear();
+        for(int i=0;i<10;i++)state.receive("Feed"+i+" was slain by Enemy's Iron Sword","Local",i,20);
+        state.receive("Enemy was slain by Local's Iron Sword","Local",11,20);
+        state.receive("+5 raindrops | Kill","Local",12,20);
+        assertTrue(state.reward.underdog);
     }
     @Test public void longShotAndComebackAndAirTags(){
         KillConfirmRules.State state=new KillConfirmRules.State();
@@ -124,5 +136,21 @@ public class KillConfirmRulesTest {
         KillConfirmRules.Reward assist=new KillConfirmRules.Reward(3,true);
         assist.shutdown=true;assist.revenge=true;assist.multi=3;assist.survivor=true;
         assertEquals(java.util.Arrays.asList("KILL ASSIST"),assist.labels(10));
+    }
+    @Test public void bowJumpAndTwoBlockAirborneAreIndependentTags(){
+        KillConfirmRules.State state=new KillConfirmRules.State();
+        state.receive("Target was shot by Local from 10 blocks","Local",1,20,false,true,false);
+        state.receive("+5 raindrops | Kill","Local",2,20);
+        assertTrue(state.reward.labels(1).contains("JUMPSHOT"));
+        assertFalse(state.reward.labels(1).contains("AIRBORNE"));
+        state.clear();
+        state.receive("Target was shot by Local from 10 blocks","Local",1,20,true,true,false);
+        state.receive("+5 raindrops | Kill","Local",2,20);
+        assertTrue(state.reward.labels(1).containsAll(java.util.Arrays.asList("JUMPSHOT","AIRBORNE")));
+        state.clear();
+        state.receive("Target was slain by Local's Iron Sword","Local",1,20,true,true,false);
+        state.receive("+5 raindrops | Kill","Local",2,20);
+        assertTrue(state.reward.labels(1).contains("AIRBORNE"));
+        assertFalse(state.reward.labels(1).contains("JUMPSHOT"));
     }
 }

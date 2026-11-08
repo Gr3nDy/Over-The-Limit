@@ -618,17 +618,19 @@ public final class OtlSmoke {
                 OtlModule confirm=OtlModule.ALL.stream().filter(m->m.name.equals("Kill Confirm")).findFirst().get();require(!confirm.enabled(),"Kill Confirm should default OFF");
                 confirm.setEnabled(true);require(confirm.settings(mc.currentScreen) instanceof KillConfirmSettings,"Kill Confirm module settings missing");
                 UtilitySettings.hideKillConfirmChat=false;KillConfirmSettings confirmOptions=new KillConfirmSettings(mc.currentScreen);mc.displayGuiScreen(confirmOptions);
+                require(!UtilitySettings.killConfirmSounds,"Kill/assist sounds should default OFF");
                 net.minecraftforge.fml.client.config.GuiSlider confirmSize=(net.minecraftforge.fml.client.config.GuiSlider)buttons(confirmOptions).stream().filter(b->b.id==1).findFirst().get();
                 net.minecraftforge.fml.client.config.GuiSlider confirmOpacity=(net.minecraftforge.fml.client.config.GuiSlider)buttons(confirmOptions).stream().filter(b->b.id==3).findFirst().get();
-                confirmSize.setValue(125);confirmSize.updateSlider();confirmOpacity.setValue(40);confirmOpacity.updateSlider();confirmOptions.actionPerformed(find(confirmOptions,"Hide rewards in chat: OFF"));confirmOptions.onGuiClosed();
-                UtilitySettings.killConfirm=false;UtilitySettings.killConfirmSize=75;UtilitySettings.killConfirmOpacity=0;UtilitySettings.hideKillConfirmChat=false;
-                ReflectionHelper.setPrivateValue(UtilitySettings.class,null,false,"loaded");UtilitySettings.load();require(confirm.enabled()&&UtilitySettings.killConfirmSize==125&&UtilitySettings.killConfirmOpacity==40&&UtilitySettings.hideKillConfirmChat,"Kill Confirm preferences did not persist");
+                confirmSize.setValue(125);confirmSize.updateSlider();confirmOpacity.setValue(40);confirmOpacity.updateSlider();confirmOptions.actionPerformed(find(confirmOptions,"Hide rewards in chat: OFF"));confirmOptions.actionPerformed(find(confirmOptions,"Kill/assist sounds: OFF"));confirmOptions.onGuiClosed();
+                UtilitySettings.killConfirm=false;UtilitySettings.killConfirmSize=75;UtilitySettings.killConfirmOpacity=0;UtilitySettings.hideKillConfirmChat=false;UtilitySettings.killConfirmSounds=false;
+                ReflectionHelper.setPrivateValue(UtilitySettings.class,null,false,"loaded");UtilitySettings.load();require(confirm.enabled()&&UtilitySettings.killConfirmSize==125&&UtilitySettings.killConfirmOpacity==40&&UtilitySettings.hideKillConfirmChat&&UtilitySettings.killConfirmSounds,"Kill Confirm preferences did not persist");
                 confirmOptions.actionPerformed(find(confirmOptions,"Hide rewards in chat: ON"));require(!UtilitySettings.hideKillConfirmChat,"Reward chat hiding did not toggle OFF");
+                confirmOptions.actionPerformed(find(confirmOptions,"Kill/assist sounds: ON"));require(!UtilitySettings.killConfirmSounds,"Kill/assist sounds did not toggle OFF");
                 confirmOptions.actionPerformed(find(confirmOptions,"Reset size"));require(UtilitySettings.killConfirmSize==75,"Small default size did not reset");
                 UtilitySettings.hudPositions.put(HudLayout.CONFIRM,new HudLayout.Position(0,0));confirmOptions.actionPerformed(find(confirmOptions,"Reset position"));
                 HudLayout.Rect confirmBox=KillConfirm.bounds();ScaledResolution confirmResolution=new ScaledResolution(mc);
                 require(Math.abs(confirmBox.x+6-confirmResolution.getScaledWidth()/2)<=1&&Math.abs(confirmBox.y+27-confirmResolution.getScaledHeight()/2)<=1,"Kill Confirm plus sign is not centred on the crosshair");
-                UtilitySettings.killConfirmOpacity=0;UtilitySettings.killFeed=false;mc.displayGuiScreen(null);
+                UtilitySettings.killConfirmOpacity=0;UtilitySettings.killFeed=false;UtilitySettings.killConfirmSounds=true;mc.displayGuiScreen(null);
                 KillConfirm.state.hit("Enemy",20,System.nanoTime());KillConfirm.state.confirmDuel(14);
                 line("Enemy was slain by "+mc.thePlayer.getName()+"'s Iron Sword");line("\u00a7b+5 raindrops \u00a77| \u00a7eKill");
                 require(KillConfirm.state.reward.labels(KillConfirm.state.streak).contains("FLAWLESS"),"Flawless duel tag missing");
@@ -636,11 +638,11 @@ public final class OtlSmoke {
             }else if(state==46){
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-kill-confirm-kill.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
                 line("+5 raindrops | Kill");require(KillConfirm.state.streak==2&&KillConfirm.state.streakExp==10,"Second kill did not count or stack EXP");
-                line("+3 raindrops | Kill Assist");require(KillConfirm.state.streak==2&&KillConfirm.state.streakExp==10&&KillConfirm.state.reward.assist&&KillConfirmRules.streakLabel(KillConfirm.state.streak,true).isEmpty(),"Assist changed streak/EXP or showed streak text");
+                line("+3 raindrops | Kill Assist");require(KillConfirm.state.streak==2&&KillConfirm.state.streakExp==13&&KillConfirm.state.reward.assist&&KillConfirmRules.streakLabel(KillConfirm.state.streak,true).isEmpty(),"Assist did not stack EXP or changed streak");
                 require(KillConfirm.state.reward.labels(KillConfirm.state.streak).equals(java.util.Arrays.asList("KILL ASSIST")),"Assist showed bonus rows");
             }else if(state==47){
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-kill-confirm-assist.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
-                UtilitySettings.nonPlayerChat=true;line("+5 raindrops | Kill");require(KillConfirm.state.streak==3&&KillConfirm.state.streakExp==15&&!KillConfirmRules.streakLabel(KillConfirm.state.streak,false).isEmpty(),"Next kill did not restore streak text or stack EXP");
+                UtilitySettings.nonPlayerChat=true;line("+5 raindrops | Kill");require(KillConfirm.state.streak==3&&KillConfirm.state.streakExp==18&&!KillConfirmRules.streakLabel(KillConfirm.state.streak,false).isEmpty(),"Next kill did not restore streak text or stack EXP");
                 require(KillConfirm.state.reward.labels(KillConfirm.state.streak).contains("3 KILL STREAK"),"Streak row missing from white stack");
                 line(mc.thePlayer.getName()+" fell out of the world");require(KillConfirm.state.streak==0&&KillConfirm.state.reward==null,"Death did not reset streak with Kill Feed OFF");
                 line("+5 raindrops | Kill");KillConfirm.INSTANCE.unload(new net.minecraftforge.event.world.WorldEvent.Unload(mc.theWorld));require(KillConfirm.state.streak==0&&KillConfirm.state.reward==null,"World change did not reset confirmations");
@@ -649,7 +651,7 @@ public final class OtlSmoke {
                 require(KillConfirm.state.streak==1&&KillConfirm.state.reward.assist&&ServerNotices.history.size()==noticeCount&&chatHistory("all").size()==chatCount,"Hidden rewards leaked to chat/notices or stopped popups");
                 line("<Alex>: +5 raindrops | Kill");require(chatHistory("all").get(0).getChatComponent().getUnformattedText().equals("<Alex>: +5 raindrops | Kill")&&KillConfirm.state.streak==1,"Reward hiding suppressed player chat");
                 KillConfirm.state.clear();UtilitySettings.killConfirm=false;line("+5 raindrops | Kill");require(KillConfirm.state.reward==null&&ServerNotices.history.size()==noticeCount+1,"Disabled module counted/hidden reward");UtilitySettings.hideKillConfirmChat=false;
-                UtilitySettings.killFeed=true;UtilitySettings.nonPlayerChat=false;UtilitySettings.save();
+                UtilitySettings.killFeed=true;UtilitySettings.nonPlayerChat=false;UtilitySettings.killConfirmSounds=false;UtilitySettings.save();
                 require(org.lwjgl.opengl.GL11.glGetError()==0,"Kill Confirm left a GL error");
                 UtilityScreen appearance=new UtilityScreen(true);mc.displayGuiScreen(appearance);appearance.actionPerformed(find(appearance,"Appearance"));
                 net.minecraftforge.fml.client.config.GuiSlider tabs=(net.minecraftforge.fml.client.config.GuiSlider)buttons(appearance).stream().filter(b->b.id==16).findFirst().get();

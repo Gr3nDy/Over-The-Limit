@@ -25,6 +25,7 @@ final class UtilitySettings {
     static int killBackgroundOpacity=100,tabHudSize=100;
     static boolean killFeedSlide=false;
     static boolean killConfirm=false;
+    static boolean killConfirmSounds=false;
     static boolean hideKillConfirmChat=false;
     static int killConfirmSize=75,killConfirmOpacity=0;
     static int killFeedRows=5,killFeedSeconds=10;
@@ -50,6 +51,7 @@ final class UtilitySettings {
             if(j.has("face_rig"))faceRig=j.get("face_rig").getAsBoolean();
             if(j.has("kill_feed"))killFeed=j.get("kill_feed").getAsBoolean();
             if(j.has("kill_confirm"))killConfirm=j.get("kill_confirm").getAsBoolean();
+            if(j.has("kill_confirm_sounds"))killConfirmSounds=j.get("kill_confirm_sounds").getAsBoolean();
             if(j.has("hide_kill_confirm_chat"))hideKillConfirmChat=j.get("hide_kill_confirm_chat").getAsBoolean();
             if(j.has("kill_confirm_size"))killConfirmSize=Math.max(50,Math.min(150,j.get("kill_confirm_size").getAsInt()));
             if(j.has("kill_confirm_opacity"))killConfirmOpacity=Math.max(0,Math.min(100,j.get("kill_confirm_opacity").getAsInt()));
@@ -105,6 +107,7 @@ final class UtilitySettings {
             j.addProperty("face_rig",faceRig);
             j.addProperty("kill_feed",killFeed);j.addProperty("hide_kill_chat",hideKillChat);
             j.addProperty("kill_confirm",killConfirm);j.addProperty("kill_confirm_size",killConfirmSize);
+            j.addProperty("kill_confirm_sounds",killConfirmSounds);
             j.addProperty("kill_confirm_opacity",killConfirmOpacity);
             j.addProperty("hide_kill_confirm_chat",hideKillConfirmChat);
             j.addProperty("kill_feed_size",killFeedSize);j.addProperty("kill_border_opacity",killBorderOpacity);

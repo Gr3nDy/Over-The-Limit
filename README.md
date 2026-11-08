@@ -2,7 +2,7 @@
 
 ![OVER THE LIMIT](docs/assets/otl-banner.svg)
 
-**Over The Limit (OTL)** is a client-side Forge 1.8.9 mod for the Overcast Community server. Press **P** for the HUD editor and modules; press **J** for Face Rig. [Download the release](https://github.com/Gr3nDy/Over-The-Limit/releases/tag/v0.3.3) · [What's new](CHANGELOG.md)
+**Over The Limit (OTL)** is a client-side Forge 1.8.9 mod for the Overcast Community server. Press **P** for the HUD editor and modules; press **J** for Face Rig. [Download the release](https://github.com/Gr3nDy/Over-The-Limit/releases/tag/v0.3.4) · [What's new](CHANGELOG.md)
 
 ## Modules
 
@@ -18,7 +18,7 @@
 
 ## Download
 
-Download `OTL.jar` from the [v0.3.3 release](https://github.com/Gr3nDy/Over-The-Limit/releases/tag/v0.3.3) or [browse all releases](https://github.com/Gr3nDy/Over-The-Limit/releases).
+Download `OTL.jar` from the [v0.3.4 release](https://github.com/Gr3nDy/Over-The-Limit/releases/tag/v0.3.4) or [browse all releases](https://github.com/Gr3nDy/Over-The-Limit/releases).
 
 Place `OTL.jar` in your Forge 1.8.9 client's `mods` folder manually.
 

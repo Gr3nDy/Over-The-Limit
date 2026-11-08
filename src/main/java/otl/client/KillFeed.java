@@ -230,7 +230,7 @@ final class KillFeed {
             default:return new ItemStack(Items.bone);
         }
     }
-    private static void skull(int x,int y,float opacity){
+    static void skull(int x,int y,float opacity){
         int bone=KillFeedRules.faded(0xFFE0E0D5,opacity),dark=KillFeedRules.faded(0xFF292932,opacity);
         Gui.drawRect(x+3,y+2,x+13,y+11,bone);Gui.drawRect(x+5,y+11,x+11,y+14,bone);
         Gui.drawRect(x+4,y+5,x+7,y+8,dark);Gui.drawRect(x+9,y+5,x+12,y+8,dark);Gui.drawRect(x+7,y+9,x+9,y+11,dark);

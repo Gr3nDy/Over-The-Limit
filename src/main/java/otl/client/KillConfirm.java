@@ -21,8 +21,16 @@ final class KillConfirm {
     @SubscribeEvent(priority=EventPriority.HIGHEST,receiveCanceled=true) public void receive(ClientChatReceivedEvent event){
         Minecraft mc=MinecraftAccess.get();if(event.type!=2&&active()&&mc.thePlayer!=null){
             String text=event.message.getFormattedText();
-            state.receive(text,mc.thePlayer.getName(),System.nanoTime(),mc.thePlayer.getHealth()+mc.thePlayer.getAbsorptionAmount(),!mc.thePlayer.onGround,mc.thePlayer.isSneaking());
-            if(UtilitySettings.hideKillConfirmChat&&KillConfirmRules.parse(text)!=null)event.setCanceled(true);
+            net.minecraft.util.AxisAlignedBB box=mc.thePlayer.getEntityBoundingBox();
+            boolean airborne=!mc.thePlayer.onGround&&mc.theWorld.getCollidingBoundingBoxes(mc.thePlayer,
+                new net.minecraft.util.AxisAlignedBB(box.minX,box.minY-2,box.minZ,box.maxX,box.minY,box.maxZ)).isEmpty();
+            state.receive(text,mc.thePlayer.getName(),System.nanoTime(),mc.thePlayer.getHealth()+mc.thePlayer.getAbsorptionAmount(),airborne,!mc.thePlayer.onGround,mc.thePlayer.isSneaking());
+            KillConfirmRules.Reward reward=KillConfirmRules.parse(text);
+            if(reward!=null){
+                if(UtilitySettings.killConfirmSounds)mc.getSoundHandler().playSound(net.minecraft.client.audio.PositionedSoundRecord.create(
+                    new net.minecraft.util.ResourceLocation(reward.assist?"random.pop":"random.orb"),reward.assist?1.1F:1F));
+                if(UtilitySettings.hideKillConfirmChat)event.setCanceled(true);
+            }
         }
     }
     @SubscribeEvent public void attack(net.minecraftforge.event.entity.player.AttackEntityEvent event){
@@ -69,20 +77,23 @@ final class KillConfirm {
             int background=KillFeedRules.faded(ChatAppearance.tabColor(0xCC000000,UtilitySettings.killConfirmOpacity),alpha);
             if((background>>>24)>0)Gui.drawRect(0,0,WIDTH,HEIGHT,background);
             GlStateManager.enableBlend();GlStateManager.tryBlendFuncSeparate(770,771,1,0);
-            String label="+"+(editing?75:reward.assist?reward.points:state.streakExp)+" EXP";
-            float textScale=EXP_TEXT_SCALE+(pop-1)*.5F;
-            GlStateManager.pushMatrix();GlStateManager.translate(EXP_X,EXP_Y,0);GlStateManager.scale(textScale,textScale,1);
-            mc.fontRendererObj.drawStringWithShadow(label,0,0,gold);GlStateManager.popMatrix();
+            String label="+"+(editing?75:state.streakExp)+" EXP";
+            float textScale=EXP_TEXT_SCALE*pop;
+            GlStateManager.pushMatrix();GlStateManager.translate(EXP_X+PLUS_CENTER_X*EXP_TEXT_SCALE,EXP_Y+GLYPH_CENTER_Y*EXP_TEXT_SCALE,0);GlStateManager.scale(textScale,textScale,1);
+            mc.fontRendererObj.drawStringWithShadow(label,-PLUS_CENTER_X,-GLYPH_CENTER_Y,gold);GlStateManager.popMatrix();
             int newest=KillConfirmRules.newestRow(rows,now);
             int right=12+(int)Math.ceil(mc.fontRendererObj.getStringWidth(label)*1.43F);
             for(int i=Math.max(0,newest-2);i<=newest;i++){
                 long rowAge=now-rows.get(i).start;
                 float visibility=KillConfirmRules.reveal(rowAge,0);if(visibility<=0)continue;
-                float y=36;for(int j=i+1;j<rows.size();j++)y-=16*KillConfirmRules.reveal(now-rows.get(j).start,0);
+                float y=EXP_Y;for(int j=i+1;j<rows.size();j++)y-=14*KillConfirmRules.reveal(now-rows.get(j).start,0);
                 int color=KillFeedRules.faded(white,visibility);
                 if((color>>>24)<4)continue;
                 int x=right-KillConfirmRules.slideOffset(KillConfirmRules.slideIn(rowAge,0));
-                mc.fontRendererObj.drawStringWithShadow(mc.fontRendererObj.trimStringToWidth(rows.get(i).text,WIDTH-right-4),x,y,color);
+                String text=rows.get(i).text;
+                boolean kill=text.equals("KILL")||text.equals("BOW KILL");
+                if(kill)KillFeed.skull(x,(int)y-2,alpha*visibility);
+                mc.fontRendererObj.drawStringWithShadow(mc.fontRendererObj.trimStringToWidth(text,WIDTH-right-20),x+16,y,color);
             }
         }finally{GlStateManager.popMatrix();if(!blend)GlStateManager.disableBlend();GlStateManager.color(1,1,1,1);}
     }
