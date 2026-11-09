@@ -4,8 +4,8 @@ import net.minecraft.client.gui.ScaledResolution;
 
 /** Screen-relative positions keep right/center alignment when GUI scale changes. */
 final class HudLayout {
-    static final String TABS="chat_tabs",KILLS="kill_feed",NOTICES="server_notices",CONFIRM="kill_confirm";
-    static boolean valid(String id){return TABS.equals(id)||KILLS.equals(id)||NOTICES.equals(id)||CONFIRM.equals(id);}
+    static final String TABS="chat_tabs",KILLS="kill_feed",NOTICES="server_notices",CONFIRM="kill_confirm",HEIGHT="height_limit",BOW="bow_accuracy";
+    static boolean valid(String id){return TABS.equals(id)||KILLS.equals(id)||NOTICES.equals(id)||CONFIRM.equals(id)||HEIGHT.equals(id)||BOW.equals(id);}
     static final class Position {
         final double x,y;
         Position(double x,double y){if(!Double.isFinite(x)||!Double.isFinite(y))throw new IllegalArgumentException("Invalid HUD position");this.x=Math.max(0,Math.min(1,x));this.y=Math.max(0,Math.min(1,y));}
@@ -22,6 +22,8 @@ final class HudLayout {
             return confirmPosition(sr.getScaledWidth(),sr.getScaledHeight(),(int)Math.ceil(KillConfirm.WIDTH*scale),(int)Math.ceil(KillConfirm.HEIGHT*scale));
         }
         if(TABS.equals(id)){int n=UtilitySettings.tabChatPosition;return new Position(n==1||n==3?1:0,n>=2?0:1);}
+        if(HEIGHT.equals(id))return new Position(.5,1);
+        if(BOW.equals(id))return new Position(1,.5);
         return new Position(KILLS.equals(id)?1:0,0);
     }
     static Rect rect(int sw,int sh,int w,int h,Position p){
@@ -50,6 +52,7 @@ final class HudLayout {
     private static int[] snapAxis(int pos,int size,int screen,java.util.List<Rect> others,boolean horizontal){
         java.util.List<int[]> targets=new java.util.ArrayList<>();
         targets.add(new int[]{screen/2-size/2,screen/2});targets.add(new int[]{4,4});targets.add(new int[]{screen-size-4,screen-4});
+        for(int line:new int[]{screen/4,screen/2,screen*3/4})for(int offset:new int[]{0,size/2,size})targets.add(new int[]{line-offset,line});
         for(Rect r:others){
             int start=horizontal?r.x:r.y,length=horizontal?r.w:r.h;
             for(int edge:new int[]{start,start+length/2,start+length})for(int offset:new int[]{0,size/2,size})targets.add(new int[]{edge-offset,edge});

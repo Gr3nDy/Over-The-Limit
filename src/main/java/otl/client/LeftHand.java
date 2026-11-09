@@ -45,7 +45,7 @@ final class LeftHand {
     }
 
     @SubscribeEvent public void tick(TickEvent.ClientTickEvent event){
-        if(event.phase!=TickEvent.Phase.END||!UtilitySettings.leftHand||!ServerScope.active())return;
+        if(event.phase!=TickEvent.Phase.END||!(UtilitySettings.leftHand||UtilitySettings.bowOptimizer&&UtilitySettings.bowOptimization)||!ServerScope.active())return;
         Minecraft mc=MinecraftAccess.get();
         if(mc.entityRenderer==null||mc.entityRenderer==failedRenderer||mc.entityRenderer.itemRenderer instanceof Items)return;
         ItemRenderer original=mc.entityRenderer.itemRenderer;
@@ -57,7 +57,7 @@ final class LeftHand {
                 field.set(mc.entityRenderer,new Items(mc,original));return;
             }
             throw new IllegalStateException("Hand renderer field not found");
-        }catch(Exception ex){failedRenderer=mc.entityRenderer;System.err.println("OTL: Prefered Hand could not attach: "+ex.getMessage());}
+        }catch(Exception ex){failedRenderer=mc.entityRenderer;System.err.println("OTL: first-person renderer could not attach: "+ex.getMessage());}
     }
 
     static void mirrored(Runnable render){
@@ -83,7 +83,11 @@ final class LeftHand {
             else original.renderItemInFirstPerson(partial);
         }
         // Keep the original renderer's equip state, custom animations and overlays intact.
-        @Override public void updateEquippedItem(){original.updateEquippedItem();}
+        @Override public void updateEquippedItem(){
+            if(BowOptimizer.active()&&mc.thePlayer!=null&&!mc.thePlayer.isDead&&mc.gameSettings.thirdPersonView==0)
+                BowOptimizer.stabilize(original,mc.thePlayer.getHeldItem(),mc.thePlayer.inventory.currentItem);
+            original.updateEquippedItem();
+        }
         @Override public void resetEquippedProgress(){original.resetEquippedProgress();}
         @Override public void resetEquippedProgress2(){original.resetEquippedProgress2();}
         @Override public void renderOverlays(float partial){original.renderOverlays(partial);}

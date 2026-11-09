@@ -11,7 +11,7 @@ import net.minecraftforge.fml.common.gameevent.TickEvent;
 /** Session-only COD-style confirmation; original reward messages keep normal routing. */
 final class KillConfirm {
     static final KillConfirm INSTANCE=new KillConfirm();
-    static final int WIDTH=260,HEIGHT=52;
+    static final int WIDTH=260,HEIGHT=58;
     /** Text origin and glyph metrics shared with the HUD anchor in HudLayout. */
     static final float EXP_X=4,EXP_Y=31,EXP_TEXT_SCALE=1.35F,PLUS_CENTER_X=2.5F,GLYPH_CENTER_Y=4;
     static final KillConfirmRules.State state=new KillConfirmRules.State();
@@ -41,7 +41,7 @@ final class KillConfirm {
     @SubscribeEvent public void tick(TickEvent.ClientTickEvent event){
         if(event.phase!=TickEvent.Phase.END)return;
         Minecraft mc=MinecraftAccess.get();
-        if(mc.thePlayer==null){lastHealth=Float.MAX_VALUE;wasDead=false;return;}
+        if(mc.thePlayer==null){lastHealth=Float.MAX_VALUE;return;}
         float health=mc.thePlayer.getHealth()+mc.thePlayer.getAbsorptionAmount();
         if(health<lastHealth)state.damaged();
         lastHealth=health;
@@ -50,9 +50,12 @@ final class KillConfirm {
                 if(other.getName().equalsIgnoreCase(state.duelVictim)){state.confirmDuel(other.getHealth());break;}
         }
         boolean dead=mc.thePlayer.isDead||mc.thePlayer.getHealth()<=0;
-        if(!active())state.clear();
-        else if(dead&&!wasDead){state.died(state.lastAttacker);state.deathObserved(System.nanoTime());}
-        wasDead=dead;
+        if(!active()){state.clear();wasDead=false;}
+        else{
+            if(dead&&!wasDead){state.died(state.lastAttacker);state.deathObserved(System.nanoTime());}
+            else if(!dead&&wasDead)state.respawn(System.nanoTime(),UtilitySettings.totalExpKills);
+            wasDead=dead;
+        }
     }
     @SubscribeEvent public void unload(WorldEvent.Unload event){if(event.world.isRemote){state.clear();wasDead=false;lastHealth=Float.MAX_VALUE;}}
     @SubscribeEvent public void overlay(RenderGameOverlayEvent.Post event){
@@ -60,8 +63,9 @@ final class KillConfirm {
         if(event.type==RenderGameOverlayEvent.ElementType.CHAT&&active()&&mc.thePlayer!=null&&!(mc.currentScreen instanceof HudEditor)&&!mc.gameSettings.hideGUI)draw(false);
     }
     static void draw(boolean editing){
-        Minecraft mc=MinecraftAccess.get();if(!editing&&state.reward==null)return;
+        Minecraft mc=MinecraftAccess.get();if(!editing&&state.reward==null&&state.recapAt==0)return;
         long now=System.nanoTime();
+        boolean recap=!editing&&state.reward==null;
         KillConfirmRules.Reward reward=editing?new KillConfirmRules.Reward(25,false):state.reward;
         if(editing){reward.bow=true;reward.revenge=true;reward.survivor=true;}
         java.util.List<KillConfirmRules.Row> rows=editing?previewRows(now):state.rows();
@@ -77,23 +81,29 @@ final class KillConfirm {
             int background=KillFeedRules.faded(ChatAppearance.tabColor(0xCC000000,UtilitySettings.killConfirmOpacity),alpha);
             if((background>>>24)>0)Gui.drawRect(0,0,WIDTH,HEIGHT,background);
             GlStateManager.enableBlend();GlStateManager.tryBlendFuncSeparate(770,771,1,0);
-            String label="+"+(editing?75:state.streakExp)+" EXP";
-            float textScale=EXP_TEXT_SCALE*pop;
-            GlStateManager.pushMatrix();GlStateManager.translate(EXP_X+PLUS_CENTER_X*EXP_TEXT_SCALE,EXP_Y+GLYPH_CENTER_Y*EXP_TEXT_SCALE,0);GlStateManager.scale(textScale,textScale,1);
-            mc.fontRendererObj.drawStringWithShadow(label,-PLUS_CENTER_X,-GLYPH_CENTER_Y,gold);GlStateManager.popMatrix();
+            String label=recap?"":"+"+(editing?75:state.streakExp)+" EXP";
+            if(!recap){
+                float textScale=EXP_TEXT_SCALE*pop;
+                GlStateManager.pushMatrix();GlStateManager.translate(EXP_X+PLUS_CENTER_X*EXP_TEXT_SCALE,EXP_Y+GLYPH_CENTER_Y*EXP_TEXT_SCALE,0);GlStateManager.scale(textScale,textScale,1);
+                mc.fontRendererObj.drawStringWithShadow(label,-PLUS_CENTER_X,-GLYPH_CENTER_Y,gold);GlStateManager.popMatrix();
+            }
             int newest=KillConfirmRules.newestRow(rows,now);
-            int right=12+(int)Math.ceil(mc.fontRendererObj.getStringWidth(label)*1.43F);
+            int right=recap?(int)EXP_X:12+(int)Math.ceil(mc.fontRendererObj.getStringWidth(label)*1.43F);
             for(int i=Math.max(0,newest-2);i<=newest;i++){
                 long rowAge=now-rows.get(i).start;
                 float visibility=KillConfirmRules.reveal(rowAge,0);if(visibility<=0)continue;
-                float y=EXP_Y;for(int j=i+1;j<rows.size();j++)y-=14*KillConfirmRules.reveal(now-rows.get(j).start,0);
+                float y=EXP_Y+KillConfirmRules.rowOffset(i,rows,now);
                 int color=KillFeedRules.faded(white,visibility);
                 if((color>>>24)<4)continue;
                 int x=right-KillConfirmRules.slideOffset(KillConfirmRules.slideIn(rowAge,0));
                 String text=rows.get(i).text;
                 boolean kill=text.equals("KILL")||text.equals("BOW KILL");
-                if(kill)KillFeed.skull(x,(int)y-2,alpha*visibility);
-                mc.fontRendererObj.drawStringWithShadow(mc.fontRendererObj.trimStringToWidth(text,WIDTH-right-20),x+16,y,color);
+                if(kill){
+                    String victim=rows.get(i).victim;
+                    if(!UtilitySettings.killConfirmPlayerHead)KillFeed.skull(x,(int)y-2,alpha*visibility);
+                    else if(victim!=null)KillFeed.head(victim,x+2,(int)y-2,alpha*visibility);
+                }
+                mc.fontRendererObj.drawStringWithShadow(mc.fontRendererObj.trimStringToWidth(text,WIDTH-right-(recap?4:20)),x+(recap?0:16),y,color);
             }
         }finally{GlStateManager.popMatrix();if(!blend)GlStateManager.disableBlend();GlStateManager.color(1,1,1,1);}
     }
@@ -102,7 +112,7 @@ final class KillConfirm {
         KillConfirmRules.Reward reward=new KillConfirmRules.Reward(25,false);reward.bow=true;reward.revenge=true;reward.survivor=true;
         java.util.List<String> labels=reward.labels(3);
         java.util.List<KillConfirmRules.Row> rows=new java.util.ArrayList<>();
-        for(int i=0;i<labels.size();i++)rows.add(new KillConfirmRules.Row(labels.get(i),now-1000000000L-(long)(labels.size()-1-i)*KillConfirmRules.ROW_NANOS));
+        for(int i=0;i<labels.size();i++)rows.add(new KillConfirmRules.Row(labels.get(i),now-1000000000L-(long)(labels.size()-1-i)*KillConfirmRules.ROW_NANOS,i==0?MinecraftAccess.get().thePlayer.getName():null));
         return rows;
     }
 }

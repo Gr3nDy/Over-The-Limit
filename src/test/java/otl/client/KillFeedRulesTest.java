@@ -4,6 +4,69 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class KillFeedRulesTest {
+    @Test public void playerHeadsRespectModeAndRealPlayerNames(){
+        KillFeedRules.Death duel=KillFeedRules.parse("Alex was slain by Bob's Wooden Sword");
+        KillFeedRules.Death world=KillFeedRules.parse("Alex fell out of the world");
+        assertEquals(KillFeedRules.HeadMode.ONLY_ME,KillFeedRules.HeadMode.parse("invalid"));
+        assertEquals(KillFeedRules.HeadMode.ONLY_ME,KillFeedRules.HeadMode.parse("ONLY_ME"));
+        assertTrue(KillFeedRules.HeadMode.ONLY_ME.shows(duel.victim,"aLeX"));
+        assertFalse(KillFeedRules.HeadMode.ONLY_ME.shows(duel.killer,"Alex"));
+        assertTrue(KillFeedRules.HeadMode.ALL.shows(duel.killer,"Alex"));
+        assertFalse(KillFeedRules.HeadMode.ALL.shows(world.killer,"Alex"));
+        assertFalse(KillFeedRules.HeadMode.NONE.shows(duel.victim,"Alex"));
+    }
+    @Test public void filterKeepsAllHistoryButShowsOnlyLocalOrTeamEvents(){
+        KillFeedRules.Death mine=KillFeedRules.parse("Victim was slain by Local's Sword");
+        KillFeedRules.Death teammate=KillFeedRules.parse("Friend was slain by Enemy's Sword");
+        KillFeedRules.Death stranger=KillFeedRules.parse("Other was slain by Enemy's Sword");
+        java.util.function.Predicate<String> team=name->name.equals("Friend")||name.equals("Local");
+        assertEquals(KillFeedRules.FilterMode.ALL,KillFeedRules.FilterMode.parse("invalid"));
+        assertTrue(KillFeedRules.FilterMode.ONLY_ME.shows(mine,"Local",team));
+        assertFalse(KillFeedRules.FilterMode.ONLY_ME.shows(teammate,"Local",team));
+        assertTrue(KillFeedRules.FilterMode.TEAM.shows(teammate,"Local",team));
+        assertFalse(KillFeedRules.FilterMode.TEAM.shows(stranger,"Local",team));
+        assertTrue(KillFeedRules.FilterMode.ALL.shows(stranger,"Local",name->false));
+    }
+    @Test public void assistClaimsTheNewestKillAndWaitsForRewardFirstDeaths(){
+        KillFeedRules.History history=new KillFeedRules.History();
+        KillFeedRules.Death other=KillFeedRules.parse("Victim was slain by Killer's Wooden Sword");
+        history.add(KillFeedRules.parse("Local fell out of the world"));
+        history.add(KillFeedRules.parse("Victim2 was slain by Local's Iron Sword"));
+        history.add(other);
+        assertTrue(history.assist("Local",other.receivedAt+1000000L));
+        assertTrue(other.assist);
+        assertEquals(0xFF55FFFF,other.border("Local",0xFFBD45,0xFF5555,0x55FFFF,100));
+        assertFalse(history.assist("Local",other.receivedAt+2000000L));
+        history.clear();assertTrue(history.entries.isEmpty());
+        KillFeedRules.Death first=KillFeedRules.parse("A was slain by B's Bow");
+        KillFeedRules.Death second=KillFeedRules.parse("C was slain by D's Sword");
+        history.add(first);history.add(second);
+        assertTrue(history.assist("Local",second.receivedAt+1000000L));
+        assertTrue(second.assist);assertFalse(first.assist);
+        history.clear();assertTrue(history.assist("Local",System.nanoTime()));
+        KillFeedRules.Death late=KillFeedRules.parse("Late was slain by LateKiller's Bow");
+        history.add(late);assertTrue(late.assist);
+        history.clear();history.add(first);
+        history.assist("Local",first.receivedAt+2000000001L);
+        assertFalse(first.assist);
+        assertEquals("\u00a79\u00a7lLocal\u00a7r",KillFeedRules.assistLabel("Local",'9'));
+        assertEquals("\u00a7b\u00a7lLocal\u00a7r",KillFeedRules.assistLabel("Local",(char)0));
+    }
+    @Test public void assistDoesNotClaimATeammatesDeath(){
+        KillFeedRules.History history=new KillFeedRules.History();
+        history.add(KillFeedRules.parse("Friend was slain by Enemy's Bow"));
+        history.add(KillFeedRules.parse("Stranger was slain by Enemy's Sword"));
+        assertTrue(history.assist("Local",System.nanoTime(),name->name.equals("Friend")));
+        assertFalse(history.entries.get(0).assist);
+        assertTrue(history.entries.get(1).assist);
+        history.clear();
+        history.add(KillFeedRules.parse("Friend was slain by Enemy's Bow"));
+        assertTrue(history.assist("Local",System.nanoTime()+1000000L,name->name.equals("Friend")));
+        assertTrue(history.entries.get(0).assist);
+        history.clear();history.add(KillFeedRules.parse("Friend was slain by Enemy's Bow"));
+        history.assist("Local",System.nanoTime()+2000000001L,name->name.equals("Friend"));
+        assertFalse(history.entries.get(0).assist);
+    }
     @Test public void slideIsOptionalClampedAndSettlesAfterTwoHundredMilliseconds(){
         assertEquals(0,KillFeedRules.slideOffset(0,false),0);
         assertEquals(-22,KillFeedRules.slideOffset(-1,true),0);
@@ -14,9 +77,9 @@ public class KillFeedRulesTest {
     @Test public void backgroundAndOutlineOpacityAreIndependent(){
         KillFeedRules.Death d=KillFeedRules.parse("Victim was slain by Killer's Wooden Sword");
         assertEquals(0,KillFeedRules.panelColor(false,0,1)>>>24);
-        assertEquals(255,d.border("Killer",0xFFBD45,0xFF5555,100)>>>24);
+        assertEquals(255,d.border("Killer",0xFFBD45,0xFF5555,0x55FFFF,100)>>>24);
         assertEquals(204,KillFeedRules.panelColor(false,100,1)>>>24);
-        assertEquals(0,d.border("Killer",0xFFBD45,0xFF5555,0)>>>24);
+        assertEquals(0,d.border("Killer",0xFFBD45,0xFF5555,0x55FFFF,0)>>>24);
     }
     @Test public void opacityControlsThePanelIncludingHoverNotOnlyTheColoredOutline(){
         assertEquals(0,KillFeedRules.panelColor(false,0,1)>>>24);
@@ -54,14 +117,14 @@ public class KillFeedRulesTest {
     }
     @Test public void localDeathIsRedButSuicidesNeverHaveColoredBorders(){
         KillFeedRules.Death death=KillFeedRules.parse("Victim was slain by Killer's Wooden Sword");
-        assertEquals(0xFFFF5555,death.border("Victim",0xFFBD45,0xFF5555,100));
-        assertEquals(0xFFFFBD45,death.border("Killer",0xFFBD45,0xFF5555,100));
-        assertEquals(0,death.border("Other",0xFFBD45,0xFF5555,100));
-        assertEquals(0x7F123456,death.border("Victim",0xFFBD45,0x123456,50));
-        assertEquals(0xFF000000,death.border("Victim",0xFFBD45,0,100));
-        assertEquals(0,death.border("Victim",0xFFBD45,0xFF5555,0)>>>24);
+        assertEquals(0xFFFF5555,death.border("Victim",0xFFBD45,0xFF5555,0x55FFFF,100));
+        assertEquals(0xFFFFBD45,death.border("Killer",0xFFBD45,0xFF5555,0x55FFFF,100));
+        assertEquals(0,death.border("Other",0xFFBD45,0xFF5555,0x55FFFF,100));
+        assertEquals(0x7F123456,death.border("Victim",0xFFBD45,0x123456,0x55FFFF,50));
+        assertEquals(0xFF000000,death.border("Victim",0xFFBD45,0,0x55FFFF,100));
+        assertEquals(0,death.border("Victim",0xFFBD45,0xFF5555,0x55FFFF,0)>>>24);
         for(String text:new String[]{"Victim died","Victim fell out of the world","Victim was slain by Victim's Wooden Sword"}){
-            KillFeedRules.Death self=KillFeedRules.parse(text);assertTrue(self.suicide());assertEquals(0,self.border("Victim",0xFFBD45,0xFF5555,100));
+            KillFeedRules.Death self=KillFeedRules.parse(text);assertTrue(self.suicide());assertEquals(0,self.border("Victim",0xFFBD45,0xFF5555,0x55FFFF,100));
         }
         assertFalse(KillFeedRules.parse("Victim was slain by a Zombie").suicide());
     }

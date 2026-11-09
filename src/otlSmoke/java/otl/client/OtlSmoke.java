@@ -22,9 +22,14 @@ public final class OtlSmoke {
     final boolean serverEnabled=Boolean.getBoolean("otl.smoke.server");
     final boolean serverOnly=Boolean.getBoolean("otl.smoke.serverOnly");
     final String scope=System.getProperty("otl.smoke.scope","all");
-    int scopeEnd=53;
+    int scopeEnd=58;
     long serverStarted;
     ResourceLocation allureTexture;
+    boolean allureWasFavorite;
+    final Map<String,Object> accuracyPreferences=new HashMap<>();
+    ItemStack accuracyHeld;int accuracySlot,accuracyPerspective;HudLayout.Position accuracyPosition;
+    final AccuracySounds accuracySounds=new AccuracySounds();
+    volatile Throwable accuracyPacketFailure;
     final List<String> packets=Collections.synchronizedList(new ArrayList<String>());
     @Mod.EventHandler public void init(FMLInitializationEvent e){FMLCommonHandler.instance().bus().register(this);}
     void require(boolean ok,String message){if(!ok)throw new AssertionError(message);}
@@ -55,7 +60,7 @@ public final class OtlSmoke {
     }
     int count(String command){int count=0;synchronized(packets){for(String s:packets)if(s.equals(command))count++;}return count;}
     void checkBubbles(){
-        Minecraft mc=Minecraft.getMinecraft();boolean enabled=UtilitySettings.bubbles;int perspective=mc.gameSettings.thirdPersonView;
+        Minecraft mc=Minecraft.getMinecraft();boolean enabled=UtilitySettings.bubbles,mode=UtilitySettings.bubbleTeamAndChat;int perspective=mc.gameSettings.thirdPersonView;
         net.minecraft.client.entity.EntityOtherPlayerMP mate=new net.minecraft.client.entity.EntityOtherPlayerMP(mc.theWorld,new com.mojang.authlib.GameProfile(UUID.randomUUID(),"BubbleMate"));
         net.minecraft.client.entity.EntityOtherPlayerMP other=new net.minecraft.client.entity.EntityOtherPlayerMP(mc.theWorld,new com.mojang.authlib.GameProfile(UUID.randomUUID(),"BubbleOther"));
         mc.theWorld.addEntityToWorld(-9101,mate);mc.theWorld.addEntityToWorld(-9102,other);
@@ -68,9 +73,16 @@ public final class OtlSmoke {
             require(first!=null&&first.items.get(0).text.equals("team hello"),"Team prefix did not create bubble without join/color information");
             line("(Any Team) BubbleMate: second");line("(Any Team) BubbleMate: third");line("(Any Team) BubbleMate: fourth");
             require(first.items.size()==3&&first.items.get(0).text.equals("fourth")&&first.items.get(2).text.equals("second"),"Three-bubble stack/order failed");
-            line("You joined Blue");require(TeamBubbles.bubbles.get(mate.getUniqueID())==first,"Join message changed team-chat bubbles");
+            line("You joined Blue");require(TeamBubbles.bubbles.isEmpty(),"Team change kept old bubbles");
             line("(Observers) BubbleOther: observer team hello");
             require(TeamBubbles.bubbles.containsKey(other.getUniqueID()),"Explicit Observers team chat was ignored");
+            UtilitySettings.bubbleTeamAndChat=true;
+            line("\u00a7eYou joined \u00a79Blue\u00a7r team!");
+            line("\u00a79<BubbleMate>\u00a7r: blue global hello");
+            require(TeamBubbles.bubbles.get(mate.getUniqueID()).items.get(0).text.equals("blue global hello"),"Own team global chat did not bubble");
+            line("\u00a7c<BubbleOther>: red global hello");require(!TeamBubbles.bubbles.containsKey(other.getUniqueID()),"Other team's global chat bubbled");
+            line("\u00a7eYou joined \u00a77Observers");line("\u00a79<BubbleMate>: spectator global hello");
+            require(TeamBubbles.bubbles.isEmpty(),"Observer retained global team-color matching");
             line("(Any Team) "+mc.thePlayer.getName()+": own team hello");
             require(TeamBubbles.bubbles.containsKey(mc.thePlayer.getUniqueID()),"Own server-echoed team chat did not create bubble");
             mc.gameSettings.thirdPersonView=1;require(TeamBubbles.visible(mc.thePlayer),"Own bubble is not visible in third person");
@@ -82,12 +94,161 @@ public final class OtlSmoke {
             System.out.println("OTL_SMOKE: explicit team-chat bubbles, own messages, hub exclusion and animated three-message stacks PASS");
         }finally{
             mc.theWorld.removeEntityFromWorld(-9101);mc.theWorld.removeEntityFromWorld(-9102);
-            UtilitySettings.bubbles=enabled;mc.gameSettings.thirdPersonView=perspective;TeamBubbles.clearBubbles();
+            UtilitySettings.bubbles=enabled;UtilitySettings.bubbleTeamAndChat=mode;mc.gameSettings.thirdPersonView=perspective;TeamBubbles.clearBubbles();
         }
     }
     void sniffPackets(Minecraft mc){
         channel=mc.getNetHandler().getNetworkManager().channel();
         channel.pipeline().addLast("otl_packets",new io.netty.channel.ChannelOutboundHandlerAdapter(){public void write(io.netty.channel.ChannelHandlerContext ctx,Object p,io.netty.channel.ChannelPromise promise)throws Exception{if(p instanceof net.minecraft.network.play.client.C01PacketChatMessage)packets.add(((net.minecraft.network.play.client.C01PacketChatMessage)p).getMessage());super.write(ctx,p,promise);}});
+    }
+    static final class BowSounds {
+        final List<net.minecraft.client.audio.ISound> sounds=new ArrayList<>();
+        @SubscribeEvent(priority=EventPriority.LOWEST) public void sound(net.minecraftforge.client.event.sound.PlaySoundEvent event){
+            if(event.result!=null&&event.name.equals("random.bow"))sounds.add(event.result);
+        }
+    }
+    static final class AccuracySounds {
+        boolean replaced;int markerColor;
+        @SubscribeEvent(priority=EventPriority.LOWEST) public void sound(net.minecraftforge.client.event.sound.PlaySoundEvent event){
+            if(event.name.equals("random.successful_hit")){
+                replaced=event.result!=null&&event.result.getSoundLocation().equals(new ResourceLocation("random.click"));
+                markerColor=BowAccuracy.INSTANCE.feedback.color(System.nanoTime());
+            }
+        }
+    }
+    void accuracyPacket(Minecraft mc,Object packet){
+        io.netty.channel.ChannelHandlerContext context=mc.getNetHandler().getNetworkManager().channel().pipeline().context("otl_bow_accuracy");
+        require(context!=null,"Read-only accuracy observer was not installed");
+        context.executor().execute(()->{
+            try{((io.netty.channel.ChannelInboundHandlerAdapter)context.handler()).channelRead(context,packet);}
+            catch(Throwable failure){accuracyPacketFailure=failure;}
+        });
+    }
+    void prepareAccuracy(Minecraft mc)throws Exception{
+        for(String name:new String[]{"bowOptimizer","bowOptimization","bowAccuracy","bowAccuracyPrefix","bowHitSound","bowHitMarker","bowAccuracyOpacity","bowAccuracyDecimals","bowAccuracySize","bowHitMarkerSize","killFeed","killFeedSlide"})
+            accuracyPreferences.put(name,UtilitySettings.class.getDeclaredField(name).get(null));
+        accuracySlot=mc.thePlayer.inventory.currentItem;accuracyHeld=mc.thePlayer.getHeldItem();accuracyPerspective=mc.gameSettings.thirdPersonView;
+        accuracyPosition=UtilitySettings.hudPositions.get(HudLayout.BOW);
+        UtilitySettings.bowOptimizer=true;UtilitySettings.bowOptimization=true;UtilitySettings.bowAccuracy=true;
+        UtilitySettings.bowHitSound=false;UtilitySettings.bowHitMarker=false;UtilitySettings.bowAccuracyDecimals=2;
+        UtilitySettings.bowAccuracyPrefix=true;
+        UtilitySettings.killFeed=true;UtilitySettings.killFeedSlide=true;
+        BowOptimizerSettings options=new BowOptimizerSettings(null);mc.displayGuiScreen(options);
+        require(find(options,"Bow Hit Sound: OFF")!=null&&find(options,"Hit Marker: OFF")!=null,"Optional bow feedback did not default OFF");
+        options.actionPerformed(find(options,"Optimization: ON"));require(!BowOptimizer.active(),"Inner optimizer toggle did not disable optimization");
+        options.actionPerformed(find(options,"Bow Hit Sound: OFF"));options.actionPerformed(find(options,"Hit Marker: OFF"));
+        net.minecraftforge.fml.client.config.GuiSlider marker=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==10).findFirst().get();
+        marker.setValue(150);marker.updateSlider();
+        options.actionPerformed(find(options,"Bow Accuracy"));
+        int prefixedWidth=BowAccuracy.bounds().w;
+        options.actionPerformed(find(options,"Prefix: ON"));
+        require(!UtilitySettings.bowAccuracyPrefix&&BowAccuracy.bounds().w<prefixedWidth,"Prefix toggle did not hide the label and shrink HUD bounds");
+        require(find(options,"Decimal places: 2")!=null,"Accuracy did not default to two decimals");
+        options.actionPerformed(find(options,"Decimal places: 2"));require(UtilitySettings.bowAccuracyDecimals==0,"Whole-percent option missing");
+        options.actionPerformed(find(options,"Decimal places: 0"));options.actionPerformed(find(options,"Decimal places: 1"));
+        net.minecraftforge.fml.client.config.GuiSlider opacity=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==3).findFirst().get();
+        opacity.setValue(65);opacity.updateSlider();
+        net.minecraftforge.fml.client.config.GuiSlider size=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==5).findFirst().get();
+        size.setValue(125);size.updateSlider();
+        UtilitySettings.hudPositions.put(HudLayout.BOW,new HudLayout.Position(.75,.25));UtilitySettings.save();
+        UtilitySettings.bowAccuracyDecimals=0;UtilitySettings.bowAccuracyOpacity=0;UtilitySettings.bowHitMarkerSize=50;UtilitySettings.bowAccuracyPrefix=true;
+        ReflectionHelper.setPrivateValue(UtilitySettings.class,null,false,"loaded");UtilitySettings.load();
+        require(!UtilitySettings.bowOptimization&&UtilitySettings.bowAccuracy&&UtilitySettings.bowHitSound&&UtilitySettings.bowHitMarker
+            &&!UtilitySettings.bowAccuracyPrefix&&UtilitySettings.bowAccuracyDecimals==2&&UtilitySettings.bowAccuracyOpacity==65&&UtilitySettings.bowAccuracySize==125&&UtilitySettings.bowHitMarkerSize==150,"Bow feature settings did not persist independently");
+        BowAccuracy.INSTANCE.tick(new TickEvent.ClientTickEvent(TickEvent.Phase.END));BowAccuracy.INSTANCE.reset();
+        mc.thePlayer.inventory.mainInventory[accuracySlot]=new ItemStack(net.minecraft.init.Items.bow);
+        ItemStack bow=mc.thePlayer.getHeldItem();
+        for(int i=0;i<3;i++)bow.getItem().onPlayerStoppedUsing(bow,mc.theWorld,mc.thePlayer,bow.getMaxItemUseDuration()-20);
+        require(BowAccuracy.INSTANCE.stats.shots==3,"Accuracy did not count valid shots while optimization was OFF");
+        bow.getItem().onPlayerStoppedUsing(bow,mc.theWorld,mc.thePlayer,bow.getMaxItemUseDuration()-1);
+        require(BowAccuracy.INSTANCE.stats.shots==3,"Undercharged shot changed accuracy denominator");
+        MinecraftForge.EVENT_BUS.register(accuracySounds);mc.displayGuiScreen(null);mc.gameSettings.thirdPersonView=0;
+        accuracyPacket(mc,new net.minecraft.network.play.server.S2BPacketChangeGameState(6,0));
+    }
+    void checkAccuracy(Minecraft mc){
+        require(accuracyPacketFailure==null,"Accuracy observer threw: "+accuracyPacketFailure);
+        require(BowAccuracy.INSTANCE.stats.hits==1&&BowAccuracy.INSTANCE.stats.percentage(2).equals("33.33%"),"Server arrow-hit confirmation did not update live accuracy");
+        require(accuracySounds.replaced&&accuracySounds.markerColor==0xFFFFFFFF,"Native hit packet did not forward to sound replacement/white marker");
+        HudEditor editor=new HudEditor();mc.displayGuiScreen(editor);
+        HudLayout.Rect box=BowAccuracy.bounds();require(HudEditor.bounds(HudLayout.BOW).x==box.x,"Accuracy HUD does not share movable bounds");
+        editor.drawScreen(0,0,0);ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-bow-accuracy-hud.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+        mc.displayGuiScreen(null);
+        line("BowTarget was shot by "+mc.thePlayer.getName()+" from 20 blocks");
+        require(BowAccuracy.INSTANCE.feedback.color(System.nanoTime())==0xFFFF5555,"Confirmed bow kill did not turn hit marker red");
+        require(BowAccuracy.INSTANCE.stats.hits==1,"Kill confirmation counted a second accuracy hit");
+        BowAccuracy.INSTANCE.overlay(new net.minecraftforge.client.event.RenderGameOverlayEvent.Post(new net.minecraftforge.client.event.RenderGameOverlayEvent(0,new ScaledResolution(mc)),net.minecraftforge.client.event.RenderGameOverlayEvent.ElementType.CHAT));
+        require(org.lwjgl.opengl.GL11.glGetError()==0,"Bow accuracy/hit marker rendering left a GL error");
+        accuracyPacket(mc,new net.minecraft.network.play.server.S45PacketTitle(net.minecraft.network.play.server.S45PacketTitle.Type.TITLE,new ChatComponentText("Game over!")));
+    }
+    void finishAccuracy(Minecraft mc)throws Exception{
+        try{
+            require(accuracyPacketFailure==null,"Accuracy observer threw: "+accuracyPacketFailure);
+            require(BowAccuracy.INSTANCE.stats.shots==0&&BowAccuracy.INSTANCE.stats.hits==0&&BowAccuracy.INSTANCE.stats.ended,"Game-over title did not reset accuracy");
+            BowAccuracy.INSTANCE.connect(new net.minecraftforge.fml.common.network.FMLNetworkEvent.ClientConnectedToServerEvent(mc.getNetHandler().getNetworkManager(),"FML"));
+            BowAccuracy.INSTANCE.tick(new TickEvent.ClientTickEvent(TickEvent.Phase.END));
+            require(!BowAccuracy.INSTANCE.stats.ended&&BowAccuracy.INSTANCE.stats.shots==0,"Rejoin did not start a fresh accuracy session");
+            BowAccuracy.INSTANCE.stats.shot();BowAccuracy.INSTANCE.unload(new net.minecraftforge.event.world.WorldEvent.Unload(mc.theWorld));
+            require(BowAccuracy.INSTANCE.stats.shots==0,"World/map unload did not clear accuracy");
+            UtilitySettings.bowOptimizer=false;BowAccuracy.INSTANCE.tick(new TickEvent.ClientTickEvent(TickEvent.Phase.END));
+            require(mc.getNetHandler().getNetworkManager().channel().pipeline().get("otl_bow_accuracy")==null,"OFF left accuracy packet observer installed");
+            System.out.println("OTL_SMOKE: bow sub-toggles, live 33.33% accuracy, hit packet forwarding, white/red marker, size/opacity/decimals persistence and match/rejoin resets PASS");
+        }finally{
+            MinecraftForge.EVENT_BUS.unregister(accuracySounds);
+            for(Map.Entry<String,Object> preference:accuracyPreferences.entrySet())UtilitySettings.class.getDeclaredField(preference.getKey()).set(null,preference.getValue());
+            if(accuracyPosition==null)UtilitySettings.hudPositions.remove(HudLayout.BOW);else UtilitySettings.hudPositions.put(HudLayout.BOW,accuracyPosition);
+            mc.thePlayer.inventory.mainInventory[accuracySlot]=accuracyHeld;mc.gameSettings.thirdPersonView=accuracyPerspective;
+            BowAccuracy.INSTANCE.reset();BowAccuracy.INSTANCE.tick(new TickEvent.ClientTickEvent(TickEvent.Phase.END));UtilitySettings.save();
+        }
+    }
+    void checkBow(Minecraft mc){
+        OtlModule module=OtlModule.ALL.stream().filter(m->m.id.equals("bow_optimizer")).findFirst().get();
+        boolean enabled=UtilitySettings.bowOptimizer,left=UtilitySettings.leftHand,optimization=UtilitySettings.bowOptimization;int perspective=mc.gameSettings.thirdPersonView;
+        int slot=mc.thePlayer.inventory.currentItem;ItemStack oldHeld=mc.thePlayer.getHeldItem();BowSounds sounds=new BowSounds();
+        MinecraftForge.EVENT_BUS.register(sounds);
+        try{
+            UtilitySettings.bowOptimization=true;
+            module.setEnabled(true);UtilitySettings.save();
+            UtilitySettings.bowOptimizer=false;ReflectionHelper.setPrivateValue(UtilitySettings.class,null,false,"loaded");UtilitySettings.load();
+            require(module.enabled(),"Bow Optimizer preference did not persist");
+            UtilitySettings.leftHand=false;mc.gameSettings.thirdPersonView=0;mc.displayGuiScreen(null);
+            LeftHand.INSTANCE.tick(new TickEvent.ClientTickEvent(TickEvent.Phase.END));
+            require(mc.entityRenderer.itemRenderer instanceof LeftHand.Items,"Bow Optimizer did not attach independently of Preferred Hand");
+            ItemStack before=new ItemStack(net.minecraft.init.Items.bow),held=before.copy();held.setItemDamage(1);
+            mc.thePlayer.inventory.mainInventory[slot]=held;
+            net.minecraft.client.renderer.ItemRenderer renderer=new net.minecraft.client.renderer.ItemRenderer(mc);
+            ReflectionHelper.setPrivateValue(net.minecraft.client.renderer.ItemRenderer.class,renderer,before,"itemToRender","field_78453_b");
+            ReflectionHelper.setPrivateValue(net.minecraft.client.renderer.ItemRenderer.class,renderer,slot,"equippedItemSlot","field_78450_g");
+            ReflectionHelper.setPrivateValue(net.minecraft.client.renderer.ItemRenderer.class,renderer,1F,"equippedProgress","field_78454_c");
+            LeftHand.Items wrapped=new LeftHand.Items(mc,renderer);wrapped.updateEquippedItem();
+            require((float)ReflectionHelper.getPrivateValue(net.minecraft.client.renderer.ItemRenderer.class,renderer,"equippedProgress","field_78454_c")==1F,"Bow durability update lowered the equipped bow");
+            require(ReflectionHelper.getPrivateValue(net.minecraft.client.renderer.ItemRenderer.class,renderer,"itemToRender","field_78453_b")==held,"Rendered bow did not use corrected inventory stack");
+            module.setEnabled(false);
+            ReflectionHelper.setPrivateValue(net.minecraft.client.renderer.ItemRenderer.class,renderer,before,"itemToRender","field_78453_b");
+            wrapped.updateEquippedItem();
+            require((float)ReflectionHelper.getPrivateValue(net.minecraft.client.renderer.ItemRenderer.class,renderer,"equippedProgress","field_78454_c")<1F,"OFF did not restore vanilla equip animation");
+            module.setEnabled(true);
+            held.getItem().onPlayerStoppedUsing(held,mc.theWorld,mc.thePlayer,held.getMaxItemUseDuration()-20);
+            require(sounds.sounds.size()==1,"Valid bow release did not produce exactly one immediate local sound");
+            net.minecraft.client.audio.ISound local=sounds.sounds.get(0);
+            require(local.getPitch()>=1.125F&&local.getPitch()<=1.334F,"Full-draw sound did not keep vanilla pitch");
+            net.minecraftforge.client.event.sound.PlaySoundEvent echo=new net.minecraftforge.client.event.sound.PlaySoundEvent(null,
+                new net.minecraft.client.audio.PositionedSoundRecord(new ResourceLocation("random.bow"),1,1,(float)mc.thePlayer.posX,(float)mc.thePlayer.posY,(float)mc.thePlayer.posZ),net.minecraft.client.audio.SoundCategory.PLAYERS);
+            BowOptimizer.INSTANCE.sound(echo);require(echo.result==null,"Matching delayed sound was not suppressed");
+            held.getItem().onPlayerStoppedUsing(held,mc.theWorld,mc.thePlayer,held.getMaxItemUseDuration()-1);
+            require(sounds.sounds.size()==1,"Undercharged release produced a false shot sound");
+            module.setEnabled(false);
+            held.getItem().onPlayerStoppedUsing(held,mc.theWorld,mc.thePlayer,held.getMaxItemUseDuration()-20);
+            require(sounds.sounds.size()==1,"OFF still produced predicted bow sound");
+            module.setEnabled(true);
+            mc.thePlayer.inventory.mainInventory[slot]=new ItemStack(net.minecraft.init.Items.fishing_rod);
+            MinecraftForge.EVENT_BUS.post(new net.minecraftforge.event.entity.PlaySoundAtEntityEvent(mc.thePlayer,"random.bow",1,1));
+            require(sounds.sounds.size()==1,"Fishing rod sound was mistaken for a bow release");
+            require(org.lwjgl.opengl.GL11.glGetError()==0,"Bow Optimizer left a GL error");
+            System.out.println("OTL_SMOKE: bow toggle/persistence, same-slot durability animation, immediate release sound, echo suppression, short draws and OFF behavior PASS");
+        }finally{
+            MinecraftForge.EVENT_BUS.unregister(sounds);mc.thePlayer.inventory.mainInventory[slot]=oldHeld;
+            module.setEnabled(enabled);UtilitySettings.leftHand=left;UtilitySettings.bowOptimization=optimization;mc.gameSettings.thirdPersonView=perspective;UtilitySettings.save();
+        }
     }
     void prepareScope(Minecraft mc){
         if(serverOnly||scope.equals("all"))return;
@@ -101,8 +262,10 @@ public final class OtlSmoke {
             case "bubbles":state=31;scopeEnd=32;UtilitySettings.mainHandLeft=false;UtilitySettings.handType=LeftHand.Type.ALL;mc.displayGuiScreen(new PreferedHandSettings(new UtilityScreen()));return;
             case "killfeed":state=33;scopeEnd=42;ReliableChat.session();return;
             case "notices":state=43;scopeEnd=44;mc.displayGuiScreen(new HudEditor());ReliableChat.session();return;
-            case "killconfirm":state=45;scopeEnd=50;UtilitySettings.killConfirm=false;mc.displayGuiScreen(new HudEditor());ReliableChat.session();return;
-            case "tabs":state=51;scopeEnd=53;prepareTabs(mc);return;
+            case "killconfirm":state=45;scopeEnd=51;UtilitySettings.killConfirm=false;mc.displayGuiScreen(new HudEditor());ReliableChat.session();return;
+            case "tabs":state=52;scopeEnd=54;prepareTabs(mc);return;
+            case "bow":state=55;scopeEnd=58;return;
+            case "accuracy":state=56;scopeEnd=58;return;
             default:throw new IllegalArgumentException("Unknown smoke scope: "+scope);
         }
     }
@@ -130,6 +293,11 @@ public final class OtlSmoke {
             if(state==0&&ticks<145)prepareScope(mc);
             if(state==0){
                 mc.setServerData(new net.minecraft.client.multiplayer.ServerData("OTL fixture","play.oc.tc",false));
+                net.minecraft.client.settings.KeyBinding teamBind=Arrays.stream(mc.gameSettings.keyBindings).filter(k->k.getKeyDescription().equals("key.otl.team_chat")).findFirst().get();
+                require(teamBind.getKeyCodeDefault()==org.lwjgl.input.Keyboard.KEY_Y,"Open Team Chat is not bound to Y by default");
+                int bound=teamBind.getKeyCode();teamBind.setKeyCode(org.lwjgl.input.Keyboard.KEY_U);
+                require(teamBind.getKeyCode()==org.lwjgl.input.Keyboard.KEY_U,"Open Team Chat cannot be rebound");teamBind.setKeyCode(bound);
+                net.minecraft.client.settings.KeyBinding.resetKeyBindingArrayAndHash();
                 sniffPackets(mc);
                 line("Overcast Community");line("view our /servers or click the beacon");require(!ReliableChat.fullChat(),"Lobby not detected");
                 mc.displayGuiScreen(new GuiChat());ReliableChatScreen ui=(ReliableChatScreen)mc.currentScreen;ui.drawScreen(0,0,0);ui.mouseClicked(10,ui.height-27,0);ui.cycleNext();ui.sendChatMessage("lobby text",true);
@@ -199,23 +367,103 @@ public final class OtlSmoke {
                 require("".equals(ServerScope.host("localhost:25565")),"dev host not removed");
                 require("".equals(ServerScope.host("play.oc.tc.example.com")),"Scope suffix bypass");
                 require("".equals(ServerScope.host("localhost:abc")),"Scope bad port");
+                for(int p=0;p<OtlModule.ALL.size()&&!buttons(menu).stream().anyMatch(b->b.displayString.equals("Height Limit Overlay: DISABLED"));p++)menu.actionPerformed(find(menu,">"));
+                GuiButton heightToggle=find(menu,"Height Limit Overlay: DISABLED");
+                OtlModule height=OtlModule.ALL.stream().filter(m->m.id.equals("height_limit_overlay")).findFirst().get();
+                require(!heightToggle.enabled&&!height.available()&&!height.enabled(),"Height module was not visibly locked DISABLED");
+                GuiButton heightOptions=buttons(menu).stream().filter(b->b.id==40+OtlModule.ALL.indexOf(height)).findFirst().get();
+                require(!heightOptions.enabled,"Disabled height module still offered settings");
+                menu.actionPerformed(heightToggle);height.setEnabled(true);
+                require(!UtilitySettings.heightLimitOverlay&&mc.currentScreen==menu,"Disabled height module could be re-enabled");
+                menu.drawScreen(0,0,0);
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-menu.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
             }else if(state==7){
+                String key=UtilitySettings.favoriteKey("ctw/allure");allureWasFavorite=UtilitySettings.mapFavorites.contains(key);
+                UtilitySettings.mapFavorites.add(key);UtilitySettings.save();
                 ItemStack book=new ItemStack(net.minecraft.init.Items.written_book);
                 NBTTagCompound nbt=new NBTTagCompound();
                 nbt.setString("title","Vote");nbt.setString("author","Server");
-                NBTTagList pages=new NBTTagList();pages.appendTag(new NBTTagString("{\"text\":\"Allure\"}"));nbt.setTag("pages",pages);
+                NBTTagList pages=new NBTTagList();pages.appendTag(new NBTTagString("{\"text\":\"Allure\",\"hoverEvent\":{\"action\":\"show_text\",\"value\":\"Mode: CTW\\nTags: Classic, Casual\"}}"));nbt.setTag("pages",pages);
                 book.setTagCompound(nbt);
                 bookScreen=new GuiScreenBook(mc.thePlayer,book,false);
                 mc.displayGuiScreen(bookScreen);
+                int scale=new ScaledResolution(mc).getScaleFactor(),left=(bookScreen.width-192)/2+36;
+                org.lwjgl.input.Mouse.setCursorPosition((left+2)*scale,mc.displayHeight-36*scale-1);
             }else if(state==8){
+                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-vote-book-favorite.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
                 int left=(bookScreen.width-192)/2+36;
                 bookScreen.drawScreen(left+2,36,0);
                 MapPreview.Hover hit=MapPreview.INSTANCE.hover(bookScreen,left+2,36);
                 require(hit!=null&&"Allure".equalsIgnoreCase(hit.label),"Map hover did not resolve the map name: "+hit);
+                require("Classic, Casual".equals(MapPreview.voteTags(bookScreen.func_175385_b(left+2,36))),"Vote-book hover tags were not read");
                 require(MapPreview.INSTANCE.hover(bookScreen,left+300,36)==null,"Map hover matched outside the map name");
                 MapInfo cached=MapInfo.findLocal("Allure");
                 require(cached!=null&&"Allure".equals(cached.name)&&cached.objective.contains("wool")&&cached.players==24,"Local map info: "+cached);
+                require(!UtilitySettings.heightLimitOverlay&&cached.maxBuildHeight==35,"Height overlay should start disabled; Allure XML limit must remain available");
+                OtlModule heightModule=OtlModule.ALL.stream().filter(m->m.name.equals("Height Limit Overlay")).findFirst().get();
+                if(heightModule.available()){
+                heightModule.setEnabled(false);UtilitySettings.save();
+                ReflectionHelper.setPrivateValue(UtilitySettings.class,null,false,"loaded");UtilitySettings.heightLimitOverlay=true;UtilitySettings.load();
+                require(!heightModule.enabled(),"Height overlay toggle did not persist");heightModule.setEnabled(true);UtilitySettings.save();
+                HeightLimitSettings heightSettings=new HeightLimitSettings(bookScreen);mc.displayGuiScreen(heightSettings);
+                net.minecraftforge.fml.client.config.GuiSlider darkness=(net.minecraftforge.fml.client.config.GuiSlider)buttons(heightSettings).stream().filter(b->b.displayString.startsWith("Darkness opacity:")).findFirst().get();
+                darkness.setValue(65);darkness.updateSlider();heightSettings.onGuiClosed();
+                ReflectionHelper.setPrivateValue(UtilitySettings.class,null,false,"loaded");UtilitySettings.heightLimitOpacity=0;UtilitySettings.load();
+                require(UtilitySettings.heightLimitOpacity==65,"Height overlay opacity slider did not persist");
+                darkness.setValue(37);darkness.updateSlider();UtilitySettings.save();mc.displayGuiScreen(bookScreen);
+                mc.displayGuiScreen(heightSettings);
+                net.minecraftforge.fml.client.config.GuiSlider fadeSlider=(net.minecraftforge.fml.client.config.GuiSlider)buttons(heightSettings).stream().filter(b->b.displayString.startsWith("Indicator fade:")).findFirst().get();
+                fadeSlider.setValue(7);fadeSlider.updateSlider();heightSettings.onGuiClosed();
+                ReflectionHelper.setPrivateValue(UtilitySettings.class,null,false,"loaded");UtilitySettings.heightLimitIndicatorSeconds=1;UtilitySettings.load();
+                require(UtilitySettings.heightLimitIndicatorSeconds==7,"Height indicator fade slider did not persist");
+                fadeSlider.setValue(4);fadeSlider.updateSlider();UtilitySettings.save();mc.displayGuiScreen(bookScreen);
+                HeightLimitOverlay.INSTANCE.receive(new net.minecraftforge.client.event.ClientChatReceivedEvent((byte)0,new ChatComponentText("Playing Allure by Author")));
+                MapInfo activeMap=ReflectionHelper.getPrivateValue(HeightLimitOverlay.class,HeightLimitOverlay.INSTANCE,"map");
+                require(activeMap!=null&&activeMap.maxBuildHeight==35,"Height overlay did not identify the active PGM map");
+                MinecraftForge.EVENT_BUS.post(new net.minecraftforge.event.world.WorldEvent.Unload(mc.theWorld));
+                require(ReflectionHelper.getPrivateValue(HeightLimitOverlay.class,HeightLimitOverlay.INSTANCE,"map")==activeMap,"Leaving the hub cleared the announced map");
+                int ground=mc.thePlayer.getPosition().down().getY();
+                MapInfo overlayFixture=MapInfo.parse("<map><maxbuildheight>"+(ground+2)+"</maxbuildheight></map>","ctw/fixture",true,null,id->null);
+                ReflectionHelper.setPrivateValue(HeightLimitOverlay.class,HeightLimitOverlay.INSTANCE,overlayFixture,"map");
+                net.minecraftforge.fml.common.gameevent.TickEvent.ClientTickEvent overlayTick=new net.minecraftforge.fml.common.gameevent.TickEvent.ClientTickEvent(net.minecraftforge.fml.common.gameevent.TickEvent.Phase.END);
+                BlockPos placement=mc.thePlayer.getPosition().add(3,0,0);
+                placement=new BlockPos(placement.getX(),ground+1,placement.getZ());
+                net.minecraft.block.state.IBlockState original=mc.theWorld.getBlockState(placement);
+                net.minecraft.item.ItemStack oldHeld=mc.thePlayer.inventory.getCurrentItem();
+                try{
+                    require(original.getBlock()==net.minecraft.init.Blocks.air,"Overlay test placement must start as air");
+                    HeightLimitOverlay.INSTANCE.tick(overlayTick);
+                    @SuppressWarnings("unchecked") java.util.Map<net.minecraft.world.chunk.Chunk,java.util.BitSet[]> tracked=ReflectionHelper.getPrivateValue(HeightLimitOverlay.class,HeightLimitOverlay.INSTANCE,"chunks");
+                    net.minecraft.world.chunk.Chunk chunk=mc.theWorld.getChunkFromBlockCoords(placement);
+                    int bit=(placement.getX()&15)*16+(placement.getZ()&15);
+                    require(tracked.containsKey(chunk)&&!tracked.get(chunk)[1].get(bit)&&!tracked.get(chunk)[0].get(bit),"Initial snapshot treated air as terrain");
+                    mc.thePlayer.inventory.mainInventory[mc.thePlayer.inventory.currentItem]=new ItemStack(net.minecraft.init.Blocks.stone);
+                    net.minecraft.client.entity.EntityOtherPlayerMP other=new net.minecraft.client.entity.EntityOtherPlayerMP(mc.theWorld,new com.mojang.authlib.GameProfile(java.util.UUID.randomUUID(),"Other"));
+                    HeightLimitOverlay.INSTANCE.interact(new net.minecraftforge.event.entity.player.PlayerInteractEvent(other,net.minecraftforge.event.entity.player.PlayerInteractEvent.Action.RIGHT_CLICK_BLOCK,placement.down(),EnumFacing.UP,mc.theWorld,null));
+                    require(ReflectionHelper.getPrivateValue(HeightLimitOverlay.class,HeightLimitOverlay.INSTANCE,"pending")==null,"Another player's click armed our height indicator");
+                    HeightLimitOverlay.INSTANCE.interact(new net.minecraftforge.event.entity.player.PlayerInteractEvent(mc.thePlayer,net.minecraftforge.event.entity.player.PlayerInteractEvent.Action.RIGHT_CLICK_BLOCK,placement.down(),EnumFacing.UP,mc.theWorld,null));
+                    require(placement.equals(ReflectionHelper.getPrivateValue(HeightLimitOverlay.class,HeightLimitOverlay.INSTANCE,"pending")),"Own placement was not armed");
+                    mc.theWorld.setBlockState(placement,net.minecraft.init.Blocks.stone.getDefaultState());HeightLimitOverlay.INSTANCE.tick(overlayTick);
+                    require(mc.theWorld.getBlockState(placement).getBlock()==net.minecraft.init.Blocks.stone,"Fixture world did not accept block placement");
+                    require(tracked.get(chunk)[1].get(bit),"New block at limit was not tracked");
+                    require((long)ReflectionHelper.getPrivateValue(HeightLimitOverlay.class,HeightLimitOverlay.INSTANCE,"shownAt")>0,"Own placement did not show height indicator");
+                    mc.getFramebuffer().bindFramebuffer(true);mc.entityRenderer.setupOverlayRendering();
+                    net.minecraft.client.gui.Gui.drawRect(0,0,bookScreen.width,bookScreen.height,0xFF202020);
+                    HeightLimitOverlay.INSTANCE.indicator(new net.minecraftforge.client.event.RenderGameOverlayEvent.Post(new net.minecraftforge.client.event.RenderGameOverlayEvent(0,new ScaledResolution(mc)),net.minecraftforge.client.event.RenderGameOverlayEvent.ElementType.CHAT));
+                    ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-height-indicator.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+                    float yaw=mc.thePlayer.rotationYaw,pitch=mc.thePlayer.rotationPitch;
+                    try{
+                        mc.thePlayer.rotationYaw=-90;mc.thePlayer.prevRotationYaw=-90;
+                        mc.thePlayer.rotationPitch=23;mc.thePlayer.prevRotationPitch=23;
+                        mc.getFramebuffer().bindFramebuffer(true);
+                        mc.entityRenderer.renderWorld(0,System.nanoTime());
+                        require(org.lwjgl.opengl.GL11.glGetError()==0,"Height limit overlay left a GL error");
+                        ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-height-limit-overlay.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+                    }finally{mc.thePlayer.rotationYaw=yaw;mc.thePlayer.prevRotationYaw=yaw;mc.thePlayer.rotationPitch=pitch;mc.thePlayer.prevRotationPitch=pitch;}
+                    mc.theWorld.setBlockState(placement,original);HeightLimitOverlay.INSTANCE.tick(overlayTick);
+                    require(!tracked.get(chunk)[1].get(bit),"Removed block stayed in overlay");
+                }finally{mc.theWorld.setBlockState(placement,original);mc.thePlayer.inventory.mainInventory[mc.thePlayer.inventory.currentItem]=oldHeld;ReflectionHelper.setPrivateValue(HeightLimitOverlay.class,HeightLimitOverlay.INSTANCE,activeMap,"map");}
+                }else System.out.println("OTL_SMOKE: height-overlay runtime fixtures SKIPPED (module locked DISABLED)");
                 require(!"".equals(cached.authors)&&!"".equals(cached.contributors),"Missing author credits");
                 require("100rooms".equals(MapInfo.norm("100 Rooms")),"Map name normalization");
                 MapInfoScreen card=new MapInfoScreen("Allure");
@@ -252,10 +500,20 @@ public final class OtlSmoke {
                 require(mc.currentScreen==gallery,"Card did not return to gallery");
                 gallery.actionPerformed(find(gallery,"Prev"));require((int)ReflectionHelper.getPrivateValue(MapGalleryScreen.class,gallery,"page")==0,"Gallery Prev failed");
                 GuiTextField search=ReflectionHelper.getPrivateValue(MapGalleryScreen.class,gallery,"search");search.setText("Allure");gallery.drawScreen(0,0,0);
+                String favorite=UtilitySettings.favoriteKey(gallery.paths().get(0));
+                UtilitySettings.mapFavorites.remove(favorite);
+                gallery.mouseClicked(grid.x(0)+grid.cellWidth-10,grid.y(0)+10,0);
+                require(mc.currentScreen==gallery&&UtilitySettings.mapFavorites.contains(favorite),"Gallery star did not save favorite without opening the card");
+                ReflectionHelper.setPrivateValue(UtilitySettings.class,null,false,"loaded");UtilitySettings.mapFavorites.clear();UtilitySettings.load();
+                require(UtilitySettings.mapFavorites.contains(favorite),"Gallery favorite did not persist");
+                gallery.actionPerformed(find(gallery,"Favorites"));require(gallery.paths().contains(favorite+"/map.png"),"Favorites tab lost saved map");
+                gallery.actionPerformed(find(gallery,"All"));require(gallery.paths().contains(favorite+"/map.png"),"All tab did not restore gallery");
+                gallery.drawScreen(0,0,0);
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-gallery.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
                 gallery.mouseClicked(grid.x(0)+5,grid.y(0)+5,0);
                 require("Allure".equals(((MapInfo)ReflectionHelper.getPrivateValue(MapInfoScreen.class,(MapInfoScreen)mc.currentScreen,"info")).name),"Gallery search/click failed");
             }else if(state==10){
+                if(!allureWasFavorite)UtilitySettings.mapFavorites.remove(UtilitySettings.favoriteKey("ctw/allure"));UtilitySettings.save();
                 ResourceLocation texture=MapPreview.galleryTexture("ctw/allure/map.png");
                 require(texture==MapPreview.galleryTexture("ctw/allure/map.png"),"Preview texture was duplicated");
                 allureTexture=texture;
@@ -483,30 +741,57 @@ public final class OtlSmoke {
                 count.setValue(1);count.updateSlider();require(KillFeed.rows()==1,"Visible Kill Feed limit did not apply");count.setValue(5);count.updateSlider();
                 net.minecraftforge.fml.client.config.GuiSlider life=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==15).findFirst().get();
                 life.setValue(12);life.updateSlider();require(UtilitySettings.killFeedSeconds==12,"Fade duration did not apply");life.setValue(10);life.updateSlider();
+                require(UtilitySettings.killFeedFilter==KillFeedRules.FilterMode.ALL,"Kill Feed filter should default ALL");
+                options.actionPerformed(find(options,"Show entries: ALL"));require(UtilitySettings.killFeedFilter==KillFeedRules.FilterMode.ONLY_ME,"Only Me filter did not apply");
+                options.actionPerformed(find(options,"Show entries: Only Me"));require(UtilitySettings.killFeedFilter==KillFeedRules.FilterMode.TEAM,"Only My Team filter did not apply");
+                options.actionPerformed(find(options,"Show entries: Only My Team"));require(UtilitySettings.killFeedFilter==KillFeedRules.FilterMode.ALL,"ALL filter did not restore");
                 options.actionPerformed(find(options,"Hide deaths in chat: OFF"));
                 net.minecraftforge.client.event.ClientChatReceivedEvent kill=new net.minecraftforge.client.event.ClientChatReceivedEvent((byte)0,new ChatComponentText("Victim was slain by "+mc.thePlayer.getName()+"'s Wooden Sword"));
                 MinecraftForge.EVENT_BUS.post(kill);require(kill.isCanceled()&&KillFeed.history.entries.size()==1,"Hide chat did not preserve kill-feed entry");
                 require(KillFeed.icon(KillFeed.history.entries.get(0)).getItem()==net.minecraft.init.Items.wooden_sword,"Wrong wooden sword icon");
+                KillFeed.history.clear();UtilitySettings.killFeedHeads=KillFeedRules.HeadMode.NONE;
+                line("AssistTarget was slain by Archer's Wooden Sword");int beforeAssist=KillFeed.bounds().w;
+                line("+3 raindrops | Kill Assist");
+                require(KillFeed.history.entries.size()==1&&KillFeed.history.entries.get(0).assist&&KillFeed.bounds().w>beforeAssist,"Assist did not update Kill Feed row width");
+                require(KillFeed.history.entries.get(0).border(mc.thePlayer.getName(),UtilitySettings.killBorderColor,UtilitySettings.deathBorderColor,UtilitySettings.assistBorderColor,100)==0xFF55FFFF,"Assist border did not use its own color");
+                KillFeed.history.clear();
+                line("+3 raindrops | Kill Assist");line("LateTarget was slain by Archer's Bow");
+                require(KillFeed.history.entries.get(0).assist,"Reward-first assist did not attach to the next death");
+                line("\u00a7eYou joined \u00a79Blue\u00a7r team!");
+                require(TeamBubbles.teamColor()=='9',"Team color was not captured for the assist label");
+                require(KillFeedRules.assistLabel(mc.thePlayer.getName(),TeamBubbles.teamColor()).equals("\u00a79\u00a7l"+mc.thePlayer.getName()+"\u00a7r"),"Assist label did not use the local name and team color");
+                UtilitySettings.killFeedHeads=KillFeedRules.HeadMode.ONLY_ME;
                 options.actionPerformed(find(options,"Hide deaths in chat: ON"));
                 require(!UtilitySettings.killFeedSlide,"Slide animation should default OFF");options.actionPerformed(find(options,"Slide animation: OFF"));
                 options.actionPerformed(find(options,"Appearance"));
+                require(UtilitySettings.killFeedHeads==KillFeedRules.HeadMode.ONLY_ME,"Player heads should default to Only Me");
+                int meWidth=KillFeed.bounds().w;
+                options.actionPerformed(find(options,"Player heads: Only Me"));
+                require(UtilitySettings.killFeedHeads==KillFeedRules.HeadMode.ALL&&KillFeed.bounds().w>meWidth,"ALL did not include the other player's head in row width");
+                options.actionPerformed(find(options,"Player heads: ALL"));
+                require(UtilitySettings.killFeedHeads==KillFeedRules.HeadMode.NONE&&KillFeed.bounds().w<meWidth,"None did not remove heads from row width");
+                options.actionPerformed(find(options,"Player heads: None"));
+                require(UtilitySettings.killFeedHeads==KillFeedRules.HeadMode.ONLY_ME,"Head mode did not cycle back to Only Me");
                 net.minecraftforge.fml.client.config.GuiSlider size=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==4).findFirst().get();
                 net.minecraftforge.fml.client.config.GuiSlider opacity=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==5).findFirst().get();
                 size.setValue(125);size.updateSlider();opacity.setValue(25);opacity.updateSlider();
                 net.minecraftforge.fml.client.config.GuiSlider outline=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==16).findFirst().get();outline.setValue(60);outline.updateSlider();
                 options.actionPerformed(find(options,"Colors"));
-                GuiTextField killColor=ReflectionHelper.getPrivateValue(KillFeedSettings.class,options,"killColor"),deathColor=ReflectionHelper.getPrivateValue(KillFeedSettings.class,options,"deathColor");
-                killColor.setText("123456");deathColor.setText("654321");options.onGuiClosed();
-                ReflectionHelper.setPrivateValue(UtilitySettings.class,null,false,"loaded");UtilitySettings.killFeedSize=75;UtilitySettings.killBackgroundOpacity=100;UtilitySettings.killBorderOpacity=100;UtilitySettings.killFeedSlide=false;UtilitySettings.killBorderColor=0;UtilitySettings.deathBorderColor=0;UtilitySettings.load();
-                require(UtilitySettings.killFeedSize==125&&UtilitySettings.killBackgroundOpacity==25&&UtilitySettings.killBorderOpacity==60&&UtilitySettings.killFeedSlide&&UtilitySettings.killBorderColor==0x123456&&UtilitySettings.deathBorderColor==0x654321,"Kill Feed appearance did not persist");
+                GuiTextField killColor=ReflectionHelper.getPrivateValue(KillFeedSettings.class,options,"killColor"),deathColor=ReflectionHelper.getPrivateValue(KillFeedSettings.class,options,"deathColor"),assistColor=ReflectionHelper.getPrivateValue(KillFeedSettings.class,options,"assistColor");
+                killColor.setText("123456");deathColor.setText("654321");assistColor.setText("FEDCBA");options.onGuiClosed();
+                ReflectionHelper.setPrivateValue(UtilitySettings.class,null,false,"loaded");UtilitySettings.killFeedSize=75;UtilitySettings.killBackgroundOpacity=100;UtilitySettings.killBorderOpacity=100;UtilitySettings.killFeedSlide=false;UtilitySettings.killBorderColor=0;UtilitySettings.deathBorderColor=0;UtilitySettings.assistBorderColor=0;UtilitySettings.killFeedHeads=KillFeedRules.HeadMode.NONE;UtilitySettings.killFeedFilter=KillFeedRules.FilterMode.ONLY_ME;UtilitySettings.load();
+                 require(UtilitySettings.killFeedSize==125&&UtilitySettings.killBackgroundOpacity==25&&UtilitySettings.killBorderOpacity==60&&UtilitySettings.killFeedSlide&&UtilitySettings.killBorderColor==0x123456&&UtilitySettings.deathBorderColor==0x654321&&UtilitySettings.assistBorderColor==0xFEDCBA&&UtilitySettings.killFeedHeads==KillFeedRules.HeadMode.ONLY_ME&&UtilitySettings.killFeedFilter==KillFeedRules.FilterMode.ALL,"Kill Feed appearance did not persist");
                 killColor.setText("INVALID");options.onGuiClosed();require(UtilitySettings.killBorderColor==0x123456,"Invalid hex color replaced saved color");
                 options.actionPerformed(find(options,"Reset colors"));options.actionPerformed(find(options,"Appearance"));
                 options.actionPerformed(find(options,"Reset size"));options.actionPerformed(find(options,"Reset"));options.actionPerformed(find(options,"Reset line"));
-                require(UtilitySettings.killFeedSize==75&&UtilitySettings.killBackgroundOpacity==100&&UtilitySettings.killBorderOpacity==100&&UtilitySettings.killBorderColor==0xFFBD45&&UtilitySettings.deathBorderColor==0xFF5555,"Appearance resets failed");
+                require(UtilitySettings.killFeedSize==75&&UtilitySettings.killBackgroundOpacity==100&&UtilitySettings.killBorderOpacity==100&&UtilitySettings.killBorderColor==0xFFBD45&&UtilitySettings.deathBorderColor==0xFF5555&&UtilitySettings.assistBorderColor==0x55FFFF,"Appearance resets failed");
                 options.actionPerformed(find(options,"General"));options.actionPerformed(find(options,"Slide animation: ON"));options.actionPerformed(find(options,"Colors"));
                 options.actionPerformed(buttons(options).stream().filter(b->b.id==19).findFirst().get());require(mc.currentScreen instanceof ColorSwatches,"Color swatches did not open");
                 ((ColorSwatches)mc.currentScreen).actionPerformed(buttons(mc.currentScreen).get(4));
                 require(mc.currentScreen==options&&UtilitySettings.killBorderColor==ColorSwatches.COLORS[4],"Swatch selection did not apply/return");options.actionPerformed(find(options,"Reset colors"));
+                options.actionPerformed(buttons(options).stream().filter(b->b.id==24).findFirst().get());
+                ((ColorSwatches)mc.currentScreen).actionPerformed(buttons(mc.currentScreen).get(12));
+                require(mc.currentScreen==options&&UtilitySettings.assistBorderColor==ColorSwatches.COLORS[12],"Assist swatch selection did not apply");options.actionPerformed(find(options,"Reset colors"));
                 net.minecraftforge.client.event.ClientChatReceivedEvent normal=new net.minecraftforge.client.event.ClientChatReceivedEvent((byte)0,new ChatComponentText("Target was shot out of the world by Archer from 50 blocks"));
                 KillFeed.INSTANCE.receive(normal);require(!normal.isCanceled(),"Chat deaths hidden despite setting OFF");
                 for(int i=0;i<1005;i++)KillFeed.history.add(KillFeedRules.parse("Old"+i+" died"));
@@ -535,10 +820,23 @@ public final class OtlSmoke {
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-kill-feed-appearance.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
                 UtilitySettings.hideKillChat=false;UtilitySettings.killFeed=true;UtilitySettings.save();KillFeed.history.clear();
                 HudEditor editor=new HudEditor();mc.displayGuiScreen(editor);require(find(editor,"Mods")!=null,"HUD editor missing central Mods button");
+                GuiButton mods=find(editor,"Mods");require(mods.xPosition+mods.width/2==editor.width/2&&mods.yPosition+mods.height/2==editor.height/2,"Mods button is not centered");
+                net.minecraft.client.settings.KeyBinding menuKey=null;
+                for(net.minecraft.client.settings.KeyBinding key:mc.gameSettings.keyBindings){
+                    require(!key.getKeyDescription().equals("key.otl.menu"),"Removed Face Rig shortcut is still registered");
+                    if(key.getKeyDescription().equals("key.otl.modules"))menuKey=key;
+                }
+                require(menuKey!=null,"Mod Menu is missing from Minecraft Controls");
+                int originalKey=menuKey.getKeyCode();menuKey.setKeyCode(org.lwjgl.input.Keyboard.KEY_NONE);
+                require(menuKey.getKeyCode()==org.lwjgl.input.Keyboard.KEY_NONE,"Mod Menu cannot be unbound");
+                menuKey.setKeyCode(originalKey);net.minecraft.client.settings.KeyBinding.resetKeyBindingArrayAndHash();
                 require(buttons(editor).size()==1,"Removed alignment toolbar is still present");
                 UtilitySettings.hudPositions.put(HudLayout.KILLS,new HudLayout.Position(1,0));
                 HudLayout.Rect r=HudEditor.bounds(HudLayout.KILLS);int px=r.x+r.w-25,py=r.y+2;
-                editor.mouseClicked(px,py,0);editor.mouseClickMove(px-40,py+35,0,100);editor.mouseReleased(px-40,py+35,0);
+                editor.mouseClicked(px,py,0);editor.mouseClickMove(px-40,py+35,0,100);
+                require(ReflectionHelper.getPrivateValue(HudEditor.class,editor,"dragging")!=null,"HUD guide grid did not enter drag mode");
+                editor.mouseReleased(px-40,py+35,0);
+                require(ReflectionHelper.getPrivateValue(HudEditor.class,editor,"dragging")==null,"HUD guide grid remained after drag");
                 require(HudEditor.bounds(HudLayout.KILLS).x!=r.x||HudEditor.bounds(HudLayout.KILLS).y!=r.y,"HUD drag did not move panel");
                 r=HudEditor.bounds(HudLayout.KILLS);int oldSize=UtilitySettings.killFeedSize;
                 editor.mouseClicked(r.x+r.w,r.y,0);editor.mouseClickMove(r.x+r.w+30,r.y-15,0,100);editor.mouseReleased(r.x+r.w+30,r.y-15,0);
@@ -619,13 +917,17 @@ public final class OtlSmoke {
                 confirm.setEnabled(true);require(confirm.settings(mc.currentScreen) instanceof KillConfirmSettings,"Kill Confirm module settings missing");
                 UtilitySettings.hideKillConfirmChat=false;KillConfirmSettings confirmOptions=new KillConfirmSettings(mc.currentScreen);mc.displayGuiScreen(confirmOptions);
                 require(!UtilitySettings.killConfirmSounds,"Kill/assist sounds should default OFF");
+                require(!UtilitySettings.totalExpKills,"Total EXP & Kills should default OFF");
+                require(!UtilitySettings.killConfirmPlayerHead,"Kill Confirm should default to the skull icon");
                 net.minecraftforge.fml.client.config.GuiSlider confirmSize=(net.minecraftforge.fml.client.config.GuiSlider)buttons(confirmOptions).stream().filter(b->b.id==1).findFirst().get();
                 net.minecraftforge.fml.client.config.GuiSlider confirmOpacity=(net.minecraftforge.fml.client.config.GuiSlider)buttons(confirmOptions).stream().filter(b->b.id==3).findFirst().get();
-                confirmSize.setValue(125);confirmSize.updateSlider();confirmOpacity.setValue(40);confirmOpacity.updateSlider();confirmOptions.actionPerformed(find(confirmOptions,"Hide rewards in chat: OFF"));confirmOptions.actionPerformed(find(confirmOptions,"Kill/assist sounds: OFF"));confirmOptions.onGuiClosed();
-                UtilitySettings.killConfirm=false;UtilitySettings.killConfirmSize=75;UtilitySettings.killConfirmOpacity=0;UtilitySettings.hideKillConfirmChat=false;UtilitySettings.killConfirmSounds=false;
-                ReflectionHelper.setPrivateValue(UtilitySettings.class,null,false,"loaded");UtilitySettings.load();require(confirm.enabled()&&UtilitySettings.killConfirmSize==125&&UtilitySettings.killConfirmOpacity==40&&UtilitySettings.hideKillConfirmChat&&UtilitySettings.killConfirmSounds,"Kill Confirm preferences did not persist");
+                confirmSize.setValue(125);confirmSize.updateSlider();confirmOpacity.setValue(40);confirmOpacity.updateSlider();confirmOptions.actionPerformed(find(confirmOptions,"Hide rewards in chat: OFF"));confirmOptions.actionPerformed(find(confirmOptions,"Kill/assist sounds: OFF"));confirmOptions.actionPerformed(find(confirmOptions,"Total EXP & Kills: OFF"));confirmOptions.actionPerformed(find(confirmOptions,"Kill icon: Skull"));confirmOptions.onGuiClosed();
+                UtilitySettings.killConfirm=false;UtilitySettings.killConfirmSize=75;UtilitySettings.killConfirmOpacity=0;UtilitySettings.hideKillConfirmChat=false;UtilitySettings.killConfirmSounds=false;UtilitySettings.totalExpKills=false;UtilitySettings.killConfirmPlayerHead=false;
+                ReflectionHelper.setPrivateValue(UtilitySettings.class,null,false,"loaded");UtilitySettings.load();require(confirm.enabled()&&UtilitySettings.killConfirmSize==125&&UtilitySettings.killConfirmOpacity==40&&UtilitySettings.hideKillConfirmChat&&UtilitySettings.killConfirmSounds&&UtilitySettings.totalExpKills&&UtilitySettings.killConfirmPlayerHead,"Kill Confirm preferences did not persist");
                 confirmOptions.actionPerformed(find(confirmOptions,"Hide rewards in chat: ON"));require(!UtilitySettings.hideKillConfirmChat,"Reward chat hiding did not toggle OFF");
                 confirmOptions.actionPerformed(find(confirmOptions,"Kill/assist sounds: ON"));require(!UtilitySettings.killConfirmSounds,"Kill/assist sounds did not toggle OFF");
+                confirmOptions.actionPerformed(find(confirmOptions,"Total EXP & Kills: ON"));require(!UtilitySettings.totalExpKills,"Total EXP & Kills did not toggle OFF");
+                confirmOptions.actionPerformed(find(confirmOptions,"Kill icon: Player Head"));require(!UtilitySettings.killConfirmPlayerHead,"Skull icon did not toggle back");
                 confirmOptions.actionPerformed(find(confirmOptions,"Reset size"));require(UtilitySettings.killConfirmSize==75,"Small default size did not reset");
                 UtilitySettings.hudPositions.put(HudLayout.CONFIRM,new HudLayout.Position(0,0));confirmOptions.actionPerformed(find(confirmOptions,"Reset position"));
                 HudLayout.Rect confirmBox=KillConfirm.bounds();ScaledResolution confirmResolution=new ScaledResolution(mc);
@@ -661,6 +963,18 @@ public final class OtlSmoke {
                 require(UtilitySettings.tabBackgroundOpacity==35&&UtilitySettings.typingTabBackgroundOpacity==70&&UtilitySettings.chatBackground==chatBackground,"Typing/idle tab opacity did not persist independently");
                 appearance.actionPerformed(find(appearance,"Reset chat options"));require(UtilitySettings.tabBackgroundOpacity==100&&UtilitySettings.typingTabBackgroundOpacity==100,"Tab background reset failed");
             }else if(state==48){
+                UtilitySettings.killConfirm=true;UtilitySettings.totalExpKills=true;UtilitySettings.hideKillConfirmChat=false;UtilitySettings.killFeed=false;
+                KillConfirm.state.clear();mc.displayGuiScreen(null);
+                String local=mc.thePlayer.getName();long now=System.nanoTime();
+                KillConfirm.state.receive("RecapTarget was slain by "+local+"'s Iron Sword",local,now-2000000000L,20);
+                KillConfirm.state.receive("+5 raindrops | Kill",local,now-1900000000L,20);
+                KillConfirm.state.receive("+3 raindrops | Kill Assist",local,now-1800000000L,20);
+                KillConfirm.state.receive(local+" fell out of the world",local,now-1700000000L,20);
+                KillConfirm.state.respawn(now-1500000000L,true);
+                require(KillConfirm.state.reward==null&&KillConfirm.state.rows().get(0).text.equals("TOTAL EXP: 8")
+                    &&KillConfirm.state.rows().get(1).text.equals("TOTAL KILLS: 1"),"Respawn recap lost the previous life or retained gold EXP");
+            }else if(state==49){
+                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-kill-confirm-respawn-recap.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
                 UtilitySettings.killConfirm=true;UtilitySettings.hideKillConfirmChat=false;UtilitySettings.killFeed=false;
                 KillConfirm.state.clear();mc.displayGuiScreen(null);
                 long now=System.nanoTime();String local=mc.thePlayer.getName();
@@ -672,22 +986,74 @@ public final class OtlSmoke {
                 java.util.List<KillConfirmRules.Row> rows=KillConfirm.state.rows();
                 require(KillConfirm.state.streak==4&&KillConfirm.state.streakExp==20,"Burst EXP did not update immediately");
                 require(rows.stream().filter(r->r.text.equals("KILL")).count()==4,"Four-kill stack lost a kill row");
-                require(rows.stream().anyMatch(r->r.text.equals("MULTI KILL")),"Fourth kill missing MULTI KILL");
+                require(rows.stream().anyMatch(r->r.text.equals("QUAD KILL")),"Fourth kill missing QUAD KILL");
                 for(int i=1;i<rows.size();i++)require(rows.get(i).start>rows.get(i-1).start,"Burst rows jumped the queue");
                 require(KillConfirmRules.newestRow(rows,now)<rows.size()-1,"Burst did not leave queued rows to reveal");
-            }else if(state==49){
-                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-kill-confirm-burst-queued.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
             }else if(state==50){
-                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-kill-confirm-burst-fourth.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
-                KillConfirm.state.clear();UtilitySettings.killConfirm=false;UtilitySettings.killFeed=true;UtilitySettings.save();
-                prepareTabs(mc);
+                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-kill-confirm-burst-queued.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
             }else if(state==51){
-                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-tab-background-input-0.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());mc.displayGuiScreen(null);
+                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-kill-confirm-burst-fourth.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+                KillConfirm.state.clear();long now=System.nanoTime();String local=mc.thePlayer.getName();
+                KillConfirm.state.streak=99;KillConfirm.state.multi=9;KillConfirm.state.lastKillAt=now-4000000000L;
+                KillConfirm.state.receive("TierTarget was slain by "+local+"'s Iron Sword",local,now-3000000000L,20);
+                KillConfirm.state.receive("+5 raindrops | Kill",local,now-2999999999L,20);
+                require(KillConfirm.state.reward.labels(100).equals(java.util.Arrays.asList("KILL","MULTI KILL","10 KILL CHAIN","THE LIMIT BREAKER","100 KILL STREAK")),"Expanded chain/streak labels or count order are wrong");
+                KillConfirm.draw(false);
+                KillConfirm.state.clear();
+                KillConfirm.state.receive("CloseTarget was shot by "+local+" from 3 blocks",local,now-1000000000L,20);
+                KillConfirm.state.receive("+5 raindrops | Kill",local,now-999999999L,20);
+                require(KillConfirm.state.reward.labels(1).contains("POINT BLANK"),"Three-block POINT BLANK missing");
+                KillConfirm.state.clear();
+                KillConfirm.state.receive("FarTarget was shot by "+local+" from 60 blocks",local,now-1000000000L,20);
+                KillConfirm.state.receive("+5 raindrops | Kill",local,now-999999999L,20);
+                require(KillConfirm.state.reward.labels(1).contains("EXTREME RANGE")&&!KillConfirm.state.reward.labels(1).contains("LONG SHOT"),"EXTREME RANGE did not replace LONG SHOT");
+                KillConfirm.state.clear();
+                for(int count=1;count<=5;count++){
+                    long at=now-3000000000L-(5-count)*4000000000L;
+                    KillConfirm.state.receive("RepeatTarget was slain by "+local+"'s Iron Sword",local,at,20);
+                    KillConfirm.state.receive("+5 raindrops | Kill",local,at+1,20);
+                }
+                require(KillConfirm.state.reward.labels(5).equals(java.util.Arrays.asList("KILL","DOMINATION","RAMPAGE","5 KILL STREAK")),"Fifth-opponent DOMINATION or streak count missing");
+                KillConfirm.draw(false);
+                KillConfirm.state.clear();
+                for(int count=1;count<=5;count++){
+                    long at=now-(6-count)*1000000000L;
+                    KillConfirm.state.receive("Unique"+count+" was slain by "+local+"'s Iron Sword",local,at,20);
+                    KillConfirm.state.receive("+5 raindrops | Kill",local,at+1,20);
+                }
+                require(KillConfirm.state.reward.labels(5).containsAll(java.util.Arrays.asList("CLEAN SWEEP","BRAWLER","PENTA KILL")),"Unique/melee chain tags missing");
+                KillConfirm.state.clear();
+                KillConfirm.state.receive("BlastTarget was blown up by "+local+"'s TNT",local,now-1000000000L,20);
+                KillConfirm.state.receive("+5 raindrops | Kill",local,now-999999999L,20);
+                require(KillConfirm.state.reward.labels(1).contains("DEMOLITION"),"Credited explosion tag missing");
+                KillConfirm.state.clear();
+                for(int count=1;count<=5;count++){
+                    long at=now-1000000000L-(6-count)*4000000000L;
+                    KillConfirm.state.receive(local+" was slain by Nemesis's Iron Sword",local,at,20);
+                    KillConfirm.state.respawn(at+1,false);
+                }
+                KillConfirm.state.receive("Nemesis was slain by "+local+"'s Iron Sword",local,now-1000000000L,20);
+                KillConfirm.state.receive("+5 raindrops | Kill",local,now-999999999L,20);
+                require(KillConfirm.state.reward.labels(1).contains("REDEMPTION")&&!KillConfirm.state.reward.labels(1).contains("REVENGE"),"REDEMPTION missing or duplicated REVENGE");
+                KillConfirm.draw(false);
+                require(org.lwjgl.opengl.GL11.glGetError()==0,"Expanded chain/streak rendering left a GL error");
+                KillConfirm.state.clear();UtilitySettings.killConfirm=false;UtilitySettings.totalExpKills=false;UtilitySettings.killFeed=true;UtilitySettings.save();
+                prepareTabs(mc);
             }else if(state==52){
-                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-tab-background-gameplay-0.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());mc.displayGuiScreen(new HudEditor());
+                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-tab-background-input-0.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());mc.displayGuiScreen(null);
             }else if(state==53){
+                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-tab-background-gameplay-0.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());mc.displayGuiScreen(new HudEditor());
+            }else if(state==54){
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-tab-background-preview-0.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());UtilitySettings.tabBackgroundOpacity=100;UtilitySettings.typingTabBackgroundOpacity=100;UtilitySettings.save();
-                if(scope.equals("all"))System.out.println("OTL_SMOKE: PASS - Kill Confirm burst, native component compatibility, HUD and prior fixtures");
+            }else if(state==55){
+                checkBow(mc);
+            }else if(state==56){
+                prepareAccuracy(mc);
+            }else if(state==57){
+                checkAccuracy(mc);
+            }else if(state==58){
+                finishAccuracy(mc);
+                if(scope.equals("all"))System.out.println("OTL_SMOKE: PASS - Bow Optimizer/Accuracy, Kill Confirm, native component compatibility, HUD and prior fixtures");
             }
             if(state==scopeEnd){
                 if(!scope.equals("all"))System.out.println("OTL_SMOKE: PASS - "+scope);

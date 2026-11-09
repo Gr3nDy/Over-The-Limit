@@ -7,31 +7,51 @@ import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.entity.RenderManager;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.IChatComponent;
+import net.minecraftforge.client.event.ClientChatReceivedEvent;
 import net.minecraftforge.client.event.RenderWorldLastEvent;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.minecraftforge.fml.common.eventhandler.*;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 import org.lwjgl.opengl.GL11;
 
-/** Bubbles use only server-delivered team-chat lines, including the local player's echo. */
+/** Bubbles use server-delivered team chat, plus same-color global chat when enabled. */
 final class TeamBubbles {
     static final TeamBubbles INSTANCE=new TeamBubbles();
     private static Object world;
     private static String host="";
+    private static char teamColor;
     static final Map<UUID,TeamBubbleRules.Stack> bubbles=new HashMap<>();
     private static long renderedBubbles;
     static void clearBubbles(){bubbles.clear();}
+    static char teamColor(){
+        if(teamColor!=0)return teamColor;
+        Minecraft mc=MinecraftAccess.get();
+        if(mc.theWorld==null||mc.thePlayer==null)return 0;
+        net.minecraft.scoreboard.ScorePlayerTeam team=mc.theWorld.getScoreboard().getPlayersTeam(mc.thePlayer.getName());
+        return team==null?0:TeamBubbleRules.colorAt(team.getColorPrefix(),0);
+    }
     private static void ensureWorld(){
         Minecraft mc=MinecraftAccess.get();String now=ServerScope.current();
         boolean active=ReliableChat.active()&&ReliableChat.fullChat();
         if(world!=mc.theWorld||!host.equals(now)){
-            bubbles.clear();world=mc.theWorld;host=now;
+            bubbles.clear();teamColor=0;world=mc.theWorld;host=now;
         }
         if(!active)bubbles.clear();
     }
+    @SubscribeEvent(priority=EventPriority.HIGHEST,receiveCanceled=true) public void serverChat(ClientChatReceivedEvent event){
+        if(event.type!=2)receive(event.message);
+    }
     static void receive(IChatComponent message){
         ensureWorld();
-        if(!UtilitySettings.bubbles||!ReliableChat.active()||!ReliableChat.fullChat()||MinecraftAccess.get().theWorld==null)return;
-        TeamBubbleRules.Chat chat=TeamBubbleRules.chat(message.getFormattedText());if(chat==null)return;
+        if(MinecraftAccess.get().theWorld==null)return;
+        String formatted=message.getFormattedText();
+        char joined=TeamBubbleRules.joinColor(formatted);
+        if(joined!=0){teamColor=joined;bubbles.clear();return;}
+        if(TeamBubbleRules.joinMessage(formatted)){teamColor=0;bubbles.clear();return;}
+        // The team color is kept for the Kill Feed assist label even when bubbles or Reliable Chat are off.
+        if(!ReliableChat.active()||!ReliableChat.fullChat()||!UtilitySettings.bubbles)return;
+        TeamBubbleRules.Chat chat=TeamBubbleRules.chat(formatted);
+        if(chat==null&&UtilitySettings.bubbleTeamAndChat&&teamColor!=0)chat=TeamBubbleRules.global(formatted,teamColor);
+        if(chat==null)return;
         EntityPlayer sender=null;
         for(EntityPlayer p:MinecraftAccess.get().theWorld.playerEntities)if(p.getName().equalsIgnoreCase(chat.name)){if(sender!=null)return;sender=p;}
         if(sender==null)return;
@@ -60,7 +80,6 @@ final class TeamBubbles {
         }
     }
     private static void draw(EntityPlayer player,double x,double y,double z){
-        Minecraft mc=MinecraftAccess.get();
         TeamBubbleRules.Stack stack=bubbles.get(player.getUniqueID());if(stack==null||!visible(player))return;
         for(TeamBubbleRules.Message bubble:stack.items)if(bubble.until>System.nanoTime())drawBubble(player,bubble,x,y,z);
     }

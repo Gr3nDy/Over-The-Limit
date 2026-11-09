@@ -10,18 +10,21 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
 import net.minecraft.util.ResourceLocation;
 
 /** Metadata for one map, read from its map.xml (bundled asset or downloaded copy). */
 final class MapInfo {
     final String name, version, objective, created, gamemode, authors, contributors, teams, dir, variants;
     final int players;
+    final int maxBuildHeight;
     final boolean bundled;
     final File cache;
     final boolean incomplete;
+    final java.util.Set<String> kitBlocks;
 
     private MapInfo(String name, String version, String objective, String created, String gamemode,
-                    String authors, String contributors, String teams, String dir, int players, boolean bundled, File cache, String variants, boolean incomplete) {
+                     String authors, String contributors, String teams, String dir, int players, boolean bundled, File cache, String variants, boolean incomplete, int maxBuildHeight, java.util.Set<String> kitBlocks) {
         this.name = name;
         this.version = version;
         this.objective = objective;
@@ -35,6 +38,8 @@ final class MapInfo {
         this.bundled = bundled;
         this.cache = cache;
         this.variants=variants;this.incomplete=incomplete;
+        this.maxBuildHeight=maxBuildHeight;
+        this.kitBlocks=java.util.Collections.unmodifiableSet(new java.util.HashSet<>(kitBlocks));
     }
 
     ResourceLocation texture() {
@@ -115,11 +120,20 @@ final class MapInfo {
             for(Element e:MapXml.children(metadata.root))if(e.getTagName().equals("variant")&&!e.getAttribute("id").isEmpty())variants.add(e.getAttribute("id"));
             String objective=metadata.value("objective");
             boolean incomplete=metadata.incomplete&&(objective.isEmpty()||players==0||teams==null||objective.contains("server-defined"));
+            String height=metadata.value("maxbuildheight");Element limit=metadata.first("maxbuildheight");
+            int maxBuildHeight=height.matches("[0-9]{1,3}")&&limit!=null&&!limit.hasAttribute("place")?Integer.parseInt(height):-1;
+            if(maxBuildHeight<1||maxBuildHeight>255)maxBuildHeight=-1;
+            java.util.Set<String> kitBlocks=new java.util.HashSet<>();
+            NodeList items=metadata.root.getElementsByTagName("item");
+            for(int i=0;i<items.getLength();i++){
+                Element item=(Element)items.item(i);String material=item.getAttribute("material");
+                if(!material.isEmpty())kitBlocks.add(kitMaterial(material));
+            }
             return new MapInfo(nvl(metadata.value("name"),pretty(last(dir))),metadata.value("version"),objective,metadata.value("created"),
                     nvl(metadata.value("gamemode"),gamemode),metadata.people("authors","author"),metadata.people("contributors","contributor"),
-                    String.join(", ",labels),dir,players,bundled,cache,String.join(", ",variants),incomplete);
+                    String.join(", ",labels),dir,players,bundled,cache,String.join(", ",variants),incomplete,maxBuildHeight,kitBlocks);
         }catch(Exception e){System.err.println("OTL: could not read map metadata "+dir+": "+e.getMessage());}
-        return new MapInfo(pretty(last(dir)),"","","",gamemode,"","","",dir,0,bundled,cache,"default",true);
+        return new MapInfo(pretty(last(dir)),"","","",gamemode,"","","",dir,0,bundled,cache,"default",true,-1,java.util.Collections.emptySet());
     }
 
     private static String nvl(String value, String fallback) {
@@ -154,5 +168,11 @@ final class MapInfo {
         StringBuilder out = new StringBuilder();
         for (char c : s.toLowerCase(Locale.ROOT).toCharArray()) if (Character.isLetterOrDigit(c)) out.append(c);
         return out.toString();
+    }
+
+    static String kitMaterial(String value){
+        String s=value.toLowerCase(Locale.ROOT).trim();
+        int colon=s.indexOf(':');if(colon>=0)s=s.substring(0,colon);
+        return norm(s.replace(' ','_').replace('-', '_'));
     }
 }

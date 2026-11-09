@@ -30,6 +30,22 @@ public class MapPreviewTest {
                 assertTrue(box.x>=4&&box.y>=4);assertTrue(box.x+box.side+4<=size[0]);assertTrue(box.y+box.side+4<=size[1]);
             }
         }
+        MapPreview.PreviewBox labels=new MapPreview.PreviewBox(320,240,310,230,true,120,18,14,14);
+        assertTrue(labels.x+labels.side+4<=320&&labels.y+labels.side+28+4<=240);
+    }
+    @Test public void voteTagsComeOnlyFromExplicitBookHoverText(){
+        net.minecraft.util.ChatComponentText line=new net.minecraft.util.ChatComponentText("Allure");
+        assertEquals("",MapPreview.voteTags(line));
+        line.getChatStyle().setChatHoverEvent(new net.minecraft.event.HoverEvent(net.minecraft.event.HoverEvent.Action.SHOW_TEXT,
+            new net.minecraft.util.ChatComponentText("Mode: CTW\nTags: Classic, Casual\nPlayers: 24")));
+        assertEquals("Classic, Casual",MapPreview.voteTags(line));
+    }
+    @Test public void favoritesKeepRepositoryIdentityAndRejectInvalidPaths(){
+        assertEquals("CommunityMaps/master/ctw/allure",UtilitySettings.favoriteKey("ctw/allure/map.png"));
+        assertEquals("CommunityMaps/master/ctw/allure",UtilitySettings.favoriteKey("CommunityMaps/master/ctw/allure"));
+        assertEquals("PublicMaps/main/ctw/allure",UtilitySettings.favoriteKey("PublicMaps/main/ctw/allure/map.png"));
+        assertNull(UtilitySettings.favoriteKey("PublicMaps/main/../secret/map.png"));
+        assertNull(UtilitySettings.favoriteKey("PublicMaps/main/ctw\\secret"));
     }
     @Test public void onlyGoldNamedMapLinksGetChatPreviews(){
         net.minecraft.util.ChatComponentText map=new net.minecraft.util.ChatComponentText("100\u2508Rooms");

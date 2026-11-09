@@ -2,6 +2,7 @@ package otl.client;
 
 import org.junit.Test;
 import static org.junit.Assert.*;
+import java.util.BitSet;
 
 public class MapXmlTest {
     private static final String INFECTION="<map><constants fallback='true'><constant id='time-limit'>8</constant><constant id='human-team-name'>Humans</constant><constant id='zombie-team-name'>Zombies</constant></constants>"
@@ -32,6 +33,44 @@ public class MapXmlTest {
         assertFalse(map.exact("Cataclysm"));assertTrue(map.exact("Infection Cataclysm"));
         assertTrue(map.exact("CommunityMaps/master/arcade/infection/infection_cataclysm"));
         assertFalse(map.exact("PublicMaps/main/ctw/cataclysm"));
+    }
+    @Test public void overlayRequiresAnExplicitGlobalBuildLimit(){
+        assertEquals(35,MapInfo.read("ctw/allure",true,null).maxBuildHeight);
+        assertEquals(34,HeightLimitOverlay.layer(35));
+        assertEquals(24,MapInfo.parse("<map><constants><constant id='limit'>25</constant></constants><maxbuildheight>${limit}</maxbuildheight></map>","ctw/test",true,null,id->null).maxBuildHeight-1);
+        assertEquals(-1,MapInfo.parse("<map><maxbuildheight place='tnt'>25</maxbuildheight></map>","ctw/test",true,null,id->null).maxBuildHeight);
+        assertEquals(-1,MapInfo.parse("<map><above id='height-limit' y='25'/></map>","ctw/test",true,null,id->null).maxBuildHeight);
+        assertEquals(-1,HeightLimitOverlay.layer(0));
+    }
+    @Test public void mapKitMaterialsAreCollectedForLimitOverlayFiltering(){
+        MapInfo map=MapInfo.parse("<map><kits><kit><item material='wool'/><item material='stone sword'/></kit></kits></map>","ctw/test",true,null,id->null);
+        assertTrue(map.kitBlocks.contains("wool"));
+        assertTrue(map.kitBlocks.contains("stonesword"));
+    }
+    @Test public void heightOverlayOnlyTracksNewBlocksAndClearsRemovedOnes(){
+        BitSet terrain=new BitSet(256),added=new BitSet(256),current=new BitSet(256);
+        terrain.set(5);current.set(5);HeightLimitOverlay.update(terrain,added,current);
+        assertTrue(added.isEmpty());
+        current.set(9);HeightLimitOverlay.update(terrain,added,current);
+        assertFalse(added.get(5));assertTrue(added.get(9));
+        current.clear(9);HeightLimitOverlay.update(terrain,added,current);
+        assertTrue(added.isEmpty());
+        current.clear(5);HeightLimitOverlay.update(terrain,added,current);
+        current.set(5);HeightLimitOverlay.update(terrain,added,current);
+        assertTrue(added.get(5));
+    }
+    @Test public void chunkRescansAreThrottledToEveryFourthTick(){
+        for(int tick=0;tick<12;tick++)assertEquals(tick%4==0,HeightLimitOverlay.scanDue(tick));
+    }
+    @Test public void heightIndicatorOnlyShowsNearTheLimitAndFades(){
+        assertTrue(HeightLimitOverlay.nearLimit(30,34));
+        assertTrue(HeightLimitOverlay.nearLimit(38,34));
+        assertFalse(HeightLimitOverlay.nearLimit(29,34));
+        assertFalse(HeightLimitOverlay.nearLimit(39,34));
+        assertFalse(HeightLimitOverlay.nearLimit(34,-1));
+        assertEquals(1F,HeightLimitOverlay.fade(0,4),0.001F);
+        assertEquals(.5F,HeightLimitOverlay.fade(2000000000L,4),0.001F);
+        assertEquals(0F,HeightLimitOverlay.fade(5000000000L,4),0.001F);
     }
 
     @Test public void cyclicIncludesAreBounded() throws Exception {

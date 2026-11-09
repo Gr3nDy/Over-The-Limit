@@ -25,6 +25,8 @@ abstract class OtlModule {
 
     abstract void setEnabled(boolean on);
 
+    boolean available(){return true;}
+
     /** Options screen for this module, or null when it has none. */
     GuiScreen settings(GuiScreen back) {
         return null;
@@ -65,6 +67,16 @@ abstract class OtlModule {
                 boolean enabled() { return UtilitySettings.nonPlayerChat; }
                 void setEnabled(boolean on) { UtilitySettings.nonPlayerChat=on; }
                 GuiScreen settings(GuiScreen back) { return new ServerNoticeSettings(back); }
+            },
+            new OtlModule("bow_optimizer", "Bow Optimizer") {
+                boolean enabled() { return UtilitySettings.bowOptimizer; }
+                void setEnabled(boolean on) { UtilitySettings.bowOptimizer=on;BowOptimizer.INSTANCE.echoes.clear();BowAccuracy.INSTANCE.reset(); }
+                GuiScreen settings(GuiScreen back) { return new BowOptimizerSettings(back); }
+            },
+            new OtlModule("height_limit_overlay", "Height Limit Overlay") {
+                boolean available() { return false; }
+                boolean enabled() { return false; }
+                void setEnabled(boolean on) { UtilitySettings.heightLimitOverlay=false; }
             }
     );
 }

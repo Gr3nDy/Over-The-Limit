@@ -19,6 +19,20 @@ public class TeamBubbleRulesTest {
         assertNull(TeamBubbleRules.chat("You joined Blue"));
         assertNull(TeamBubbleRules.chat("<Alex>: (Blue) Bob: quoted text"));
     }
+    @Test public void globalChatNeedsTheColorOfARealTeamJoin(){
+        assertEquals('9',TeamBubbleRules.joinColor("\u00a7eYou joined \u00a79Blue\u00a7r team!"));
+        assertEquals(0,TeamBubbleRules.joinColor("\u00a7eYou joined \u00a77Observers"));
+        assertEquals(0,TeamBubbleRules.joinColor("You joined Blue"));
+        assertEquals("hello",TeamBubbleRules.global("\u00a79<BubbleMate>\u00a7r: hello",'9').body);
+        assertNull(TeamBubbleRules.global("\u00a7c<BubbleOther>: hello",'9'));
+        assertNull(TeamBubbleRules.global("\u00a79(Blue) BubbleMate: team chat",'9'));
+        assertNull(TeamBubbleRules.global("\u00a79<Server>: hello",'c'));
+    }
+    @Test public void readsAColorFromAFormattedTeamPrefix(){
+        assertEquals('9',TeamBubbleRules.colorAt("\u00a79",0));
+        assertEquals('c',TeamBubbleRules.colorAt("\u00a7l\u00a7c",0));
+        assertEquals(0,TeamBubbleRules.colorAt("Blue",0));
+    }
     @Test public void stacksThreeMessagesAndSlidesOlderOnesUp(){
         TeamBubbleRules.Stack stack=new TeamBubbleRules.Stack();stack.add("first",0,4000000000L);
         stack.add("second",200000000L,4000000000L);

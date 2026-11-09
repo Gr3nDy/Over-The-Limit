@@ -10,6 +10,27 @@ import static org.junit.Assert.*;
 public class PersistenceTest {
     @Rule public TemporaryFolder temp=new TemporaryFolder();
 
+    @Test public void heightOverlayStartsOffEvenWithASavedOnPreference() throws Exception {
+        boolean previous=UtilitySettings.heightLimitOverlay;
+        try{
+            UtilitySettings.heightLimitOverlay=true;
+            com.google.gson.JsonObject settings=new com.google.gson.JsonObject();
+            settings.addProperty("height_limit_overlay",true);
+            java.lang.reflect.Method read=UtilitySettings.class.getDeclaredMethod("read",com.google.gson.JsonObject.class);
+            read.setAccessible(true);read.invoke(null,settings);
+            assertFalse(UtilitySettings.heightLimitOverlay);
+        }finally{UtilitySettings.heightLimitOverlay=previous;}
+    }
+    @Test public void heightOverlayIsUnavailableAndCannotBeEnabledThroughItsModule(){
+        boolean previous=UtilitySettings.heightLimitOverlay;
+        try{
+            OtlModule height=OtlModule.ALL.stream().filter(module->module.id.equals("height_limit_overlay")).findFirst().get();
+            assertFalse(height.available());assertFalse(height.enabled());assertNull(height.settings(null));
+            height.setEnabled(true);assertFalse(height.enabled());assertFalse(UtilitySettings.heightLimitOverlay);
+            assertTrue(OtlModule.ALL.stream().filter(module->module.id.equals("bow_optimizer")).findFirst().get().available());
+        }finally{UtilitySettings.heightLimitOverlay=previous;}
+    }
+
     @Test public void replacesCompleteFileAndCleansTemporaryFiles() throws Exception {
         Path p=temp.getRoot().toPath().resolve("nested/settings.json");
         AtomicFiles.write(p,"old".getBytes(StandardCharsets.UTF_8));

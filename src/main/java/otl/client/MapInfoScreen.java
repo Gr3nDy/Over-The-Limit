@@ -15,6 +15,10 @@ final class MapInfoScreen extends GuiScreen {
     private volatile MapInfo info;
     private volatile boolean failed;
     private int x, y, w, h, banner, scroll;
+    private MapInfo cachedInfo;
+    private boolean cachedFailed;
+    private int cachedWidth;
+    private List<String> lines;
 
     MapInfoScreen(String query) {
         this(query,null);
@@ -111,27 +115,29 @@ final class MapInfoScreen extends GuiScreen {
     }
 
     private List<String> detailLines(){
-        List<String> lines=new ArrayList<>();
+        if(lines!=null&&info==cachedInfo&&cachedWidth==Math.max(1,w-banner-36)&&failed==cachedFailed)return lines;
+        List<String> result=new ArrayList<>();
+        cachedInfo=info;cachedFailed=failed;cachedWidth=Math.max(1,w-banner-36);
         MapInfo map=info;
         if(map!=null){
-            detail(lines,"Objective",map.objective);
-            detail(lines,"Created",map.created);
-            detail(lines,"Players",map.players>0?String.valueOf(map.players):"Server-defined / not available");
-            detail(lines,"Author",map.authors);
-            detail(lines,"Credits",map.contributors.isEmpty()?"Not listed in map XML":map.contributors);
-            detail(lines,"Teams",map.teams.isEmpty()?"Server-defined / not applicable":map.teams);
-            detail(lines,"Variants",map.variants+" (preview: default)");
-            detail(lines,"Source",map.dir.startsWith("PublicMaps/")?"PublicMaps":"CommunityMaps");
-            if(map.incomplete)detail(lines,"Metadata","Shared rules unavailable or still loading; default variant shown.");
-            detail(lines,"XML",map.dir);
+            detail(result,"Objective",map.objective);
+            detail(result,"Created",map.created);
+            detail(result,"Players",map.players>0?String.valueOf(map.players):"Server-defined / not available");
+            detail(result,"Author",map.authors);
+            detail(result,"Credits",map.contributors.isEmpty()?"Not listed in map XML":map.contributors);
+            detail(result,"Teams",map.teams.isEmpty()?"Server-defined / not applicable":map.teams);
+            detail(result,"Variants",map.variants+" (preview: default)");
+            detail(result,"Source",map.dir.startsWith("PublicMaps/")?"PublicMaps":"CommunityMaps");
+            if(map.incomplete)detail(result,"Metadata","Shared rules unavailable or still loading; default variant shown.");
+            detail(result,"XML",map.dir);
         }else if(failed){
-            detail(lines,"No match",query);
-            detail(lines,"Sources","Bundled maps, PublicMaps and CommunityMaps. Check the spelling or open the gallery. See the log if a repository is unavailable.");
+            detail(result,"No match",query);
+            detail(result,"Sources","Bundled maps, PublicMaps and CommunityMaps. Check the spelling or open the gallery. See the log if a repository is unavailable.");
         }else{
-            detail(lines,"Looking up",query);
-            detail(lines,"Sources","Bundled maps, then PublicMaps and CommunityMaps.");
+            detail(result,"Looking up",query);
+            detail(result,"Sources","Bundled maps, then PublicMaps and CommunityMaps.");
         }
-        return lines;
+        return lines=result;
     }
 
     private void detail(List<String> lines,String label,String value){

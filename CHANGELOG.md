@@ -1,5 +1,28 @@
 # Changelog
 
+## v0.3.5 — 2026-11-09
+
+### Added
+- **Bow Optimizer** (module OFF by default): immediate local bow-release sound and reduced same-slot bow durability equip dips. Optimization, accuracy, hit sound and hit marker have independent controls under the module master switch; no changes to aiming, charge speed, damage or outgoing packets.
+- **Bow Accuracy HUD**: server-confirmed player arrow hits divided by valid released shots, movable/resizable in the HUD editor, adjustable background opacity and 0–2 decimal places (default: 2). **Prefix** is ON by default; OFF hides `Bow Accuracy:` and shrinks the HUD background. Counts are session-only and reset on match endings/starts, map/world changes and reconnects.
+- Optional **Bow Hit Sound** and **Hit Marker**, both OFF by default. The original hit tick uses vanilla audio; markers are white on hits and red on bow kills, with adjustable size from 50% to 200%.
+- Expanded **Kill Confirm** streak tiers from RAMPAGE at 5 to THE LIMIT BREAKER at 100+, with exact streak counts. Three-second rapid chains now run through DOUBLE–NONA KILL, then MULTI KILL with exact counts at 10+.
+- New Kill Confirm tags: **POINT BLANK** (reported bow distance ≤3 blocks), **EXTREME RANGE** (60+, replacing LONG SHOT), **DOMINATION**, **REDEMPTION**, **CLEAN SWEEP**, **DEMOLITION** and **BRAWLER**. The three-bonus-tag limit remains.
+- Optional Kill Confirm victim heads and post-respawn total EXP/kill recap; Kill Feed player-head modes, feed filters and configurable assist outlines.
+- Saved map favorites, a Favorites gallery filter and vote-book stars; book previews can show gamemode and server-provided vote tags. Optional team-colored global-chat bubbles alongside explicit team chat.
+
+### Fixed / Changed
+- Improved player-head caching and fallback behavior; Kill Confirm no longer flashes a skull while waiting for the victim name.
+- Corrected Kill Confirm first-blood tracking, death/respawn state and rolling-row layout; improved death parsing and HUD sizing/settings behavior.
+- Bounded map-preview texture caching, moved uncached map-name work off the render path and cached map-card text layout. Improved map XML handling and malformed-setting isolation.
+- Fixed the Kill Feed slide-animation crash caused by an undersized OpenGL query buffer.
+- **Height Limit Overlay is locked OFF**: the P menu shows **DISABLED**, toggle/settings controls are unavailable, and the HUD editor and runtime handlers cannot enable it.
+- Added unit and focused Forge smoke coverage for combat tags, bow feedback/accuracy, Prefix persistence and bounds, and the disabled Height Limit menu.
+
+### Notes
+- Accuracy requires vanilla server player-hit notifications; mobs and servers omitting that signal are not counted. English PGM match messages are used for match resets.
+- Bow sound suppression is conservative and can leave duplicate sounds. Live OC/Lunar compatibility and current server-rule approval have not been verified.
+
 ## v0.3.4 — 2026-11-08
 
 - Kill and assist rewards now add to the same gold EXP total until death; assists still do not advance the kill streak or receive bonus tags.

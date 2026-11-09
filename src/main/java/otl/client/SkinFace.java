@@ -17,6 +17,9 @@ import org.lwjgl.opengl.GL11;
  */
 final class SkinFace {
     private static final Map<String,int[]> CACHE=new HashMap<>();
+    private static final Map<String,Long> RETRY_AT=new HashMap<>();
+    /** Failed readbacks are retried at most twice a second instead of every frame. */
+    private static final long RETRY_NANOS=500000000L;
     private SkinFace(){}
 
     static int[] facePixels(ResourceLocation texture){return read(texture,true);}
@@ -33,21 +36,29 @@ final class SkinFace {
         return out;
     }
 
-    static boolean hatCovered(ResourceLocation texture,int col,int row){
-        int[] hat=hatPixels(texture);
-        return hat.length==64&&(hat[row*8+col]>>>24)>=128;
-    }
     static boolean loaded(ResourceLocation texture){return facePixels(texture).length==64;}
-    static void clear(){CACHE.clear();}
+    static void clear(){CACHE.clear();RETRY_AT.clear();}
 
     private static int[] read(ResourceLocation texture,boolean facePlane){
         String key=(facePlane?"f:":"h:")+texture;
         int[] cached=CACHE.get(key);
         if(cached!=null)return cached;
+        Long retry=RETRY_AT.get(key);
+        if(retry!=null&&System.nanoTime()<retry)return new int[0];
         int[] sampled=readGl(texture,facePlane);
-        if(sampled.length!=64)sampled=readImage(texture,facePlane);
-        if(sampled.length==64)CACHE.put(key,sampled);
-        return sampled;
+        if(!valid(sampled))sampled=readImage(texture,facePlane);
+        if(valid(sampled)){
+            CACHE.put(key,sampled);RETRY_AT.remove(key);return sampled;
+        }
+        RETRY_AT.put(key,System.nanoTime()+RETRY_NANOS);
+        return new int[0];
+    }
+
+    /** A failed readback is all zeroes; never cache that over a real skin. */
+    private static boolean valid(int[] pixels){
+        if(pixels.length!=64)return false;
+        for(int pixel:pixels)if(pixel!=0)return true;
+        return false;
     }
 
     /** Reads the bound texture with GL and samples each face texel at its centre. */

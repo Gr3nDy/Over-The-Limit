@@ -5,6 +5,22 @@ import java.util.regex.*;
 
 /** English PGM death templates, not arbitrary prose containing player names. */
 final class KillFeedRules {
+    enum HeadMode {
+        ONLY_ME("Only Me"),ALL("ALL"),NONE("None");
+        final String label;HeadMode(String label){this.label=label;}
+        static HeadMode parse(String value){try{return valueOf(value);}catch(IllegalArgumentException bad){return ONLY_ME;}}
+        boolean shows(String player,String local){return player!=null&&(this==ALL||this==ONLY_ME&&player.equalsIgnoreCase(local));}
+    }
+    enum FilterMode {
+        ALL("ALL"),ONLY_ME("Only Me"),TEAM("Only My Team");
+        final String label;FilterMode(String label){this.label=label;}
+        static FilterMode parse(String value){try{return valueOf(value);}catch(IllegalArgumentException bad){return ALL;}}
+        boolean shows(Death death,String local,java.util.function.Predicate<String> teammate){
+            if(this==ALL)return true;
+            if(death.victim.equalsIgnoreCase(local)||death.ownKill(local))return true;
+            return this==TEAM&&(teammate.test(death.victim)||death.killer!=null&&teammate.test(death.killer));
+        }
+    }
     enum Cause { MELEE, BOW, EXPLOSION, FIRE, MAGIC, FALL, DROWN, CACTUS, ANVIL, DEATH }
     enum Context { NONE, LAVA, FIRE, VOID, FALL }
     static final class Death {
@@ -12,6 +28,7 @@ final class KillFeedRules {
         final String victimLabel,killerLabel;
         final Cause cause;
         final boolean voidFall,lava,fall;
+        boolean assist;
         final long receivedAt=System.nanoTime();
         Death(String original,Matcher m,String template){
             this.original=original;victim=m.group("v");killer=group(m,"k");weapon=group(m,"w");
@@ -33,17 +50,66 @@ final class KillFeedRules {
         Context context(){return lava?Context.LAVA:voidFall?Context.VOID:cause==Cause.FIRE?Context.FIRE:fall?Context.FALL:Context.NONE;}
         boolean extraContext(){return suicide()?context()!=Context.NONE||cause!=Cause.DEATH:context()!=Context.NONE&&cause!=Cause.FIRE&&cause!=Cause.FALL;}
         String distanceLabel(){return distance==null?"":" (+"+distance+" Blocks)";}
-        int border(String local,int killColor,int deathColor,int opacity){
+        int border(String local,int killColor,int deathColor,int assistColor,int opacity){
             if(suicide())return 0;
-            if(!victim.equalsIgnoreCase(local)&&!ownKill(local))return 0;
-            int rgb=victim.equalsIgnoreCase(local)?deathColor:killColor;
+            if(!victim.equalsIgnoreCase(local)&&!ownKill(local)&&!assist)return 0;
+            int rgb=victim.equalsIgnoreCase(local)?deathColor:ownKill(local)?killColor:assistColor;
             return (Math.max(0,Math.min(100,opacity))*255/100<<24)|(rgb&0xFFFFFF);
         }
     }
     static final class History {
+        private static final long ASSIST_NANOS=2000000000L;
+        private static final int MAX_PENDING_ASSISTS=8;
         final List<Death> entries=new ArrayList<>();
-        void add(Death death){entries.add(0,death);if(entries.size()>1000)entries.remove(1000);}
-        void clear(){entries.clear();}
+        private final Deque<PendingAssist> pendingAssists=new ArrayDeque<>();
+        private static final class PendingAssist {
+            final long at;final String local;final java.util.function.Predicate<String> teammate;
+            PendingAssist(long at,String local,java.util.function.Predicate<String> teammate){this.at=at;this.local=local;this.teammate=teammate;}
+        }
+        void add(Death death){
+            entries.add(0,death);if(entries.size()>1000)entries.remove(1000);
+            // shortcut: assist rewards name no victim, so a reward that arrives before its death line claims the next death.
+            for(Iterator<PendingAssist> it=pendingAssists.iterator();it.hasNext();){
+                PendingAssist assist=it.next();
+                long age=death.receivedAt-assist.at;
+                if(age<0)continue;
+                if(age>ASSIST_NANOS){it.remove();continue;}
+                it.remove();
+                if(eligible(death,assist.local,assist.teammate))death.assist=true;
+                break;
+            }
+        }
+        boolean assist(String local,long now){
+            return assist(local,now,name->true);
+        }
+        boolean assist(String local,long now,java.util.function.Predicate<String> teammate){
+            Death match=null;
+            for(Death death:entries){
+                if(now-death.receivedAt>ASSIST_NANOS)break;
+                if(now<death.receivedAt||!eligible(death,local,teammate))continue;
+                match=death;break;
+            }
+            if(match==null){
+                pendingAssists.addLast(new PendingAssist(now,local,teammate));
+                while(pendingAssists.size()>MAX_PENDING_ASSISTS)pendingAssists.removeFirst();
+                expireAssists(now);
+                return true;
+            }
+            if(match.assist)return false;
+            match.assist=true;return true;
+        }
+        private void expireAssists(long now){
+            while(!pendingAssists.isEmpty()&&now-pendingAssists.peekFirst().at>ASSIST_NANOS)pendingAssists.removeFirst();
+        }
+        private static boolean eligible(Death death,String local,java.util.function.Predicate<String> teammate){
+            return death.killer!=null&&!death.suicide()&&!death.ownKill(local)&&!death.victim.equalsIgnoreCase(local)
+                &&teammate.test(death.victim);
+        }
+        void clear(){entries.clear();pendingAssists.clear();}
+    }
+    /** The feed has no victim in assist rewards, so it labels the local player with their team color. */
+    static String assistLabel(String name,char color){
+        return "\u00a7"+(color==0?'b':color)+"\u00a7l"+name+"\u00a7r";
     }
     private static final class Rule {
         final String template;final Pattern pattern;

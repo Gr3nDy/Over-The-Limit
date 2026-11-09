@@ -7,11 +7,11 @@ import java.io.IOException;
 final class KillFeedSettings extends GuiScreen {
     private final GuiScreen parent;
     private int x,y,w,h,page;
-    private GuiTextField killColor,deathColor;
+    private GuiTextField killColor,deathColor,assistColor;
     KillFeedSettings(GuiScreen parent){this.parent=parent;}
     public boolean doesGuiPauseGame(){return false;}
     public void initGui(){
-        UtilitySettings.load();w=Math.min(350,width-24);h=Math.min(250,height-20);x=(width-w)/2;y=(height-h)/2;buttonList.clear();killColor=null;deathColor=null;
+        UtilitySettings.load();w=Math.min(350,width-24);h=Math.min(250,height-20);x=(width-w)/2;y=(height-h)/2;buttonList.clear();killColor=null;deathColor=null;assistColor=null;
         for(int i=0;i<3;i++)buttonList.add(new NeutralButton(10+i,x+14+i*(w-28)/3,y+34,(w-34)/3,18,new String[]{"General","Appearance","Colors"}[i],page==i));
         if(page==0){
             buttonList.add(new NeutralButton(0,x+14,y+64,w-28,20,"Kill Feed: "+(UtilitySettings.killFeed?"ON":"OFF"),false));
@@ -19,6 +19,7 @@ final class KillFeedSettings extends GuiScreen {
             buttonList.add(new GuiSlider(14,x+14,y+114,w-28,20,"Visible entries: ","",1,5,UtilitySettings.killFeedRows,false,true,s->UtilitySettings.killFeedRows=s.getValueInt()));
             buttonList.add(new GuiSlider(15,x+14,y+139,w-28,20,"Fade out after: "," seconds",1,30,UtilitySettings.killFeedSeconds,false,true,s->UtilitySettings.killFeedSeconds=s.getValueInt()));
             buttonList.add(new NeutralButton(18,x+14,y+164,w-28,20,"Slide animation: "+(UtilitySettings.killFeedSlide?"ON":"OFF"),false));
+            buttonList.add(new NeutralButton(25,x+14,y+189,w-28,20,"Show entries: "+UtilitySettings.killFeedFilter.label,false));
             buttonList.add(new NeutralButton(2,x+14,y+h-27,110,19,"Clear kill history",false));
         }else if(page==1){
             buttonList.add(new GuiSlider(4,x+14,y+64,w-99,20,"Size: ","%",50,150,UtilitySettings.killFeedSize,false,true,s->UtilitySettings.killFeedSize=s.getValueInt()));
@@ -27,12 +28,15 @@ final class KillFeedSettings extends GuiScreen {
             buttonList.add(new NeutralButton(7,x+w-79,y+89,65,20,"Reset",false));
             buttonList.add(new GuiSlider(16,x+14,y+114,w-99,20,"Outline opacity: ","%",0,100,UtilitySettings.killBorderOpacity,false,true,s->UtilitySettings.killBorderOpacity=s.getValueInt()));
             buttonList.add(new NeutralButton(17,x+w-79,y+114,65,20,"Reset line",false));
+            buttonList.add(new NeutralButton(22,x+14,y+169,w-28,20,"Player heads: "+UtilitySettings.killFeedHeads.label,false));
         }else{
             killColor=colorField(20,y+64,UtilitySettings.killBorderColor);
             deathColor=colorField(21,y+89,UtilitySettings.deathBorderColor);
+            assistColor=colorField(23,y+114,UtilitySettings.assistBorderColor);
             buttonList.add(new NeutralButton(19,x+w-178,y+64,42,18,"Pick",false));
             buttonList.add(new NeutralButton(13,x+w-178,y+89,42,18,"Pick",false));
-            buttonList.add(new NeutralButton(8,x+w-94,y+119,80,18,"Reset colors",false));
+            buttonList.add(new NeutralButton(24,x+w-178,y+114,42,18,"Pick",false));
+            buttonList.add(new NeutralButton(8,x+w-94,y+146,80,18,"Reset colors",false));
         }
         buttonList.add(new NeutralButton(3,x+w-94,y+h-27,80,19,"Back",false));
     }
@@ -43,12 +47,13 @@ final class KillFeedSettings extends GuiScreen {
     private void applyColors(){
         if(killColor!=null&&killColor.getText().matches("[0-9a-fA-F]{6}"))UtilitySettings.killBorderColor=Integer.parseInt(killColor.getText(),16);
         if(deathColor!=null&&deathColor.getText().matches("[0-9a-fA-F]{6}"))UtilitySettings.deathBorderColor=Integer.parseInt(deathColor.getText(),16);
+        if(assistColor!=null&&assistColor.getText().matches("[0-9a-fA-F]{6}"))UtilitySettings.assistBorderColor=Integer.parseInt(assistColor.getText(),16);
     }
     protected void actionPerformed(GuiButton b){
         if(b.id==4||b.id==5||b.id==14||b.id==15||b.id==16)return;
         applyColors();
         if(b.id==3){mc.displayGuiScreen(parent);return;}
-        if(b.id==19||b.id==13){mc.displayGuiScreen(new ColorSwatches(this,b.id==19));return;}
+        if(b.id==19||b.id==13||b.id==24){mc.displayGuiScreen(new ColorSwatches(this,b.id==19?0:b.id==13?1:2));return;}
         if(b.id>=10&&b.id<=12)page=b.id-10;
         if(b.id==0)UtilitySettings.killFeed=!UtilitySettings.killFeed;
         if(b.id==1)UtilitySettings.hideKillChat=!UtilitySettings.hideKillChat;
@@ -57,16 +62,18 @@ final class KillFeedSettings extends GuiScreen {
         if(b.id==7)UtilitySettings.killBackgroundOpacity=100;
         if(b.id==17)UtilitySettings.killBorderOpacity=100;
         if(b.id==18)UtilitySettings.killFeedSlide=!UtilitySettings.killFeedSlide;
-        if(b.id==8){UtilitySettings.killBorderColor=0xFFBD45;UtilitySettings.deathBorderColor=0xFF5555;}
+        if(b.id==22)UtilitySettings.killFeedHeads=KillFeedRules.HeadMode.values()[(UtilitySettings.killFeedHeads.ordinal()+1)%3];
+        if(b.id==25)UtilitySettings.killFeedFilter=KillFeedRules.FilterMode.values()[(UtilitySettings.killFeedFilter.ordinal()+1)%3];
+        if(b.id==8){UtilitySettings.killBorderColor=0xFFBD45;UtilitySettings.deathBorderColor=0xFF5555;UtilitySettings.assistBorderColor=0x55FFFF;}
         UtilitySettings.save();initGui();
     }
     protected void mouseClicked(int mx,int my,int button)throws IOException{
-        if(killColor!=null){killColor.mouseClicked(mx,my,button);deathColor.mouseClicked(mx,my,button);}super.mouseClicked(mx,my,button);
+        if(killColor!=null){killColor.mouseClicked(mx,my,button);deathColor.mouseClicked(mx,my,button);assistColor.mouseClicked(mx,my,button);}super.mouseClicked(mx,my,button);
     }
     protected void keyTyped(char typed,int key)throws IOException{
-        if(killColor!=null&&(killColor.isFocused()||deathColor.isFocused())&&key!=org.lwjgl.input.Keyboard.KEY_ESCAPE){
-            if(key==org.lwjgl.input.Keyboard.KEY_TAB){boolean focused=killColor.isFocused();killColor.setFocused(!focused);deathColor.setFocused(focused);}
-            else{killColor.textboxKeyTyped(typed,key);deathColor.textboxKeyTyped(typed,key);applyColors();}
+        if(killColor!=null&&(killColor.isFocused()||deathColor.isFocused()||assistColor.isFocused())&&key!=org.lwjgl.input.Keyboard.KEY_ESCAPE){
+            if(key==org.lwjgl.input.Keyboard.KEY_TAB){GuiTextField next=killColor.isFocused()?deathColor:deathColor.isFocused()?assistColor:killColor;killColor.setFocused(next==killColor);deathColor.setFocused(next==deathColor);assistColor.setFocused(next==assistColor);}
+            else{killColor.textboxKeyTyped(typed,key);deathColor.textboxKeyTyped(typed,key);assistColor.textboxKeyTyped(typed,key);applyColors();}
         }else super.keyTyped(typed,key);
     }
     protected void mouseReleased(int mx,int my,int state){super.mouseReleased(mx,my,state);applyColors();UtilitySettings.save();}
@@ -79,11 +86,14 @@ final class KillFeedSettings extends GuiScreen {
         }else if(page==2){
             drawString(fontRendererObj,"Your kills",x+14,y+69,0xFFFFFFFF);
             drawString(fontRendererObj,"Your deaths",x+14,y+94,0xFFFFFFFF);
+            drawString(fontRendererObj,"Your assists",x+14,y+119,0xFFFFFFFF);
             killColor.setTextColor(killColor.getText().matches("[0-9a-fA-F]{6}")?0xFFFFFF:0xFF5555);
             deathColor.setTextColor(deathColor.getText().matches("[0-9a-fA-F]{6}")?0xFFFFFF:0xFF5555);
-            killColor.drawTextBox();deathColor.drawTextBox();
+            assistColor.setTextColor(assistColor.getText().matches("[0-9a-fA-F]{6}")?0xFFFFFF:0xFF5555);
+            killColor.drawTextBox();deathColor.drawTextBox();assistColor.drawTextBox();
             drawRect(x+w-128,y+66,x+w-119,y+80,0xFF000000|UtilitySettings.killBorderColor);
             drawRect(x+w-128,y+91,x+w-119,y+105,0xFF000000|UtilitySettings.deathBorderColor);
+            drawRect(x+w-128,y+116,x+w-119,y+130,0xFF000000|UtilitySettings.assistBorderColor);
         }
         super.drawScreen(mx,my,partial);
     }

@@ -31,16 +31,33 @@ import org.lwjgl.input.Keyboard;
  */
 final class MapPreview {
     private static final Pattern NAME_TAG=Pattern.compile("<name>(.*?)</name>",Pattern.DOTALL);
+    private static final Pattern XML_RESPONSE=Pattern.compile("^XML:\\s*OvercastCommunity/(PublicMaps|CommunityMaps)\\s+/?([^\\s]+).*$");
+    private static final Pattern PLAYING_RESPONSE=Pattern.compile("^Playing (.+) by .+$");
+    private static final Pattern VOTE_TAGS=Pattern.compile("(?im)^\\s*Tags?\\s*:\\s*([^\\r\\n]+)");
+    private static final Pattern RESPONSE_TITLE=Pattern.compile("^\\s{4,}.+\\s{4,}$");
+    private static final Pattern VERSION_SUFFIX=Pattern.compile("\\s+\\d+\\.\\d+(?:\\.\\d+)*$");
+    private static final int TEXTURE_CACHE_LIMIT=256;
+    /** Bounded LRU for preview textures so a long-lived client cannot grow without eviction. */
+    private static final class TextureCache extends java.util.LinkedHashMap<String,ResourceLocation>{
+        TextureCache(){super(256,0.75F,true);}
+        @Override protected boolean removeEldestEntry(java.util.Map.Entry<String,ResourceLocation> eldest){
+            if(size()<=TEXTURE_CACHE_LIMIT)return false;
+            MinecraftAccess.get().getTextureManager().deleteTexture(eldest.getValue());
+            return true;
+        }
+    }
+    private static final Map<String,ResourceLocation> textures=new TextureCache();
     private static final Map<String,Entry> entries=new ConcurrentHashMap<>();
-    private static final Map<String,ResourceLocation> galleryTextures=new ConcurrentHashMap<>();
     private static final Map<String,String> nameCache=new ConcurrentHashMap<>();
-    private static final Map<String,ResourceLocation> fileTextures=new ConcurrentHashMap<>();
+    private final Set<String> namePending=ConcurrentHashMap.newKeySet();
+    private final Set<String> modePending=ConcurrentHashMap.newKeySet();
     static volatile boolean namesReady;
     private final ExecutorService worker=Executors.newSingleThreadExecutor(r->{Thread t=new Thread(r,"OTL Map Names");t.setDaemon(true);return t;});
     private final List<Entry> all=new ArrayList<>();
     private List<String> hoverCatalog;
     private final List<Entry> remoteEntries=new ArrayList<>();
-    private final Map<String,String> chatMaps=new HashMap<>();
+    private final Map<String,String> modes=new ConcurrentHashMap<>();
+    private final Map<String,String> chatMaps=new ConcurrentHashMap<>();
     static final MapPreview INSTANCE=new MapPreview();
     private String pendingQuery, responseTitle;
     private long waitingUntil;
@@ -62,7 +79,6 @@ final class MapPreview {
             String dir=path.substring(0,path.length()-8);
             String folder=dir.substring(dir.lastIndexOf('/')+1);
             Entry e=new Entry(folder,dir);
-            e.lowerFolder=folder.toLowerCase(Locale.ROOT).replace('_',' ');
             all.add(e);
             entries.put(dir,e);
         }
@@ -74,7 +90,7 @@ final class MapPreview {
         for(Entry e:all){
             String name=readMapName(e.path);
             e.displayName=name;
-            e.lowerName=name==null?null:name.toLowerCase(Locale.ROOT);
+            e.lowerName=name==null?null:MapInfo.norm(name);
         }
         namesReady=true;
     }
@@ -93,26 +109,26 @@ final class MapPreview {
         return null;
     }
 
-    /** Display name of a map folder, read from its map.xml (cached). */
+    /** Display name of a map folder, read from its map.xml (cached, backgrounded when not bundled). */
     static String displayName(String path){
         if(path.startsWith("CommunityMaps/master/"))path=path.substring("CommunityMaps/master/".length());
         Entry e=entries.get(path);
         if(e!=null)return e.displayName==null?"":e.displayName;
         String cached=nameCache.get(path);
         if(cached!=null)return cached;
-        String name=readMapName(path);
-        nameCache.put(path,name==null?"":name);
-        return name;
+        INSTANCE.requestDisplayName(path);
+        return "";
     }
 
     @SubscribeEvent public void draw(GuiScreenEvent.DrawScreenEvent.Post e){
-        if(!bookPreview())return;
         GuiScreen screen=e.gui;
+        if(screen instanceof GuiScreenBook&&ServerScope.active())drawFavoriteStars(screen);
+        if(!bookPreview())return;
         if(screen instanceof GuiChat){
             String query=chatQueryAt(screen,e.mouseX,e.mouseY);
             if(query==null)return;
             ResourceLocation texture=chatTexture(query);
-            if(texture!=null)drawPreview(screen,e.mouseX,e.mouseY,texture);
+            if(texture!=null)drawPreview(screen,e.mouseX,e.mouseY,texture,null);
             return;
         }
         if(!(screen instanceof GuiScreenBook))return;
@@ -121,7 +137,7 @@ final class MapPreview {
         if(hit==null)return;
         Entry entry=hit.entry;
         ResourceLocation texture=galleryTexture(entry.path+"/map.png");
-        if(texture!=null)drawPreview(screen,e.mouseX,e.mouseY,texture);
+        if(texture!=null)drawPreview(screen,e.mouseX,e.mouseY,texture,entry);
     }
 
     static String chatQuery(IChatComponent component){
@@ -188,9 +204,9 @@ final class MapPreview {
     }
 
     static String serverQuery(String text){
-        Matcher xml=Pattern.compile("^XML:\\s*OvercastCommunity/(PublicMaps|CommunityMaps)\\s+/?([^\\s]+).*$").matcher(text.trim());
+        Matcher xml=XML_RESPONSE.matcher(text.trim());
         if(xml.matches())return (xml.group(1).equals("PublicMaps")?"PublicMaps/main/":"CommunityMaps/master/")+xml.group(2);
-        Matcher playing=Pattern.compile("^Playing (.+) by .+$").matcher(text.trim());
+        Matcher playing=PLAYING_RESPONSE.matcher(text.trim());
         return playing.matches()?playing.group(1):null;
     }
 
@@ -200,7 +216,7 @@ final class MapPreview {
         for(String line:text.split("[\\r\\n]+")){
             String query=serverQuery(line);
             if(query!=null){pendingQuery=query;waitingUntil=0;return;}
-            if(line.matches("^\\s{4,}.+\\s{4,}$"))responseTitle=line.trim().replaceFirst("\\s+\\d+\\.\\d+(?:\\.\\d+)*$","");
+            if(RESPONSE_TITLE.matcher(line).matches())responseTitle=VERSION_SUFFIX.matcher(line.trim()).replaceAll("");
         }
     }
 
@@ -245,34 +261,38 @@ final class MapPreview {
 
     /** Preview texture for a downloaded (non-bundled) map. */
     static ResourceLocation fileTexture(String key,File file){
-        ResourceLocation ready=fileTextures.get(key);
-        if(ready!=null)return ready;
+        String cacheKey="f:"+key;
+        synchronized(textures){
+            ResourceLocation ready=textures.get(cacheKey);
+            if(ready!=null)return ready;
+        }
         try(InputStream in=new java.io.FileInputStream(file)){
             BufferedImage image=readSquare(in);
             if(image==null)return null;
             ResourceLocation r=MinecraftAccess.get().getTextureManager().getDynamicTextureLocation("otl_"+key,new DynamicTexture(image));
-            fileTextures.put(key,r);
+            synchronized(textures){textures.put(cacheKey,r);}
             return r;
         }catch(Exception ignored){return null;}
     }
 
     static ResourceLocation galleryTexture(String path){
         if(path.startsWith("CommunityMaps/master/"))path=path.substring("CommunityMaps/master/".length());
-        ResourceLocation ready=galleryTextures.get(path);
-        if(ready!=null)return ready;
+        String cacheKey="g:"+path;
+        synchronized(textures){
+            ResourceLocation ready=textures.get(cacheKey);
+            if(ready!=null)return ready;
+        }
         try(InputStream in=MapPreview.class.getResourceAsStream("/assets/otl/maps/"+path)){
             if(in==null){
                 String dir=path.substring(0,path.length()-8);
                 String remote=dir.startsWith("PublicMaps/main/")?dir:"CommunityMaps/master/"+dir;
                 File file=MapRemote.preview(remote);
-                ResourceLocation texture=file==null?null:fileTexture(remote,file);
-                if(texture!=null)galleryTextures.put(path,texture);
-                return texture;
+                return file==null?null:fileTexture(remote,file);
             }
             BufferedImage image=readSquare(in);
             if(image==null)return null;
             ResourceLocation r=MinecraftAccess.get().getTextureManager().getDynamicTextureLocation("map_gallery_"+path.replace('/','_'),new DynamicTexture(image));
-            galleryTextures.put(path,r);
+            synchronized(textures){textures.put(cacheKey,r);}
             return r;
         }catch(Exception ignored){return null;}
     }
@@ -326,9 +346,10 @@ final class MapPreview {
             hoverCatalog=catalog;remoteEntries.clear();
             for(String dir:catalog)remoteEntries.add(new Entry(dir.substring(dir.lastIndexOf('/')+1),dir));
         }
+        Normalized normalized=new Normalized(text);
         for(List<Entry> source:Arrays.asList(all,remoteEntries))for(Entry entry:source){
-            for(String name:new String[]{entry.displayName,entry.folder}){
-                int[] range=nameRange(text,name);
+            for(String name:entry.lowerName==null?new String[]{entry.lowerFolder}:new String[]{entry.lowerName,entry.lowerFolder}){
+                int[] range=normalized.range(name);
                 if(range!=null&&range[1]-range[0]>len){best=entry;start=range[0];len=range[1]-range[0];}
             }
         }
@@ -341,20 +362,31 @@ final class MapPreview {
 
     /** Match server separators/formatting without losing the original mouse-hit coordinates. */
     static int[] nameRange(String text,String name){
-        String q=MapInfo.norm(name);
-        if(q.length()<2)return null;
-        StringBuilder normalized=new StringBuilder();List<Integer> offsets=new ArrayList<>();
-        for(int i=0;i<text.length();i++){
-            char c=text.charAt(i);
-            if(c=='\u00a7'&&i+1<text.length()){i++;continue;}
-            if(Character.isLetterOrDigit(c)){normalized.append(Character.toLowerCase(c));offsets.add(i);}
+        return new Normalized(text).range(name);
+    }
+
+    /** One normalization per hovered line, shared by every candidate name. */
+    private static final class Normalized {
+        final String raw;final StringBuilder chars=new StringBuilder();final List<Integer> offsets=new ArrayList<>();
+        Normalized(String text){
+            raw=text;
+            for(int i=0;i<text.length();i++){
+                char c=text.charAt(i);
+                if(c=='\u00a7'&&i+1<text.length()){i++;continue;}
+                if(Character.isLetterOrDigit(c)){chars.append(Character.toLowerCase(c));offsets.add(i);}
+            }
         }
-        for(int at=normalized.indexOf(q);at>=0;at=normalized.indexOf(q,at+1)){
-            int start=offsets.get(at),end=offsets.get(at+q.length()-1)+1;
-            String before=ChatRules.plain(text.substring(0,start)),after=ChatRules.plain(text.substring(end));
-            if((before.isEmpty()||!Character.isLetterOrDigit(before.charAt(before.length()-1)))&&(after.isEmpty()||!Character.isLetterOrDigit(after.charAt(0))))return new int[]{start,end};
+        int[] range(String name){
+            String key=MapInfo.norm(name);
+            if(key.length()<2)return null;
+            String normalized=chars.toString();
+            for(int at=normalized.indexOf(key);at>=0;at=normalized.indexOf(key,at+1)){
+                int start=offsets.get(at),end=offsets.get(at+key.length()-1)+1;
+                String before=ChatRules.plain(raw.substring(0,start)),after=ChatRules.plain(raw.substring(end));
+                if((before.isEmpty()||!Character.isLetterOrDigit(before.charAt(before.length()-1)))&&(after.isEmpty()||!Character.isLetterOrDigit(after.charAt(0))))return new int[]{start,end};
+            }
+            return null;
         }
-        return null;
     }
 
     /** The rendered page lines of the book screen, found by field type because names are remapped. */
@@ -380,18 +412,77 @@ final class MapPreview {
     static final class PreviewBox {
         final int x,y,side;
         PreviewBox(int width,int height,int mx,int my,boolean large,int tooltipWidth,int tooltipHeight){
-            side=Math.max(1,Math.min(large?170:80,Math.min(width-8,height-8)));
+            this(width,height,mx,my,large,tooltipWidth,tooltipHeight,0,0);
+        }
+        PreviewBox(int width,int height,int mx,int my,boolean large,int tooltipWidth,int tooltipHeight,int above,int below){
+            side=Math.max(1,Math.min(large?170:80,Math.min(width-8,height-8-above-below)));
+            int full=side+above+below;
             int tx=mx+12,ty=Math.min(my-12,height-tooltipHeight-6);
             int extent=tooltipHeight>0?tooltipWidth:side;
             if(tx+extent+4>width)tx=mx-16-extent;
             int py=tooltipHeight>0?ty+tooltipHeight+8:ty;
-            if(tooltipHeight>0&&py+side+4>height)py=ty-side-8;
+            if(tooltipHeight>0&&py+full+4>height)py=ty-full-8;
             x=Math.max(4,Math.min(tx,width-side-4));
-            y=Math.max(4,Math.min(py,height-side-4));
+            y=Math.max(4,Math.min(py,height-full-4));
         }
     }
 
-    private void drawPreview(GuiScreen screen,int mx,int my,ResourceLocation texture){
+    static String voteTags(IChatComponent component){
+        net.minecraft.event.HoverEvent hover=component==null?null:component.getChatStyle().getChatHoverEvent();
+        if(hover==null||hover.getAction()!=net.minecraft.event.HoverEvent.Action.SHOW_TEXT)return "";
+        Matcher tags=VOTE_TAGS.matcher(ChatRules.plain(hover.getValue().getUnformattedText()));
+        return tags.find()?tags.group(1).trim():"";
+    }
+    static void star(int x,int y,int color){
+        net.minecraft.client.renderer.GlStateManager.pushMatrix();
+        net.minecraft.client.renderer.GlStateManager.translate(x,y,0);
+        net.minecraft.client.renderer.GlStateManager.scale(2,2,1);
+        MinecraftAccess.get().fontRendererObj.drawStringWithShadow("\u2605",0,0,color);
+        net.minecraft.client.renderer.GlStateManager.popMatrix();
+    }
+    private String mode(String path){
+        String saved=modes.get(path);if(saved!=null)return saved;
+        if(!modePending.add(path))return "";
+        worker.execute(()->{try{modes.put(path,readMode(path));}finally{modePending.remove(path);}});
+        return "";
+    }
+    private String readMode(String path){
+        String dir=path.startsWith("CommunityMaps/master/")?path.substring("CommunityMaps/master/".length()):path;
+        MapInfo info;
+        if(entries.containsKey(dir))info=MapInfo.read(dir,true,null);
+        else{
+            java.io.File xml=new java.io.File(MapRemote.cacheDir(),path+"/map.xml");
+            info=xml.isFile()?MapInfo.read(path,false,xml.getParentFile()):MapInfo.parse(null,path,false,null,id->null);
+        }
+        return info.gamemode;
+    }
+    private void requestDisplayName(String path){
+        if(!namePending.add(path))return;
+        worker.execute(()->{String name=readMapName(path);nameCache.put(path,name==null?"":name);namePending.remove(path);});
+    }
+    private void drawFavoriteStars(GuiScreen screen){
+        UtilitySettings.load();if(UtilitySettings.mapFavorites.isEmpty())return;
+        List<?> lines=pageLines(screen);if(lines==null)return;
+        FontRenderer font=MinecraftAccess.get().fontRendererObj;
+        int left=(screen.width-192)/2+36;
+        for(int row=0;row<Math.min(lines.size(),128/font.FONT_HEIGHT);row++){
+            if(!(lines.get(row) instanceof IChatComponent))continue;
+            String text=((IChatComponent)lines.get(row)).getUnformattedText();
+            int end=-1;
+            Normalized line=new Normalized(text);
+            for(String path:UtilitySettings.mapFavorites){
+                String name=displayName(path);
+                if(name.isEmpty())name=path.substring(path.lastIndexOf('/')+1).replace('_',' ');
+                int[] range=line.range(name);
+                if(range!=null&&range[1]>end)end=range[1];
+            }
+            if(end<0)continue;
+            int x=left+font.getStringWidth(text.substring(0,end))+2;
+            if(!text.substring(end).trim().isEmpty())x=left+font.getStringWidth(text)+2;
+            if(x+font.getStringWidth("\u2605")*2<=left+116)star(x,33+row*font.FONT_HEIGHT,0xFFFFD34F);
+        }
+    }
+    private void drawPreview(GuiScreen screen,int mx,int my,ResourceLocation texture,Entry entry){
         IChatComponent component;
         if(screen instanceof GuiScreenBook)component=((GuiScreenBook)screen).func_175385_b(mx,my);
         else{
@@ -405,17 +496,21 @@ final class MapPreview {
             for(String line:lines)tooltipWidth=Math.max(tooltipWidth,MinecraftAccess.get().fontRendererObj.getStringWidth(line));
             tooltipHeight=8+(lines.length>1?2+(lines.length-1)*10:0);
         }
-        PreviewBox box=new PreviewBox(screen.width,screen.height,mx,my,UtilitySettings.largeMapPreview,tooltipWidth,tooltipHeight);
-        int x=box.x,y=box.y,w=box.side;
+        String mode=entry==null?"":mode(entry.path),tags=entry==null?"":voteTags(component);
+        int above=mode.isEmpty()?0:14,below=tags.isEmpty()?0:14;
+        PreviewBox box=new PreviewBox(screen.width,screen.height,mx,my,UtilitySettings.largeMapPreview,tooltipWidth,tooltipHeight,above,below);
+        int x=box.x,y=box.y,w=box.side,imageY=y+above;
         net.minecraft.client.renderer.GlStateManager.disableLighting();
         net.minecraft.client.renderer.GlStateManager.disableDepth();
-        Gui.drawRect(x-4,y-4,x+w+4,y+w+4,0xF0100010);
-        Gui.drawRect(x-3,y-3,x+w+3,y+w+3,0x505000FF);
-        Gui.drawRect(x-2,y-2,x+w+2,y+w+2,0xF0100010);
+        Gui.drawRect(x-4,y-4,x+w+4,y+w+above+below+4,0xF0100010);
+        Gui.drawRect(x-3,y-3,x+w+3,y+w+above+below+3,0x505000FF);
+        Gui.drawRect(x-2,y-2,x+w+2,y+w+above+below+2,0xF0100010);
+        if(above>0)MinecraftAccess.get().fontRendererObj.drawStringWithShadow(MinecraftAccess.get().fontRendererObj.trimStringToWidth(mode,w-4),x+2,y+2,0xFFFFD34F);
         net.minecraft.client.renderer.GlStateManager.enableTexture2D();
         net.minecraft.client.renderer.GlStateManager.color(1f,1f,1f,1f);
         MinecraftAccess.get().getTextureManager().bindTexture(texture);
-        Gui.drawModalRectWithCustomSizedTexture(x,y,0,0,w,w,w,w);
+        Gui.drawModalRectWithCustomSizedTexture(x,imageY,0,0,w,w,w,w);
+        if(below>0)MinecraftAccess.get().fontRendererObj.drawStringWithShadow(MinecraftAccess.get().fontRendererObj.trimStringToWidth(tags,w-4),x+2,imageY+w+3,0xFFCCCCCC);
         net.minecraft.client.renderer.GlStateManager.enableDepth();
     }
 
@@ -426,8 +521,9 @@ final class MapPreview {
 
     static final class Entry{
         final String folder,path;
-        volatile String displayName,lowerName;
-        volatile String lowerFolder;
-        Entry(String f,String p){folder=f;path=p;}
+        volatile String displayName;
+        volatile String lowerName;
+        final String lowerFolder;
+        Entry(String f,String p){folder=f;path=p;lowerFolder=MapInfo.norm(f);}
     }
 }

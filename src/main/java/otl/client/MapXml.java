@@ -15,6 +15,7 @@ final class MapXml {
     final Set<String> included=new LinkedHashSet<>();
     final Element root;
     boolean incomplete;
+    private static final Pattern VARIABLE=Pattern.compile("\\$\\{([A-Za-z0-9_.-]+)\\}");
 
     MapXml(String xml,Function<String,String> includes) throws Exception {
         root=document(xml);
@@ -66,7 +67,7 @@ final class MapXml {
     String value(String name){Element e=first(name);return e==null?"":expand(e.getTextContent().trim());}
 
     String expand(String value){
-        Pattern variable=Pattern.compile("\\$\\{([A-Za-z0-9_.-]+)\\}");
+        Pattern variable=MapXml.VARIABLE;
         for(int i=0;i<8;i++){
             Matcher m=variable.matcher(value);StringBuffer result=new StringBuffer();boolean changed=false;
             while(m.find()){

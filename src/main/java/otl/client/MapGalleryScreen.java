@@ -15,7 +15,7 @@ final class MapGalleryScreen extends GuiScreen {
     private Grid grid;
     private List<String> filtered=Collections.emptyList(), catalogVersion;
     private String lastSearch;
-    private boolean namesVersion;
+    private boolean namesVersion,favoritesOnly,filteredFavoritesOnly;
 
     static final class Grid {
         final int columns,rows,cellWidth,cellHeight,image,left;
@@ -42,11 +42,12 @@ final class MapGalleryScreen extends GuiScreen {
     public boolean doesGuiPauseGame(){return false;}
 
     public void initGui(){
+        UtilitySettings.load();
         MapRemote.requestCatalog();
         String query=search==null?"":search.getText();
         grid=new Grid(width,height);
-        int searchWidth=Math.min(300,width-24);
-        search=new GuiTextField(0,fontRendererObj,(width-searchWidth)/2,18,searchWidth,20);
+        int searchWidth=Math.min(300,width-188);
+        search=new GuiTextField(0,fontRendererObj,12,18,searchWidth,20);
         search.setMaxStringLength(80);
         search.setText(query);
         search.setFocused(true);
@@ -54,14 +55,16 @@ final class MapGalleryScreen extends GuiScreen {
         buttonList.add(new GuiButton(1,width/2-160,height-28,60,20,"Prev"));
         buttonList.add(new GuiButton(2,width/2-40,height-28,80,20,"Back"));
         buttonList.add(new GuiButton(3,width/2+100,height-28,60,20,"Next"));
+        buttonList.add(new NeutralButton(4,width-166,18,60,20,"All",!favoritesOnly));
+        buttonList.add(new NeutralButton(5,width-102,18,90,20,"Favorites",favoritesOnly));
     }
 
     /** Return map paths matching the current search text. */
     List<String> paths(){
         String q=search==null?"":search.getText().toLowerCase(Locale.ROOT).trim();
         List<String> catalog=MapRemote.catalog;
-        if(q.equals(lastSearch)&&catalogVersion==catalog&&namesVersion==MapPreview.namesReady)return filtered;
-        lastSearch=q;catalogVersion=catalog;namesVersion=MapPreview.namesReady;
+        if(q.equals(lastSearch)&&catalogVersion==catalog&&namesVersion==MapPreview.namesReady&&filteredFavoritesOnly==favoritesOnly)return filtered;
+        lastSearch=q;catalogVersion=catalog;namesVersion=MapPreview.namesReady;filteredFavoritesOnly=favoritesOnly;
         String normalized=MapInfo.norm(q);
         List<String> out=new ArrayList<>();
         Set<String> paths=new LinkedHashSet<>();
@@ -71,6 +74,7 @@ final class MapGalleryScreen extends GuiScreen {
         }
         for(String dir:catalog)paths.add(dir+"/map.png");
         for(String p:paths){
+            if(favoritesOnly&&!UtilitySettings.mapFavorites.contains(UtilitySettings.favoriteKey(p)))continue;
             String dir=p.substring(0,p.length()-8);
             if(q.isEmpty()){
                 out.add(p);
@@ -93,6 +97,8 @@ final class MapGalleryScreen extends GuiScreen {
             mc.displayGuiScreen(parent);
         } else if(b.id==3){ // Next
             page=Math.min(maxPage-1,page+1);
+        } else if(b.id==4||b.id==5){
+            favoritesOnly=b.id==5;page=0;lastSearch=null;initGui();
         }
     }
 
@@ -126,7 +132,16 @@ final class MapGalleryScreen extends GuiScreen {
         if(button!=0) return;
         List<String> list=paths();
         int i=grid.indexAt(mx,my),idx=page*grid.perPage()+i;
-        if(i>=0&&idx<list.size())openMapCard(list.get(idx));
+        if(i>=0&&idx<list.size()){
+            String path=list.get(idx);
+            int x=grid.x(i),y=grid.y(i);
+            if(mx>=x+grid.cellWidth-19&&mx<x+grid.cellWidth-2&&my>=y+3&&my<y+21){
+                String key=UtilitySettings.favoriteKey(path);
+                if(key!=null){if(!UtilitySettings.mapFavorites.add(key))UtilitySettings.mapFavorites.remove(key);UtilitySettings.save();lastSearch=null;}
+                return;
+            }
+            openMapCard(path);
+        }
     }
 
     /** Open the map info card for the given path. */
@@ -163,6 +178,7 @@ final class MapGalleryScreen extends GuiScreen {
 
             // draw background rect (click hitbox)
             drawRect(x+1,y+1,x+cellW-1,y+cellH-1,0xAA202020);
+            MapPreview.star(x+cellW-16,y+4,UtilitySettings.mapFavorites.contains(UtilitySettings.favoriteKey(path))?0xFFFFD34F:0xFF777777);
 
             // draw square thumbnail (1:1 ratio)
             int ix=x+(cellW-side)/2;

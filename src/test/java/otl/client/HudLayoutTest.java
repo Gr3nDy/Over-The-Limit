@@ -6,8 +6,8 @@ import static org.junit.Assert.*;
 public class HudLayoutTest {
     @Test public void confirmDefaultsAnchoredAtCrosshairForEachSize(){
         for(int sw:new int[]{427,800})for(int w:new int[]{90,135,270}){
-            HudLayout.Rect r=HudLayout.rect(sw,300,w,39,HudLayout.confirmPosition(sw,300,w,39));
-            assertEquals(Math.min(sw/2-6,sw-w-4),r.x);assertEquals(123,r.y);
+            HudLayout.Rect r=HudLayout.rect(sw,300,w,44,HudLayout.confirmPosition(sw,300,w,44));
+            assertEquals(Math.min(sw/2-6,sw-w-4),r.x);assertEquals(122,r.y);
         }
     }
     @Test public void snapsToCenterEdgesAndReleasesOrBypasses(){
@@ -23,6 +23,15 @@ public class HudLayoutTest {
         HudLayout.Snap s=HudLayout.snap(800,600,new HudLayout.Rect(102,153,80,30),other,false);
         assertEquals(100,s.x);assertEquals(154,s.y);
         s=HudLayout.snap(800,600,new HudLayout.Rect(206,101,80,30),other,false);assertEquals(204,s.x);assertEquals(100,s.y);
+    }
+    @Test public void snapsAllFourBoxSidesToQuarterAndCenterGuides(){
+        java.util.List<HudLayout.Rect> none=java.util.Collections.emptyList();
+        HudLayout.Snap s=HudLayout.snap(800,600,new HudLayout.Rect(204,154,100,50),none,false);
+        assertEquals(200,s.x);assertEquals(150,s.y);assertEquals(200,s.guideX);assertEquals(150,s.guideY);
+        s=HudLayout.snap(800,600,new HudLayout.Rect(496,397,100,50),none,false);
+        assertEquals(500,s.x);assertEquals(400,s.y);assertEquals(600,s.guideX);assertEquals(450,s.guideY);
+        s=HudLayout.snap(800,600,new HudLayout.Rect(294,273,100,50),none,false);
+        assertEquals(300,s.x);assertEquals(275,s.y);assertEquals(400,s.guideX);assertEquals(300,s.guideY);
     }
     @Test public void cornerResizePreservesAspectAndClampsScale(){
         HudLayout.Rect r=new HudLayout.Rect(100,100,200,100);

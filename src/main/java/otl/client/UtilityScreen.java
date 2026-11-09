@@ -22,7 +22,7 @@ final class UtilityScreen extends GuiScreen {
                 button(0,0,"Reliable Chat: "+state(UtilitySettings.chat));button(1,1,"Unread counts: "+state(UtilitySettings.counts));
                 button(4,2,"Remember drafts: "+state(UtilitySettings.rememberDrafts));button(5,3,"Unlimited history: "+state(UtilitySettings.unlimitedHistory));button(6,4,"Shift + Tab cycling: "+state(UtilitySettings.cycleTabs));button(14,5,"Show Tab Chat: "+state(UtilitySettings.showTabChat));button(15,6,"Tab position: "+UtilitySettings.tabPositionLabel());
             }else if(page==1){
-                button(7,0,"Team speech bubbles: "+state(UtilitySettings.bubbles));button(8,1,"Text limit: "+UtilitySettings.bubbleCharacters+" characters");button(9,2,"Duration: "+UtilitySettings.bubbleSeconds+" seconds");
+                button(7,0,"Team speech bubbles: "+state(UtilitySettings.bubbles));button(18,1,"Mode: "+(UtilitySettings.bubbleTeamAndChat?"Team & Team Chat":"Team Chat only"));button(8,2,"Text limit: "+UtilitySettings.bubbleCharacters+" characters");button(9,3,"Duration: "+UtilitySettings.bubbleSeconds+" seconds");
             }else{
                 button(13,0,"Chat background: "+(UtilitySettings.chatBackground==0?"transparent":UtilitySettings.chatBackground+"%"));
                 buttonList.add(new net.minecraftforge.fml.client.config.GuiSlider(16,x+14,y+85,w-28,19,"Tabs - not typing: ","%",0,100,UtilitySettings.tabBackgroundOpacity,false,true,s->UtilitySettings.tabBackgroundOpacity=s.getValueInt()));
@@ -33,9 +33,10 @@ final class UtilityScreen extends GuiScreen {
             pageSize=Math.max(1,1+(h-110)/42);page=Math.min(page,(OtlModule.ALL.size()-1)/pageSize);
             for(int i=0;i<pageSize&&page*pageSize+i<OtlModule.ALL.size();i++){
                 int index=page*pageSize+i;OtlModule m=OtlModule.ALL.get(index);
-                buttonList.add(new NeutralButton(20+index,x+14,y+64+i*42,w-112,20,m.name+": "+state(m.enabled()),false));
+                GuiButton toggle=new NeutralButton(20+index,x+14,y+64+i*42,w-112,20,m.name+": "+(m.available()?state(m.enabled()):"DISABLED"),false);
+                toggle.enabled=m.available();buttonList.add(toggle);
                 GuiButton options=new NeutralButton(40+index,x+w-94,y+64+i*42,80,20,"Settings",false);
-                options.enabled=m.settings(this)!=null;buttonList.add(options);
+                options.enabled=m.available()&&m.settings(this)!=null;buttonList.add(options);
             }
             if(OtlModule.ALL.size()>pageSize){
                 GuiButton previous=new NeutralButton(60,x+14,y+h-27,48,19,"<",false);previous.enabled=page>0;buttonList.add(previous);
@@ -45,6 +46,7 @@ final class UtilityScreen extends GuiScreen {
         buttonList.add(new NeutralButton(3,x+w-94,y+h-27,80,19,chatSettings?"Back":"Done",false));
     }
     protected void actionPerformed(GuiButton b){
+        if(!b.enabled)return;
         if(chatSettings&&(b.id==16||b.id==17))return;
         if(b.id==3){mc.displayGuiScreen(parent!=null?parent:chatSettings?new UtilityScreen():null);return;}
         if(!chatSettings){
@@ -68,25 +70,25 @@ final class UtilityScreen extends GuiScreen {
         if(b.id==14)UtilitySettings.showTabChat=!UtilitySettings.showTabChat;
         if(b.id==15){UtilitySettings.tabChatPosition=Math.floorMod(UtilitySettings.tabChatPosition+(isShiftKeyDown()?-1:1),4);UtilitySettings.hudPositions.remove(HudLayout.TABS);}
         if(b.id==7)UtilitySettings.bubbles=!UtilitySettings.bubbles;
+        if(b.id==18)UtilitySettings.bubbleTeamAndChat=!UtilitySettings.bubbleTeamAndChat;
         if(b.id==8){int n=UtilitySettings.bubbleCharacters+(isShiftKeyDown()?-20:20);UtilitySettings.bubbleCharacters=n>200?20:n<20?200:n;}
         if(b.id==9)UtilitySettings.bubbleSeconds=1+Math.floorMod(UtilitySettings.bubbleSeconds-1+(isShiftKeyDown()?-1:1),15);
         if(b.id==13){int n=UtilitySettings.chatBackground+(isShiftKeyDown()?-10:10);UtilitySettings.chatBackground=n>100?0:n<0?100:n;}
-        if(b.id==2){UtilitySettings.chat=true;UtilitySettings.counts=true;UtilitySettings.rememberDrafts=false;UtilitySettings.unlimitedHistory=false;UtilitySettings.cycleTabs=true;UtilitySettings.showTabChat=true;UtilitySettings.tabChatPosition=0;UtilitySettings.bubbles=false;UtilitySettings.bubbleCharacters=80;UtilitySettings.bubbleSeconds=4;UtilitySettings.chatBackground=0;UtilitySettings.tabBackgroundOpacity=100;UtilitySettings.typingTabBackgroundOpacity=100;}
+        if(b.id==2){UtilitySettings.chat=true;UtilitySettings.counts=true;UtilitySettings.rememberDrafts=false;UtilitySettings.unlimitedHistory=false;UtilitySettings.cycleTabs=true;UtilitySettings.showTabChat=true;UtilitySettings.tabChatPosition=0;UtilitySettings.bubbles=false;UtilitySettings.bubbleTeamAndChat=false;UtilitySettings.bubbleCharacters=80;UtilitySettings.bubbleSeconds=4;UtilitySettings.chatBackground=0;UtilitySettings.tabBackgroundOpacity=100;UtilitySettings.typingTabBackgroundOpacity=100;}
         UtilitySettings.save();ReliableChat.applyPreferences();initGui();
     }
     protected void mouseReleased(int mx,int my,int state){super.mouseReleased(mx,my,state);UtilitySettings.save();}
     public void onGuiClosed(){UtilitySettings.save();}
     public void drawScreen(int mx,int my,float partial){
         drawDefaultBackground();drawRect(x-1,y-1,x+w+1,y+h+1,0xFF555555);drawRect(x,y,x+w,y+h,0xF0181818);
-         drawString(fontRendererObj,chatSettings?"Reliable Chat":"Over The Limit 0.3.1",x+14,y+12,0xFFEAEAEA);
+         drawString(fontRendererObj,chatSettings?"Reliable Chat":"Over The Limit "+Otl.VERSION,x+14,y+12,0xFFEAEAEA);
         drawString(fontRendererObj,ServerScope.active()?ServerScope.current()+(ReliableChat.fullChat()?" | Full chat":" | All-only chat"):"Inactive here - settings remain editable",x+14,y+27,0xFFAAAAAA);
         if(chatSettings){
             if(page==0)drawString(fontRendererObj,UtilitySettings.unlimitedHistory?"Unlimited history uses more memory.":"100 messages per view. History is session-only.",x+14,y+222,0xFFAAAAAA);
             else if(page==1){
-                drawString(fontRendererObj,"Two lines, above names, never through walls.",x+14,y+132,0xFFAAAAAA);
-                drawString(fontRendererObj,"Shift-click reduces duration or text limit.",x+14,y+145,0xFFAAAAAA);
-                drawString(fontRendererObj,"Source: (Team Name) Player: message",x+14,y+162,0xFFAAAAAA);
-                drawString(fontRendererObj,"Up to 3 messages per player; older ones slide up.",x+14,y+175,0xFFAAAAAA);
+                drawString(fontRendererObj,"Global mode needs a colored join/team message.",x+14,y+155,0xFFAAAAAA);
+                drawString(fontRendererObj,"Two lines per bubble; never through walls.",x+14,y+168,0xFFAAAAAA);
+                drawString(fontRendererObj,"Shift-click reduces duration or text limit.",x+14,y+181,0xFFAAAAAA);
             }else{
                 drawString(fontRendererObj,"White underline marks the selected channel.",x+14,y+132,0xFFAAAAAA);
                 drawString(fontRendererObj,"Drag the chat scrollbar to browse history.",x+14,y+146,0xFFAAAAAA);

@@ -196,7 +196,6 @@ final class ReliableChat {
         }
         boolean own=ChatRules.authoredBy(formatted,MinecraftAccess.get().thePlayer.getName());s.views.get(ChatRules.ALL).append(text,id,own);
         if(!fullChat())return;
-        TeamBubbles.receive(text);
         ChatRules.Route r=ChatRules.classify(text.getFormattedText());
         if(r.key.startsWith("pm:")){
             View v=s.pm(r.key,r.name);

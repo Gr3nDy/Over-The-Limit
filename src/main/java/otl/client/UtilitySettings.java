@@ -4,6 +4,7 @@ import com.google.gson.*;
 import java.nio.file.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.function.Consumer;
 import net.minecraft.client.Minecraft;
 
 /** Preferences only. Chat content, private names and drafts are never serialized. */
@@ -13,6 +14,12 @@ final class UtilitySettings {
     static boolean previewOnCommand=true;
     static boolean largeMapPreview=false;
     static boolean leftHand=false;
+    static boolean bowOptimizer=false;
+    static boolean bowOptimization=true,bowAccuracy=true;
+    static boolean bowAccuracyPrefix=true;
+    static int bowAccuracyOpacity=40,bowAccuracyDecimals=2,bowAccuracySize=100;
+    static boolean bowHitSound=false,bowHitMarker=false;
+    static int bowHitMarkerSize=100;
     static boolean mainHandLeft=false;
     static LeftHand.Type handType=LeftHand.Type.ALL;
     static int tabChatPosition=0;
@@ -20,12 +27,22 @@ final class UtilitySettings {
         return new String[]{"Bottom Left","Bottom Right","Top Left","Top Right"}[Math.max(0,Math.min(3,tabChatPosition))];
     }
     static boolean faceRig=false;
+    static boolean heightLimitOverlay=false;
+    static boolean heightLimitIndicator=true;
+    static boolean heightLimitTopOnly=false;
+    static int heightLimitOpacity=25;
+    static int heightLimitIndicatorSeconds=4;
+    static int heightLimitSize=60;
     static boolean killFeed=true,hideKillChat=false;
-    static int killFeedSize=75,killBorderOpacity=100,killBorderColor=0xFFBD45,deathBorderColor=0xFF5555;
+    static KillFeedRules.HeadMode killFeedHeads=KillFeedRules.HeadMode.ONLY_ME;
+    static KillFeedRules.FilterMode killFeedFilter=KillFeedRules.FilterMode.ALL;
+    static int killFeedSize=75,killBorderOpacity=100,killBorderColor=0xFFBD45,deathBorderColor=0xFF5555,assistBorderColor=0x55FFFF;
     static int killBackgroundOpacity=100,tabHudSize=100;
     static boolean killFeedSlide=false;
     static boolean killConfirm=false;
     static boolean killConfirmSounds=false;
+    static boolean totalExpKills=false;
+    static boolean killConfirmPlayerHead=false;
     static boolean hideKillConfirmChat=false;
     static int killConfirmSize=75,killConfirmOpacity=0;
     static int killFeedRows=5,killFeedSeconds=10;
@@ -33,7 +50,17 @@ final class UtilitySettings {
     static int noticeSize=100;
     static ServerNoticeRules.Mode noticeMode=ServerNoticeRules.Mode.ALL;
     static final Map<String,HudLayout.Position> hudPositions=new HashMap<>();
-    static boolean rememberDrafts=false, unlimitedHistory=false, cycleTabs=true, bubbles=false;
+    static final Set<String> mapFavorites=new LinkedHashSet<>();
+    static String favoriteKey(String path){
+        if(path==null)return null;
+        if(path.endsWith("/map.png"))path=path.substring(0,path.length()-8);
+        if(path.startsWith("PublicMaps/")&&!path.startsWith("PublicMaps/main/")||path.startsWith("CommunityMaps/")&&!path.startsWith("CommunityMaps/master/"))return null;
+        if(!path.startsWith("PublicMaps/main/")&&!path.startsWith("CommunityMaps/master/"))path="CommunityMaps/master/"+path;
+        if(path.length()>256||path.indexOf('\\')>=0||path.indexOf(':')>=0||path.matches(".*[\\r\\n\\t].*")||!path.matches("(?:PublicMaps/main|CommunityMaps/master)(?:/[^/]+)+"))return null;
+        for(String part:path.split("/"))if(part.equals(".")||part.equals(".."))return null;
+        return path;
+    }
+    static boolean rememberDrafts=false, unlimitedHistory=false, cycleTabs=true, bubbles=false, bubbleTeamAndChat=false;
     static int bubbleCharacters=80, bubbleSeconds=4;
     static int chatBackground=0;
     static int tabBackgroundOpacity=100;
@@ -44,87 +71,144 @@ final class UtilitySettings {
     private static Path path(){return MinecraftAccess.get().mcDataDir.toPath().resolve("config/overcast_util/settings.json");}
     static void load(){
         if(loaded)return;loaded=true;
+        JsonObject j=null;
         try{
-            if(!Files.exists(path()))return;
-            JsonObject j=new JsonParser().parse(new String(Files.readAllBytes(path()),StandardCharsets.UTF_8)).getAsJsonObject();
-            if(j.has("reliable_chat"))chat=j.get("reliable_chat").getAsBoolean();
-            if(j.has("face_rig"))faceRig=j.get("face_rig").getAsBoolean();
-            if(j.has("kill_feed"))killFeed=j.get("kill_feed").getAsBoolean();
-            if(j.has("kill_confirm"))killConfirm=j.get("kill_confirm").getAsBoolean();
-            if(j.has("kill_confirm_sounds"))killConfirmSounds=j.get("kill_confirm_sounds").getAsBoolean();
-            if(j.has("hide_kill_confirm_chat"))hideKillConfirmChat=j.get("hide_kill_confirm_chat").getAsBoolean();
-            if(j.has("kill_confirm_size"))killConfirmSize=Math.max(50,Math.min(150,j.get("kill_confirm_size").getAsInt()));
-            if(j.has("kill_confirm_opacity"))killConfirmOpacity=Math.max(0,Math.min(100,j.get("kill_confirm_opacity").getAsInt()));
-            if(j.has("hide_kill_chat"))hideKillChat=j.get("hide_kill_chat").getAsBoolean();
-            if(j.has("kill_feed_size"))killFeedSize=Math.max(50,Math.min(150,j.get("kill_feed_size").getAsInt()));
-            if(j.has("kill_border_opacity"))killBorderOpacity=Math.max(0,Math.min(100,j.get("kill_border_opacity").getAsInt()));
-            killBackgroundOpacity=j.has("kill_background_opacity")?Math.max(0,Math.min(100,j.get("kill_background_opacity").getAsInt())):killBorderOpacity;
-            if(j.has("kill_feed_slide"))killFeedSlide=j.get("kill_feed_slide").getAsBoolean();
-            if(j.has("tab_hud_size"))tabHudSize=Math.max(50,Math.min(150,j.get("tab_hud_size").getAsInt()));
-            if(j.has("kill_border_color"))killBorderColor=j.get("kill_border_color").getAsInt()&0xFFFFFF;
-            if(j.has("death_border_color"))deathBorderColor=j.get("death_border_color").getAsInt()&0xFFFFFF;
-            if(j.has("kill_feed_rows"))killFeedRows=Math.max(1,Math.min(5,j.get("kill_feed_rows").getAsInt()));
-            if(j.has("kill_feed_seconds"))killFeedSeconds=Math.max(1,Math.min(30,j.get("kill_feed_seconds").getAsInt()));
-            if(j.has("hud_positions"))for(Map.Entry<String,JsonElement> e:j.getAsJsonObject("hud_positions").entrySet()){
-                if(!HudLayout.valid(e.getKey()))continue;
-                try{JsonObject p=e.getValue().getAsJsonObject();hudPositions.put(e.getKey(),new HudLayout.Position(p.get("x").getAsDouble(),p.get("y").getAsDouble()));}catch(RuntimeException invalid){System.err.println("OTL: ignored invalid HUD position");}
-            }
-            if(j.has("unread_counts"))counts=j.get("unread_counts").getAsBoolean();
-            if(j.has("fullscreen_menu"))fullscreen=j.get("fullscreen_menu").getAsBoolean();
-            if(j.has("other_faces"))otherFaces=j.get("other_faces").getAsBoolean();
-            if(j.has("show_tab_chat"))showTabChat=j.get("show_tab_chat").getAsBoolean();
-            if(j.has("map_preview"))mapPreview=j.get("map_preview").getAsBoolean();
-            if(j.has("preview_on_command"))previewOnCommand=j.get("preview_on_command").getAsBoolean();
-            if(j.has("large_map_preview"))largeMapPreview=j.get("large_map_preview").getAsBoolean();
-            if(j.has("left_hand"))leftHand=j.get("left_hand").getAsBoolean();
-            if(j.has("main_hand_left"))mainHandLeft=j.get("main_hand_left").getAsBoolean();
-            if(j.has("hand_type"))handType=LeftHand.Type.parse(j.get("hand_type").getAsString());
-            if(j.has("tab_chat_position"))tabChatPosition=Math.max(0,Math.min(3,j.get("tab_chat_position").getAsInt()));
-            if(j.has("remember_drafts"))rememberDrafts=j.get("remember_drafts").getAsBoolean();
-            if(j.has("unlimited_history"))unlimitedHistory=j.get("unlimited_history").getAsBoolean();
-            if(j.has("shift_tab"))cycleTabs=j.get("shift_tab").getAsBoolean();
-            if(j.has("team_bubbles"))bubbles=j.get("team_bubbles").getAsBoolean();
-            if(j.has("bubble_characters"))bubbleCharacters=Math.max(20,Math.min(200,j.get("bubble_characters").getAsInt()));
-            if(j.has("bubble_seconds"))bubbleSeconds=Math.max(1,Math.min(15,j.get("bubble_seconds").getAsInt()));
-            if(j.has("chat_background_opacity"))chatBackground=Math.max(0,Math.min(100,j.get("chat_background_opacity").getAsInt()));
-            if(j.has("tab_background_opacity"))tabBackgroundOpacity=Math.max(0,Math.min(100,j.get("tab_background_opacity").getAsInt()));
-            typingTabBackgroundOpacity=j.has("typing_tab_background_opacity")?Math.max(0,Math.min(100,j.get("typing_tab_background_opacity").getAsInt())):tabBackgroundOpacity;
-            if(j.has("non_player_chat"))nonPlayerChat=j.get("non_player_chat").getAsBoolean();
-            if(j.has("notice_opacity"))noticeOpacity=Math.max(0,Math.min(100,j.get("notice_opacity").getAsInt()));
-            if(j.has("notice_size"))noticeSize=Math.max(50,Math.min(150,j.get("notice_size").getAsInt()));
-            if(j.has("notice_mode"))noticeMode=ServerNoticeRules.Mode.parse(j.get("notice_mode").getAsString());
-            if(j.has("selected_channels"))for(Map.Entry<String,JsonElement> e:j.getAsJsonObject("selected_channels").entrySet()){
-                String v=e.getValue().getAsString();if(ChatRules.channel(v)!=null)selected.put(e.getKey(),v);
-            }
-            if(j.has("dev_hosts"))for(JsonElement e:j.getAsJsonArray("dev_hosts")){
-                String v=e.getAsString().trim().toLowerCase(java.util.Locale.ROOT);if(!v.isEmpty())devHosts.add(v);
-            }
+            if(Files.exists(path()))j=new JsonParser().parse(new String(Files.readAllBytes(path()),StandardCharsets.UTF_8)).getAsJsonObject();
         }catch(Exception e){System.err.println("Overcast Utilities: could not load settings: "+e.getMessage());}
+        if(j!=null)read(j);
+    }
+    private static void read(JsonObject j){
+        read(j,"reliable_chat",e->chat=e.getAsBoolean());
+        read(j,"face_rig",e->faceRig=e.getAsBoolean());
+        // Temporarily unavailable; ignore saved ON preferences.
+        heightLimitOverlay=false;
+            read(j,"height_limit_indicator",e->heightLimitIndicator=e.getAsBoolean());
+            read(j,"height_limit_top_only",e->heightLimitTopOnly=e.getAsBoolean());
+        read(j,"height_limit_opacity",e->heightLimitOpacity=Math.max(0,Math.min(100,e.getAsInt())));
+            read(j,"height_limit_indicator_seconds",e->heightLimitIndicatorSeconds=Math.max(1,Math.min(10,e.getAsInt())));
+            read(j,"height_limit_size",e->heightLimitSize=Math.max(50,Math.min(150,e.getAsInt())));
+        read(j,"kill_feed",e->killFeed=e.getAsBoolean());
+        read(j,"kill_feed_heads",e->killFeedHeads=KillFeedRules.HeadMode.parse(e.getAsString()));
+        read(j,"kill_feed_filter",e->killFeedFilter=KillFeedRules.FilterMode.parse(e.getAsString()));
+        read(j,"kill_confirm",e->killConfirm=e.getAsBoolean());
+        read(j,"kill_confirm_sounds",e->killConfirmSounds=e.getAsBoolean());
+        read(j,"total_exp_kills",e->totalExpKills=e.getAsBoolean());
+        read(j,"kill_confirm_player_head",e->killConfirmPlayerHead=e.getAsBoolean());
+        read(j,"hide_kill_confirm_chat",e->hideKillConfirmChat=e.getAsBoolean());
+        read(j,"kill_confirm_size",e->killConfirmSize=Math.max(50,Math.min(150,e.getAsInt())));
+        read(j,"kill_confirm_opacity",e->killConfirmOpacity=Math.max(0,Math.min(100,e.getAsInt())));
+        read(j,"hide_kill_chat",e->hideKillChat=e.getAsBoolean());
+        read(j,"kill_feed_size",e->killFeedSize=Math.max(50,Math.min(150,e.getAsInt())));
+        read(j,"kill_border_opacity",e->killBorderOpacity=Math.max(0,Math.min(100,e.getAsInt())));
+        read(j,"kill_background_opacity",e->killBackgroundOpacity=Math.max(0,Math.min(100,e.getAsInt())));
+        read(j,"kill_feed_slide",e->killFeedSlide=e.getAsBoolean());
+        read(j,"tab_hud_size",e->tabHudSize=Math.max(50,Math.min(150,e.getAsInt())));
+        read(j,"kill_border_color",e->killBorderColor=e.getAsInt()&0xFFFFFF);
+        read(j,"death_border_color",e->deathBorderColor=e.getAsInt()&0xFFFFFF);
+        read(j,"assist_border_color",e->assistBorderColor=e.getAsInt()&0xFFFFFF);
+        read(j,"kill_feed_rows",e->killFeedRows=Math.max(1,Math.min(5,e.getAsInt())));
+        read(j,"kill_feed_seconds",e->killFeedSeconds=Math.max(1,Math.min(30,e.getAsInt())));
+        if(j.has("hud_positions"))for(Map.Entry<String,JsonElement> e:j.getAsJsonObject("hud_positions").entrySet()){
+            if(!HudLayout.valid(e.getKey()))continue;
+            try{JsonObject p=e.getValue().getAsJsonObject();hudPositions.put(e.getKey(),new HudLayout.Position(p.get("x").getAsDouble(),p.get("y").getAsDouble()));}catch(RuntimeException invalid){System.err.println("OTL: ignored invalid HUD position");}
+        }
+        read(j,"unread_counts",e->counts=e.getAsBoolean());
+        read(j,"fullscreen_menu",e->fullscreen=e.getAsBoolean());
+        read(j,"other_faces",e->otherFaces=e.getAsBoolean());
+        read(j,"show_tab_chat",e->showTabChat=e.getAsBoolean());
+        read(j,"map_preview",e->mapPreview=e.getAsBoolean());
+        read(j,"preview_on_command",e->previewOnCommand=e.getAsBoolean());
+        read(j,"large_map_preview",e->largeMapPreview=e.getAsBoolean());
+        read(j,"left_hand",e->leftHand=e.getAsBoolean());
+        read(j,"bow_optimizer",e->bowOptimizer=e.getAsBoolean());
+        read(j,"bow_optimization",e->bowOptimization=e.getAsBoolean());
+        read(j,"bow_accuracy",e->bowAccuracy=e.getAsBoolean());
+        read(j,"bow_accuracy_prefix",e->bowAccuracyPrefix=e.getAsBoolean());
+        read(j,"bow_accuracy_opacity",e->bowAccuracyOpacity=Math.max(0,Math.min(100,e.getAsInt())));
+        read(j,"bow_accuracy_decimals",e->bowAccuracyDecimals=Math.max(0,Math.min(2,e.getAsInt())));
+        read(j,"bow_accuracy_size",e->bowAccuracySize=Math.max(50,Math.min(150,e.getAsInt())));
+        read(j,"bow_hit_sound",e->bowHitSound=e.getAsBoolean());
+        read(j,"bow_hit_marker",e->bowHitMarker=e.getAsBoolean());
+        read(j,"bow_hit_marker_size",e->bowHitMarkerSize=Math.max(50,Math.min(200,e.getAsInt())));
+        read(j,"main_hand_left",e->mainHandLeft=e.getAsBoolean());
+        read(j,"hand_type",e->handType=LeftHand.Type.parse(e.getAsString()));
+        read(j,"tab_chat_position",e->tabChatPosition=Math.max(0,Math.min(3,e.getAsInt())));
+        read(j,"remember_drafts",e->rememberDrafts=e.getAsBoolean());
+        read(j,"unlimited_history",e->unlimitedHistory=e.getAsBoolean());
+        read(j,"shift_tab",e->cycleTabs=e.getAsBoolean());
+        read(j,"team_bubbles",e->bubbles=e.getAsBoolean());
+        read(j,"bubble_team_and_chat",e->bubbleTeamAndChat=e.getAsBoolean());
+        read(j,"bubble_characters",e->bubbleCharacters=Math.max(20,Math.min(200,e.getAsInt())));
+        read(j,"bubble_seconds",e->bubbleSeconds=Math.max(1,Math.min(15,e.getAsInt())));
+        read(j,"chat_background_opacity",e->chatBackground=Math.max(0,Math.min(100,e.getAsInt())));
+        read(j,"tab_background_opacity",e->tabBackgroundOpacity=Math.max(0,Math.min(100,e.getAsInt())));
+        read(j,"typing_tab_background_opacity",e->typingTabBackgroundOpacity=Math.max(0,Math.min(100,e.getAsInt())));
+        read(j,"non_player_chat",e->nonPlayerChat=e.getAsBoolean());
+        read(j,"notice_opacity",e->noticeOpacity=Math.max(0,Math.min(100,e.getAsInt())));
+        read(j,"notice_size",e->noticeSize=Math.max(50,Math.min(150,e.getAsInt())));
+        read(j,"notice_mode",e->noticeMode=ServerNoticeRules.Mode.parse(e.getAsString()));
+        if(j.has("map_favorites"))for(JsonElement e:j.getAsJsonArray("map_favorites")){
+            String key=favoriteKey(e.getAsString());if(key!=null&&mapFavorites.size()<2000)mapFavorites.add(key);
+        }
+        if(j.has("selected_channels"))for(Map.Entry<String,JsonElement> e:j.getAsJsonObject("selected_channels").entrySet()){
+            String v=e.getValue().getAsString();if(ChatRules.channel(v)!=null)selected.put(e.getKey(),v);
+        }
+        if(j.has("dev_hosts"))for(JsonElement e:j.getAsJsonArray("dev_hosts")){
+            String v=e.getAsString().trim().toLowerCase(java.util.Locale.ROOT);if(!v.isEmpty())devHosts.add(v);
+        }
+    }
+    private static void read(JsonObject j,String key,Consumer<JsonElement> apply){
+        try{
+            JsonElement value=j.get(key);
+            if(value!=null)apply.accept(value);
+        }catch(RuntimeException bad){System.err.println("Overcast Utilities: ignored invalid setting "+key+": "+bad.getMessage());}
     }
     static void save(){
         load();try{
             JsonObject j=new JsonObject();j.addProperty("schema_version",1);j.addProperty("reliable_chat",chat);j.addProperty("unread_counts",counts);j.addProperty("fullscreen_menu",fullscreen);j.addProperty("other_faces",otherFaces);j.addProperty("show_tab_chat",showTabChat);j.addProperty("map_preview",mapPreview);j.addProperty("tab_chat_position",tabChatPosition);
             j.addProperty("face_rig",faceRig);
+            j.addProperty("height_limit_overlay",heightLimitOverlay);
+            j.addProperty("height_limit_indicator",heightLimitIndicator);
+            j.addProperty("height_limit_top_only",heightLimitTopOnly);
+            j.addProperty("height_limit_opacity",heightLimitOpacity);
+            j.addProperty("height_limit_indicator_seconds",heightLimitIndicatorSeconds);
+            j.addProperty("height_limit_size",heightLimitSize);
             j.addProperty("kill_feed",killFeed);j.addProperty("hide_kill_chat",hideKillChat);
+            j.addProperty("kill_feed_heads",killFeedHeads.name());
+            j.addProperty("kill_feed_filter",killFeedFilter.name());
             j.addProperty("kill_confirm",killConfirm);j.addProperty("kill_confirm_size",killConfirmSize);
             j.addProperty("kill_confirm_sounds",killConfirmSounds);
+            j.addProperty("total_exp_kills",totalExpKills);
+            j.addProperty("kill_confirm_player_head",killConfirmPlayerHead);
             j.addProperty("kill_confirm_opacity",killConfirmOpacity);
             j.addProperty("hide_kill_confirm_chat",hideKillConfirmChat);
             j.addProperty("kill_feed_size",killFeedSize);j.addProperty("kill_border_opacity",killBorderOpacity);
             j.addProperty("kill_background_opacity",killBackgroundOpacity);j.addProperty("kill_feed_slide",killFeedSlide);j.addProperty("tab_hud_size",tabHudSize);
             j.addProperty("kill_border_color",killBorderColor);j.addProperty("death_border_color",deathBorderColor);
+            j.addProperty("assist_border_color",assistBorderColor);
             j.addProperty("kill_feed_rows",killFeedRows);j.addProperty("kill_feed_seconds",killFeedSeconds);
             JsonObject hud=new JsonObject();hudPositions.forEach((key,p)->{JsonObject value=new JsonObject();value.addProperty("x",p.x);value.addProperty("y",p.y);hud.add(key,value);});j.add("hud_positions",hud);
             j.addProperty("preview_on_command",previewOnCommand);
             j.addProperty("large_map_preview",largeMapPreview);
             j.addProperty("left_hand",leftHand);
+            j.addProperty("bow_optimizer",bowOptimizer);
+            j.addProperty("bow_optimization",bowOptimization);
+            j.addProperty("bow_accuracy",bowAccuracy);
+            j.addProperty("bow_accuracy_prefix",bowAccuracyPrefix);
+            j.addProperty("bow_accuracy_opacity",bowAccuracyOpacity);
+            j.addProperty("bow_accuracy_decimals",bowAccuracyDecimals);
+            j.addProperty("bow_accuracy_size",bowAccuracySize);
+            j.addProperty("bow_hit_sound",bowHitSound);
+            j.addProperty("bow_hit_marker",bowHitMarker);
+            j.addProperty("bow_hit_marker_size",bowHitMarkerSize);
             j.addProperty("main_hand_left",mainHandLeft);j.addProperty("hand_type",handType.name());
-            j.addProperty("remember_drafts",rememberDrafts);j.addProperty("unlimited_history",unlimitedHistory);j.addProperty("shift_tab",cycleTabs);j.addProperty("team_bubbles",bubbles);j.addProperty("bubble_characters",bubbleCharacters);j.addProperty("bubble_seconds",bubbleSeconds);
+            j.addProperty("remember_drafts",rememberDrafts);j.addProperty("unlimited_history",unlimitedHistory);j.addProperty("shift_tab",cycleTabs);j.addProperty("team_bubbles",bubbles);j.addProperty("bubble_team_and_chat",bubbleTeamAndChat);j.addProperty("bubble_characters",bubbleCharacters);j.addProperty("bubble_seconds",bubbleSeconds);
             j.addProperty("chat_background_opacity",chatBackground);j.addProperty("non_player_chat",nonPlayerChat);
             j.addProperty("tab_background_opacity",tabBackgroundOpacity);
             j.addProperty("typing_tab_background_opacity",typingTabBackgroundOpacity);
             j.addProperty("notice_opacity",noticeOpacity);j.addProperty("notice_mode",noticeMode.name());
             j.addProperty("notice_size",noticeSize);
+            JsonArray favorites=new JsonArray();for(String key:mapFavorites)favorites.add(new JsonPrimitive(key));j.add("map_favorites",favorites);
             JsonObject channels=new JsonObject();selected.forEach(channels::addProperty);j.add("selected_channels",channels);
             JsonArray hosts=new JsonArray();for(String h:devHosts)hosts.add(new JsonPrimitive(h));j.add("dev_hosts",hosts);
             AtomicFiles.write(path(),new GsonBuilder().setPrettyPrinting().create().toJson(j).getBytes(StandardCharsets.UTF_8));

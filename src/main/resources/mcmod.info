@@ -1,1 +1,1 @@
-[{"modid":"otl","name":"Over The Limit","description":"Client-side utilities for the Overcast Community server. P opens the HUD editor, J opens Face Rig.","version":"0.3.4","mcversion":"1.8.9","authorList":["OTL"],"dependencies":[]}]
+[{"modid":"otl","name":"Over The Limit","description":"Client-side utilities for the Overcast Community server. The rebindable Mod Menu key opens the HUD editor.","version":"0.3.5","mcversion":"1.8.9","authorList":["OTL"],"dependencies":[]}]
