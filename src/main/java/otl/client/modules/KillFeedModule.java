@@ -13,7 +13,7 @@ public final class KillFeedModule extends OtlModule {
     public void setEnabled(boolean on) { UtilitySettings.killFeed = on; }
     public void reset() {
         UtilitySettings.restore("kill_feed","hide_kill_chat","kill_feed_heads","kill_feed_filter","kill_feed_size","kill_border_opacity",
-                "kill_background_opacity","kill_feed_slide","tab_hud_size","kill_border_color","death_border_color","assist_border_color",
+                "kill_background_opacity","kill_feed_slide","kill_border_color","death_border_color","assist_border_color",
                 "kill_feed_rows","kill_feed_seconds");
         UtilitySettings.hudPositions.remove(HudLayout.KILLS);
     }

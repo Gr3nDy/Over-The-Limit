@@ -49,7 +49,7 @@ final class KillFeed {
     @SubscribeEvent public void screen(GuiScreenEvent.DrawScreenEvent.Post event){
         if(event.gui instanceof GuiChat)draw(event.mouseX,event.mouseY,true);
     }
-    private static float scale(){return UtilitySettings.killFeedSize/100F;}
+    private static float scale(){return Math.max(.5F,UtilitySettings.killFeedSize/100F);}
     static int rows(){return Math.max(1,Math.min(UtilitySettings.killFeedRows,(int)((new ScaledResolution(MinecraftAccess.get()).getScaledHeight()-55)/(22*scale()))));}
     static HudLayout.Rect bounds(){return HudLayout.bounds(HudLayout.KILLS,(int)Math.ceil(width()*scale()),(int)Math.ceil(rows()*22*scale()));}
     private static float left(){return bounds().x;}
@@ -121,7 +121,7 @@ final class KillFeed {
         if(Mouse.getEventButton()==0){
             if(!Mouse.getEventButtonState()){if(dragging)event.setCanceled(true);dragging=false;}
             else if(x>=left()+(width()-7)*scale()){dragging=true;drag(y);event.setCanceled(true);}
-        }else if(dragging){drag(y);event.setCanceled(true);}
+        }else if(dragging){event.setCanceled(true);}
     }
     private static void drag(int y){
         int max=Math.max(0,visibleEntries().size()-rows());

@@ -24,7 +24,7 @@ public final class UtilityScreen extends GuiScreen {
             }else if(page==1){
                 button(7,0,"Team speech bubbles: "+state(UtilitySettings.bubbles));button(18,1,"Mode: "+(UtilitySettings.bubbleTeamAndChat?"Team & Team Chat":"Team Chat only"));button(8,2,"Text limit: "+UtilitySettings.bubbleCharacters+" characters");button(9,3,"Duration: "+UtilitySettings.bubbleSeconds+" seconds");
             }else{
-                button(13,0,"Chat background: "+(UtilitySettings.chatBackground==0?"transparent":UtilitySettings.chatBackground+"%"));
+                buttonList.add(new PresetSlider(19,x+14,y+64,w-28,"Chat background: ","%",PresetSlider.PERCENT,UtilitySettings.chatBackground,25,s->UtilitySettings.chatBackground=s.getValueInt()));
                 buttonList.add(new PresetSlider(16,x+14,y+85,w-28,"Tabs - not typing: ","%",PresetSlider.PERCENT,UtilitySettings.tabBackgroundOpacity,25,s->UtilitySettings.tabBackgroundOpacity=s.getValueInt()));
                 buttonList.add(new PresetSlider(17,x+14,y+106,w-28,"Tabs - typing: ","%",PresetSlider.PERCENT,UtilitySettings.typingTabBackgroundOpacity,25,s->UtilitySettings.typingTabBackgroundOpacity=s.getValueInt()));
             }
@@ -49,7 +49,7 @@ public final class UtilityScreen extends GuiScreen {
     protected void actionPerformed(GuiButton b){
         if(!b.enabled)return;
         if(b.id==90){((ModuleReset)b).reset();initGui();return;}
-        if(chatSettings&&(b.id==16||b.id==17))return;
+        if(chatSettings&&(b.id==16||b.id==17||b.id==19))return;
         if(b.id==3){mc.displayGuiScreen(parent!=null?parent:chatSettings?new UtilityScreen():null);return;}
         if(!chatSettings){
             if(b.id==60||b.id==61){page+=b.id==60?-1:1;initGui();return;}
@@ -75,8 +75,7 @@ public final class UtilityScreen extends GuiScreen {
         if(b.id==18)UtilitySettings.bubbleTeamAndChat=!UtilitySettings.bubbleTeamAndChat;
         if(b.id==8){int n=UtilitySettings.bubbleCharacters+(isShiftKeyDown()?-20:20);UtilitySettings.bubbleCharacters=n>200?20:n<20?200:n;}
         if(b.id==9)UtilitySettings.bubbleSeconds=1+Math.floorMod(UtilitySettings.bubbleSeconds-1+(isShiftKeyDown()?-1:1),15);
-        if(b.id==13){int n=UtilitySettings.chatBackground+(isShiftKeyDown()?-10:10);UtilitySettings.chatBackground=n>100?0:n<0?100:n;}
-        if(b.id==2){UtilitySettings.chat=true;UtilitySettings.counts=true;UtilitySettings.rememberDrafts=false;UtilitySettings.unlimitedHistory=false;UtilitySettings.cycleTabs=true;UtilitySettings.showTabChat=true;UtilitySettings.tabChatPosition=0;UtilitySettings.bubbles=false;UtilitySettings.bubbleTeamAndChat=false;UtilitySettings.bubbleCharacters=80;UtilitySettings.bubbleSeconds=4;UtilitySettings.chatBackground=25;UtilitySettings.tabBackgroundOpacity=25;UtilitySettings.typingTabBackgroundOpacity=25;}
+        if(b.id==2){UtilitySettings.chat=true;UtilitySettings.counts=true;UtilitySettings.rememberDrafts=false;UtilitySettings.unlimitedHistory=false;UtilitySettings.cycleTabs=true;UtilitySettings.showTabChat=true;UtilitySettings.tabChatPosition=0;UtilitySettings.bubbles=false;UtilitySettings.bubbleTeamAndChat=false;UtilitySettings.bubbleCharacters=80;UtilitySettings.bubbleSeconds=4;UtilitySettings.chatBackground=25;UtilitySettings.tabBackgroundOpacity=25;UtilitySettings.typingTabBackgroundOpacity=25;UtilitySettings.hudPositions.remove(HudLayout.TABS);}
         UtilitySettings.save();ReliableChat.applyPreferences();initGui();
     }
     protected void mouseReleased(int mx,int my,int state){super.mouseReleased(mx,my,state);UtilitySettings.save();}

@@ -217,9 +217,10 @@ final class ModulesScreen extends GuiScreen {
         List<OtlModule> list=visible();
         for(int row=scrollRow;row<scrollRow+VISIBLE_ROWS;row++){
             if(row*COLUMNS>=list.size())break;
+            int off=rowOffset(list,row);
             for(int column=0;column<COLUMNS;column++){
                 int index=row*COLUMNS+column;if(index>=list.size())break;
-                drawCard(list.get(index),cardX(column),cardY(row),mx,my);
+                drawCard(list.get(index),cardX(column)+off,cardY(row),mx,my);
             }
         }
         int sx=x+w-9;

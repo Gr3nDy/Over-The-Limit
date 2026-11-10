@@ -12,7 +12,7 @@ public class UtilitySettingsProfileTest {
         assertEquals("Default",defaults.get("profile").getAsString());
         assertFalse(defaults.get("minimap").getAsBoolean());
         assertEquals(100,defaults.get("minimap_size").getAsInt());
-        assertFalse(defaults.get("minimap_border").getAsBoolean());
+        assertTrue(defaults.get("minimap_border").getAsBoolean());
         assertEquals(0,defaults.getAsJsonObject("hud_positions").entrySet().size());
         assertFalse(defaults.has("map_favorites"));
         assertFalse(defaults.has("selected_channels"));

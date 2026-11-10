@@ -8,7 +8,7 @@ One Forge 1.8.9 mod, many modules, one server family (`play.oc.tc`, `vanish.oc.t
 |---|---|
 | Client is Lunar Client (obfuscated) or plain Forge | No reflection on MCP/SRG field names. Scan by **type/shape**, never by name. `MinecraftAccess` wraps the singleton lookup. |
 | Server has no API, no plugin of ours, no chat backend | Gameplay uses client-visible state. Optional map lookups use GitHub GETs; no accounts. |
-| Users install one JAR | Modules ship together with one entry point. Module preferences and face settings/marks are stored separately. |
+| Users install one JAR | Modules ship together with one entry point. Module preferences and face settings/marks share `config/Over The Limit/`. |
 | 1.8.9 + Java 8 | No streams-heavy code, no `java.time`, no newer Guava. |
 | Feature must never break the game | Every module is a clearly gated `if (!enabled) return;`, and toggling is safe at any moment. |
 

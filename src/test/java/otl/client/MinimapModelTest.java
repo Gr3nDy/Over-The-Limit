@@ -78,11 +78,11 @@ public class MinimapModelTest {
         assertTrue(model.faces.size()>1000);assertTrue(model.faces.size()<50000);
     }
     @Test public void namedWorldVariantsMatchTheirTerrainAndAmbiguousWorldsFailClosed()throws Exception{
-        assertEquals("arcade/standard/the_grand_dueling_tournament_ii/modern/minimap.mesh.gz",Minimap.INSTANCE.asset("The Grand Dueling Tournament III"));
-        assertEquals("ctf/shifty_sands/halloween/minimap.mesh.gz",Minimap.INSTANCE.asset("Tricky Sands"));
-        assertEquals("PublicMaps/main/dtcm/grassy_mound/ctf/minimap.mesh.gz",Minimap.INSTANCE.asset("Grassy Mound CTF"));
-        assertNull(Minimap.INSTANCE.asset("Runic Altar"));
-        assertEquals("ctf/runic_altar/modern/minimap.mesh.gz",Minimap.INSTANCE.asset("CommunityMaps/master/ctf/runic_altar/modern"));
+        assertEquals("CommunityMaps/master/arcade/standard/the_grand_dueling_tournament_ii/modern",Minimap.INSTANCE.meshDir("The Grand Dueling Tournament III"));
+        assertEquals("CommunityMaps/master/ctf/shifty_sands/halloween",Minimap.INSTANCE.meshDir("Tricky Sands"));
+        assertEquals("PublicMaps/main/dtcm/grassy_mound/ctf",Minimap.INSTANCE.meshDir("Grassy Mound CTF"));
+        assertNull(Minimap.INSTANCE.meshDir("Runic Altar"));
+        assertEquals("CommunityMaps/master/ctf/runic_altar/modern",Minimap.INSTANCE.meshDir("CommunityMaps/master/ctf/runic_altar/modern"));
     }
     @Test public void minimapSettingsClampAndModuleHasItsOwnToggle()throws Exception{
         boolean enabled=UtilitySettings.minimap;int size=UtilitySettings.minimapSize,opacity=UtilitySettings.minimapOpacity,large=UtilitySettings.minimapLargeOpacity;

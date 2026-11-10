@@ -21,6 +21,13 @@ final class MinimapRenderer {
         double t=Math.max(0,Math.min(1,(distance/radius-CUTAWAY_CORE)/(1-CUTAWAY_CORE)));
         return CUTAWAY_STRENGTH*(1-t*t*(3-2*t));
     }
+    /** Ellipse-normalized erase amount; the fade is biased toward the camera (+y pixels) side. */
+    static double cutawayFadeAt(double dx,double dy,double rx,double ry){
+        if(rx<=0||ry<=0)return 0;
+        double d2=(dx*dx)/(rx*rx)+(dy*dy)/(ry*ry);
+        double t=Math.max(0,Math.min(1,(Math.sqrt(d2)-CUTAWAY_CORE)/(1-CUTAWAY_CORE)));
+        return CUTAWAY_STRENGTH*(1-t*t*(3-2*t));
+    }
     private MinimapModel compiled;
     private int lists,chunks;
     private Framebuffer target;
@@ -78,7 +85,7 @@ final class MinimapRenderer {
             if(cutaway)cutaway(player,anchor,angle,perUnit,pixels);
             if(head!=null){
                 project(anchor,angle,worldHalf,range);
-                head(head,player,angle,perUnit);
+                head(head,player,angle,perUnit,worldHalf);
             }
             return true;
         }finally{
@@ -101,33 +108,34 @@ final class MinimapRenderer {
         // Faded terrain must not hide the head marker: reset depth inside the disc before drawing it.
         GlStateManager.enableDepth();GlStateManager.depthMask(true);GL11.glDepthFunc(GL11.GL_ALWAYS);
         GlStateManager.colorMask(false,false,false,false);GL11.glColor4f(0,0,0,1);
-        disc(px,py,radius,1);
+        double rx=radius,ry=radius*1.55,cy=py-ry*0.28;
+        disc(px,cy,rx,1,ry);
         GlStateManager.colorMask(true,true,true,true);GL11.glDepthFunc(GL11.GL_LEQUAL);GlStateManager.depthMask(false);
-        int segments=32;double inner=radius*CUTAWAY_CORE;
+        int segments=32;
         GlStateManager.enableBlend();GlStateManager.tryBlendFuncSeparate(GL11.GL_ZERO,GL11.GL_ONE_MINUS_SRC_ALPHA,GL11.GL_ZERO,GL11.GL_ONE_MINUS_SRC_ALPHA);
         GL11.glBegin(GL11.GL_TRIANGLE_FAN);
-        vertex(px,py,0,cutawayFade(0,radius));
-        for(int i=0;i<=segments;i++)vertex(px+Math.cos(Math.PI*2*i/segments)*inner,py+Math.sin(Math.PI*2*i/segments)*inner,0,cutawayFade(inner,radius));
+        vertex(px,cy,0,cutawayFadeAt(0,0,rx,ry));
+        for(int i=0;i<=segments;i++){double a=Math.PI*2*i/segments;vertex(px+Math.cos(a)*rx*CUTAWAY_CORE,cy+Math.sin(a)*ry*CUTAWAY_CORE,0,cutawayFadeAt(Math.cos(a)*rx*CUTAWAY_CORE,Math.sin(a)*ry*CUTAWAY_CORE,rx,ry));}
         GL11.glEnd();
         GL11.glBegin(GL11.GL_QUAD_STRIP);
         for(int i=0;i<=segments;i++){
             double a=Math.PI*2*i/segments;
-            vertex(px+Math.cos(a)*inner,py+Math.sin(a)*inner,0,cutawayFade(inner,radius));
-            vertex(px+Math.cos(a)*radius,py+Math.sin(a)*radius,0,0);
+            vertex(px+Math.cos(a)*rx*CUTAWAY_CORE,cy+Math.sin(a)*ry*CUTAWAY_CORE,0,cutawayFadeAt(Math.cos(a)*rx*CUTAWAY_CORE,Math.sin(a)*ry*CUTAWAY_CORE,rx,ry));
+            vertex(px+Math.cos(a)*rx,cy+Math.sin(a)*ry,0,0);
         }
         GL11.glEnd();
     }
-    private static void disc(double px,double py,double radius,double z){
-        int segments=32;double inner=radius*CUTAWAY_CORE;
+    private static void disc(double px,double py,double rx,double z,double ry){
+        int segments=32;double ix=rx*CUTAWAY_CORE,iy=ry*CUTAWAY_CORE;
         GL11.glBegin(GL11.GL_TRIANGLE_FAN);
         GL11.glVertex3d(px,py,z);
-        for(int i=0;i<=segments;i++)GL11.glVertex3d(px+Math.cos(Math.PI*2*i/segments)*inner,py+Math.sin(Math.PI*2*i/segments)*inner,z);
+        for(int i=0;i<=segments;i++)GL11.glVertex3d(px+Math.cos(Math.PI*2*i/segments)*ix,py+Math.sin(Math.PI*2*i/segments)*iy,z);
         GL11.glEnd();
         GL11.glBegin(GL11.GL_QUAD_STRIP);
         for(int i=0;i<=segments;i++){
             double a=Math.PI*2*i/segments;
-            GL11.glVertex3d(px+Math.cos(a)*inner,py+Math.sin(a)*inner,z);
-            GL11.glVertex3d(px+Math.cos(a)*radius,py+Math.sin(a)*radius,z);
+            GL11.glVertex3d(px+Math.cos(a)*ix,py+Math.sin(a)*iy,z);
+            GL11.glVertex3d(px+Math.cos(a)*rx,py+Math.sin(a)*ry,z);
         }
         GL11.glEnd();
     }
@@ -140,13 +148,14 @@ final class MinimapRenderer {
         GlStateManager.rotate(35.26439F,1,0,0);GlStateManager.rotate((float)-angle,0,1,0);GlStateManager.translate(-anchor[0],-anchor[1],-anchor[2]);
     }
     /** Camera-facing head marker; depth testing keeps it behind terrain that is closer to the camera. */
-    private static void head(int[] pixels,double[] player,double angle,double perUnit){
+    private static void head(int[] pixels,double[] player,double angle,double perUnit,double worldHalf){
         if(pixels.length!=64)return;
-        double half=6/perUnit,texel=half/4,a=Math.toRadians(angle);
+        double scale=UtilitySettings.minimapHeadSize/100F;
+        double half=worldHalf*0.075*scale,texel=half/4,a=Math.toRadians(angle);
         double rightX=Math.cos(a),rightZ=-Math.sin(a);
         double upX=-Math.sin(a)*.577350269189626,upY=.816496580927726,upZ=-Math.cos(a)*.577350269189626;
         double x=player[0],y=player[1]+half*upY+.2,z=player[2];
-        GlStateManager.enableDepth();GL11.glDepthFunc(GL11.GL_LEQUAL);GlStateManager.depthMask(false);
+        GlStateManager.enableDepth();GL11.glDepthFunc(GL11.GL_ALWAYS);GlStateManager.depthMask(false);
         GlStateManager.enableBlend();GlStateManager.tryBlendFuncSeparate(770,771,1,771);
         GlStateManager.disableTexture2D();GlStateManager.disableCull();
         GL11.glBegin(GL11.GL_QUADS);
@@ -157,6 +166,7 @@ final class MinimapRenderer {
             quad(x,y,z,rightX,rightZ,upX,upY,upZ,u0,u1,v0,v1);
         }
         GL11.glEnd();
+        GL11.glDepthFunc(GL11.GL_LEQUAL);
     }
     private static void quad(double x,double y,double z,double rx,double rz,double ux,double uy,double uz,double u0,double u1,double v0,double v1){
         GL11.glVertex3d(x+rx*u0+ux*v0,y+uy*v0,z+rz*u0+uz*v0);

@@ -6,7 +6,7 @@ import java.util.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.ResourceLocation;
 
-/** Painted face marks with automatic detection as the fallback; stored as plain text under config/otl. */
+/** Painted face marks with automatic detection as the fallback; stored as plain text under config/Over The Limit. */
 final class FaceMarks {
     private static final Map<String,int[]> PAINTED=new HashMap<>();
     private static final Map<String,int[]> AUTO=new HashMap<>();
@@ -45,8 +45,12 @@ final class FaceMarks {
     static void clear(ResourceLocation texture){replace(texture,null,true);}
     static void clearCache(){PAINTED.clear();AUTO.clear();}
 
-    private static Path file(String key){return MinecraftAccess.get().mcDataDir.toPath().resolve("config/otl/marks/"+sanitize(key)+".txt");}
-    private static String sanitize(String key){return key.replaceAll("[^A-Za-z0-9._-]","_");}
+    private static Path file(String key){return ConfigDir.parts("marks",sanitize(key)+".txt").toPath();}
+    /** Names must stay unique: hash anything longer than 128 sanitized characters. */
+    private static String sanitize(String key){
+        String flat=key.replaceAll("[^A-Za-z0-9._-]","_");
+        return flat.length()<=128?flat:flat.substring(0,96)+"."+Integer.toHexString(key.hashCode());
+    }
 
     private static int[] load(String k){
         return load(file(k));
@@ -56,11 +60,13 @@ final class FaceMarks {
             if(!Files.exists(p))return NONE;
             int[] marks=new int[64];
             for(String line:Files.readAllLines(p)){
-                int sep=line.indexOf(':');
-                if(sep<=0)continue;
-                int cell=Integer.parseInt(line.substring(0,sep).trim());
-                int kind=Integer.parseInt(line.substring(sep+1).trim());
-                if(cell>=0&&cell<64&&kind>=1&&kind<=4)marks[cell]=kind;
+                try{
+                    int sep=line.indexOf(':');
+                    if(sep<=0)continue;
+                    int cell=Integer.parseInt(line.substring(0,sep).trim());
+                    int kind=Integer.parseInt(line.substring(sep+1).trim());
+                    if(cell>=0&&cell<64&&kind>=1&&kind<=4)marks[cell]=kind;
+                }catch(NumberFormatException bad){/* skip this line, keep the rest */}
             }
             return marks; // An empty file is an explicit all-erased override, not automatic detection.
         }catch(Exception e){return NONE;}

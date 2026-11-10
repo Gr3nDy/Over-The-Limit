@@ -13,6 +13,7 @@ final class PresetSlider extends GuiSlider {
     static final int[] HIT_SIZE={50,100,150,200};
     static final int[] SECONDS={1,5,10,15,20,30};
     static final int[] SHORT_SECONDS={1,2,4,6,8,10};
+    static final int[] ZOOM={1,2,3,4,5};
     static final int[] ROWS={1,2,3,4,5};
 
     private static final int RESET=14;

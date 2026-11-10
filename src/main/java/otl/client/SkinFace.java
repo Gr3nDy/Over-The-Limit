@@ -20,6 +20,8 @@ final class SkinFace {
     private static final Map<String,Long> RETRY_AT=new HashMap<>();
     /** Failed readbacks are retried at most twice a second instead of every frame. */
     private static final long RETRY_NANOS=500000000L;
+    private static final Map<String,Integer> RETRY_COUNT=new HashMap<>();
+    private static final int MAX_RETRIES=3,MAX_CACHE=512;
     private SkinFace(){}
 
     static int[] facePixels(ResourceLocation texture){return read(texture,true);}
@@ -37,7 +39,7 @@ final class SkinFace {
     }
 
     static boolean loaded(ResourceLocation texture){return facePixels(texture).length==64;}
-    static void clear(){CACHE.clear();RETRY_AT.clear();}
+    static void clear(){CACHE.clear();RETRY_COUNT.clear();RETRY_AT.clear();}
 
     private static int[] read(ResourceLocation texture,boolean facePlane){
         String key=(facePlane?"f:":"h:")+texture;
@@ -48,8 +50,16 @@ final class SkinFace {
         int[] sampled=readGl(texture,facePlane);
         if(!valid(sampled))sampled=readImage(texture,facePlane);
         if(valid(sampled)){
-            CACHE.put(key,sampled);RETRY_AT.remove(key);return sampled;
+            if(CACHE.size()>=MAX_CACHE)CACHE.clear();
+            CACHE.put(key,sampled);RETRY_COUNT.remove(key);RETRY_AT.remove(key);return sampled;
         }
+        int attempts=RETRY_COUNT.merge(key,1,Integer::sum);
+        if(attempts>=MAX_RETRIES){
+            System.err.println("OTL: skin readback for "+key+" failed "+attempts+" times; not retrying again this session");
+            if(CACHE.size()>=MAX_CACHE)CACHE.clear();
+            CACHE.put(key,new int[0]);RETRY_COUNT.remove(key);RETRY_AT.remove(key);return new int[0];
+        }
+        if(CACHE.size()>=MAX_CACHE)CACHE.clear();
         RETRY_AT.put(key,System.nanoTime()+RETRY_NANOS);
         return new int[0];
     }

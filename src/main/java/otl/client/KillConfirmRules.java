@@ -117,9 +117,13 @@ final class KillConfirmRules {
         private final Deque<Tags> pendingTags=new ArrayDeque<>();
         private final Deque<Reward> pendingRewards=new ArrayDeque<>();
         private final Deque<Reward> entries=new ArrayDeque<>();
-        private final Map<String,Integer> kills=new HashMap<>(),streaks=new HashMap<>();
-        private final Map<String,Integer> dominationKills=new HashMap<>();
-        private final Map<String,Integer> redemptionDeaths=new HashMap<>();
+        private final Map<String,Integer> kills=capped(),streaks=capped();
+        private final Map<String,Integer> dominationKills=capped();
+        private final Map<String,Integer> redemptionDeaths=capped();
+        /** Per-player stats are bounded; the eldest player is evicted past 256 names. */
+        private static Map<String,Integer> capped(){
+            return new LinkedHashMap<String,Integer>(){private static final long serialVersionUID=1L;@Override protected boolean removeEldestEntry(Map.Entry<String,Integer> eldest){return size()>256;}};
+        }
         private final Set<String> chainVictims=new HashSet<>();
         private int chainMelee,chainBow;
         private boolean redemptionDeathCounted;

@@ -155,7 +155,7 @@ public final class BowAccuracy {
         Minecraft mc=MinecraftAccess.get();
         if(!observing()||event.entity!=mc.thePlayer||mc.thePlayer==null||mc.thePlayer.isDead||!event.entity.worldObj.isRemote
             ||!"random.bow".equals(event.name)||mc.thePlayer.getHeldItem()==null||!(mc.thePlayer.getHeldItem().getItem() instanceof ItemBow))return;
-        sync();if(listening){stats.shot();display.shot(System.nanoTime());}
+        sync();stats.shot();display.shot(System.nanoTime());
     }
     @SubscribeEvent(priority=EventPriority.HIGHEST,receiveCanceled=true) public void chat(ClientChatReceivedEvent event){
         if(event.type==2||!observing())return;
@@ -169,7 +169,7 @@ public final class BowAccuracy {
         }
     }
     @SubscribeEvent(priority=EventPriority.LOWEST) public void hitSound(PlaySoundEvent event){
-        if(!observing()||!UtilitySettings.bowHitSound||event.result==null||!"random.successful_hit".equals(event.name))return;
+        if(!observing()||!UtilitySettings.bowHitSound||event.result==null||event.sound==null||!"random.successful_hit".equals(event.name))return;
         Minecraft mc=MinecraftAccess.get();
         if(mc.thePlayer==null||mc.thePlayer.getDistanceSq(event.sound.getXPosF(),event.sound.getYPosF()-mc.thePlayer.getEyeHeight(),event.sound.getZPosF())>.25)return;
         if(!feedback.sound(System.nanoTime()))return;
@@ -208,7 +208,7 @@ public final class BowAccuracy {
         double value=preview?66.6666667:display.value(stats.accuracy(),now,UtilitySettings.bowAccuracyAnimate);
         float visibility=preview?1:display.alpha(now,UtilitySettings.bowAccuracyMode);
         int textAlpha=(int)(255*visibility);if(textAlpha<4)return;
-        String percent=preview||listening?percentage(value,UtilitySettings.bowAccuracyDecimals):"--%";
+        String percent=preview||stats.shots>0?percentage(value,UtilitySettings.bowAccuracyDecimals):"--%";
         GlStateManager.pushMatrix();
         try{
             GlStateManager.translate(box.x,box.y,0);GlStateManager.scale(scale,scale,1);

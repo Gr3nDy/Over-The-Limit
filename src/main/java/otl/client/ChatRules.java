@@ -30,7 +30,7 @@ final class ChatRules {
         Matcher group=GROUP.matcher(text);
         if(group.matches()){
             if(group.group(1).equalsIgnoreCase("Party")){
-                int pos=formatted.indexOf("(Party)");
+                int pos=formatted.toLowerCase(Locale.ROOT).indexOf("(party)");
                 if(pos<0)return new Route(ALL,null,false);
                 char color='r';Matcher codes=FORMAT.matcher(formatted.substring(0,pos));
                 while(codes.find()){char c=Character.toLowerCase(codes.group().charAt(1));if("0123456789abcdefr".indexOf(c)>=0)color=c;}

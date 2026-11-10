@@ -67,6 +67,7 @@ public final class OtlSmoke {
         net.minecraft.client.entity.EntityOtherPlayerMP mate=new net.minecraft.client.entity.EntityOtherPlayerMP(mc.theWorld,new com.mojang.authlib.GameProfile(UUID.randomUUID(),"BubbleMate"));
         net.minecraft.client.entity.EntityOtherPlayerMP other=new net.minecraft.client.entity.EntityOtherPlayerMP(mc.theWorld,new com.mojang.authlib.GameProfile(UUID.randomUUID(),"BubbleOther"));
         mc.theWorld.addEntityToWorld(-9101,mate);mc.theWorld.addEntityToWorld(-9102,other);
+        if(mc.thePlayer!=null){mate.setPosition(mc.thePlayer.posX,mc.thePlayer.posY,mc.thePlayer.posZ);other.setPosition(mc.thePlayer.posX,mc.thePlayer.posY,mc.thePlayer.posZ);}
         try{
             UtilitySettings.bubbles=true;TeamBubbles.clearBubbles();
             line("<BubbleMate>: global hello");line("From BubbleOther: private hello");line("\u00a7e(Party) BubbleOther: party hello");
@@ -261,7 +262,7 @@ public final class OtlSmoke {
         }
     }
     void prepareMinimap(Minecraft mc)throws Exception{
-        for(String name:new String[]{"minimap","minimapSize","minimapOpacity","minimapLargeOpacity","minimapBorder"})minimapPreferences.put(name,UtilitySettings.class.getDeclaredField(name).get(null));
+        for(String name:new String[]{"minimap","minimapSize","minimapOpacity","minimapLargeOpacity","minimapLargeBackground","minimapHeadSize","minimapZoom","minimapAltZoom","minimapBorder"})minimapPreferences.put(name,UtilitySettings.class.getDeclaredField(name).get(null));
         minimapPosition=UtilitySettings.hudPositions.get(HudLayout.MINIMAP);
         minimapX=mc.thePlayer.posX;minimapY=mc.thePlayer.posY;minimapZ=mc.thePlayer.posZ;minimapFlying=mc.thePlayer.capabilities.isFlying;
         UtilitySettings.minimap=false;line("            Allure            ");line(" Capture the enemy's wool!");line(" Created by jcane");
@@ -272,11 +273,11 @@ public final class OtlSmoke {
         size.setValue(120);size.updateSlider();opacity.setValue(65);opacity.updateSlider();
         options.actionPerformed(find(options,"Display"));
         int plain=Minimap.bounds().w;
-        require(!UtilitySettings.minimapBorder,"Minimap border is enabled by default");
-        options.actionPerformed(find(options,"Border: OFF"));
-        require(UtilitySettings.minimapBorder&&Minimap.bounds().w==plain+4,"Minimap border did not add its 2px bevel");
+        require(UtilitySettings.minimapBorder,"Minimap border is not enabled by default");
         options.actionPerformed(find(options,"Border: ON"));
-        require(!UtilitySettings.minimapBorder&&Minimap.bounds().w==plain,"Minimap border did not drop its padding");
+        require(!UtilitySettings.minimapBorder&&Minimap.bounds().w==plain-4,"Minimap border did not drop its padding");
+        options.actionPerformed(find(options,"Border: OFF"));
+        require(UtilitySettings.minimapBorder&&Minimap.bounds().w==plain,"Minimap border did not add back its 2px bevel");
         require(Minimap.nextView(0)==1&&Minimap.nextView(1)==2&&Minimap.nextView(2)==0,"M key does not cycle small/large/hidden");
         UtilitySettings.hudPositions.put(HudLayout.MINIMAP,new HudLayout.Position(0,0));UtilitySettings.save();
         UtilitySettings.minimap=false;UtilitySettings.minimapSize=50;UtilitySettings.minimapOpacity=0;
@@ -291,7 +292,7 @@ public final class OtlSmoke {
         Object model=ReflectionHelper.getPrivateValue(Minimap.class,Minimap.INSTANCE,"model");
         long frames=ReflectionHelper.getPrivateValue(Minimap.class,Minimap.INSTANCE,"renderedFrames");
         if(model==null||frames==0){require(System.nanoTime()-minimapStarted<15000000000L,"Minimap did not load/render Allure: "+ReflectionHelper.getPrivateValue(Minimap.class,Minimap.INSTANCE,"status"));return false;}
-        require(Minimap.bounds().w==Minimap.bounds().h,"Minimap background is not square");
+        require(Minimap.bounds().w==Minimap.bounds().h-(UtilitySettings.minimapCoordinates?13:0),"Minimap background is not square");
         require(HudEditor.bounds(HudLayout.MINIMAP).w==Minimap.bounds().w,"Editor minimap bounds differ from gameplay");
         require(org.lwjgl.opengl.GL11.glGetError()==0,"Minimap left an OpenGL error");
         line("<Alex>: Playing Another Map by Somebody");line("XML: OvercastCommunity/CommunityMaps ctw/another_map [View]");
@@ -304,7 +305,7 @@ public final class OtlSmoke {
     void finishMinimap(Minecraft mc)throws Exception{
         try{
             long frames=ReflectionHelper.getPrivateValue(Minimap.class,Minimap.INSTANCE,"renderedFrames");
-            require(frames>minimapFrames&&Minimap.bounds().w==Minimap.bounds().h,"Moving/resizing stopped the square minimap renderer");
+            require(frames>minimapFrames&&Minimap.bounds().w==Minimap.bounds().h-(UtilitySettings.minimapCoordinates?13:0),"Moving/resizing stopped the square minimap renderer");
             require(MinimapModel.PIXELS_PER_BLOCK==2,"Viewport resizing changed map scale");
             ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-isometric-minimap-moved.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
             boolean scissor=org.lwjgl.opengl.GL11.glIsEnabled(org.lwjgl.opengl.GL11.GL_SCISSOR_TEST);
@@ -830,9 +831,16 @@ public final class OtlSmoke {
                 UtilitySettings.leftHand=false;
                 require(org.lwjgl.opengl.GL11.glGetError()==0,"Left Hand left a GL error");
                 mc.displayGuiScreen(new ServerNoticeSettings(new UtilityScreen()));
-                require(find(mc.currentScreen,"Server Notices: OFF")!=null,"Server notices module missing/default not OFF");
-                ((ServerNoticeSettings)mc.currentScreen).actionPerformed(find(mc.currentScreen,"Server Notices: OFF"));
-                require(UtilitySettings.nonPlayerChat,"Server notices toggle did not enable");
+                if(new otl.client.modules.ServerNoticesModule().available()){
+                    require(find(mc.currentScreen,"Server Notices: OFF")!=null,"Server notices module missing/default not OFF");
+                    ((ServerNoticeSettings)mc.currentScreen).actionPerformed(find(mc.currentScreen,"Server Notices: OFF"));
+                    require(UtilitySettings.nonPlayerChat,"Server notices toggle did not enable");
+                }else{
+                    GuiButton locked=find(mc.currentScreen,"Server Notices: UNAVAILABLE");
+                    require(locked!=null&&!locked.enabled,"Server notices not visibly locked");
+                    ((ServerNoticeSettings)mc.currentScreen).actionPerformed(locked);
+                    require(!UtilitySettings.nonPlayerChat,"Locked Server Notices toggle did not stay disabled");
+                }
                 mc.displayGuiScreen(null);line("OTL smoke: server notice in top left");
                 UtilitySettings.bubbles=true;mc.gameSettings.thirdPersonView=1;
                 TeamBubbles.clearBubbles();line("(Any Team) "+mc.thePlayer.getName()+": third-person bubble render check");
@@ -989,7 +997,7 @@ public final class OtlSmoke {
                 String home=UtilitySettings.profile;UtilitySettings.minimapBorder=true;
                 String created=UtilitySettings.newProfile();
                 require(created!=null&&created.equals(UtilitySettings.profile),"New profile was not activated");
-                require(!UtilitySettings.minimapBorder,"New profile did not start from defaults");
+                require(UtilitySettings.minimapBorder,"New profile did not start from defaults");
                 String json=UtilitySettings.profileExport(created);
                 require(json!=null&&json.contains("\"profile\""),"Profile export was empty");
                 String renamed=UtilitySettings.renameProfile(created,"Shared test");
@@ -998,7 +1006,7 @@ public final class OtlSmoke {
                 String numbered=UtilitySettings.renameProfile(second,"Shared test");
                 require(numbered.startsWith("Shared test ")&&!numbered.equals("Shared test"),"Duplicate profile name was not numbered");
                 UtilitySettings.switchProfile(home);require(home.equals(UtilitySettings.profile),"Profile switch did not return");
-                UtilitySettings.minimapBorder=false;UtilitySettings.save();
+                UtilitySettings.minimapBorder=true;UtilitySettings.save();
                 require(UtilitySettings.deleteProfile(renamed)&&UtilitySettings.deleteProfile(numbered),"Could not delete temporary profiles");
                 String imported=UtilitySettings.importProfile(json);
                 require(imported!=null&&imported.equals(UtilitySettings.profile),"Profile import did not activate a new profile");

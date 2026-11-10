@@ -22,7 +22,7 @@ public final class KillConfirm {
     static boolean active(){UtilitySettings.load();return UtilitySettings.killConfirm&&ServerScope.active();}
     static HudLayout.Rect bounds(){float s=UtilitySettings.killConfirmSize/100F;return HudLayout.bounds(HudLayout.CONFIRM,(int)Math.ceil(WIDTH*s),(int)Math.ceil(HEIGHT*s));}
     @SubscribeEvent(priority=EventPriority.HIGHEST,receiveCanceled=true) public void receive(ClientChatReceivedEvent event){
-        Minecraft mc=MinecraftAccess.get();if(event.type!=2&&active()&&mc.thePlayer!=null){
+        Minecraft mc=MinecraftAccess.get();if(event.type!=2&&active()&&mc.thePlayer!=null&&mc.theWorld!=null){
             String text=event.message.getFormattedText();
             net.minecraft.util.AxisAlignedBB box=mc.thePlayer.getEntityBoundingBox();
             boolean airborne=!mc.thePlayer.onGround&&mc.theWorld.getCollidingBoundingBoxes(mc.thePlayer,

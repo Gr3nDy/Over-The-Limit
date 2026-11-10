@@ -37,7 +37,7 @@ public final class BowOptimizer {
     }
     @SubscribeEvent(priority=EventPriority.LOWEST) public void sound(PlaySoundEvent event){
         if(!active()){echoes.clear();return;}
-        if(event.sound==predicted||event.result==null||!new ResourceLocation("random.bow").equals(event.sound.getSoundLocation()))return;
+        if(event.sound==null||event.sound==predicted||event.result==null||!new ResourceLocation("random.bow").equals(event.sound.getSoundLocation()))return;
         Minecraft mc=MinecraftAccess.get();if(mc.theWorld==null||mc.thePlayer==null)return;
         boolean ambiguous=false;
         for(net.minecraft.entity.player.EntityPlayer other:mc.theWorld.playerEntities){

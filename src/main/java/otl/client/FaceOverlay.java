@@ -30,15 +30,18 @@ public final class FaceOverlay implements LayerRenderer<AbstractClientPlayer> {
     private static final int BROW_TINT=0xFF7A6758;
     private static final int BLUSH_COLOR=0xD0FFB6C1;
     private static final int GLOW_TINT=0x7896CCFF;
-    private static final Map<Integer,List<Group>> GROUP_CACHE=new LinkedHashMap<Integer,List<Group>>(32,0.75f,true){
-        protected boolean removeEldestEntry(Map.Entry<Integer,List<Group>> e){return size()>128;}
+    private static final Map<Long,List<Group>> GROUP_CACHE=new LinkedHashMap<Long,List<Group>>(32,0.75f,true){
+        protected boolean removeEldestEntry(Map.Entry<Long,List<Group>> e){return size()>128;}
     };
+
+    private static long fingerprint(int[] marks){long h=1;for(int mark:marks)h=h*31+mark;return h;}
     private final RenderPlayer renderer;
 
     public FaceOverlay(RenderPlayer renderer){this.renderer=renderer;}
     public boolean shouldCombineTextures(){return false;}
 
     public void doRenderLayer(AbstractClientPlayer p,float swing,float swingAmount,float partial,float age,float yaw,float pitch,float scale){
+        float brightnessX=OpenGlHelper.lastBrightnessX,brightnessY=OpenGlHelper.lastBrightnessY;
         Minecraft mc=MinecraftAccess.get();
         boolean own=p==mc.thePlayer;
         boolean preview=FaceDoll.preview;
@@ -114,6 +117,7 @@ public final class FaceOverlay implements LayerRenderer<AbstractClientPlayer> {
             GlStateManager.disableBlend();
             GlStateManager.enableLighting();
             GlStateManager.color(1,1,1,1);
+            OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit,brightnessX,brightnessY);
         }
     }
 
@@ -374,7 +378,7 @@ public final class FaceOverlay implements LayerRenderer<AbstractClientPlayer> {
     }
 
     private static List<Group> cachedGroups(int[] marks){
-        int key=Arrays.hashCode(marks);
+        long key=fingerprint(marks);
         List<Group> cached=GROUP_CACHE.get(key);
         if(cached!=null)return cached;
         List<Group> made=groups(marks);

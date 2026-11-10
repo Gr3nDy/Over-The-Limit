@@ -44,7 +44,6 @@ final class HudEditor extends GuiScreen {
         else if(HudLayout.CONFIRM.equals(id)){UtilitySettings.killConfirm=!UtilitySettings.killConfirm;KillConfirm.state.clear();}
         else if(HudLayout.KILLS.equals(id))UtilitySettings.killFeed=!UtilitySettings.killFeed;
         else if(HudLayout.TABS.equals(id))UtilitySettings.showTabChat=!UtilitySettings.showTabChat;
-        else UtilitySettings.nonPlayerChat=false;
         UtilitySettings.save();
     }
     protected void actionPerformed(GuiButton b){

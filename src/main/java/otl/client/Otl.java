@@ -20,11 +20,13 @@ public final class Otl {
     private final KeyBinding teamChat=new KeyBinding("key.otl.team_chat",Keyboard.KEY_Y,"key.categories.otl");
     private final KeyBinding partyChat=new KeyBinding("key.otl.party_chat",Keyboard.KEY_NONE,"key.categories.otl");
     private final KeyBinding minimap=new KeyBinding("key.otl.minimap",Keyboard.KEY_M,"key.categories.otl");
+    private final KeyBinding minimapZoom=new KeyBinding("key.otl.minimapzoom",Keyboard.KEY_SEMICOLON,"key.categories.otl");
     @Mod.EventHandler public void init(FMLInitializationEvent event) {
         ClientRegistry.registerKeyBinding(modules);
         ClientRegistry.registerKeyBinding(teamChat);
         ClientRegistry.registerKeyBinding(partyChat);
         ClientRegistry.registerKeyBinding(minimap);
+        ClientRegistry.registerKeyBinding(minimapZoom);
         MinecraftForge.EVENT_BUS.register(ReliableChat.INSTANCE);
         MinecraftForge.EVENT_BUS.register(ServerNotices.INSTANCE);
         MinecraftForge.EVENT_BUS.register(KillFeed.INSTANCE);
@@ -50,15 +52,17 @@ public final class Otl {
     }
     @SubscribeEvent public void key(InputEvent.KeyInputEvent event){
         if(minimap.isPressed()){Minimap.INSTANCE.cycleView();return;}
+        if(minimapZoom.isPressed()){Minimap.INSTANCE.cycleZoom();return;}
         if(teamChat.isPressed()){ReliableChat.openChannel(ChatRules.TEAM);return;}
         if(partyChat.isPressed()){ReliableChat.openChannel(ChatRules.PARTY);return;}
         openMenu();
     }
-    @SubscribeEvent public void mouse(InputEvent.MouseInputEvent event){if(minimap.isPressed()){Minimap.INSTANCE.cycleView();return;}openMenu();}
+    @SubscribeEvent public void mouse(InputEvent.MouseInputEvent event){if(minimap.isPressed()){Minimap.INSTANCE.cycleView();return;}if(minimapZoom.isPressed()){Minimap.INSTANCE.cycleZoom();return;}openMenu();}
     private void openMenu(){
         Minecraft mc=MinecraftAccess.get();
-        if(mc.thePlayer==null || mc.currentScreen!=null)return;
-        if(modules.isPressed())mc.displayGuiScreen(new HudEditor());
+        boolean pressed=modules.isPressed();
+        if(mc.thePlayer==null||mc.currentScreen!=null)return;
+        if(pressed)mc.displayGuiScreen(new HudEditor());
     }
     @SubscribeEvent public void tick(net.minecraftforge.fml.common.gameevent.TickEvent.ClientTickEvent event){
         Minecraft mc=MinecraftAccess.get();

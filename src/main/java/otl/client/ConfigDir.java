@@ -28,13 +28,43 @@ final class ConfigDir {
         return file;
     }
     private static void migrate(){
+        migrateOvercastUtil();
+        migrateOtl();
+    }
+    private static void migrateOvercastUtil(){
         try{
             Path legacy=root().getParent().resolve("overcast_util");
             if(!Files.isDirectory(legacy)||Files.exists(root()))return;
-            try{Files.move(legacy,root());}
-            catch(Exception renameFailed){copyRecursively(legacy,root());deleteRecursively(legacy);}
-            System.out.println("Overcast Utilities: migrated config/overcast_util to config/Over The Limit");
+            Path staging=Files.createTempDirectory(legacy.getParent(),".otl-migrate-");
+            try{
+                copyRecursively(legacy,staging);
+                deleteRecursively(legacy);
+                Files.move(staging,root());
+                System.out.println("Overcast Utilities: migrated config/overcast_util to config/Over The Limit");
+            }catch(Exception migrationFailed){
+                try{deleteRecursively(staging);}catch(Exception ignored){}
+                throw migrationFailed;
+            }
         }catch(Exception e){System.err.println("Overcast Utilities: config migration failed: "+e.getMessage());}
+    }
+    /** Face Rig settings and marks moved into the shared root; missing names merge, nothing is overwritten. */
+    private static void migrateOtl(){
+        try{
+            Path legacy=root().getParent().resolve("otl");
+            if(!Files.isDirectory(legacy))return;
+            java.util.List<Path> files=new java.util.ArrayList<>();
+            try(java.util.stream.Stream<Path> stream=Files.walk(legacy)){
+                stream.filter(Files::isRegularFile).forEach(files::add);
+            }
+            for(Path source:files){
+                Path target=root().resolve(legacy.relativize(source).toString());
+                if(Files.exists(target))continue;
+                Files.createDirectories(target.getParent());
+                Files.copy(source,target);
+            }
+            deleteRecursively(legacy);
+            System.out.println("OTL: migrated config/otl into config/Over The Limit");
+        }catch(Exception e){System.err.println("OTL: config/otl migration failed: "+e.getMessage());}
     }
     private static void copyRecursively(Path source,Path target)throws IOException{
         try(java.util.stream.Stream<Path> stream=Files.walk(source)){
@@ -52,11 +82,5 @@ final class ConfigDir {
         try(java.util.stream.Stream<Path> stream=Files.walk(source)){
             stream.sorted(Comparator.reverseOrder()).forEach(path->{try{Files.deleteIfExists(path);}catch(IOException e){throw new IllegalStateException(e);}});
         }
-    }
-    /** Validates a repo-relative asset path; rejects traversal. */
-    static boolean validAsset(String asset){
-        if(asset==null||asset.isEmpty())return false;
-        for(String part:asset.split("/",-1))if(part.isEmpty()||part.equals(".")||part.equals("..")||part.contains("\\")||part.indexOf(':')>=0)return false;
-        return true;
     }
 }

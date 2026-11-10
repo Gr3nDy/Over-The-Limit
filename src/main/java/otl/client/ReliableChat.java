@@ -20,7 +20,8 @@ import net.minecraftforge.event.world.WorldEvent;
 /** Routes original components into bounded vanilla-compatible chat views. */
 public final class ReliableChat {
     static final ReliableChat INSTANCE=new ReliableChat();
-    static final Map<String,Session> sessions=new HashMap<>();
+    /** One live Session per host; the eldest host is evicted past 24 hosts. */
+    private static final Map<String,Session> sessions=new LinkedHashMap<String,Session>(){private static final long serialVersionUID=1L;@Override protected boolean removeEldestEntry(Map.Entry<String,Session> eldest){return size()>24;}};
     static RoutingHud installed;
     private static final ChatWelcomeGate welcomeGate=new ChatWelcomeGate();
     private static Object observedWorld,observedConnection;
@@ -194,7 +195,7 @@ public final class ReliableChat {
         if(fullChat()&&ChatRules.commandWarning(formatted)&&recentCommand!=null&&recentCommand.host.equals(ServerScope.current())&&System.nanoTime()-recentCommand.time<8000000000L&&s.views.containsKey(recentCommand.key)){
             s.views.get(recentCommand.key).append(text,id,true);return;
         }
-        boolean own=ChatRules.authoredBy(formatted,MinecraftAccess.get().thePlayer.getName());s.views.get(ChatRules.ALL).append(text,id,own);
+        String self=MinecraftAccess.get().thePlayer==null?"":MinecraftAccess.get().thePlayer.getName();boolean own=!self.isEmpty()&&ChatRules.authoredBy(formatted,self);s.views.get(ChatRules.ALL).append(text,id,own);
         if(!fullChat())return;
         ChatRules.Route r=ChatRules.classify(text.getFormattedText());
         if(r.key.startsWith("pm:")){
@@ -364,7 +365,7 @@ public final class ReliableChat {
             if(ServerNotices.route(text,id))return;
             original.printChatMessageWithOptionalDeletion(text,id);
             if(active())receive(text,id);
-            else if(ServerScope.active())session().views.get(ChatRules.ALL).append(text,id,ChatRules.authoredBy(text.getFormattedText(),MinecraftAccess.get().thePlayer.getName()));
+            else if(ServerScope.active()){String self=MinecraftAccess.get().thePlayer==null?"":MinecraftAccess.get().thePlayer.getName();session().views.get(ChatRules.ALL).append(text,id,!self.isEmpty()&&ChatRules.authoredBy(text.getFormattedText(),self));}
         }
         @Override public void clearChatMessages(){
             original.clearChatMessages();

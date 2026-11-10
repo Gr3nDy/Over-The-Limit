@@ -13,7 +13,7 @@ public final class MinimapModule extends OtlModule {
     public void setEnabled(boolean on) { UtilitySettings.minimap = on; }
     public void reset() {
         UtilitySettings.restore("minimap","minimap_static","minimap_cutaway","minimap_border","minimap_rotate","minimap_cardinals",
-                "minimap_coordinates","minimap_size","minimap_opacity","minimap_large_opacity");
+                "minimap_coordinates","minimap_size","minimap_opacity","minimap_large_opacity","minimap_large_background","minimap_zoom","minimap_alt_zoom","minimap_head_size");
         UtilitySettings.hudPositions.remove(HudLayout.MINIMAP);
     }
     public GuiScreen settings(GuiScreen back) { return new MinimapSettings(back); }

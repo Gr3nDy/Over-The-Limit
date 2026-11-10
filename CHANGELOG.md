@@ -1,6 +1,28 @@
 # Changelog
 
-## v0.3.5 — 2026-11-09
+## v0.3.6 - 2026-11-11
+
+### Changed
+- **Minimap meshes are downloaded on demand** instead of being bundled in the jar (jar is ~77 MB of previews + code; meshes fetch per current map with 3 silent retries).
+- **Minimap zoom**: 1-5 snap levels with a hidden **Alt Zoom level** slider on its own `;` hotkey; the player marker scales with the zoom; border ON by default.
+- **Chat background** is a snap slider under Reliable Chat (0-100%, default 25%), matching the tab background sliders.
+- **Configuration renamed** to `config/Over The Limit`; the legacy `config/overcast_util` is auto-migrated. Face Rig preferences and painted face marks moved from `config/otl` into the same folder, auto-migrated.
+- **Module reset buttons** reset only the module they belong to: Kill Feed no longer resets the chat tab HUD scale, Face Rig resets its face options too, Reliable Chat also restores the tab HUD position.
+
+### Fixed
+- **World renderer is isolated from the HUD**: GL state is hard-reset after every minimap draw (the head marker no longer leaks `GL_ALWAYS` depth compare; write-mask/depth-func restored unconditionally).
+- Minimap: one malformed `minimap-index.json` entry no longer disables the whole minimap; corrupt/truncated downloads report `Map broken; try again later` instead of silent retry loops; mesh downloads tolerate map directories with spaces and non-ASCII names (path segments are URL-encoded).
+- Minimap status text no longer overflows the panel (`Preview unavailable` trimmed with an ellipsis and centered).
+- Modules screen: last-row cards are drawn at the position they are clickable at; the HUD editor no longer opens off a stale key press made behind a GUI; module scan survives an unreadable module package listing.
+- Chat: party chat with a mixed-case `(Party)` prefix lands in Party instead of All; Reliable Chat sessions are capped at 24 hosts; Kill Confirm per-player stats are capped at 256 names.
+- Face Rig: skin readback retry loop terminates after 3 failures instead of re-reading GL every frame; marks files with one corrupt line no longer wipe the whole file; face data now lives next to the rest of the config.
+- Config migration can no longer strand a partial config: files are staged and moved atomically; the legacy folder is deleted only after every file is copied.
+- Kill Feed: lava deaths are no longer labelled FALL damage; right-click no longer swallows the scroll-drag; a zero `kill_feed_size` no longer divides by zero.
+
+### Removed
+- 74 MB `Over The Limit.rar` binary artifact removed from the repository.
+
+## v0.3.5 - 2026-11-09
 
 ### Added
 - **Bow Optimizer** (module OFF by default): immediate local bow-release sound and reduced same-slot bow durability equip dips. Optimization, accuracy, hit sound and hit marker have independent controls under the module master switch; no changes to aiming, charge speed, damage or outgoing packets.

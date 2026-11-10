@@ -83,18 +83,20 @@ public abstract class OtlModule {
         String prefix=pkg.replace('.','/')+"/";
         if("file".equals(url.getProtocol())){
             File dir=new File(url.toURI());
-            for(File file:dir.listFiles()){
+            File[] files=dir.listFiles();
+            if(files!=null)for(File file:files){
                 String n=file.getName();
                 if(n.endsWith(".class")&&!n.contains("$"))out.add(pkg+"."+n.substring(0,n.length()-".class".length()));
             }
             return out;
         }
-        JarFile jar=((JarURLConnection)url.openConnection()).getJarFile();
-        java.util.Enumeration<? extends java.util.zip.ZipEntry> entries=jar.entries();
-        while(entries.hasMoreElements()){
-            String name=entries.nextElement().getName();
-            if(name.startsWith(prefix)&&name.endsWith(".class")&&name.indexOf('$',prefix.length())<0)
-                out.add(name.substring(0,name.length()-".class".length()).replace('/','.'));
+        try(JarFile jar=((JarURLConnection)url.openConnection()).getJarFile()){
+            java.util.Enumeration<? extends java.util.zip.ZipEntry> entries=jar.entries();
+            while(entries.hasMoreElements()){
+                String name=entries.nextElement().getName();
+                if(name.startsWith(prefix)&&name.endsWith(".class")&&name.indexOf('$',prefix.length())<0)
+                    out.add(name.substring(0,name.length()-".class".length()).replace('/','.'));
+            }
         }
         return out;
     }

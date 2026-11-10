@@ -24,9 +24,12 @@ public final class UtilitySettings {
     static int bowAccuracyOpacity=25,bowAccuracyDecimals=2,bowAccuracySize=100;
     static int bowAccuracyFadeIn=0,bowAccuracyFadeOut=50;
     public static boolean minimap=false;
-    static boolean minimapStatic=false,minimapCutaway=false,minimapBorder=false;
-    static boolean minimapRotate=false,minimapCardinals=false,minimapCoordinates=false;
-    static int minimapSize=100,minimapOpacity=25,minimapLargeOpacity=25;
+    static boolean minimapStatic=false,minimapCutaway=true,minimapBorder=true;
+    static boolean minimapRotate=true,minimapCardinals=true,minimapCoordinates=true;
+    static int minimapSize=100,minimapOpacity=25,minimapLargeOpacity=100;
+    public static int minimapLargeBackground=25;
+    public static int minimapZoom=2,minimapAltZoom=4;
+    public static int minimapHeadSize=125;
     static boolean bowHitSound=false,bowKillSound=false,bowHitMarker=false;
     static int bowHitMarkerSize=100;
     static boolean mainHandLeft=false;
@@ -152,6 +155,10 @@ public final class UtilitySettings {
         read(j,"minimap_size",e->minimapSize=Math.max(50,Math.min(150,e.getAsInt())));
         read(j,"minimap_opacity",e->minimapOpacity=Math.max(0,Math.min(100,e.getAsInt())));
         read(j,"minimap_large_opacity",e->minimapLargeOpacity=Math.max(0,Math.min(100,e.getAsInt())));
+        read(j,"minimap_large_background",e->minimapLargeBackground=Math.max(0,Math.min(100,e.getAsInt())));
+        read(j,"minimap_zoom",e->minimapZoom=Math.max(1,Math.min(5,e.getAsInt())));
+        read(j,"minimap_alt_zoom",e->minimapAltZoom=Math.max(1,Math.min(5,e.getAsInt())));
+        read(j,"minimap_head_size",e->minimapHeadSize=Math.max(50,Math.min(150,e.getAsInt())));
         read(j,"bow_hit_sound",e->bowHitSound=e.getAsBoolean());
         read(j,"bow_kill_sound",e->bowKillSound=e.getAsBoolean());
         read(j,"bow_hit_marker",e->bowHitMarker=e.getAsBoolean());
@@ -242,6 +249,10 @@ public final class UtilitySettings {
             j.addProperty("minimap_size",minimapSize);
             j.addProperty("minimap_opacity",minimapOpacity);
             j.addProperty("minimap_large_opacity",minimapLargeOpacity);
+            j.addProperty("minimap_large_background",minimapLargeBackground);
+            j.addProperty("minimap_zoom",minimapZoom);
+            j.addProperty("minimap_alt_zoom",minimapAltZoom);
+            j.addProperty("minimap_head_size",minimapHeadSize);
             j.addProperty("bow_hit_sound",bowHitSound);
             j.addProperty("bow_kill_sound",bowKillSound);
             j.addProperty("bow_hit_marker",bowHitMarker);

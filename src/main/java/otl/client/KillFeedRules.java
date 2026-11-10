@@ -36,7 +36,7 @@ final class KillFeedRules {
             victimLabel=colored(original,m.start("v"),victim);
             killerLabel=killer==null?(mob==null?"\u00a77World":mob):colored(original,m.start("k"),killer);
             voidFall=template.contains("out of the world");lava=template.contains("lava")||weapon!=null&&weapon.equalsIgnoreCase("Lava");
-            fall=voidFall||lava||template.contains("high place")||template.contains("spleefed")||template.contains("fell")||template.contains("ground")||template.contains("splat")||template.contains("gravity")||template.contains("orbit");
+            fall=voidFall||template.contains("high place")||template.contains("spleefed")||template.contains("fell")||template.contains("ground")||template.contains("splat")||template.contains("gravity")||template.contains("orbit");
             cause=template.contains("shot")||template.contains("sniped")||template.contains("stray")?Cause.BOW:
                 template.contains("blown")||template.contains("blew")||template.contains("creeper")?Cause.EXPLOSION:
                 template.contains("burnt")||template.contains("flames")?Cause.FIRE:
