@@ -2,7 +2,7 @@
 
 ![OVER THE LIMIT](docs/assets/otl-banner.svg)
 
-**Over The Limit (OTL)** is a client-side Forge 1.8.9 mod for the Overcast Community server. Press **P** for the HUD editor and modules (rebind or unbind Mod Menu in Controls); Face Rig is available from Mods. [Download the release](https://github.com/Gr3nDy/Over-The-Limit/releases/tag/v0.3.6) · [What's new](CHANGELOG.md)
+**Over The Limit (OTL)** is a client-side Forge 1.8.9 mod for the Overcast Community server. Press **P** for the HUD editor and modules (rebind or unbind Mod Menu in Controls); Face Rig is available from Mods. [Download the release](https://github.com/Gr3nDy/Over-The-Limit/releases/tag/v0.3.6) · [Wiki](docs/WIKI.md) · [What's new](CHANGELOG.md)
 
 ## Modules
 
