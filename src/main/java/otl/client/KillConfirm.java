@@ -9,13 +9,16 @@ import net.minecraftforge.fml.common.eventhandler.*;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 
 /** Session-only COD-style confirmation; original reward messages keep normal routing. */
-final class KillConfirm {
+public final class KillConfirm {
+    /** Clear pending kill-confirm marks; part of the module's factory reset. */
+    public static void clearState(){state.clear();}
     static final KillConfirm INSTANCE=new KillConfirm();
     static final int WIDTH=260,HEIGHT=58;
     /** Text origin and glyph metrics shared with the HUD anchor in HudLayout. */
     static final float EXP_X=4,EXP_Y=31,EXP_TEXT_SCALE=1.35F,PLUS_CENTER_X=2.5F,GLYPH_CENTER_Y=4;
     static final KillConfirmRules.State state=new KillConfirmRules.State();
     private boolean wasDead;private float lastHealth=Float.MAX_VALUE;
+    private final KillConfirmRules.RespawnPosition respawnPosition=new KillConfirmRules.RespawnPosition();
     static boolean active(){UtilitySettings.load();return UtilitySettings.killConfirm&&ServerScope.active();}
     static HudLayout.Rect bounds(){float s=UtilitySettings.killConfirmSize/100F;return HudLayout.bounds(HudLayout.CONFIRM,(int)Math.ceil(WIDTH*s),(int)Math.ceil(HEIGHT*s));}
     @SubscribeEvent(priority=EventPriority.HIGHEST,receiveCanceled=true) public void receive(ClientChatReceivedEvent event){
@@ -24,7 +27,10 @@ final class KillConfirm {
             net.minecraft.util.AxisAlignedBB box=mc.thePlayer.getEntityBoundingBox();
             boolean airborne=!mc.thePlayer.onGround&&mc.theWorld.getCollidingBoundingBoxes(mc.thePlayer,
                 new net.minecraft.util.AxisAlignedBB(box.minX,box.minY-2,box.minZ,box.maxX,box.minY,box.maxZ)).isEmpty();
+            boolean waiting=state.awaitingRespawn;
             state.receive(text,mc.thePlayer.getName(),System.nanoTime(),mc.thePlayer.getHealth()+mc.thePlayer.getAbsorptionAmount(),airborne,!mc.thePlayer.onGround,mc.thePlayer.isSneaking());
+            if(!waiting&&state.awaitingRespawn)respawnPosition.died(mc.thePlayer.posX,mc.thePlayer.posY,mc.thePlayer.posZ);
+            if(!state.awaitingRespawn)respawnPosition.resumed();
             KillConfirmRules.Reward reward=KillConfirmRules.parse(text);
             if(reward!=null){
                 if(UtilitySettings.killConfirmSounds)mc.getSoundHandler().playSound(net.minecraft.client.audio.PositionedSoundRecord.create(
@@ -41,7 +47,7 @@ final class KillConfirm {
     @SubscribeEvent public void tick(TickEvent.ClientTickEvent event){
         if(event.phase!=TickEvent.Phase.END)return;
         Minecraft mc=MinecraftAccess.get();
-        if(mc.thePlayer==null){lastHealth=Float.MAX_VALUE;return;}
+        if(mc.thePlayer==null){lastHealth=Float.MAX_VALUE;wasDead=false;respawnPosition.clear();return;}
         float health=mc.thePlayer.getHealth()+mc.thePlayer.getAbsorptionAmount();
         if(health<lastHealth)state.damaged();
         lastHealth=health;
@@ -50,14 +56,17 @@ final class KillConfirm {
                 if(other.getName().equalsIgnoreCase(state.duelVictim)){state.confirmDuel(other.getHealth());break;}
         }
         boolean dead=mc.thePlayer.isDead||mc.thePlayer.getHealth()<=0;
-        if(!active()){state.clear();wasDead=false;}
+        if(!active()){state.clear();wasDead=false;respawnPosition.clear();}
         else{
             if(dead&&!wasDead){state.died(state.lastAttacker);state.deathObserved(System.nanoTime());}
-            else if(!dead&&wasDead)state.respawn(System.nanoTime(),UtilitySettings.totalExpKills);
+            if(state.awaitingRespawn)respawnPosition.died(mc.thePlayer.posX,mc.thePlayer.posY,mc.thePlayer.posZ);
+            boolean teleported=respawnPosition.moved(mc.thePlayer.posX,mc.thePlayer.posY,mc.thePlayer.posZ);
+            if(!dead&&!mc.thePlayer.isSpectator()&&(wasDead||teleported))state.respawn(System.nanoTime(),UtilitySettings.totalExpKills);
+            if(!state.awaitingRespawn)respawnPosition.resumed();
             wasDead=dead;
         }
     }
-    @SubscribeEvent public void unload(WorldEvent.Unload event){if(event.world.isRemote){state.clear();wasDead=false;lastHealth=Float.MAX_VALUE;}}
+    @SubscribeEvent public void unload(WorldEvent.Unload event){if(event.world.isRemote){state.clear();wasDead=false;lastHealth=Float.MAX_VALUE;respawnPosition.clear();}}
     @SubscribeEvent public void overlay(RenderGameOverlayEvent.Post event){
         Minecraft mc=MinecraftAccess.get();
         if(event.type==RenderGameOverlayEvent.ElementType.CHAT&&active()&&mc.thePlayer!=null&&!(mc.currentScreen instanceof HudEditor)&&!mc.gameSettings.hideGUI)draw(false);

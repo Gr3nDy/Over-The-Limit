@@ -62,7 +62,7 @@ Adding a module = one entry in `OtlModule.ALL` + (optionally) its own screen. Th
 
 There is no database, and adding one would be wrong: this is a single-process desktop client whose entire persistent state is user preferences. A SQL store would duplicate ~20 booleans behind a driver, a migration tool and a corruption mode. The document below is the store; it is versioned so a real migration is possible later.
 
-**Path:** `%APPDATA%/.minecraft/config/overcast_util/settings.json`
+**Path:** `%APPDATA%/.minecraft/config/Over The Limit/settings.json`
 **Engine:** Gson, pretty-printed UTF-8. Save to a unique temporary file, then replace the previous file (atomic replacement where supported). The same writer protects face settings, painted marks, and remote map caches.
 **Never stored:** chat messages, player names, drafts, server addresses, any image data.
 
@@ -137,7 +137,9 @@ Input is centralized in `Otl`: `J` menu, `P` modules, `Y` team chat, vanilla `T`
 **`/map` map card.** A Forge client command handles `/map <name>` from normal chat, Reliable Chat and clickable commands. It queues the card for the next client tick because vanilla chat closes itself after sending; the keyboard hook is only a fallback. Commands still reach the server: its repository/path response corrects aliases and ambiguous names while the requested card remains open. Bare `/map` uses that response to identify the current map. Disabled/off-server commands are forwarded unchanged. Closing/navigating away cancels late GUI updates. Gallery clicks pass the exact repository/path, not a second ambiguous name search.
 
 - Resolution order: bundled `map.xml` → PublicMaps (`main`) and CommunityMaps (`master`), with exact remote matches before partial matches.
-- A bounded single worker performs remote work. Downloads live under `config/overcast_util/map_cache/<repo>/<branch>/<map>/`, with separate 6h indexes. Closing a screen cannot let a late response replace another screen.
+- A bounded single worker performs remote work. Downloads live under `config/Over The Limit/map_cache/<repo>/<branch>/<map>/`, with separate 6h indexes. Closing a screen cannot let a late response replace another screen.
+- Minimap meshes are not bundled; they are fetched per map from `Gr3nDy/Over-The-Limit` `Maps/<repo>/<branch>/<path>/minimap.mesh.gz` into `config/Over The Limit/Maps/<repo>/<branch>/<path>/` the first time a map is played, then reused. Missing meshes show "Map not in this build yet"; no world-to-mesh conversion happens in the client.
+- `config/overcast_util` is migrated to `config/Over The Limit` on first launch.
 - Downloads have byte limits, preview dimensions are bounded, and cached paths reject traversal. No query text or player data is sent.
 - Shared square textures preserve the full image with padding. They are reused across books, cards, galleries and reconnects instead of losing references to textures still owned by Minecraft.
 - Metadata scrolls beside the square image; footer controls remain outside the scroll area.

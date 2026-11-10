@@ -4,28 +4,54 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class KillConfirmRulesTest {
-    @Test public void streakTextStartsAtTwoKillsAndTiersAtFive(){
+    @Test public void teleportRespawnRequiresADeathAndALargeSingleStepAwayFromTheDeathPosition(){
+        KillConfirmRules.RespawnPosition position=new KillConfirmRules.RespawnPosition();
+        assertFalse(position.moved(0,64,0));assertFalse(position.moved(20,64,0));
+        position.died(20,64,0);
+        for(int x=21;x<=30;x++)assertFalse(position.moved(x,64,0));
+        assertTrue(position.moved(40,64,0));
+        position.resumed();assertFalse(position.moved(60,64,0));
+        position.died(60,64,0);assertFalse(position.moved(64,64,0));
+        assertTrue(position.moved(64,70,0));
+        position.clear();assertFalse(position.moved(100,64,0));
+    }
+    @Test public void deathPositionSurvivesDuplicateDeathReportsAndSameTickTeleportOrdering(){
+        KillConfirmRules.RespawnPosition position=new KillConfirmRules.RespawnPosition();
+        position.moved(0,64,0);position.died(12,64,0);
+        assertTrue(position.moved(12,64,0));
+        position.resumed();position.moved(0,64,0);position.died(0,64,0);
+        position.died(12,64,0);assertTrue(position.moved(12,64,0));
+        position.clear();position.died(0,64,0);
+        assertFalse(position.moved(0,64,0));assertTrue(position.moved(10,64,0));
+    }
+    @Test public void streakTextStartsAtFiveAndOnlyAppearsAtMilestones(){
         assertEquals("",KillConfirmRules.streakLabel(0,false));assertEquals("",KillConfirmRules.streakLabel(1,false));
-        assertEquals("2 KILL STREAK",KillConfirmRules.streakLabel(2,false));assertEquals("4 KILL STREAK",KillConfirmRules.streakLabel(4,false));
+        assertEquals("",KillConfirmRules.streakLabel(2,false));assertEquals("",KillConfirmRules.streakLabel(4,false));
         assertEquals("RAMPAGE",KillConfirmRules.streakLabel(5,false));assertEquals("UNSTOPPABLE",KillConfirmRules.streakLabel(10,false));
         assertEquals("GODLIKE",KillConfirmRules.streakLabel(15,false));assertEquals("LEGENDARY",KillConfirmRules.streakLabel(20,false));
         assertEquals("",KillConfirmRules.streakLabel(2,true));assertEquals("",KillConfirmRules.streakLabel(10,true));
+        for(int count=0;count<=200;count++){
+            boolean milestone=count>=5&&count%(count<30?5:10)==0;
+            assertEquals("Streak "+count,milestone,!KillConfirmRules.streakLabel(count,false).isEmpty());
+            KillConfirmRules.Reward kill=new KillConfirmRules.Reward(5,false);kill.revenge=true;
+            assertTrue(kill.labels(count).contains("REVENGE"));
+            assertEquals("Count row at "+count,milestone,kill.labels(count).contains(count+" KILL STREAK"));
+        }
     }
     @Test public void namedStreakTiersKeepTheExactCountImmediatelyBelow(){
-        int[] starts={5,7,10,15,20,25,30,40,50,60,70,80,90,100};
-        String[] names={"RAMPAGE","DOMINATING","UNSTOPPABLE","GODLIKE","LEGENDARY","IMMORTAL","BEYOND THE LIMIT","ANNIHILATION","ONE MAN ARMY","APOCALYPSE","WORLD ENDER","ABSOLUTE ZERO","NO EQUAL","THE LIMIT BREAKER"};
+        int[] starts={5,10,15,20,25,30,40,50,60,70,80,90,100,110};
+        String[] names={"RAMPAGE","UNSTOPPABLE","GODLIKE","LEGENDARY","IMMORTAL","BEYOND THE LIMIT","ANNIHILATION","ONE MAN ARMY","APOCALYPSE","WORLD ENDER","ABSOLUTE ZERO","NO EQUAL","THE LIMIT BREAKER","THE LIMIT BREAKER"};
         for(int tier=0;tier<starts.length;tier++){
-            int end=tier+1<starts.length?starts[tier+1]-1:101;
-            for(int count:new int[]{starts[tier],end}){
-                assertEquals(names[tier],KillConfirmRules.streakLabel(count,false));
-                KillConfirmRules.Reward kill=new KillConfirmRules.Reward(5,false);
-                assertEquals(java.util.Arrays.asList("KILL",names[tier],count+" KILL STREAK"),kill.labels(count));
-                assertEquals("",KillConfirmRules.streakLabel(count,true));
-            }
+            int count=starts[tier];
+            assertEquals(names[tier],KillConfirmRules.streakLabel(count,false));
+            KillConfirmRules.Reward kill=new KillConfirmRules.Reward(5,false);
+            assertEquals(java.util.Arrays.asList("KILL",names[tier],count+" KILL STREAK"),kill.labels(count));
+            assertEquals("",KillConfirmRules.streakLabel(count,true));
         }
-        assertEquals("THE LIMIT BREAKER",KillConfirmRules.streakLabel(Integer.MAX_VALUE,false));
+        assertEquals("",KillConfirmRules.streakLabel(Integer.MAX_VALUE,false));
+        assertEquals("THE LIMIT BREAKER",KillConfirmRules.streakLabel(2147483640,false));
         KillConfirmRules.Reward kill=new KillConfirmRules.Reward(5,false);
-        assertEquals(java.util.Arrays.asList("KILL","4 KILL STREAK"),kill.labels(4));
+        assertEquals(java.util.Arrays.asList("KILL"),kill.labels(4));
     }
     @Test public void rapidKillTagsReachNineThenShowAnExactMultiKillCount(){
         String[] names={"DOUBLE KILL","TRIPLE KILL","QUAD KILL","PENTA KILL","HEXA KILL","HEPTA KILL","OCTA KILL","NONA KILL"};
@@ -205,6 +231,61 @@ public class KillConfirmRulesTest {
         state.receive("Late was slain by Local's Iron Sword","Local",8000000000L,20);
         state.receive("+5 raindrops | Kill","Local",8000000001L,20);
         assertFalse(state.reward.brawler);
+    }
+    @Test public void hotHandNeedsThreeBowKillsAndSupportsEitherRewardOrder(){
+        for(boolean rewardFirst:new boolean[]{false,true}){
+            KillConfirmRules.State state=new KillConfirmRules.State();
+            for(int i=1;i<=3;i++){
+                long at=i*1000000000L;
+                if(rewardFirst)state.receive("+5 raindrops | Kill","Local",at,20);
+                state.receive("BowTarget"+i+" was shot by Local from 20 blocks","Local",at+1,20);
+                if(!rewardFirst)state.receive("+5 raindrops | Kill","Local",at+2,20);
+                assertEquals(i==3,state.reward.hotHand);assertFalse(state.reward.mixedArsenal);
+            }
+            assertTrue(state.reward.labels(state.streak).contains("HOT HAND"));
+        }
+    }
+    @Test public void mixedArsenalRequiresBothWeaponsInEitherOrder(){
+        for(boolean bowFirst:new boolean[]{false,true})for(boolean rewardFirst:new boolean[]{false,true}){
+            KillConfirmRules.State state=new KillConfirmRules.State();
+            for(int i=0;i<2;i++){
+                long at=(i+1)*1000000000L;boolean bow=i==0?bowFirst:!bowFirst;
+                if(rewardFirst)state.receive("+5 raindrops | Kill","Local",at,20);
+                state.receive("Target"+i+(bow?" was shot by Local from 20 blocks":" was slain by Local's Iron Sword"),"Local",at+1,20);
+                if(!rewardFirst)state.receive("+5 raindrops | Kill","Local",at+2,20);
+                assertEquals(i==1,state.reward.mixedArsenal);assertFalse(state.reward.hotHand);
+            }
+            assertTrue(state.reward.labels(state.streak).contains("MIXED ARSENAL"));
+        }
+    }
+    @Test public void newWeaponChainTagsResetOnGapDeathAndClear(){
+        KillConfirmRules.State state=new KillConfirmRules.State();
+        for(int i=1;i<=3;i++){
+            state.receive("Target"+i+" was shot by Local from 20 blocks","Local",i*1000000000L,20);
+            state.receive("+5 raindrops | Kill","Local",i*1000000000L+1,20);
+        }
+        assertTrue(state.reward.hotHand);
+        state.receive("Late was slain by Local's Iron Sword","Local",7000000000L,20);state.receive("+5 raindrops | Kill","Local",7000000001L,20);
+        assertFalse(state.reward.hotHand);assertFalse(state.reward.mixedArsenal);
+        state.receive("NewBow was shot by Local from 20 blocks","Local",8000000000L,20);state.receive("+5 raindrops | Kill","Local",8000000001L,20);
+        assertTrue(state.reward.mixedArsenal);
+        state.receive("Local fell out of the world","Local",8500000000L,20);
+        state.receive("AfterDeath was shot by Local from 20 blocks","Local",9000000000L,20);state.receive("+5 raindrops | Kill","Local",9000000001L,20);
+        assertFalse(state.reward.hotHand);assertFalse(state.reward.mixedArsenal);
+        state.clear();state.receive("AfterClear was slain by Local's Iron Sword","Local",10000000000L,20);state.receive("+5 raindrops | Kill","Local",10000000001L,20);
+        assertFalse(state.reward.hotHand);assertFalse(state.reward.mixedArsenal);
+    }
+    @Test public void assistsExplosionsAndOtherPlayersDoNotCountAsBowKills(){
+        KillConfirmRules.State state=new KillConfirmRules.State();
+        String[] lines={"Target was slain by Local's Iron Sword","+5 raindrops | Kill","Other was shot by Another from 20 blocks","+3 raindrops | Kill Assist","Boom was blown up by Local's TNT","+5 raindrops | Kill"};
+        for(int i=0;i<lines.length;i++)state.receive(lines[i],"Local",1000000000L+i*100000000L,20);
+        assertFalse(state.reward.hotHand);assertFalse(state.reward.mixedArsenal);
+        KillConfirmRules.Reward reward=new KillConfirmRules.Reward(5,false);reward.hotHand=true;reward.mixedArsenal=true;reward.multi=3;
+        assertEquals(java.util.Arrays.asList("KILL","HOT HAND","MIXED ARSENAL","TRIPLE KILL"),reward.labels(3));
+        reward.shutdown=true;
+        assertEquals(java.util.Arrays.asList("KILL","SHUTDOWN","HOT HAND","MIXED ARSENAL"),reward.labels(3));
+        KillConfirmRules.Reward assist=new KillConfirmRules.Reward(3,true);assist.hotHand=true;assist.mixedArsenal=true;
+        assertEquals(java.util.Arrays.asList("KILL ASSIST"),assist.labels(3));
     }
     @Test public void demolitionRequiresAnExplosionCreditedToLocalAndSupportsEitherOrder(){
         for(boolean rewardFirst:new boolean[]{false,true}){
@@ -412,7 +493,7 @@ public class KillConfirmRulesTest {
         assertTrue(state.reward.labels(1).contains("AIRBORNE"));
         assertFalse(state.reward.labels(1).contains("JUMPSHOT"));
     }
-    @Test public void respawnShowsOnlyThePreviousLifesExpAndKills(){
+    @Test public void respawnShowsThePreviousLifesKillAndAssistExpSeparately(){
         KillConfirmRules.State state=new KillConfirmRules.State();
         state.receive("A was slain by Local's Iron Sword","Local",1,20);
         state.receive("+5 raindrops | Kill","Local",2,20);
@@ -423,15 +504,40 @@ public class KillConfirmRulesTest {
         state.died("Enemy"); // Death message and health tick can both report the same death.
         assertEquals(0,state.streakExp);assertEquals(0,state.lifeKills);assertNull(state.reward);
         state.respawn(1000000000L,true);
-        assertEquals(java.util.Arrays.asList("TOTAL EXP: 13","TOTAL KILLS: 2"),
+        assertEquals(java.util.Arrays.asList("EXP 13","KILLS EXP 10 (2 KILLS)","ASSISTS EXP 3 (1 ASSISTS)"),
             state.rows().stream().map(r->r.text).collect(java.util.stream.Collectors.toList()));
         assertEquals(0,KillConfirmRules.newestRow(state.rows(),1000000000L));
         assertEquals(1,KillConfirmRules.newestRow(state.rows(),1650000000L));
+        assertEquals(2,KillConfirmRules.newestRow(state.rows(),2300000000L));
         state.respawn(2000000000L,true);assertEquals(1000000000L,state.recapAt);
         state.receive("+5 raindrops | Kill","Local",3000000000L,20);
         assertEquals(0,state.recapAt);assertEquals(5,state.streakExp);
+        assertEquals(1,state.lifeKills);assertEquals(0,state.lifeAssists);assertEquals(5,state.lifeKillExp);assertEquals(0,state.lifeAssistExp);
         state.died(null);state.respawn(4000000000L,false);assertTrue(state.rows().isEmpty());
         state.clear();assertEquals(0,state.recapAt);assertFalse(state.awaitingRespawn);
+        assertEquals(0,state.recapKillExp);assertEquals(0,state.recapAssistExp);assertEquals(0,state.recapAssists);
+    }
+    @Test public void recapCountsRewardConfirmedKillsAndAssistsWithoutRequiringDeathMessagePairs(){
+        KillConfirmRules.State state=new KillConfirmRules.State();
+        state.receive("Unrewarded was slain by Local's Iron Sword","Local",1,20);
+        state.receive("+7 raindrops | Kill","Local",2,20);
+        state.receive("+4 raindrops | Kill Assist","Local",3,20);
+        state.receive("+2 raindrops | Kill Assist","Local",4,20);
+        state.died(null);state.respawn(1000000000L,true);
+        assertEquals(java.util.Arrays.asList("EXP 13","KILLS EXP 7 (1 KILLS)","ASSISTS EXP 6 (2 ASSISTS)"),
+            state.rows().stream().map(r->r.text).collect(java.util.stream.Collectors.toList()));
+        state.clear();state.died(null);state.respawn(2000000000L,true);
+        assertEquals(0,state.recapAt);assertTrue(state.rows().isEmpty());assertFalse(state.awaitingRespawn);
+        state.receive("+3 raindrops | Kill Assist","Local",3000000000L,20);
+        state.died(null);state.respawn(4000000000L,true);
+        assertEquals(java.util.Arrays.asList("EXP 3","ASSISTS EXP 3 (1 ASSISTS)"),
+            state.rows().stream().map(r->r.text).collect(java.util.stream.Collectors.toList()));
+        assertEquals(4000000000L+KillConfirmRules.ROW_NANOS,state.rows().get(1).start);
+        state.clear();state.receive("+5 raindrops | Kill","Local",5000000000L,20);
+        state.died(null);state.respawn(6000000000L,true);
+        assertEquals(java.util.Arrays.asList("EXP 5","KILLS EXP 5 (1 KILLS)"),
+            state.rows().stream().map(r->r.text).collect(java.util.stream.Collectors.toList()));
+        assertEquals(6000000000L+KillConfirmRules.ROW_NANOS,state.rows().get(1).start);
     }
     @Test public void thirdWhiteRowAppearsBelowPositionAWithoutMovingOlderRows(){
         java.util.List<KillConfirmRules.Row> rows=java.util.Arrays.asList(

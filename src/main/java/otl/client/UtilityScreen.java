@@ -3,13 +3,13 @@ package otl.client;
 import net.minecraft.client.gui.*;
 
 /** Editable off-server; all module gameplay remains scoped to approved servers. */
-final class UtilityScreen extends GuiScreen {
+public final class UtilityScreen extends GuiScreen {
     private final boolean chatSettings;
     private final GuiScreen parent;
     private int x,y,w,h,page,pageSize;
-    UtilityScreen(){this(false);}
-    UtilityScreen(boolean settings){this(settings,null);}
-    UtilityScreen(boolean settings,GuiScreen parent){chatSettings=settings;this.parent=parent;}
+    public UtilityScreen(){this(false);}
+    public UtilityScreen(boolean settings){this(settings,null);}
+    public UtilityScreen(boolean settings,GuiScreen parent){chatSettings=settings;this.parent=parent;}
     public boolean doesGuiPauseGame(){return false;}
     private void button(int id,int row,String label){buttonList.add(new NeutralButton(id,x+14,y+64+row*21,w-28,19,label,false));}
     private String state(boolean on){return on?"ON":"OFF";}
@@ -25,8 +25,8 @@ final class UtilityScreen extends GuiScreen {
                 button(7,0,"Team speech bubbles: "+state(UtilitySettings.bubbles));button(18,1,"Mode: "+(UtilitySettings.bubbleTeamAndChat?"Team & Team Chat":"Team Chat only"));button(8,2,"Text limit: "+UtilitySettings.bubbleCharacters+" characters");button(9,3,"Duration: "+UtilitySettings.bubbleSeconds+" seconds");
             }else{
                 button(13,0,"Chat background: "+(UtilitySettings.chatBackground==0?"transparent":UtilitySettings.chatBackground+"%"));
-                buttonList.add(new net.minecraftforge.fml.client.config.GuiSlider(16,x+14,y+85,w-28,19,"Tabs - not typing: ","%",0,100,UtilitySettings.tabBackgroundOpacity,false,true,s->UtilitySettings.tabBackgroundOpacity=s.getValueInt()));
-                buttonList.add(new net.minecraftforge.fml.client.config.GuiSlider(17,x+14,y+106,w-28,19,"Tabs - typing: ","%",0,100,UtilitySettings.typingTabBackgroundOpacity,false,true,s->UtilitySettings.typingTabBackgroundOpacity=s.getValueInt()));
+                buttonList.add(new PresetSlider(16,x+14,y+85,w-28,"Tabs - not typing: ","%",PresetSlider.PERCENT,UtilitySettings.tabBackgroundOpacity,25,s->UtilitySettings.tabBackgroundOpacity=s.getValueInt()));
+                buttonList.add(new PresetSlider(17,x+14,y+106,w-28,"Tabs - typing: ","%",PresetSlider.PERCENT,UtilitySettings.typingTabBackgroundOpacity,25,s->UtilitySettings.typingTabBackgroundOpacity=s.getValueInt()));
             }
             buttonList.add(new NeutralButton(2,x+14,y+h-27,106,19,"Reset chat options",false));
         }else{
@@ -43,10 +43,12 @@ final class UtilityScreen extends GuiScreen {
                 GuiButton next=new NeutralButton(61,x+68,y+h-27,48,19,">",false);next.enabled=(page+1)*pageSize<OtlModule.ALL.size();buttonList.add(next);
             }
         }
+        if(chatSettings)buttonList.add(new ModuleReset(90,x+w-27,y+6,"reliable_chat"));
         buttonList.add(new NeutralButton(3,x+w-94,y+h-27,80,19,chatSettings?"Back":"Done",false));
     }
     protected void actionPerformed(GuiButton b){
         if(!b.enabled)return;
+        if(b.id==90){((ModuleReset)b).reset();initGui();return;}
         if(chatSettings&&(b.id==16||b.id==17))return;
         if(b.id==3){mc.displayGuiScreen(parent!=null?parent:chatSettings?new UtilityScreen():null);return;}
         if(!chatSettings){
@@ -74,13 +76,13 @@ final class UtilityScreen extends GuiScreen {
         if(b.id==8){int n=UtilitySettings.bubbleCharacters+(isShiftKeyDown()?-20:20);UtilitySettings.bubbleCharacters=n>200?20:n<20?200:n;}
         if(b.id==9)UtilitySettings.bubbleSeconds=1+Math.floorMod(UtilitySettings.bubbleSeconds-1+(isShiftKeyDown()?-1:1),15);
         if(b.id==13){int n=UtilitySettings.chatBackground+(isShiftKeyDown()?-10:10);UtilitySettings.chatBackground=n>100?0:n<0?100:n;}
-        if(b.id==2){UtilitySettings.chat=true;UtilitySettings.counts=true;UtilitySettings.rememberDrafts=false;UtilitySettings.unlimitedHistory=false;UtilitySettings.cycleTabs=true;UtilitySettings.showTabChat=true;UtilitySettings.tabChatPosition=0;UtilitySettings.bubbles=false;UtilitySettings.bubbleTeamAndChat=false;UtilitySettings.bubbleCharacters=80;UtilitySettings.bubbleSeconds=4;UtilitySettings.chatBackground=0;UtilitySettings.tabBackgroundOpacity=100;UtilitySettings.typingTabBackgroundOpacity=100;}
+        if(b.id==2){UtilitySettings.chat=true;UtilitySettings.counts=true;UtilitySettings.rememberDrafts=false;UtilitySettings.unlimitedHistory=false;UtilitySettings.cycleTabs=true;UtilitySettings.showTabChat=true;UtilitySettings.tabChatPosition=0;UtilitySettings.bubbles=false;UtilitySettings.bubbleTeamAndChat=false;UtilitySettings.bubbleCharacters=80;UtilitySettings.bubbleSeconds=4;UtilitySettings.chatBackground=25;UtilitySettings.tabBackgroundOpacity=25;UtilitySettings.typingTabBackgroundOpacity=25;}
         UtilitySettings.save();ReliableChat.applyPreferences();initGui();
     }
     protected void mouseReleased(int mx,int my,int state){super.mouseReleased(mx,my,state);UtilitySettings.save();}
     public void onGuiClosed(){UtilitySettings.save();}
     public void drawScreen(int mx,int my,float partial){
-        drawDefaultBackground();drawRect(x-1,y-1,x+w+1,y+h+1,0xFF555555);drawRect(x,y,x+w,y+h,0xF0181818);
+        drawDefaultBackground();BedrockUi.panel(x,y,w,h);
          drawString(fontRendererObj,chatSettings?"Reliable Chat":"Over The Limit "+Otl.VERSION,x+14,y+12,0xFFEAEAEA);
         drawString(fontRendererObj,ServerScope.active()?ServerScope.current()+(ReliableChat.fullChat()?" | Full chat":" | All-only chat"):"Inactive here - settings remain editable",x+14,y+27,0xFFAAAAAA);
         if(chatSettings){

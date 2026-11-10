@@ -3,10 +3,10 @@ package otl.client;
 import net.minecraft.client.gui.*;
 
 /** Settings screen for the Map Preview module. */
-final class MapPreviewSettings extends GuiScreen {
+public final class MapPreviewSettings extends GuiScreen {
     private final GuiScreen parent;
     private int x,y,w,h;
-    MapPreviewSettings(GuiScreen parent){this.parent=parent;}
+    public MapPreviewSettings(GuiScreen parent){this.parent=parent;}
     public boolean doesGuiPauseGame(){return false;}
     public void initGui(){
         UtilitySettings.load();w=Math.min(350,width-24);h=Math.min(220,height-20);x=(width-w)/2;y=(height-h)/2;buttonList.clear();
@@ -15,9 +15,11 @@ final class MapPreviewSettings extends GuiScreen {
         buttonList.add(new NeutralButton(4,x+14,y+108,w-28,19,"Preview size: "+(UtilitySettings.largeMapPreview?"Large":"Small"),false));
         buttonList.add(new NeutralButton(1,x+14,y+130,w-28,19,"Open Map Gallery",false));
         buttonList.add(new NeutralButton(2,x+w-94,y+h-27,80,19,"Back",false));
+        buttonList.add(new ModuleReset(90,x+w-27,y+6,"map_preview"));
     }
     private String state(boolean on){return on?"ON":"OFF";}
     protected void actionPerformed(GuiButton b){
+        if(b.id==90){((ModuleReset)b).reset();initGui();return;}
         if(b.id==0){UtilitySettings.mapPreview=!UtilitySettings.mapPreview;UtilitySettings.save();initGui();return;}
         if(b.id==3){UtilitySettings.previewOnCommand=!UtilitySettings.previewOnCommand;UtilitySettings.save();initGui();return;}
         if(b.id==4){UtilitySettings.largeMapPreview=!UtilitySettings.largeMapPreview;UtilitySettings.save();initGui();return;}

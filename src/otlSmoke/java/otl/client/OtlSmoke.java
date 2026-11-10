@@ -22,7 +22,7 @@ public final class OtlSmoke {
     final boolean serverEnabled=Boolean.getBoolean("otl.smoke.server");
     final boolean serverOnly=Boolean.getBoolean("otl.smoke.serverOnly");
     final String scope=System.getProperty("otl.smoke.scope","all");
-    int scopeEnd=58;
+    int scopeEnd=63;
     long serverStarted;
     ResourceLocation allureTexture;
     boolean allureWasFavorite;
@@ -30,6 +30,9 @@ public final class OtlSmoke {
     ItemStack accuracyHeld;int accuracySlot,accuracyPerspective;HudLayout.Position accuracyPosition;
     final AccuracySounds accuracySounds=new AccuracySounds();
     volatile Throwable accuracyPacketFailure;
+    final Map<String,Object> minimapPreferences=new HashMap<>();
+    HudLayout.Position minimapPosition;double minimapX,minimapY,minimapZ;boolean minimapFlying;
+    long minimapStarted,minimapFrames;
     final List<String> packets=Collections.synchronizedList(new ArrayList<String>());
     @Mod.EventHandler public void init(FMLInitializationEvent e){FMLCommonHandler.instance().bus().register(this);}
     void require(boolean ok,String message){if(!ok)throw new AssertionError(message);}
@@ -87,11 +90,22 @@ public final class OtlSmoke {
             require(TeamBubbles.bubbles.containsKey(mc.thePlayer.getUniqueID()),"Own server-echoed team chat did not create bubble");
             mc.gameSettings.thirdPersonView=1;require(TeamBubbles.visible(mc.thePlayer),"Own bubble is not visible in third person");
             mc.gameSettings.thirdPersonView=0;require(!TeamBubbles.visible(mc.thePlayer),"Own bubble obscures first person");
+            line("Playing Jurassic Attack FFA by Tundren");
+            require(TeamBubbles.bubbles.isEmpty(),"FFA map change kept old team bubbles");
+            line("\u00a7eYou joined \u00a79Players\u00a7r!");
+            line("\u00a79<BubbleMate>: same-color FFA chat");line("(Players) BubbleMate: FFA team chat");
+            require(TeamBubbles.bubbles.isEmpty(),"FFA allowed same-color or explicit team bubbles");
+            line("<BubbleMate>: Playing Allure by MapMaker");
+            line("XML: OvercastCommunity/CommunityMaps ctw/allure");
+            line("(Players) BubbleMate: still FFA");
+            require(TeamBubbles.bubbles.isEmpty(),"Player quote or map lookup changed active bubble mode");
+            line("Playing Allure by MapMaker");line("(Blue) BubbleMate: team mode restored");
+            require(TeamBubbles.bubbles.containsKey(mate.getUniqueID()),"Team map did not re-enable bubbles after FFA");
             line("Overcast Community\nview our /servers or click the beacon");
             TeamBubbles.INSTANCE.tick(new TickEvent.ClientTickEvent(TickEvent.Phase.END));
             line("(Any Team) BubbleMate: hub hello");require(TeamBubbles.bubbles.isEmpty(),"Hub displayed speech bubbles");
             line("Created by MapMaker");
-            System.out.println("OTL_SMOKE: explicit team-chat bubbles, own messages, hub exclusion and animated three-message stacks PASS");
+            System.out.println("OTL_SMOKE: team-chat bubbles, FFA exclusion, team-map recovery, own messages, hub exclusion and animated three-message stacks PASS");
         }finally{
             mc.theWorld.removeEntityFromWorld(-9101);mc.theWorld.removeEntityFromWorld(-9102);
             UtilitySettings.bubbles=enabled;UtilitySettings.bubbleTeamAndChat=mode;mc.gameSettings.thirdPersonView=perspective;TeamBubbles.clearBubbles();
@@ -108,8 +122,9 @@ public final class OtlSmoke {
         }
     }
     static final class AccuracySounds {
-        boolean replaced;int markerColor;
+        boolean replaced;int markerColor,killSounds;
         @SubscribeEvent(priority=EventPriority.LOWEST) public void sound(net.minecraftforge.client.event.sound.PlaySoundEvent event){
+            if(event.name.equals("note.pling")&&event.result!=null)killSounds++;
             if(event.name.equals("random.successful_hit")){
                 replaced=event.result!=null&&event.result.getSoundLocation().equals(new ResourceLocation("random.click"));
                 markerColor=BowAccuracy.INSTANCE.feedback.color(System.nanoTime());
@@ -125,21 +140,33 @@ public final class OtlSmoke {
         });
     }
     void prepareAccuracy(Minecraft mc)throws Exception{
-        for(String name:new String[]{"bowOptimizer","bowOptimization","bowAccuracy","bowAccuracyPrefix","bowHitSound","bowHitMarker","bowAccuracyOpacity","bowAccuracyDecimals","bowAccuracySize","bowHitMarkerSize","killFeed","killFeedSlide"})
+        for(String name:new String[]{"bowOptimizer","bowOptimization","bowAccuracy","bowAccuracyPrefix","bowAccuracyMode","bowAccuracyAnimate","bowAccuracyFadeIn","bowAccuracyFadeOut","bowHitSound","bowKillSound","bowHitMarker","bowAccuracyOpacity","bowAccuracyDecimals","bowAccuracySize","bowHitMarkerSize","killFeed","killFeedSlide"})
             accuracyPreferences.put(name,UtilitySettings.class.getDeclaredField(name).get(null));
         accuracySlot=mc.thePlayer.inventory.currentItem;accuracyHeld=mc.thePlayer.getHeldItem();accuracyPerspective=mc.gameSettings.thirdPersonView;
         accuracyPosition=UtilitySettings.hudPositions.get(HudLayout.BOW);
         UtilitySettings.bowOptimizer=true;UtilitySettings.bowOptimization=true;UtilitySettings.bowAccuracy=true;
         UtilitySettings.bowHitSound=false;UtilitySettings.bowHitMarker=false;UtilitySettings.bowAccuracyDecimals=2;
-        UtilitySettings.bowAccuracyPrefix=true;
+        UtilitySettings.bowKillSound=false;UtilitySettings.bowAccuracyPrefix=true;
+        UtilitySettings.bowAccuracyMode=BowAccuracy.Mode.ALWAYS;UtilitySettings.bowAccuracyAnimate=true;
+        UtilitySettings.bowAccuracyFadeIn=0;UtilitySettings.bowAccuracyFadeOut=50;
         UtilitySettings.killFeed=true;UtilitySettings.killFeedSlide=true;
         BowOptimizerSettings options=new BowOptimizerSettings(null);mc.displayGuiScreen(options);
         require(find(options,"Bow Hit Sound: OFF")!=null&&find(options,"Hit Marker: OFF")!=null,"Optional bow feedback did not default OFF");
+        options.actionPerformed(find(options,"Bow-Kill Sound: OFF"));require(UtilitySettings.bowKillSound,"Bow kill sound toggle did not enable");
         options.actionPerformed(find(options,"Optimization: ON"));require(!BowOptimizer.active(),"Inner optimizer toggle did not disable optimization");
         options.actionPerformed(find(options,"Bow Hit Sound: OFF"));options.actionPerformed(find(options,"Hit Marker: OFF"));
         net.minecraftforge.fml.client.config.GuiSlider marker=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==10).findFirst().get();
         marker.setValue(150);marker.updateSlider();
         options.actionPerformed(find(options,"Bow Accuracy"));
+        require(find(options,"Mode: Always")!=null&&find(options,"Animate Percentage: ON")!=null,"Accuracy presentation defaults missing");
+        options.actionPerformed(find(options,"Mode: Always"));options.actionPerformed(find(options,"Animate Percentage: ON"));
+        require(find(options,"Mode: On Hit")!=null&&find(options,"Animate Percentage: OFF")!=null,"Accuracy presentation controls did not toggle");
+        options.actionPerformed(find(options,"Mode: On Hit"));require(find(options,"Mode: Holding Bow")!=null,"Holding Bow mode missing");
+        options.actionPerformed(find(options,"Mode: Holding Bow"));require(find(options,"Mode: On Shoot")!=null,"On Shoot mode missing");
+        options.actionPerformed(find(options,"Mode: On Shoot"));require(find(options,"Mode: Always")!=null,"Mode cycle did not return to Always");
+        options.actionPerformed(find(options,"Mode: Always"));options.actionPerformed(find(options,"Mode: On Hit"));
+        options.drawScreen(0,0,0);
+        ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-bow-accuracy-settings.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
         int prefixedWidth=BowAccuracy.bounds().w;
         options.actionPerformed(find(options,"Prefix: ON"));
         require(!UtilitySettings.bowAccuracyPrefix&&BowAccuracy.bounds().w<prefixedWidth,"Prefix toggle did not hide the label and shrink HUD bounds");
@@ -150,12 +177,23 @@ public final class OtlSmoke {
         opacity.setValue(65);opacity.updateSlider();
         net.minecraftforge.fml.client.config.GuiSlider size=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==5).findFirst().get();
         size.setValue(125);size.updateSlider();
+        net.minecraftforge.fml.client.config.GuiSlider fadeIn=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==15).findFirst().get();
+        net.minecraftforge.fml.client.config.GuiSlider fadeOut=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==16).findFirst().get();
+        require(fadeIn.getValueInt()==0&&fadeOut.getValueInt()==50,"Bow fade slider defaults changed");
+        fadeIn.setValue(75);fadeIn.updateSlider();fadeOut.setValue(25);fadeOut.updateSlider();
         UtilitySettings.hudPositions.put(HudLayout.BOW,new HudLayout.Position(.75,.25));UtilitySettings.save();
         UtilitySettings.bowAccuracyDecimals=0;UtilitySettings.bowAccuracyOpacity=0;UtilitySettings.bowHitMarkerSize=50;UtilitySettings.bowAccuracyPrefix=true;
+        UtilitySettings.bowAccuracyMode=BowAccuracy.Mode.ALWAYS;UtilitySettings.bowAccuracyAnimate=true;UtilitySettings.bowKillSound=false;
+        UtilitySettings.bowAccuracyFadeIn=0;UtilitySettings.bowAccuracyFadeOut=0;
         ReflectionHelper.setPrivateValue(UtilitySettings.class,null,false,"loaded");UtilitySettings.load();
         require(!UtilitySettings.bowOptimization&&UtilitySettings.bowAccuracy&&UtilitySettings.bowHitSound&&UtilitySettings.bowHitMarker
             &&!UtilitySettings.bowAccuracyPrefix&&UtilitySettings.bowAccuracyDecimals==2&&UtilitySettings.bowAccuracyOpacity==65&&UtilitySettings.bowAccuracySize==125&&UtilitySettings.bowHitMarkerSize==150,"Bow feature settings did not persist independently");
+        require(UtilitySettings.bowAccuracyMode==BowAccuracy.Mode.HOLDING_BOW&&!UtilitySettings.bowAccuracyAnimate&&UtilitySettings.bowKillSound,"Accuracy mode/animation/kill sound did not persist");
+        require(UtilitySettings.bowAccuracyFadeIn==75&&UtilitySettings.bowAccuracyFadeOut==25,"Bow fade sliders did not persist");
+        UtilitySettings.bowAccuracyFadeIn=0;UtilitySettings.bowAccuracyFadeOut=50;
+        UtilitySettings.bowAccuracyAnimate=true;UtilitySettings.bowAccuracyMode=BowAccuracy.Mode.ON_HIT;
         BowAccuracy.INSTANCE.tick(new TickEvent.ClientTickEvent(TickEvent.Phase.END));BowAccuracy.INSTANCE.reset();
+        require(BowAccuracy.INSTANCE.display.alpha(System.nanoTime(),BowAccuracy.Mode.ON_HIT)==0,"On Hit HUD visible before a hit");
         mc.thePlayer.inventory.mainInventory[accuracySlot]=new ItemStack(net.minecraft.init.Items.bow);
         ItemStack bow=mc.thePlayer.getHeldItem();
         for(int i=0;i<3;i++)bow.getItem().onPlayerStoppedUsing(bow,mc.theWorld,mc.thePlayer,bow.getMaxItemUseDuration()-20);
@@ -169,6 +207,7 @@ public final class OtlSmoke {
         require(accuracyPacketFailure==null,"Accuracy observer threw: "+accuracyPacketFailure);
         require(BowAccuracy.INSTANCE.stats.hits==1&&BowAccuracy.INSTANCE.stats.percentage(2).equals("33.33%"),"Server arrow-hit confirmation did not update live accuracy");
         require(accuracySounds.replaced&&accuracySounds.markerColor==0xFFFFFFFF,"Native hit packet did not forward to sound replacement/white marker");
+        require(BowAccuracy.INSTANCE.display.alpha(System.nanoTime(),BowAccuracy.Mode.ON_HIT)>0,"Confirmed hit did not reveal On Hit HUD");
         HudEditor editor=new HudEditor();mc.displayGuiScreen(editor);
         HudLayout.Rect box=BowAccuracy.bounds();require(HudEditor.bounds(HudLayout.BOW).x==box.x,"Accuracy HUD does not share movable bounds");
         editor.drawScreen(0,0,0);ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-bow-accuracy-hud.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
@@ -176,6 +215,26 @@ public final class OtlSmoke {
         line("BowTarget was shot by "+mc.thePlayer.getName()+" from 20 blocks");
         require(BowAccuracy.INSTANCE.feedback.color(System.nanoTime())==0xFFFF5555,"Confirmed bow kill did not turn hit marker red");
         require(BowAccuracy.INSTANCE.stats.hits==1,"Kill confirmation counted a second accuracy hit");
+        require(accuracySounds.killSounds==1,"Confirmed bow kill did not play its separate sound");
+        UtilitySettings.bowKillSound=false;line("QuietTarget was shot by "+mc.thePlayer.getName()+" from 20 blocks");
+        require(accuracySounds.killSounds==1,"Disabled bow kill sound still played");
+        UtilitySettings.bowKillSound=true;UtilitySettings.bowAccuracy=false;UtilitySettings.bowHitMarker=false;UtilitySettings.bowHitSound=false;
+        require(BowAccuracy.observing(),"Kill sound alone did not keep bow feedback active");
+        line("SoundTarget was shot by "+mc.thePlayer.getName()+" from 20 blocks");
+        line("SwordTarget was slain by "+mc.thePlayer.getName()+"'s Iron Sword");
+        line("OtherTarget was shot by AnotherArcher from 20 blocks");
+        line("<AnotherArcher>: QuotedTarget was shot by "+mc.thePlayer.getName()+" from 20 blocks");
+        require(accuracySounds.killSounds==2,"Bow kill sound failed independence or played for non-bow/non-local kills");
+        UtilitySettings.bowAccuracy=true;UtilitySettings.bowHitMarker=true;UtilitySettings.bowHitSound=true;
+        UtilitySettings.bowAccuracyMode=BowAccuracy.Mode.HOLDING_BOW;
+        BowAccuracy.INSTANCE.tick(new TickEvent.ClientTickEvent(TickEvent.Phase.END));
+        require(BowAccuracy.INSTANCE.display.alpha(System.nanoTime(),BowAccuracy.Mode.HOLDING_BOW)==1,"Held bow did not reveal accuracy");
+        ItemStack held=mc.thePlayer.getHeldItem();mc.thePlayer.inventory.mainInventory[accuracySlot]=null;
+        BowAccuracy.INSTANCE.tick(new TickEvent.ClientTickEvent(TickEvent.Phase.END));
+        require(BowAccuracy.INSTANCE.display.alpha(System.nanoTime(),BowAccuracy.Mode.HOLDING_BOW)>0,"Switching items skipped the bow HUD grace period");
+        mc.thePlayer.inventory.mainInventory[accuracySlot]=held;
+        BowAccuracy.INSTANCE.overlay(new net.minecraftforge.client.event.RenderGameOverlayEvent.Post(new net.minecraftforge.client.event.RenderGameOverlayEvent(0,new ScaledResolution(mc)),net.minecraftforge.client.event.RenderGameOverlayEvent.ElementType.CHAT));
+        BowAccuracy.INSTANCE.display.hit(System.nanoTime()-2250000000L);
         BowAccuracy.INSTANCE.overlay(new net.minecraftforge.client.event.RenderGameOverlayEvent.Post(new net.minecraftforge.client.event.RenderGameOverlayEvent(0,new ScaledResolution(mc)),net.minecraftforge.client.event.RenderGameOverlayEvent.ElementType.CHAT));
         require(org.lwjgl.opengl.GL11.glGetError()==0,"Bow accuracy/hit marker rendering left a GL error");
         accuracyPacket(mc,new net.minecraft.network.play.server.S45PacketTitle(net.minecraft.network.play.server.S45PacketTitle.Type.TITLE,new ChatComponentText("Game over!")));
@@ -184,6 +243,7 @@ public final class OtlSmoke {
         try{
             require(accuracyPacketFailure==null,"Accuracy observer threw: "+accuracyPacketFailure);
             require(BowAccuracy.INSTANCE.stats.shots==0&&BowAccuracy.INSTANCE.stats.hits==0&&BowAccuracy.INSTANCE.stats.ended,"Game-over title did not reset accuracy");
+            require(BowAccuracy.INSTANCE.display.alpha(System.nanoTime(),BowAccuracy.Mode.ON_HIT)==0,"Match end left On Hit HUD visible");
             BowAccuracy.INSTANCE.connect(new net.minecraftforge.fml.common.network.FMLNetworkEvent.ClientConnectedToServerEvent(mc.getNetHandler().getNetworkManager(),"FML"));
             BowAccuracy.INSTANCE.tick(new TickEvent.ClientTickEvent(TickEvent.Phase.END));
             require(!BowAccuracy.INSTANCE.stats.ended&&BowAccuracy.INSTANCE.stats.shots==0,"Rejoin did not start a fresh accuracy session");
@@ -191,13 +251,72 @@ public final class OtlSmoke {
             require(BowAccuracy.INSTANCE.stats.shots==0,"World/map unload did not clear accuracy");
             UtilitySettings.bowOptimizer=false;BowAccuracy.INSTANCE.tick(new TickEvent.ClientTickEvent(TickEvent.Phase.END));
             require(mc.getNetHandler().getNetworkManager().channel().pipeline().get("otl_bow_accuracy")==null,"OFF left accuracy packet observer installed");
-            System.out.println("OTL_SMOKE: bow sub-toggles, live 33.33% accuracy, hit packet forwarding, white/red marker, size/opacity/decimals persistence and match/rejoin resets PASS");
+            System.out.println("OTL_SMOKE: bow sub-toggles, live 33.33% accuracy, hit packet forwarding, independent bow-kill sound, Holding Bow grace, On Hit fade, animated percentage controls/persistence, white/red marker and match/rejoin resets PASS");
         }finally{
             MinecraftForge.EVENT_BUS.unregister(accuracySounds);
             for(Map.Entry<String,Object> preference:accuracyPreferences.entrySet())UtilitySettings.class.getDeclaredField(preference.getKey()).set(null,preference.getValue());
             if(accuracyPosition==null)UtilitySettings.hudPositions.remove(HudLayout.BOW);else UtilitySettings.hudPositions.put(HudLayout.BOW,accuracyPosition);
             mc.thePlayer.inventory.mainInventory[accuracySlot]=accuracyHeld;mc.gameSettings.thirdPersonView=accuracyPerspective;
             BowAccuracy.INSTANCE.reset();BowAccuracy.INSTANCE.tick(new TickEvent.ClientTickEvent(TickEvent.Phase.END));UtilitySettings.save();
+        }
+    }
+    void prepareMinimap(Minecraft mc)throws Exception{
+        for(String name:new String[]{"minimap","minimapSize","minimapOpacity","minimapLargeOpacity","minimapBorder"})minimapPreferences.put(name,UtilitySettings.class.getDeclaredField(name).get(null));
+        minimapPosition=UtilitySettings.hudPositions.get(HudLayout.MINIMAP);
+        minimapX=mc.thePlayer.posX;minimapY=mc.thePlayer.posY;minimapZ=mc.thePlayer.posZ;minimapFlying=mc.thePlayer.capabilities.isFlying;
+        UtilitySettings.minimap=false;line("            Allure            ");line(" Capture the enemy's wool!");line(" Created by jcane");
+        MinimapSettings options=new MinimapSettings(null);mc.displayGuiScreen(options);
+        options.actionPerformed(find(options,"Minimap: OFF"));
+        net.minecraftforge.fml.client.config.GuiSlider size=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==1).findFirst().get();
+        net.minecraftforge.fml.client.config.GuiSlider opacity=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==2).findFirst().get();
+        size.setValue(120);size.updateSlider();opacity.setValue(65);opacity.updateSlider();
+        options.actionPerformed(find(options,"Display"));
+        int plain=Minimap.bounds().w;
+        require(!UtilitySettings.minimapBorder,"Minimap border is enabled by default");
+        options.actionPerformed(find(options,"Border: OFF"));
+        require(UtilitySettings.minimapBorder&&Minimap.bounds().w==plain+4,"Minimap border did not add its 2px bevel");
+        options.actionPerformed(find(options,"Border: ON"));
+        require(!UtilitySettings.minimapBorder&&Minimap.bounds().w==plain,"Minimap border did not drop its padding");
+        require(Minimap.nextView(0)==1&&Minimap.nextView(1)==2&&Minimap.nextView(2)==0,"M key does not cycle small/large/hidden");
+        UtilitySettings.hudPositions.put(HudLayout.MINIMAP,new HudLayout.Position(0,0));UtilitySettings.save();
+        UtilitySettings.minimap=false;UtilitySettings.minimapSize=50;UtilitySettings.minimapOpacity=0;
+        ReflectionHelper.setPrivateValue(UtilitySettings.class,null,false,"loaded");UtilitySettings.load();
+        require(UtilitySettings.minimap&&UtilitySettings.minimapSize==120&&UtilitySettings.minimapOpacity==65,"Minimap preferences did not persist");
+        mc.displayGuiScreen(null);mc.thePlayer.capabilities.isFlying=true;
+        mc.thePlayer.setPosition(-52.5,16,41.5);mc.thePlayer.lastTickPosX=-52.5;mc.thePlayer.lastTickPosY=16;mc.thePlayer.lastTickPosZ=41.5;
+        Minimap.INSTANCE.tick(new TickEvent.ClientTickEvent(TickEvent.Phase.END));
+        minimapStarted=System.nanoTime();
+    }
+    boolean checkMinimap(Minecraft mc){
+        Object model=ReflectionHelper.getPrivateValue(Minimap.class,Minimap.INSTANCE,"model");
+        long frames=ReflectionHelper.getPrivateValue(Minimap.class,Minimap.INSTANCE,"renderedFrames");
+        if(model==null||frames==0){require(System.nanoTime()-minimapStarted<15000000000L,"Minimap did not load/render Allure: "+ReflectionHelper.getPrivateValue(Minimap.class,Minimap.INSTANCE,"status"));return false;}
+        require(Minimap.bounds().w==Minimap.bounds().h,"Minimap background is not square");
+        require(HudEditor.bounds(HudLayout.MINIMAP).w==Minimap.bounds().w,"Editor minimap bounds differ from gameplay");
+        require(org.lwjgl.opengl.GL11.glGetError()==0,"Minimap left an OpenGL error");
+        line("<Alex>: Playing Another Map by Somebody");line("XML: OvercastCommunity/CommunityMaps ctw/another_map [View]");
+        require("Allure".equals(ReflectionHelper.getPrivateValue(Minimap.class,Minimap.INSTANCE,"query")),"Player quote or map lookup replaced the current minimap");
+        ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-isometric-minimap.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+        minimapFrames=frames;mc.thePlayer.setPosition(mc.thePlayer.posX+8,mc.thePlayer.posY,mc.thePlayer.posZ);
+        UtilitySettings.minimapSize=150;
+        return true;
+    }
+    void finishMinimap(Minecraft mc)throws Exception{
+        try{
+            long frames=ReflectionHelper.getPrivateValue(Minimap.class,Minimap.INSTANCE,"renderedFrames");
+            require(frames>minimapFrames&&Minimap.bounds().w==Minimap.bounds().h,"Moving/resizing stopped the square minimap renderer");
+            require(MinimapModel.PIXELS_PER_BLOCK==2,"Viewport resizing changed map scale");
+            ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-isometric-minimap-moved.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+            boolean scissor=org.lwjgl.opengl.GL11.glIsEnabled(org.lwjgl.opengl.GL11.GL_SCISSOR_TEST);
+            Minimap.drawPreview();require(org.lwjgl.opengl.GL11.glIsEnabled(org.lwjgl.opengl.GL11.GL_SCISSOR_TEST)==scissor,"Minimap changed scissor enable state");
+            require(org.lwjgl.opengl.GL11.glGetError()==0,"Minimap preview left an OpenGL error");
+            UtilitySettings.minimap=false;Minimap.INSTANCE.tick(new TickEvent.ClientTickEvent(TickEvent.Phase.END));
+            require(!Minimap.INSTANCE.renderer.loaded(),"Disabling minimap did not release its GPU model");
+            System.out.println("OTL_SMOKE: real Allure mesh, isometric player-centered pan, square viewport, fixed map scale, HUD bounds, persistence and GPU cleanup PASS");
+        }finally{
+            for(Map.Entry<String,Object> preference:minimapPreferences.entrySet())UtilitySettings.class.getDeclaredField(preference.getKey()).set(null,preference.getValue());
+            if(minimapPosition==null)UtilitySettings.hudPositions.remove(HudLayout.MINIMAP);else UtilitySettings.hudPositions.put(HudLayout.MINIMAP,minimapPosition);
+            mc.thePlayer.setPosition(minimapX,minimapY,minimapZ);mc.thePlayer.capabilities.isFlying=minimapFlying;UtilitySettings.save();
         }
     }
     void checkBow(Minecraft mc){
@@ -259,13 +378,14 @@ public final class OtlSmoke {
             case "menu":state=6;scopeEnd=6;mc.displayGuiScreen(new UtilityScreen());return;
             case "maps":state=7;scopeEnd=23;sniffPackets(mc);return;
             case "hand":state=24;scopeEnd=30;return;
-            case "bubbles":state=31;scopeEnd=32;UtilitySettings.mainHandLeft=false;UtilitySettings.handType=LeftHand.Type.ALL;mc.displayGuiScreen(new PreferedHandSettings(new UtilityScreen()));return;
+            case "bubbles":state=31;scopeEnd=32;UtilitySettings.nonPlayerChat=false;UtilitySettings.mainHandLeft=false;UtilitySettings.handType=LeftHand.Type.ALL;mc.displayGuiScreen(new PreferedHandSettings(new UtilityScreen()));return;
             case "killfeed":state=33;scopeEnd=42;ReliableChat.session();return;
             case "notices":state=43;scopeEnd=44;mc.displayGuiScreen(new HudEditor());ReliableChat.session();return;
             case "killconfirm":state=45;scopeEnd=51;UtilitySettings.killConfirm=false;mc.displayGuiScreen(new HudEditor());ReliableChat.session();return;
             case "tabs":state=52;scopeEnd=54;prepareTabs(mc);return;
             case "bow":state=55;scopeEnd=58;return;
             case "accuracy":state=56;scopeEnd=58;return;
+            case "minimap":state=59;scopeEnd=63;return;
             default:throw new IllegalArgumentException("Unknown smoke scope: "+scope);
         }
     }
@@ -704,6 +824,7 @@ public final class OtlSmoke {
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-hand-preferred-right.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
                 mc.displayGuiScreen(new PreferedHandSettings(new UtilityScreen()));
             }else if(state==31){
+                if(scope.equals("bubbles"))checkBubbles();
                 require(find(mc.currentScreen,"Main Hand: Right")!=null&&find(mc.currentScreen,"Type: ALL")!=null,"Preferred hand settings screen did not show Right/ALL");
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-preferred-hand-settings.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
                 UtilitySettings.leftHand=false;
@@ -783,8 +904,20 @@ public final class OtlSmoke {
                  require(UtilitySettings.killFeedSize==125&&UtilitySettings.killBackgroundOpacity==25&&UtilitySettings.killBorderOpacity==60&&UtilitySettings.killFeedSlide&&UtilitySettings.killBorderColor==0x123456&&UtilitySettings.deathBorderColor==0x654321&&UtilitySettings.assistBorderColor==0xFEDCBA&&UtilitySettings.killFeedHeads==KillFeedRules.HeadMode.ONLY_ME&&UtilitySettings.killFeedFilter==KillFeedRules.FilterMode.ALL,"Kill Feed appearance did not persist");
                 killColor.setText("INVALID");options.onGuiClosed();require(UtilitySettings.killBorderColor==0x123456,"Invalid hex color replaced saved color");
                 options.actionPerformed(find(options,"Reset colors"));options.actionPerformed(find(options,"Appearance"));
-                options.actionPerformed(find(options,"Reset size"));options.actionPerformed(find(options,"Reset"));options.actionPerformed(find(options,"Reset line"));
-                require(UtilitySettings.killFeedSize==75&&UtilitySettings.killBackgroundOpacity==100&&UtilitySettings.killBorderOpacity==100&&UtilitySettings.killBorderColor==0xFFBD45&&UtilitySettings.deathBorderColor==0xFF5555&&UtilitySettings.assistBorderColor==0x55FFFF,"Appearance resets failed");
+                net.minecraftforge.fml.client.config.GuiSlider sizeReset=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==4).findFirst().get();
+                net.minecraftforge.fml.client.config.GuiSlider opacityReset=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==5).findFirst().get();
+                net.minecraftforge.fml.client.config.GuiSlider outlineReset=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==16).findFirst().get();
+                sizeReset.mousePressed(mc,sizeReset.xPosition+sizeReset.width-5,sizeReset.yPosition+8);
+                opacityReset.mousePressed(mc,opacityReset.xPosition+opacityReset.width-5,opacityReset.yPosition+8);
+                outlineReset.mousePressed(mc,outlineReset.xPosition+outlineReset.width-5,outlineReset.yPosition+8);
+                require(UtilitySettings.killFeedSize==75&&UtilitySettings.killBackgroundOpacity==25&&UtilitySettings.killBorderOpacity==100&&UtilitySettings.killBorderColor==0xFFBD45&&UtilitySettings.deathBorderColor==0xFF5555&&UtilitySettings.assistBorderColor==0x55FFFF,"Appearance resets failed");
+                options.actionPerformed(find(options,"Appearance"));
+                net.minecraftforge.fml.client.config.GuiSlider sizeSnap=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==4).findFirst().get();
+                int snapTrack=sizeSnap.width-22,snapX=sizeSnap.xPosition+4+(int)(snapTrack*0.7D);
+                sizeSnap.mousePressed(mc,snapX,sizeSnap.yPosition+8);sizeSnap.mouseReleased(snapX,sizeSnap.yPosition+8);
+                require(UtilitySettings.killFeedSize==125,"Preset slider did not snap to a preset");
+                sizeSnap.mousePressed(mc,sizeSnap.xPosition+sizeSnap.width-5,sizeSnap.yPosition+8);
+                require(UtilitySettings.killFeedSize==75,"Preset slider reset glyph failed");
                 options.actionPerformed(find(options,"General"));options.actionPerformed(find(options,"Slide animation: ON"));options.actionPerformed(find(options,"Colors"));
                 options.actionPerformed(buttons(options).stream().filter(b->b.id==19).findFirst().get());require(mc.currentScreen instanceof ColorSwatches,"Color swatches did not open");
                 ((ColorSwatches)mc.currentScreen).actionPerformed(buttons(mc.currentScreen).get(4));
@@ -851,10 +984,34 @@ public final class OtlSmoke {
                 editor.mouseClicked(frame.x+frame.w-8,toolY,0);require(UtilitySettings.killFeed,"HUD re-enable failed");
                 editor.mouseClicked(frame.x+6,toolY,0);require(mc.currentScreen instanceof KillFeedSettings,"HUD gear did not open widget settings");
                 ((KillFeedSettings)mc.currentScreen).actionPerformed(find(mc.currentScreen,"Back"));require(mc.currentScreen==editor,"Widget settings did not return to editor");
-                editor.actionPerformed(find(editor,"Mods"));require(mc.currentScreen instanceof UtilityScreen,"Mods button did not open modules");
-                ((UtilityScreen)mc.currentScreen).actionPerformed(find(mc.currentScreen,"Done"));require(mc.currentScreen==editor,"Modules did not return to editor");
+                editor.actionPerformed(find(editor,"Mods"));require(mc.currentScreen instanceof ModulesScreen,"Mods button did not open modules");
+                ModulesScreen modules=(ModulesScreen)mc.currentScreen;
+                String home=UtilitySettings.profile;UtilitySettings.minimapBorder=true;
+                String created=UtilitySettings.newProfile();
+                require(created!=null&&created.equals(UtilitySettings.profile),"New profile was not activated");
+                require(!UtilitySettings.minimapBorder,"New profile did not start from defaults");
+                String json=UtilitySettings.profileExport(created);
+                require(json!=null&&json.contains("\"profile\""),"Profile export was empty");
+                String renamed=UtilitySettings.renameProfile(created,"Shared test");
+                require("Shared test".equals(renamed)&&"Shared test".equals(UtilitySettings.profile),"Profile rename did not stick");
+                String second=UtilitySettings.newProfile();
+                String numbered=UtilitySettings.renameProfile(second,"Shared test");
+                require(numbered.startsWith("Shared test ")&&!numbered.equals("Shared test"),"Duplicate profile name was not numbered");
+                UtilitySettings.switchProfile(home);require(home.equals(UtilitySettings.profile),"Profile switch did not return");
+                UtilitySettings.minimapBorder=false;UtilitySettings.save();
+                require(UtilitySettings.deleteProfile(renamed)&&UtilitySettings.deleteProfile(numbered),"Could not delete temporary profiles");
+                String imported=UtilitySettings.importProfile(json);
+                require(imported!=null&&imported.equals(UtilitySettings.profile),"Profile import did not activate a new profile");
+                UtilitySettings.switchProfile(home);require(UtilitySettings.deleteProfile(imported),"Could not delete an imported profile");
+                OtlModule minimapModule=OtlModule.ALL.stream().filter(m->m.id.equals("minimap")).findFirst().get();
+                UtilitySettings.minimap=true;UtilitySettings.minimapSize=125;UtilitySettings.minimapOpacity=75;
+                minimapModule.reset();
+                require(UtilitySettings.minimapSize==100&&UtilitySettings.minimapOpacity==25&&!UtilitySettings.minimap,"Card reset did not restore module defaults");
+                modules.initGui();modules.actionPerformed(find(modules,"DONE"));require(mc.currentScreen==editor,"Modules did not return to editor");
+                mc.displayGuiScreen(new ModulesScreen(editor));
             }else if(state==38){
-                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-hud-editor.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+                require(mc.currentScreen instanceof ModulesScreen,"Modules menu missing for the layout screenshot");
+                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-modules-bedrock.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
                 UtilitySettings.hudPositions.clear();UtilitySettings.killFeedRows=5;UtilitySettings.killFeedSeconds=10;UtilitySettings.save();
                 KillFeed.history.clear();mc.displayGuiScreen(null);String own="\u00a7c"+mc.thePlayer.getName()+"\u00a7r";
                 line(own+" fell out of the world");line(own+" hit the ground too hard");line(own+" fell into lava");line(own+" went up in flames");
@@ -888,7 +1045,9 @@ public final class OtlSmoke {
                 net.minecraftforge.fml.client.config.GuiSlider opacity=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==2).findFirst().get();opacity.setValue(55);opacity.updateSlider();options.onGuiClosed();
                 UtilitySettings.noticeMode=ServerNoticeRules.Mode.ALL;UtilitySettings.noticeOpacity=0;UtilitySettings.noticeSize=100;ReflectionHelper.setPrivateValue(UtilitySettings.class,null,false,"loaded");UtilitySettings.load();
                 require(UtilitySettings.noticeMode==ServerNoticeRules.Mode.EXCEPT_JOINS_LEAVES&&UtilitySettings.noticeOpacity==55&&UtilitySettings.noticeSize==125,"Notice settings did not persist");
-                options.actionPerformed(find(options,"Reset size"));require(UtilitySettings.noticeSize==100&&ServerNotices.bounds().w==normalNoticeWidth,"Notice size reset failed");
+                require(buttons(options).stream().noneMatch(b->b.enabled&&b.id==0),"Unavailable notice module still toggles");
+                UtilitySettings.restore("notice_size");UtilitySettings.save();
+                require(UtilitySettings.noticeSize==100&&ServerNotices.bounds().w==normalNoticeWidth,"Notice size reset failed");
                 UtilitySettings.nonPlayerChat=false;UtilitySettings.noticeMode=ServerNoticeRules.Mode.ALL;UtilitySettings.noticeOpacity=0;ReliableChat.session().select("all");
                 ChatComponentText original=new ChatComponentText("Full original wrapped message "+String.join(" ",Collections.nCopies(50,"preserved")));
                 original.getChatStyle().setChatClickEvent(new net.minecraft.event.ClickEvent(net.minecraft.event.ClickEvent.Action.SUGGEST_COMMAND,"/msg Alex "));
@@ -917,18 +1076,19 @@ public final class OtlSmoke {
                 confirm.setEnabled(true);require(confirm.settings(mc.currentScreen) instanceof KillConfirmSettings,"Kill Confirm module settings missing");
                 UtilitySettings.hideKillConfirmChat=false;KillConfirmSettings confirmOptions=new KillConfirmSettings(mc.currentScreen);mc.displayGuiScreen(confirmOptions);
                 require(!UtilitySettings.killConfirmSounds,"Kill/assist sounds should default OFF");
-                require(!UtilitySettings.totalExpKills,"Total EXP & Kills should default OFF");
+                require(!UtilitySettings.totalExpKills,"Life recap should default OFF");
                 require(!UtilitySettings.killConfirmPlayerHead,"Kill Confirm should default to the skull icon");
                 net.minecraftforge.fml.client.config.GuiSlider confirmSize=(net.minecraftforge.fml.client.config.GuiSlider)buttons(confirmOptions).stream().filter(b->b.id==1).findFirst().get();
                 net.minecraftforge.fml.client.config.GuiSlider confirmOpacity=(net.minecraftforge.fml.client.config.GuiSlider)buttons(confirmOptions).stream().filter(b->b.id==3).findFirst().get();
-                confirmSize.setValue(125);confirmSize.updateSlider();confirmOpacity.setValue(40);confirmOpacity.updateSlider();confirmOptions.actionPerformed(find(confirmOptions,"Hide rewards in chat: OFF"));confirmOptions.actionPerformed(find(confirmOptions,"Kill/assist sounds: OFF"));confirmOptions.actionPerformed(find(confirmOptions,"Total EXP & Kills: OFF"));confirmOptions.actionPerformed(find(confirmOptions,"Kill icon: Skull"));confirmOptions.onGuiClosed();
+                confirmSize.setValue(125);confirmSize.updateSlider();confirmOpacity.setValue(40);confirmOpacity.updateSlider();confirmOptions.actionPerformed(find(confirmOptions,"Hide rewards in chat: OFF"));confirmOptions.actionPerformed(find(confirmOptions,"Kill/assist sounds: OFF"));confirmOptions.actionPerformed(find(confirmOptions,"Total EXP, Kills & Assists: OFF"));confirmOptions.actionPerformed(find(confirmOptions,"Kill icon: Skull"));confirmOptions.onGuiClosed();
                 UtilitySettings.killConfirm=false;UtilitySettings.killConfirmSize=75;UtilitySettings.killConfirmOpacity=0;UtilitySettings.hideKillConfirmChat=false;UtilitySettings.killConfirmSounds=false;UtilitySettings.totalExpKills=false;UtilitySettings.killConfirmPlayerHead=false;
                 ReflectionHelper.setPrivateValue(UtilitySettings.class,null,false,"loaded");UtilitySettings.load();require(confirm.enabled()&&UtilitySettings.killConfirmSize==125&&UtilitySettings.killConfirmOpacity==40&&UtilitySettings.hideKillConfirmChat&&UtilitySettings.killConfirmSounds&&UtilitySettings.totalExpKills&&UtilitySettings.killConfirmPlayerHead,"Kill Confirm preferences did not persist");
                 confirmOptions.actionPerformed(find(confirmOptions,"Hide rewards in chat: ON"));require(!UtilitySettings.hideKillConfirmChat,"Reward chat hiding did not toggle OFF");
                 confirmOptions.actionPerformed(find(confirmOptions,"Kill/assist sounds: ON"));require(!UtilitySettings.killConfirmSounds,"Kill/assist sounds did not toggle OFF");
-                confirmOptions.actionPerformed(find(confirmOptions,"Total EXP & Kills: ON"));require(!UtilitySettings.totalExpKills,"Total EXP & Kills did not toggle OFF");
+                confirmOptions.actionPerformed(find(confirmOptions,"Total EXP, Kills & Assists: ON"));require(!UtilitySettings.totalExpKills,"Life recap did not toggle OFF");
                 confirmOptions.actionPerformed(find(confirmOptions,"Kill icon: Player Head"));require(!UtilitySettings.killConfirmPlayerHead,"Skull icon did not toggle back");
-                confirmOptions.actionPerformed(find(confirmOptions,"Reset size"));require(UtilitySettings.killConfirmSize==75,"Small default size did not reset");
+                net.minecraftforge.fml.client.config.GuiSlider confirmReset=(net.minecraftforge.fml.client.config.GuiSlider)buttons(confirmOptions).stream().filter(b->b.id==1).findFirst().get();
+                confirmReset.mousePressed(mc,confirmReset.xPosition+confirmReset.width-5,confirmReset.yPosition+8);require(UtilitySettings.killConfirmSize==75,"Small default size did not reset");
                 UtilitySettings.hudPositions.put(HudLayout.CONFIRM,new HudLayout.Position(0,0));confirmOptions.actionPerformed(find(confirmOptions,"Reset position"));
                 HudLayout.Rect confirmBox=KillConfirm.bounds();ScaledResolution confirmResolution=new ScaledResolution(mc);
                 require(Math.abs(confirmBox.x+6-confirmResolution.getScaledWidth()/2)<=1&&Math.abs(confirmBox.y+27-confirmResolution.getScaledHeight()/2)<=1,"Kill Confirm plus sign is not centred on the crosshair");
@@ -944,8 +1104,8 @@ public final class OtlSmoke {
                 require(KillConfirm.state.reward.labels(KillConfirm.state.streak).equals(java.util.Arrays.asList("KILL ASSIST")),"Assist showed bonus rows");
             }else if(state==47){
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-kill-confirm-assist.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
-                UtilitySettings.nonPlayerChat=true;line("+5 raindrops | Kill");require(KillConfirm.state.streak==3&&KillConfirm.state.streakExp==18&&!KillConfirmRules.streakLabel(KillConfirm.state.streak,false).isEmpty(),"Next kill did not restore streak text or stack EXP");
-                require(KillConfirm.state.reward.labels(KillConfirm.state.streak).contains("3 KILL STREAK"),"Streak row missing from white stack");
+                UtilitySettings.nonPlayerChat=true;line("+5 raindrops | Kill");require(KillConfirm.state.streak==3&&KillConfirm.state.streakExp==18&&KillConfirmRules.streakLabel(KillConfirm.state.streak,false).isEmpty(),"Non-milestone kill lost EXP or showed a streak tag");
+                require(!KillConfirm.state.reward.labels(KillConfirm.state.streak).contains("3 KILL STREAK"),"Non-milestone streak row leaked into the white stack");
                 line(mc.thePlayer.getName()+" fell out of the world");require(KillConfirm.state.streak==0&&KillConfirm.state.reward==null,"Death did not reset streak with Kill Feed OFF");
                 line("+5 raindrops | Kill");KillConfirm.INSTANCE.unload(new net.minecraftforge.event.world.WorldEvent.Unload(mc.theWorld));require(KillConfirm.state.streak==0&&KillConfirm.state.reward==null,"World change did not reset confirmations");
                 UtilitySettings.hideKillConfirmChat=true;int noticeCount=ServerNotices.history.size(),chatCount=chatHistory("all").size();
@@ -961,7 +1121,7 @@ public final class OtlSmoke {
                 int chatBackground=UtilitySettings.chatBackground;tabs.setValue(35);tabs.updateSlider();typingTabs.setValue(70);typingTabs.updateSlider();appearance.onGuiClosed();
                 UtilitySettings.tabBackgroundOpacity=100;UtilitySettings.typingTabBackgroundOpacity=100;ReflectionHelper.setPrivateValue(UtilitySettings.class,null,false,"loaded");UtilitySettings.load();
                 require(UtilitySettings.tabBackgroundOpacity==35&&UtilitySettings.typingTabBackgroundOpacity==70&&UtilitySettings.chatBackground==chatBackground,"Typing/idle tab opacity did not persist independently");
-                appearance.actionPerformed(find(appearance,"Reset chat options"));require(UtilitySettings.tabBackgroundOpacity==100&&UtilitySettings.typingTabBackgroundOpacity==100,"Tab background reset failed");
+                appearance.actionPerformed(find(appearance,"Reset chat options"));require(UtilitySettings.tabBackgroundOpacity==25&&UtilitySettings.typingTabBackgroundOpacity==25,"Tab background reset failed");
             }else if(state==48){
                 UtilitySettings.killConfirm=true;UtilitySettings.totalExpKills=true;UtilitySettings.hideKillConfirmChat=false;UtilitySettings.killFeed=false;
                 KillConfirm.state.clear();mc.displayGuiScreen(null);
@@ -969,10 +1129,21 @@ public final class OtlSmoke {
                 KillConfirm.state.receive("RecapTarget was slain by "+local+"'s Iron Sword",local,now-2000000000L,20);
                 KillConfirm.state.receive("+5 raindrops | Kill",local,now-1900000000L,20);
                 KillConfirm.state.receive("+3 raindrops | Kill Assist",local,now-1800000000L,20);
-                KillConfirm.state.receive(local+" fell out of the world",local,now-1700000000L,20);
-                KillConfirm.state.respawn(now-1500000000L,true);
-                require(KillConfirm.state.reward==null&&KillConfirm.state.rows().get(0).text.equals("TOTAL EXP: 8")
-                    &&KillConfirm.state.rows().get(1).text.equals("TOTAL KILLS: 1"),"Respawn recap lost the previous life or retained gold EXP");
+                require(!mc.thePlayer.isDead&&mc.thePlayer.getHealth()>0,"Teleport-respawn fixture must stay alive client-side");
+                KillConfirm.INSTANCE.tick(new TickEvent.ClientTickEvent(TickEvent.Phase.END));
+                double deathX=mc.thePlayer.posX,deathY=mc.thePlayer.posY,deathZ=mc.thePlayer.posZ;
+                line(local+" fell out of the world");
+                require(KillConfirm.state.awaitingRespawn&&KillConfirm.state.recapAt==0,"Death did not arm the respawn recap");
+                mc.thePlayer.setPosition(deathX+1,deathY,deathZ);KillConfirm.INSTANCE.tick(new TickEvent.ClientTickEvent(TickEvent.Phase.END));
+                require(KillConfirm.state.recapAt==0,"Ordinary movement triggered the recap");
+                mc.thePlayer.setPosition(deathX+10,deathY,deathZ);KillConfirm.INSTANCE.tick(new TickEvent.ClientTickEvent(TickEvent.Phase.END));
+                long recapAt=KillConfirm.state.recapAt;
+                require(recapAt>0&&!KillConfirm.state.awaitingRespawn,"PGM-style alive-player teleport did not show the recap");
+                mc.thePlayer.setPosition(deathX,deathY,deathZ);KillConfirm.INSTANCE.tick(new TickEvent.ClientTickEvent(TickEvent.Phase.END));
+                require(KillConfirm.state.recapAt==recapAt,"Second teleport replayed the recap");
+                require(KillConfirm.state.reward==null&&KillConfirm.state.rows().get(0).text.equals("EXP 8")
+                    &&KillConfirm.state.rows().get(1).text.equals("KILLS EXP 5 (1 KILLS)")&&KillConfirm.state.rows().get(2).text.equals("ASSISTS EXP 3 (1 ASSISTS)"),"Respawn recap lost separate kill/assist totals or retained gold EXP");
+                System.out.println("OTL_SMOKE: teleport respawn with no client death flag, movement filtering and one-shot EXP/kill recap PASS");
             }else if(state==49){
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-kill-confirm-respawn-recap.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
                 UtilitySettings.killConfirm=true;UtilitySettings.hideKillConfirmChat=false;UtilitySettings.killFeed=false;
@@ -1036,6 +1207,16 @@ public final class OtlSmoke {
                 KillConfirm.state.receive("+5 raindrops | Kill",local,now-999999999L,20);
                 require(KillConfirm.state.reward.labels(1).contains("REDEMPTION")&&!KillConfirm.state.reward.labels(1).contains("REVENGE"),"REDEMPTION missing or duplicated REVENGE");
                 KillConfirm.draw(false);
+                KillConfirm.state.clear();
+                KillConfirm.state.receive("SwordTarget was slain by "+local+"'s Iron Sword",local,now-3000000000L,20);
+                KillConfirm.state.receive("+5 raindrops | Kill",local,now-2999999999L,20);
+                for(int i=0;i<3;i++){
+                    long at=now-2000000000L+i*1000000000L;
+                    KillConfirm.state.receive("HotTarget"+i+" was shot by "+local+" from 20 blocks",local,at,20);
+                    KillConfirm.state.receive("+5 raindrops | Kill",local,at+1,20);
+                }
+                require(KillConfirm.state.reward.labels(4).equals(java.util.Arrays.asList("BOW KILL","HOT HAND","MIXED ARSENAL","QUAD KILL")),"New weapon-chain tags or bonus limit incorrect");
+                KillConfirm.draw(false);
                 require(org.lwjgl.opengl.GL11.glGetError()==0,"Expanded chain/streak rendering left a GL error");
                 KillConfirm.state.clear();UtilitySettings.killConfirm=false;UtilitySettings.totalExpKills=false;UtilitySettings.killFeed=true;UtilitySettings.save();
                 prepareTabs(mc);
@@ -1053,7 +1234,28 @@ public final class OtlSmoke {
                 checkAccuracy(mc);
             }else if(state==58){
                 finishAccuracy(mc);
-                if(scope.equals("all"))System.out.println("OTL_SMOKE: PASS - Bow Optimizer/Accuracy, Kill Confirm, native component compatibility, HUD and prior fixtures");
+            }else if(state==59){
+                prepareMinimap(mc);
+            }else if(state==60){
+                if(!checkMinimap(mc))return;
+            }else if(state==61){
+                finishMinimap(mc);
+            }else if(state==62){
+                UtilitySettings.minimap=true;
+                line("Playing OTL Missing Model Fixture by Nobody");
+                require(ReflectionHelper.getPrivateValue(Minimap.class,Minimap.INSTANCE,"model")==null,"Unknown map kept the previous map model");
+                Minimap.INSTANCE.tick(new TickEvent.ClientTickEvent(TickEvent.Phase.END));minimapStarted=System.nanoTime();
+            }else if(state==63){
+                String status=ReflectionHelper.getPrivateValue(Minimap.class,Minimap.INSTANCE,"status");
+                if(status.equals("Loading map...")){require(System.nanoTime()-minimapStarted<15000000000L,"Unknown-map fallback did not finish");return;}
+                require(status.equals("Preview unavailable")&&ReflectionHelper.getPrivateValue(Minimap.class,Minimap.INSTANCE,"model")==null,"Unknown-map fallback failed");
+                Minimap.drawPreview();require(!Minimap.INSTANCE.renderer.loaded(),"Unknown map still drew an old GPU model");
+                Minimap.INSTANCE.unload(new net.minecraftforge.event.world.WorldEvent.Unload(mc.theWorld));
+                require(ReflectionHelper.getPrivateValue(Minimap.class,Minimap.INSTANCE,"query")==null,"World change retained the previous map identity");
+                for(Map.Entry<String,Object> preference:minimapPreferences.entrySet())UtilitySettings.class.getDeclaredField(preference.getKey()).set(null,preference.getValue());
+                UtilitySettings.save();
+                System.out.println("OTL_SMOKE: join banner while disabled, current-map matching, unknown-model fallback and world-change clearing PASS");
+                if(scope.equals("all"))System.out.println("OTL_SMOKE: PASS - Minimap, Bow Optimizer/Accuracy, Kill Confirm, native component compatibility, HUD and prior fixtures");
             }
             if(state==scopeEnd){
                 if(!scope.equals("all"))System.out.println("OTL_SMOKE: PASS - "+scope);

@@ -15,7 +15,7 @@ public final class FaceScreen extends CompactScreen {
     private final Deque<int[]> undo=new ArrayDeque<>();
     private String status="";
     public FaceScreen(){this(null);}
-    FaceScreen(GuiScreen parent){this.parent=parent;}
+    public FaceScreen(GuiScreen parent){this.parent=parent;}
     public boolean doesGuiPauseGame(){return false;}
     private ResourceLocation skin(){return mc.thePlayer.getLocationSkin();}
     protected void initPanel(){FaceConfig.load();UtilitySettings.load();leftWidth=Math.max(160,(width-36)/2);if(editing)FaceMarks.replace(skin(),working,false);rebuild();}
@@ -25,6 +25,7 @@ public final class FaceScreen extends CompactScreen {
     private String on(boolean value){return value?"ON":"OFF";}
     private void rebuild(){
         buttonList.clear();button(1,width-132,8,120,"Fullscreen: "+on(UtilitySettings.fullscreen));
+        buttonList.add(new ModuleReset(90,width-19,34,"face_rig"));
         if(editing){
             cell=Math.max(6,Math.min(20,(height-125)/8));gx=12;gy=50;
             for(int i=0;i<5;i++){button(20+i,gx+cell*8+8,gy+i*22,Math.max(54,leftWidth-cell*8-8),(tool==i?"> ":"")+new String[]{"Erase","Eye","Pupil","Brow","Lid"}[i]);}
@@ -47,6 +48,7 @@ public final class FaceScreen extends CompactScreen {
     }
     protected void actionPerformed(GuiButton b){
         switch(b.id){
+            case 90:((ModuleReset)b).reset();rebuild();return;
             case 0: if(editing){cancel();}mc.displayGuiScreen(parent);return;
             case 1: UtilitySettings.fullscreen=!UtilitySettings.fullscreen;UtilitySettings.save();resizePanel();return;
             case 2: UtilitySettings.faceRig=!UtilitySettings.faceRig;UtilitySettings.save();break;

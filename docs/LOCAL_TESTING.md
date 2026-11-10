@@ -39,7 +39,7 @@ Start it, wait for `Done`, connect to `localhost` from 1.8.9.
 
 ## Let the mod run there
 
-The mod is scoped to `play.oc.tc`, `vanish.oc.tc`, and `172.65.223.142`. Add a test host to the allowlist in `config/overcast_util/settings.json`:
+The mod is scoped to `play.oc.tc`, `vanish.oc.tc`, and `172.65.223.142`. Add a test host to the allowlist in `config/Over The Limit/settings.json`:
 
 ```json
 "dev_hosts": ["localhost", "127.0.0.1"]

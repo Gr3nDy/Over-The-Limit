@@ -40,7 +40,17 @@ final class MapRemote {
             new ArrayBlockingQueue<Runnable>(16),r->{Thread t=new Thread(r,"OTL Map Images");t.setDaemon(true);return t;});
 
     static File cacheDir() {
-        return MinecraftAccess.get().mcDataDir.toPath().resolve("config/overcast_util/map_cache").toFile();
+        return ConfigDir.parts("map_cache");
+    }
+
+    /** Local cache of downloaded minimap meshes; populated on demand per map. */
+    static File mapsDir() {
+        return ConfigDir.parts("Maps");
+    }
+
+    /** Downloads a repository file to an arbitrary target; caller validates the URL. */
+    static void downloadPublic(String url, File target) throws Exception {
+        download(url, target);
     }
 
     /** Network work only; never call from the render thread. Reports null when nothing matches. */

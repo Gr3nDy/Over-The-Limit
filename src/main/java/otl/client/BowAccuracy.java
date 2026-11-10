@@ -19,16 +19,26 @@ import net.minecraftforge.fml.common.gameevent.TickEvent;
 import net.minecraftforge.fml.common.network.FMLNetworkEvent;
 
 /** Session-only player-hit accuracy; the network observer always forwards the original packets. */
-final class BowAccuracy {
+public final class BowAccuracy {
+    /** Reset accuracy counters; part of the module's factory reset and toggle. */
+    public static void resetAccuracy(){INSTANCE.reset();}
+    /** Drop pending hit/kill feedback; part of the module's factory reset. */
+    public static void clearFeedback(){INSTANCE.feedback.clear();}
     static final BowAccuracy INSTANCE=new BowAccuracy();
     private static final String HANDLER="otl_bow_accuracy";
     final Stats stats=new Stats();
     final Feedback feedback=new Feedback();
+    final Display display=new Display();
     private Channel channel;
     private Object world;
     private boolean listening;
     private volatile boolean connectionDirty;
-    static boolean observing(){UtilitySettings.load();return UtilitySettings.bowOptimizer&&(UtilitySettings.bowAccuracy||UtilitySettings.bowHitSound||UtilitySettings.bowHitMarker)&&ServerScope.active();}
+    static boolean observing(){UtilitySettings.load();return UtilitySettings.bowOptimizer&&(UtilitySettings.bowAccuracy||UtilitySettings.bowHitSound||UtilitySettings.bowKillSound||UtilitySettings.bowHitMarker)&&ServerScope.active();}
+
+    enum Mode {
+        ALWAYS("Always"),ON_HIT("On Hit"),HOLDING_BOW("Holding Bow"),ON_SHOOT("On Shoot");
+        final String label;Mode(String label){this.label=label;}
+    }
 
     static final class Feedback {
         private long hitUntil,killUntil,soundUntil;
@@ -39,6 +49,30 @@ final class BowAccuracy {
         void clear(){hitUntil=killUntil=soundUntil=0;}
     }
 
+    static final class Display {
+        private double from,target;
+        private long changedAt,visibleUntil,heldUntil,hitShownAt,heldShownAt,shotUntil,shotShownAt;
+        double value(double next,long now,boolean animate){
+            double current=from+(target-from)*Math.max(0,Math.min(1,(now-changedAt)/400000000D));
+            if(!animate){from=target=next;changedAt=now;return next;}
+            if(next!=target){from=current;target=next;changedAt=now;}
+            return from+(target-from)*Math.max(0,Math.min(1,(now-changedAt)/400000000D));
+        }
+        void hit(long now){if(visibleUntil==0||now>=visibleUntil)hitShownAt=now;visibleUntil=now+2000000000L+UtilitySettings.bowAccuracyFadeOut*10000000L;}
+        void hold(long now){if(heldUntil==0||now>=heldUntil)heldShownAt=now;heldUntil=now+500000000L+UtilitySettings.bowAccuracyFadeOut*10000000L;}
+        void shot(long now){shotShownAt=now;shotUntil=now+1000000000L+UtilitySettings.bowAccuracyFadeOut*10000000L;}
+        float alpha(long now,Mode mode){
+            if(mode==Mode.ALWAYS)return 1;
+            long until=mode==Mode.HOLDING_BOW?heldUntil:mode==Mode.ON_SHOOT?shotUntil:visibleUntil;
+            if(until==0||now>=until)return 0;
+            long shownAt=mode==Mode.HOLDING_BOW?heldShownAt:mode==Mode.ON_SHOOT?shotShownAt:hitShownAt;
+            float in=UtilitySettings.bowAccuracyFadeIn==0?1:Math.max(0,Math.min(1,(now-shownAt)/(UtilitySettings.bowAccuracyFadeIn*10000000F)));
+            float out=UtilitySettings.bowAccuracyFadeOut==0?1:Math.max(0,Math.min(1,(until-now)/(UtilitySettings.bowAccuracyFadeOut*10000000F)));
+            return Math.min(in,out);
+        }
+        void clear(){from=target=0;changedAt=visibleUntil=heldUntil=hitShownAt=heldShownAt=shotUntil=shotShownAt=0;}
+    }
+    static String percentage(double value,int decimals){return String.format(Locale.ROOT,"%."+Math.max(0,Math.min(2,decimals))+"f%%",value);}
     static final class Stats {
         long shots,hits;
         volatile long generation;
@@ -48,7 +82,8 @@ final class BowAccuracy {
         void clear(){map=null;reset();}
         void shot(){if(!ended&&shots<Long.MAX_VALUE)shots++;}
         void hit(){if(!ended&&hits<shots)hits++;}
-        String percentage(int decimals){return String.format(Locale.ROOT,"%."+Math.max(0,Math.min(2,decimals))+"f%%",shots==0?0D:100D*hits/shots);}
+        double accuracy(){return shots==0?0D:100D*hits/shots;}
+        String percentage(int decimals){return BowAccuracy.percentage(accuracy(),decimals);}
         void notice(String formatted){
             if(ChatRules.playerMessage(formatted))return;
             for(String line:ChatRules.plain(formatted).split("[\\r\\n]+")){
@@ -64,14 +99,14 @@ final class BowAccuracy {
             }
         }
     }
-    void reset(){stats.clear();feedback.clear();}
+    void reset(){stats.clear();feedback.clear();display.clear();}
     private void notice(String formatted){
         long generation=stats.generation;stats.notice(formatted);
-        if(stats.generation!=generation)feedback.clear();
+        if(stats.generation!=generation){feedback.clear();display.clear();}
     }
     private void hit(){
         if(stats.ended)return;
-        stats.hit();feedback.hit(System.nanoTime());
+        stats.hit();long now=System.nanoTime();feedback.hit(now);display.hit(now);
     }
     private void sync(){
         Minecraft mc=MinecraftAccess.get();
@@ -108,7 +143,11 @@ final class BowAccuracy {
             listening=true;
         }catch(RuntimeException ex){System.err.println("OTL: Bow Accuracy unavailable: "+ex.getMessage());}
     }
-    @SubscribeEvent public void tick(TickEvent.ClientTickEvent event){if(event.phase==TickEvent.Phase.END)sync();}
+    @SubscribeEvent public void tick(TickEvent.ClientTickEvent event){
+        if(event.phase!=TickEvent.Phase.END)return;sync();
+        Minecraft mc=MinecraftAccess.get();
+        if(observing()&&mc.thePlayer!=null&&!mc.thePlayer.isDead&&mc.thePlayer.getHeldItem()!=null&&mc.thePlayer.getHeldItem().getItem() instanceof ItemBow)display.hold(System.nanoTime());
+    }
     @SubscribeEvent public void connect(FMLNetworkEvent.ClientConnectedToServerEvent event){connectionDirty=true;}
     @SubscribeEvent public void disconnect(FMLNetworkEvent.ClientDisconnectionFromServerEvent event){connectionDirty=true;}
     @SubscribeEvent public void unload(WorldEvent.Unload event){if(event.world.isRemote){reset();world=null;}}
@@ -116,14 +155,17 @@ final class BowAccuracy {
         Minecraft mc=MinecraftAccess.get();
         if(!observing()||event.entity!=mc.thePlayer||mc.thePlayer==null||mc.thePlayer.isDead||!event.entity.worldObj.isRemote
             ||!"random.bow".equals(event.name)||mc.thePlayer.getHeldItem()==null||!(mc.thePlayer.getHeldItem().getItem() instanceof ItemBow))return;
-        sync();if(listening)stats.shot();
+        sync();if(listening){stats.shot();display.shot(System.nanoTime());}
     }
     @SubscribeEvent(priority=EventPriority.HIGHEST,receiveCanceled=true) public void chat(ClientChatReceivedEvent event){
         if(event.type==2||!observing())return;
         sync();String text=event.message.getFormattedText();notice(text);
-        if(UtilitySettings.bowHitMarker&&!stats.ended&&MinecraftAccess.get().thePlayer!=null){
+        if((UtilitySettings.bowHitMarker||UtilitySettings.bowKillSound)&&!stats.ended&&MinecraftAccess.get().thePlayer!=null){
             KillFeedRules.Death death=KillFeedRules.parse(text);
-            if(death!=null&&death.ownKill(MinecraftAccess.get().thePlayer.getName())&&!death.suicide()&&KillConfirmRules.isBow(death))feedback.kill(System.nanoTime());
+            if(death!=null&&death.ownKill(MinecraftAccess.get().thePlayer.getName())&&!death.suicide()&&KillConfirmRules.isBow(death)){
+                if(UtilitySettings.bowHitMarker)feedback.kill(System.nanoTime());
+                if(UtilitySettings.bowKillSound)MinecraftAccess.get().getSoundHandler().playSound(PositionedSoundRecord.create(new net.minecraft.util.ResourceLocation("note.pling"),1.4F));
+            }
         }
     }
     @SubscribeEvent(priority=EventPriority.LOWEST) public void hitSound(PlaySoundEvent event){
@@ -162,13 +204,18 @@ final class BowAccuracy {
     }
     private void draw(boolean preview){
         Minecraft mc=MinecraftAccess.get();HudLayout.Rect box=bounds();float scale=UtilitySettings.bowAccuracySize/100F;
-        String percent=preview?String.format(Locale.ROOT,"%."+UtilitySettings.bowAccuracyDecimals+"f%%",66.6666667):listening?stats.percentage(UtilitySettings.bowAccuracyDecimals):"--%";
+        long now=System.nanoTime();
+        double value=preview?66.6666667:display.value(stats.accuracy(),now,UtilitySettings.bowAccuracyAnimate);
+        float visibility=preview?1:display.alpha(now,UtilitySettings.bowAccuracyMode);
+        int textAlpha=(int)(255*visibility);if(textAlpha<4)return;
+        String percent=preview||listening?percentage(value,UtilitySettings.bowAccuracyDecimals):"--%";
         GlStateManager.pushMatrix();
         try{
             GlStateManager.translate(box.x,box.y,0);GlStateManager.scale(scale,scale,1);
-            int alpha=UtilitySettings.bowAccuracyOpacity*255/100;
+            int alpha=(int)(UtilitySettings.bowAccuracyOpacity*255/100*visibility);
             if(alpha>0)Gui.drawRect(0,0,(int)Math.ceil(box.w/scale),17,alpha<<24);
-            mc.fontRendererObj.drawStringWithShadow(hudText(percent),4,4,preview&&!(UtilitySettings.bowOptimizer&&UtilitySettings.bowAccuracy)?0x73888888:0xFFFFFFFF);
+            String text=hudText(percent);
+            mc.fontRendererObj.drawStringWithShadow(text,Math.max(0,(int)Math.ceil(box.w/scale)-mc.fontRendererObj.getStringWidth(text))/2,4,preview&&!(UtilitySettings.bowOptimizer&&UtilitySettings.bowAccuracy)?0x73888888:textAlpha<<24|0xFFFFFF);
         }finally{GlStateManager.popMatrix();GlStateManager.color(1,1,1,1);}
     }
     // shortcut: counts vanilla server-confirmed player hits, not mobs or servers that omit the arrow-hit signal.

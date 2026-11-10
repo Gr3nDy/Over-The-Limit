@@ -19,6 +19,9 @@ final class TeamBubbles {
     private static Object world;
     private static String host="";
     private static char teamColor;
+    private static String currentMap;
+    private static int mapRequest;
+    private static boolean teamMap=true;
     static final Map<UUID,TeamBubbleRules.Stack> bubbles=new HashMap<>();
     private static long renderedBubbles;
     static void clearBubbles(){bubbles.clear();}
@@ -33,9 +36,10 @@ final class TeamBubbles {
         Minecraft mc=MinecraftAccess.get();String now=ServerScope.current();
         boolean active=ReliableChat.active()&&ReliableChat.fullChat();
         if(world!=mc.theWorld||!host.equals(now)){
+            if(!host.equals(now)){currentMap=null;mapRequest++;teamMap=true;}
             bubbles.clear();teamColor=0;world=mc.theWorld;host=now;
         }
-        if(!active)bubbles.clear();
+        if(!active||!teamMap)bubbles.clear();
     }
     @SubscribeEvent(priority=EventPriority.HIGHEST,receiveCanceled=true) public void serverChat(ClientChatReceivedEvent event){
         if(event.type!=2)receive(event.message);
@@ -44,11 +48,24 @@ final class TeamBubbles {
         ensureWorld();
         if(MinecraftAccess.get().theWorld==null)return;
         String formatted=message.getFormattedText();
+        if(ServerScope.active()&&!ChatRules.playerMessage(formatted)){
+            String text=ChatRules.plain(formatted).trim();
+            String query=text.startsWith("Playing ")?MapPreview.serverQuery(text):null;
+            if(query!=null&&!query.equals(currentMap)){
+                currentMap=query;teamMap=false;teamColor=0;bubbles.clear();int token=++mapRequest;
+                MapInfo local=MapInfo.findLocal(query);
+                if(local!=null&&local.exact(query))teamMap=TeamBubbleRules.teamMap(local);
+                else MapRemote.lookup(query,map->MinecraftAccess.get().addScheduledTask(()->{
+                    if(mapRequest==token)teamMap=TeamBubbleRules.teamMap(map);
+                }));
+                return;
+            }
+        }
         char joined=TeamBubbleRules.joinColor(formatted);
         if(joined!=0){teamColor=joined;bubbles.clear();return;}
         if(TeamBubbleRules.joinMessage(formatted)){teamColor=0;bubbles.clear();return;}
         // The team color is kept for the Kill Feed assist label even when bubbles or Reliable Chat are off.
-        if(!ReliableChat.active()||!ReliableChat.fullChat()||!UtilitySettings.bubbles)return;
+        if(!teamMap||!ReliableChat.active()||!ReliableChat.fullChat()||!UtilitySettings.bubbles)return;
         TeamBubbleRules.Chat chat=TeamBubbleRules.chat(formatted);
         if(chat==null&&UtilitySettings.bubbleTeamAndChat&&teamColor!=0)chat=TeamBubbleRules.global(formatted,teamColor);
         if(chat==null)return;
@@ -66,7 +83,7 @@ final class TeamBubbles {
         bubbles.values().forEach(stack->stack.expire(now));bubbles.values().removeIf(stack->stack.items.isEmpty());
     }
     @SubscribeEvent public void render(RenderWorldLastEvent event){
-        if(!UtilitySettings.bubbles||!ReliableChat.active()||FaceDoll.preview)return;
+        if(!teamMap||!UtilitySettings.bubbles||!ReliableChat.active()||FaceDoll.preview)return;
         Minecraft mc=MinecraftAccess.get();if(mc.theWorld==null||mc.getRenderViewEntity()==null)return;
         net.minecraft.entity.Entity camera=mc.getRenderViewEntity();float partial=event.partialTicks;
         double cx=camera.lastTickPosX+(camera.posX-camera.lastTickPosX)*partial;

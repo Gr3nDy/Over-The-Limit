@@ -19,6 +19,7 @@ repositories { mavenCentral() }
 dependencies { testCompile 'junit:junit:4.13.2' }
 jar { archiveName = 'OTL.jar'; from project(':').file('LICENSE'), { into 'META-INF'; rename { 'LICENSE' } }; exclude 'META-INF/*.SF', 'META-INF/*.RSA', 'META-INF/*.DSA', 'module-info.class', 'META-INF/versions/**' }
 tasks.withType(JavaCompile) { options.encoding = 'UTF-8' }
+processResources { exclude '**/*.part' }
 if (project.hasProperty('otlSmoke')) { sourceSets.main.java.srcDir 'src/otlSmoke/java' }
 if (project.hasProperty('otlSmokeRemote')) { runClient.jvmArgs '-Dotl.smoke.remote=true' }
 if (project.hasProperty('otlSmokeServer')) { runClient.jvmArgs '-Dotl.smoke.server=true' }

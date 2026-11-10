@@ -16,7 +16,7 @@ final class KillConfirmRules {
     static final class Reward {
         final int points;final boolean assist;
         boolean bow,revenge,survivor,lastBreath,flawless,longShot,shutdown,underdog,firstBlood,comeback,airborne,jumpShot,sneak;
-        boolean pointBlank,extremeRange,domination,redemption,cleanSweep,demolition,brawler;
+        boolean pointBlank,extremeRange,domination,redemption,cleanSweep,demolition,brawler,hotHand,mixedArsenal;
         int multi;
         long time;
         int streakAt;
@@ -35,6 +35,8 @@ final class KillConfirmRules {
             if(demolition)tags.add("DEMOLITION");
             if(cleanSweep)tags.add("CLEAN SWEEP");
             if(brawler)tags.add("BRAWLER");
+            if(hotHand)tags.add("HOT HAND");
+            if(mixedArsenal)tags.add("MIXED ARSENAL");
             String chain=chainLabel(multi);if(!chain.isEmpty())tags.add(chain);
             if(lastBreath)tags.add("LAST BREATH");else if(survivor)tags.add("SURVIVOR");
             if(underdog)tags.add("UNDERDOG");
@@ -58,13 +60,14 @@ final class KillConfirmRules {
     /** Facts captured at the kill, attached to whichever reward line follows it. */
     private static final class Tags {
         final long time;final String victim;final boolean bow,revenge,survivor,lastBreath,flawless,longShot,shutdown,underdog,firstBlood,comeback,airborne,jumpShot,sneak;final int multi;
-        final boolean pointBlank,extremeRange,domination,redemption,cleanSweep,demolition,brawler;
-        Tags(long time,String victim,boolean bow,boolean revenge,boolean survivor,boolean lastBreath,boolean flawless,boolean longShot,boolean shutdown,boolean underdog,boolean firstBlood,boolean comeback,boolean airborne,boolean jumpShot,boolean sneak,int multi,boolean pointBlank,boolean extremeRange,boolean domination,boolean redemption,boolean cleanSweep,boolean demolition,boolean brawler){
+        final boolean pointBlank,extremeRange,domination,redemption,cleanSweep,demolition,brawler,hotHand,mixedArsenal;
+        Tags(long time,String victim,boolean bow,boolean revenge,boolean survivor,boolean lastBreath,boolean flawless,boolean longShot,boolean shutdown,boolean underdog,boolean firstBlood,boolean comeback,boolean airborne,boolean jumpShot,boolean sneak,int multi,boolean pointBlank,boolean extremeRange,boolean domination,boolean redemption,boolean cleanSweep,boolean demolition,boolean brawler,boolean hotHand,boolean mixedArsenal){
             this.victim=victim;
             this.time=time;this.bow=bow;this.revenge=revenge;this.survivor=survivor;this.lastBreath=lastBreath;this.flawless=flawless;this.longShot=longShot;
             this.shutdown=shutdown;this.underdog=underdog;this.firstBlood=firstBlood;this.comeback=comeback;this.airborne=airborne;this.jumpShot=jumpShot;this.sneak=sneak;this.multi=multi;
             this.pointBlank=pointBlank;this.extremeRange=extremeRange;this.domination=domination;
             this.redemption=redemption;this.cleanSweep=cleanSweep;this.demolition=demolition;this.brawler=brawler;
+            this.hotHand=hotHand;this.mixedArsenal=mixedArsenal;
         }
         void apply(Reward reward){
             reward.victim=victim;
@@ -72,6 +75,7 @@ final class KillConfirmRules {
             reward.shutdown=shutdown;reward.underdog=underdog;reward.firstBlood=firstBlood;reward.comeback=comeback;reward.airborne=airborne;reward.jumpShot=jumpShot;reward.sneak=sneak;reward.multi=multi;
             reward.pointBlank=pointBlank;reward.extremeRange=extremeRange;reward.domination=domination;
             reward.redemption=redemption;reward.cleanSweep=cleanSweep;reward.demolition=demolition;reward.brawler=brawler;
+            reward.hotHand=hotHand;reward.mixedArsenal=mixedArsenal;
         }
     }
     static Reward parse(String text){
@@ -85,8 +89,26 @@ final class KillConfirmRules {
         Row(String text,long start){this(text,start,null);}
         Row(String text,long start,String victim){this.text=text;this.start=start;this.victim=victim;}
     }
+    static final class RespawnPosition {
+        private boolean known,pending;
+        private double lastX,lastY,lastZ,deathX,deathY,deathZ;
+        void died(double x,double y,double z){
+            if(pending)return;
+            deathX=known?lastX:x;deathY=known?lastY:y;deathZ=known?lastZ:z;pending=true;
+        }
+        boolean moved(double x,double y,double z){
+            // shortcut: the fallback requires a >4-block jump after death; explicit server signals are needed for closer spawns.
+            boolean teleported=pending&&known&&distance(x,y,z,lastX,lastY,lastZ)>16&&distance(x,y,z,deathX,deathY,deathZ)>16;
+            lastX=x;lastY=y;lastZ=z;known=true;return teleported;
+        }
+        private static double distance(double x,double y,double z,double a,double b,double c){return (x-a)*(x-a)+(y-b)*(y-b)+(z-c)*(z-c);}
+        void resumed(){pending=false;}
+        void clear(){known=pending=false;}
+    }
     static final class State {
-        int streak,streakExp,lifeKills,recapExp,recapKills;Reward reward;long receivedAt,recapAt;boolean awaitingRespawn;
+        int streak,streakExp,lifeKills,lifeAssists,recapKills,recapAssists;
+        long lifeKillExp,lifeAssistExp,recapExp,recapKillExp,recapAssistExp;
+        Reward reward;long receivedAt,recapAt;boolean awaitingRespawn;
         String lastAttacker;
         int localKills,deathsInARow,multi;
         boolean matchStartSeen,firstKillTaken;
@@ -99,23 +121,24 @@ final class KillConfirmRules {
         private final Map<String,Integer> dominationKills=new HashMap<>();
         private final Map<String,Integer> redemptionDeaths=new HashMap<>();
         private final Set<String> chainVictims=new HashSet<>();
-        private int chainMelee;
+        private int chainMelee,chainBow;
         private boolean redemptionDeathCounted;
         private long redemptionDeathAt;
         void clear(){
             streak=0;streakExp=0;lifeKills=0;recapExp=0;recapKills=0;recapAt=0;awaitingRespawn=false;reward=null;receivedAt=0;lastAttacker=null;
+            lifeAssists=recapAssists=0;lifeKillExp=lifeAssistExp=recapKillExp=recapAssistExp=0;
             localKills=0;deathsInARow=0;multi=0;lastKillAt=0;deathAt=0;
             matchStartSeen=false;firstKillTaken=false;
             duelVictim=null;duelHealth=0;duelClean=false;duelConfirmed=false;duelAt=0;
             pendingTags.clear();pendingRewards.clear();entries.clear();kills.clear();streaks.clear();dominationKills.clear();
-            redemptionDeaths.clear();chainVictims.clear();chainMelee=0;redemptionDeathCounted=false;redemptionDeathAt=0;
+            redemptionDeaths.clear();chainVictims.clear();chainMelee=chainBow=0;redemptionDeathCounted=false;redemptionDeathAt=0;
         }
         void died(String attacker){
             if(attacker!=null)dominationKills.remove(key(attacker));
-            if(!awaitingRespawn){recapExp=streakExp;recapKills=lifeKills;awaitingRespawn=true;}
-            lifeKills=0;recapAt=0;
+            if(!awaitingRespawn){recapKillExp=lifeKillExp;recapAssistExp=lifeAssistExp;recapExp=recapKillExp+recapAssistExp;recapKills=lifeKills;recapAssists=lifeAssists;awaitingRespawn=true;}
+            lifeKills=lifeAssists=0;lifeKillExp=lifeAssistExp=0;recapAt=0;
             streak=0;streakExp=0;reward=null;receivedAt=0;lastAttacker=attacker;multi=0;
-            chainVictims.clear();chainMelee=0;
+            chainVictims.clear();chainMelee=chainBow=0;
             pendingTags.clear();pendingRewards.clear();entries.clear();
             duelVictim=null;duelHealth=0;duelClean=false;duelConfirmed=false;duelAt=0;
         }
@@ -123,7 +146,7 @@ final class KillConfirmRules {
             if(!awaitingRespawn)return;
             awaitingRespawn=false;
             redemptionDeathCounted=false;
-            if(enabled){recapAt=now;receivedAt=now;}
+            if(enabled&&(recapKills>0||recapAssists>0)){recapAt=now;receivedAt=now;}
         }
         void deathObserved(long now){
             if(now-deathAt<PAIR_NANOS)return;
@@ -171,9 +194,10 @@ final class KillConfirmRules {
                     int against=Math.min(DOMINATION_KILLS,dominationKills.getOrDefault(victimKey,0)+1);
                     dominationKills.put(victimKey,against);
                     boolean chained=multi>0&&lastKillAt>0&&now-lastKillAt<=MULTI_NANOS;
-                    if(!chained){chainVictims.clear();chainMelee=0;}
+                    if(!chained){chainVictims.clear();chainMelee=chainBow=0;}
                     if(chainVictims.size()<5)chainVictims.add(victimKey);
                     if(death.cause==KillFeedRules.Cause.MELEE)chainMelee=Math.min(3,chainMelee+1);
+                    if(isBow(death))chainBow=Math.min(3,chainBow+1);
                     boolean redemption=redemptionDeaths.getOrDefault(victimKey,0)>=5;
                     redemptionDeaths.remove(victimKey);redemptionDeathCounted=false;
                     Tags tags=new Tags(now,death.victim,isBow(death),revenge,health>0&&health<=4,health>0&&health<=2,flawless,
@@ -182,10 +206,10 @@ final class KillConfirmRules {
                         chained?multi+1:1,
                         isBow(death)&&shot>=0&&shot<=POINT_BLANK_BLOCKS,
                         isBow(death)&&shot>=EXTREME_RANGE_BLOCKS,against>=DOMINATION_KILLS,
-                        redemption,chainVictims.size()>=5,death.cause==KillFeedRules.Cause.EXPLOSION,chainMelee>=3);
+                        redemption,chainVictims.size()>=5,death.cause==KillFeedRules.Cause.EXPLOSION,chainMelee>=3,chainBow>=3,chainMelee>0&&chainBow>0);
                     if(revenge)lastAttacker=null;
                     if(victimKey.equals(duelVictim)){duelVictim=null;duelConfirmed=false;duelClean=false;}
-                    kills.put(key(local),localKills+1);localKills++;lifeKills++;
+                    kills.put(key(local),localKills+1);localKills++;
                     firstKillTaken=true;
                     streaks.put(key(local),streak+1);streaks.put(victimKey,0);
                     deathsInARow=0;lastKillAt=now;multi=tags.multi;
@@ -209,6 +233,11 @@ final class KillConfirmRules {
                 if(!pendingTags.isEmpty())pendingTags.removeFirst().apply(next);
                 else{pendingRewards.addLast(next);if(pendingRewards.size()>16)pendingRewards.removeFirst();}
                 if(streak<Integer.MAX_VALUE)streak++;
+                if(lifeKills<Integer.MAX_VALUE)lifeKills++;
+                lifeKillExp+=next.points;
+            }else{
+                if(lifeAssists<Integer.MAX_VALUE)lifeAssists++;
+                lifeAssistExp+=next.points;
             }
             streakExp=(int)Math.min(Integer.MAX_VALUE,(long)streakExp+next.points);
             next.streakAt=streak;
@@ -221,8 +250,9 @@ final class KillConfirmRules {
         List<Row> rows(){
             List<Row> rows=new ArrayList<>();
             if(recapAt>0&&reward==null){
-                rows.add(new Row("TOTAL EXP: "+recapExp,recapAt));
-                rows.add(new Row("TOTAL KILLS: "+recapKills,recapAt+ROW_NANOS));
+                rows.add(new Row("EXP "+recapExp,recapAt));
+                if(recapKills>0)rows.add(new Row("KILLS EXP "+recapKillExp+" ("+recapKills+" KILLS)",recapAt+rows.size()*ROW_NANOS));
+                if(recapAssists>0)rows.add(new Row("ASSISTS EXP "+recapAssistExp+" ("+recapAssists+" ASSISTS)",recapAt+rows.size()*ROW_NANOS));
                 return rows;
             }
             long cursor=0;
@@ -251,7 +281,7 @@ final class KillConfirmRules {
         return 1+.45F*(t<.25F?easeOut(t*4):1-easeOut((t-.25F)/.75F));
     }
     static String streakLabel(int streak,boolean assist){
-        if(assist||streak<2)return "";
+        if(assist||streak<5||streak%(streak<30?5:10)!=0)return "";
         if(streak>=100)return "THE LIMIT BREAKER";
         if(streak>=90)return "NO EQUAL";
         if(streak>=80)return "ABSOLUTE ZERO";
@@ -264,9 +294,7 @@ final class KillConfirmRules {
         if(streak>=20)return "LEGENDARY";
         if(streak>=15)return "GODLIKE";
         if(streak>=10)return "UNSTOPPABLE";
-        if(streak>=7)return "DOMINATING";
-        if(streak>=5)return "RAMPAGE";
-        return streak+" KILL STREAK";
+        return "RAMPAGE";
     }
     static String chainLabel(int kills){return kills<2?"":kills>=10?"MULTI KILL":CHAIN_LABELS[kills-2];}
     static float reveal(long age,long delay){return easeOut((age-delay)/(float)REVEAL_NANOS);}

@@ -306,7 +306,7 @@ final class KillFeed {
             Gui.drawRect(x+col*3/2,y+row*3/2,x+(col+1)*3/2,y+(row+1)*3/2,KillFeedRules.faded(pixel,opacity));
         }
     }
-    private static int[] face(String name){
+    static int[] face(String name){
         Minecraft mc=MinecraftAccess.get();String key=name.toLowerCase(Locale.ROOT);
         NetworkPlayerInfo info=mc.getNetHandler()==null?null:mc.getNetHandler().getPlayerInfo(name);
         ResourceLocation skin=info==null?null:info.getLocationSkin();

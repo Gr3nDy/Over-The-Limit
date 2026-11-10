@@ -3,9 +3,9 @@ package otl.client;
 import net.minecraft.client.gui.ScaledResolution;
 
 /** Screen-relative positions keep right/center alignment when GUI scale changes. */
-final class HudLayout {
-    static final String TABS="chat_tabs",KILLS="kill_feed",NOTICES="server_notices",CONFIRM="kill_confirm",HEIGHT="height_limit",BOW="bow_accuracy";
-    static boolean valid(String id){return TABS.equals(id)||KILLS.equals(id)||NOTICES.equals(id)||CONFIRM.equals(id)||HEIGHT.equals(id)||BOW.equals(id);}
+public final class HudLayout {
+    public static final String TABS="chat_tabs",KILLS="kill_feed",NOTICES="server_notices",CONFIRM="kill_confirm",HEIGHT="height_limit",BOW="bow_accuracy",MINIMAP="minimap";
+    static boolean valid(String id){return TABS.equals(id)||KILLS.equals(id)||NOTICES.equals(id)||CONFIRM.equals(id)||HEIGHT.equals(id)||BOW.equals(id)||MINIMAP.equals(id);}
     static final class Position {
         final double x,y;
         Position(double x,double y){if(!Double.isFinite(x)||!Double.isFinite(y))throw new IllegalArgumentException("Invalid HUD position");this.x=Math.max(0,Math.min(1,x));this.y=Math.max(0,Math.min(1,y));}

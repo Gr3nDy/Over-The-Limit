@@ -4,6 +4,14 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class TeamBubbleRulesTest {
+    @Test public void bubblesRequireTeamsAndRejectFreeForAllEvenWithSharedColors(){
+        assertFalse(TeamBubbleRules.teamMap(null));
+        assertFalse(TeamBubbleRules.teamMap(MapInfo.parse("<map><gamemode>ffa</gamemode><players max='24' colors='true'/></map>","ffa/test",true,null,id->null)));
+        assertFalse(TeamBubbleRules.teamMap(MapInfo.parse("<map><gamemode>deathmatch</gamemode><players max='24'/></map>","arcade/test",true,null,id->null)));
+        for(String mode:new String[]{"FFA","Free-for-All"})
+            assertFalse(TeamBubbleRules.teamMap(MapInfo.parse("<map><gamemode>"+mode+"</gamemode><teams><team max='24'>Players</team></teams></map>","arcade/test",true,null,id->null)));
+        assertTrue(TeamBubbleRules.teamMap(MapInfo.parse("<map><gamemode>tdm</gamemode><teams><team max='12'>Blue</team><team max='12'>Red</team></teams></map>","tdm/test",true,null,id->null)));
+    }
     @Test public void extractsTeamChatWithoutJoinOrColorInformation(){
         TeamBubbleRules.Chat team=TeamBubbleRules.chat("(Orange) [Member] Alex: defend the wool");
         assertNotNull(team);assertEquals("Alex",team.name);assertEquals("defend the wool",team.body);

@@ -1,82 +1,101 @@
 package otl.client;
 
-import java.util.Arrays;
+import java.io.File;
+import java.net.JarURLConnection;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.lang.reflect.Modifier;
+import java.util.jar.JarFile;
 import net.minecraft.client.gui.GuiScreen;
 
 /**
- * One product feature. Adding an entry to ALL is all it takes for the module to
- * show up in the modules screen and be toggleable.
+ * One product feature. Modules live in otl.client.modules and are discovered by
+ * scanning the package at startup - dropping in a new module file is all it takes.
  *
  * Rules for implementations:
  * - enabled() reads the flag at the point of use, so toggling needs no lifecycle calls.
  * - setEnabled() saves nothing; the caller persists once, after the toggle.
  * - Toggling must be safe mid-game (no leaked GL state, no unregistered listeners).
  */
-abstract class OtlModule {
-    final String id, name;
+public abstract class OtlModule {
+    final String id, name, category;
+    private final int order;
 
-    OtlModule(String id, String name) {
-        this.id = id;
-        this.name = name;
+    protected OtlModule(String id, String name) {
+        this(id, name, "HUD", 100);
     }
 
-    abstract boolean enabled();
+    protected OtlModule(String id, String name, String category) {
+        this(id, name, category, 100);
+    }
 
-    abstract void setEnabled(boolean on);
+    protected OtlModule(String id, String name, String category, int order) {
+        this.id = id;
+        this.name = name;
+        this.category = category;
+        this.order = order;
+    }
 
-    boolean available(){return true;}
+    public abstract boolean enabled();
+
+    public abstract void setEnabled(boolean on);
+
+    /** Restores this module's options to factory values; other modules and shared data stay put. */
+    public void reset(){setEnabled(false);}
+
+    public boolean available(){return true;}
 
     /** Options screen for this module, or null when it has none. */
-    GuiScreen settings(GuiScreen back) {
+    public GuiScreen settings(GuiScreen back) {
         return null;
     }
 
-    static final List<OtlModule> ALL = Arrays.asList(
-            new OtlModule("face_rig", "Face Rig") {
-                boolean enabled() { return UtilitySettings.faceRig; }
-                void setEnabled(boolean on) { UtilitySettings.faceRig = on; }
-                GuiScreen settings(GuiScreen back) { return new FaceScreen(back); }
-            },
-            new OtlModule("reliable_chat", "Reliable Chat") {
-                boolean enabled() { return UtilitySettings.chat; }
-                void setEnabled(boolean on) { UtilitySettings.chat = on; ReliableChat.applyPreferences(); }
-                GuiScreen settings(GuiScreen back) { return new UtilityScreen(true,back); }
-            },
-            new OtlModule("map_preview", "Map Preview") {
-                boolean enabled() { return UtilitySettings.mapPreview; }
-                void setEnabled(boolean on) { UtilitySettings.mapPreview = on; }
-                GuiScreen settings(GuiScreen back) { return new MapPreviewSettings(back); }
-            },
-            new OtlModule("left_hand", "Prefered Hand") {
-                boolean enabled() { return UtilitySettings.leftHand; }
-                void setEnabled(boolean on) { UtilitySettings.leftHand = on; }
-                GuiScreen settings(GuiScreen back) { return new PreferedHandSettings(back); }
-            },
-            new OtlModule("kill_feed", "Kill Feed") {
-                boolean enabled() { return UtilitySettings.killFeed; }
-                void setEnabled(boolean on) { UtilitySettings.killFeed=on; }
-                GuiScreen settings(GuiScreen back) { return new KillFeedSettings(back); }
-            },
-            new OtlModule("kill_confirm", "Kill Confirm") {
-                boolean enabled() { return UtilitySettings.killConfirm; }
-                void setEnabled(boolean on) { UtilitySettings.killConfirm=on;KillConfirm.state.clear(); }
-                GuiScreen settings(GuiScreen back) { return new KillConfirmSettings(back); }
-            },
-            new OtlModule("server_notices", "Server Notices") {
-                boolean enabled() { return UtilitySettings.nonPlayerChat; }
-                void setEnabled(boolean on) { UtilitySettings.nonPlayerChat=on; }
-                GuiScreen settings(GuiScreen back) { return new ServerNoticeSettings(back); }
-            },
-            new OtlModule("bow_optimizer", "Bow Optimizer") {
-                boolean enabled() { return UtilitySettings.bowOptimizer; }
-                void setEnabled(boolean on) { UtilitySettings.bowOptimizer=on;BowOptimizer.INSTANCE.echoes.clear();BowAccuracy.INSTANCE.reset(); }
-                GuiScreen settings(GuiScreen back) { return new BowOptimizerSettings(back); }
-            },
-            new OtlModule("height_limit_overlay", "Height Limit Overlay") {
-                boolean available() { return false; }
-                boolean enabled() { return false; }
-                void setEnabled(boolean on) { UtilitySettings.heightLimitOverlay=false; }
+    /** Find a module by its id; null when unknown. */
+    public static OtlModule byId(String id){for(OtlModule m:ALL)if(m.id.equals(id))return m;return null;}
+
+    public static final List<OtlModule> ALL = discover();
+
+    // shortcut: classpath scan happens once at mod startup; not a hot path
+    private static List<OtlModule> discover(){
+        List<OtlModule> found=new ArrayList<>();
+        try{
+            String pkg="otl.client.modules";
+            URL url=OtlModule.class.getClassLoader().getResource(pkg.replace('.','/'));
+            if(url!=null){
+                for(String className:classNames(url,pkg)){
+                    try{
+                        Class<?> cls=Class.forName(className,true,OtlModule.class.getClassLoader());
+                        if(Modifier.isAbstract(cls.getModifiers())||cls.isInterface()||!OtlModule.class.isAssignableFrom(cls))continue;
+                        found.add((OtlModule)cls.getConstructor().newInstance());
+                    }catch(Throwable inner){System.err.println("Overcast Utilities: could not register module "+className+": "+inner);}
+                }
             }
-    );
+        }catch(Throwable t){System.err.println("Overcast Utilities: module discovery failed: "+t);}
+        Collections.sort(found,Comparator.comparingInt(m->m.order));
+        return Collections.unmodifiableList(found);
+    }
+
+    private static List<String> classNames(URL url,String pkg)throws Exception{
+        List<String> out=new ArrayList<>();
+        String prefix=pkg.replace('.','/')+"/";
+        if("file".equals(url.getProtocol())){
+            File dir=new File(url.toURI());
+            for(File file:dir.listFiles()){
+                String n=file.getName();
+                if(n.endsWith(".class")&&!n.contains("$"))out.add(pkg+"."+n.substring(0,n.length()-".class".length()));
+            }
+            return out;
+        }
+        JarFile jar=((JarURLConnection)url.openConnection()).getJarFile();
+        java.util.Enumeration<? extends java.util.zip.ZipEntry> entries=jar.entries();
+        while(entries.hasMoreElements()){
+            String name=entries.nextElement().getName();
+            if(name.startsWith(prefix)&&name.endsWith(".class")&&name.indexOf('$',prefix.length())<0)
+                out.add(name.substring(0,name.length()-".class".length()).replace('/','.'));
+        }
+        return out;
+    }
 }

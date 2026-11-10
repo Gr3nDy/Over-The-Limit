@@ -14,7 +14,9 @@ import net.minecraftforge.fml.common.eventhandler.*;
 import net.minecraftforge.fml.relauncher.ReflectionHelper;
 
 /** Local feedback only: never changes bow use, inventory or network packets. */
-final class BowOptimizer {
+public final class BowOptimizer {
+    /** Drops echoed shot noise; part of the module's factory reset and toggle. */
+    public static void clearEchoes(){INSTANCE.echoes.clear();}
     static final BowOptimizer INSTANCE=new BowOptimizer();
     final Echoes echoes=new Echoes();
     private ISound predicted;

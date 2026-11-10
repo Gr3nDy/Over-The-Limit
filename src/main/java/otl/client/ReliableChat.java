@@ -18,7 +18,7 @@ import net.minecraftforge.fml.relauncher.ReflectionHelper;
 import net.minecraftforge.event.world.WorldEvent;
 
 /** Routes original components into bounded vanilla-compatible chat views. */
-final class ReliableChat {
+public final class ReliableChat {
     static final ReliableChat INSTANCE=new ReliableChat();
     static final Map<String,Session> sessions=new HashMap<>();
     static RoutingHud installed;
@@ -184,7 +184,7 @@ final class ReliableChat {
         Session s=session();String key=s.temporaryReturn;s.temporaryReturn=null;
         if(key!=null&&s.views.containsKey(key))s.select(key);
     }
-    static void applyPreferences(){
+    public static void applyPreferences(){
         for(Session s:sessions.values())for(View v:s.views.values()){if(!UtilitySettings.rememberDrafts)v.draft="";v.hud.refreshChat();}
         if(!UtilitySettings.bubbles)TeamBubbles.clearBubbles();
     }

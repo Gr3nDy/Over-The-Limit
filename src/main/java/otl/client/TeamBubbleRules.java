@@ -5,6 +5,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 final class TeamBubbleRules {
+    static boolean teamMap(MapInfo map){
+        return map!=null&&!map.teams.isEmpty()&&!MapInfo.norm(map.gamemode).equals("ffa")&&!MapInfo.norm(map.gamemode).equals("freeforall");
+    }
     private static final Pattern JOIN=Pattern.compile("^You joined (?:the )?(.+?)(?: team)?[.!]?$",Pattern.CASE_INSENSITIVE);
     private static final Pattern GLOBAL=Pattern.compile("^(?:\\[[^\\]\\r\\n]{1,32}\\]\\s*)*<?([A-Za-z0-9_]{1,16})>?\\s*[:>\\u00bb]\\s*(.+)$");
     private static final Pattern TEAM_CHAT=Pattern.compile("^\\(([^)\\r\\n]{1,32})\\)\\s*(?:\\[[^\\]\\r\\n]+\\]\\s*)*<?([A-Za-z0-9_]{1,16})>?\\s*[:>\\u00bb]\\s*(.+)$",Pattern.CASE_INSENSITIVE);

@@ -19,10 +19,12 @@ public final class Otl {
     private final KeyBinding modules=new KeyBinding("key.otl.modules",Keyboard.KEY_P,"key.categories.otl");
     private final KeyBinding teamChat=new KeyBinding("key.otl.team_chat",Keyboard.KEY_Y,"key.categories.otl");
     private final KeyBinding partyChat=new KeyBinding("key.otl.party_chat",Keyboard.KEY_NONE,"key.categories.otl");
+    private final KeyBinding minimap=new KeyBinding("key.otl.minimap",Keyboard.KEY_M,"key.categories.otl");
     @Mod.EventHandler public void init(FMLInitializationEvent event) {
         ClientRegistry.registerKeyBinding(modules);
         ClientRegistry.registerKeyBinding(teamChat);
         ClientRegistry.registerKeyBinding(partyChat);
+        ClientRegistry.registerKeyBinding(minimap);
         MinecraftForge.EVENT_BUS.register(ReliableChat.INSTANCE);
         MinecraftForge.EVENT_BUS.register(ServerNotices.INSTANCE);
         MinecraftForge.EVENT_BUS.register(KillFeed.INSTANCE);
@@ -30,6 +32,8 @@ public final class Otl {
         MinecraftForge.EVENT_BUS.register(BowOptimizer.INSTANCE);
         MinecraftForge.EVENT_BUS.register(BowAccuracy.INSTANCE);
         FMLCommonHandler.instance().bus().register(BowAccuracy.INSTANCE);
+        MinecraftForge.EVENT_BUS.register(Minimap.INSTANCE);
+        FMLCommonHandler.instance().bus().register(Minimap.INSTANCE);
         // Height Limit Overlay is temporarily unavailable; keep all its runtime handlers detached.
         FMLCommonHandler.instance().bus().register(KillConfirm.INSTANCE);
         MinecraftForge.EVENT_BUS.register(MapPreview.INSTANCE);
@@ -45,11 +49,12 @@ public final class Otl {
         ((IReloadableResourceManager)MinecraftAccess.get().getResourceManager()).registerReloadListener(resources->{SkinFace.clear();FaceMarks.clearCache();});
     }
     @SubscribeEvent public void key(InputEvent.KeyInputEvent event){
+        if(minimap.isPressed()){Minimap.INSTANCE.cycleView();return;}
         if(teamChat.isPressed()){ReliableChat.openChannel(ChatRules.TEAM);return;}
         if(partyChat.isPressed()){ReliableChat.openChannel(ChatRules.PARTY);return;}
         openMenu();
     }
-    @SubscribeEvent public void mouse(InputEvent.MouseInputEvent event){openMenu();}
+    @SubscribeEvent public void mouse(InputEvent.MouseInputEvent event){if(minimap.isPressed()){Minimap.INSTANCE.cycleView();return;}openMenu();}
     private void openMenu(){
         Minecraft mc=MinecraftAccess.get();
         if(mc.thePlayer==null || mc.currentScreen!=null)return;
