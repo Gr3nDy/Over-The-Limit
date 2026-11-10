@@ -17,7 +17,7 @@ minecraft {
 }
 repositories { mavenCentral() }
 dependencies { testCompile 'junit:junit:4.13.2' }
-jar { archiveName = 'OTL.jar'; from project(':').file('LICENSE'), { into 'META-INF'; rename { 'LICENSE' } }; from project(':').file('NOTICE.md'), { into 'META-INF' }; from project(':').file('LICENSE-CC-BY-SA-4.0.txt'), { into 'META-INF' }; exclude 'META-INF/*.SF', 'META-INF/*.RSA', 'META-INF/*.DSA', 'module-info.class', 'META-INF/versions/**' }
+jar { archiveName = 'OTL.jar'; from project(':').file('license/LICENSE'), { into 'META-INF'; rename { 'LICENSE' } }; from project(':').file('license/NOTICE.md'), { into 'META-INF' }; from project(':').file('license/LICENSE-CC-BY-SA-4.0.txt'), { into 'META-INF' }; exclude 'META-INF/*.SF', 'META-INF/*.RSA', 'META-INF/*.DSA', 'module-info.class', 'META-INF/versions/**' }
 tasks.withType(JavaCompile) { options.encoding = 'UTF-8' }
 processResources { exclude '**/*.part' }
 if (project.hasProperty('otlSmoke')) { sourceSets.main.java.srcDir 'src/otlSmoke/java' }
@@ -53,7 +53,7 @@ build.dependsOn releaseJar
 sourceJar {
     archiveName = 'OTL-source.jar'
     from sourceSets.main.allSource
-    from project(':').file('LICENSE'), { into 'META-INF'; rename { 'LICENSE' } }
-    from project(':').file('NOTICE.md'), { into 'META-INF' }
-    from project(':').file('LICENSE-CC-BY-SA-4.0.txt'), { into 'META-INF' }
+    from project(':').file('license/LICENSE'), { into 'META-INF'; rename { 'LICENSE' } }
+    from project(':').file('license/NOTICE.md'), { into 'META-INF' }
+    from project(':').file('license/LICENSE-CC-BY-SA-4.0.txt'), { into 'META-INF' }
 }

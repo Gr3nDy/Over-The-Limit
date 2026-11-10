@@ -14,7 +14,7 @@ The bundled map previews (`src/main/resources/assets/otl/maps/`) and the generat
 The maintainers confirm those maps are shared under the Creative Commons Attribution-ShareAlike 4.0 International license (CC BY-SA 4.0; see LICENSE-CC-BY-SA-4.0.txt). Accordingly, the derived meshes are also licensed under CC BY-SA 4.0 by their respective authors, with this project noted as the adapter (modifications are described in `tools/generate_minimap_models.py`: surface meshes baked from world region files, cube approximations, simplified block colors).
 
 Attribution:
-- Authors of the bundled maps: see `Maps/ATTRIBUTION.txt` (combined author list extracted from the upstream `map.xml` files, which are also bundled here).
+- Authors of the bundled maps: see `ATTRIBUTION.txt` (combined author list extracted from the upstream `map.xml` files, which are also bundled here).
 - Upstream per-map author and UUID data: each map's `map.xml` (bundled at `src/main/resources/assets/otl/maps/<mode>/<map>/map.xml`).
 - ResourcePile (mcresourcepile.github.io) is the curated index of these maps; it is the source of truth for per-map licensing and is also linked from the two license files present upstream.
 
