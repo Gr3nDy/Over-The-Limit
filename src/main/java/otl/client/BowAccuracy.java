@@ -214,8 +214,7 @@ public final class BowAccuracy {
             GlStateManager.translate(box.x,box.y,0);GlStateManager.scale(scale,scale,1);
             int alpha=(int)(UtilitySettings.bowAccuracyOpacity*255/100*visibility);
             if(alpha>0)Gui.drawRect(0,0,(int)Math.ceil(box.w/scale),17,alpha<<24);
-            String text=hudText(percent);
-            mc.fontRendererObj.drawStringWithShadow(text,Math.max(0,(int)Math.ceil(box.w/scale)-mc.fontRendererObj.getStringWidth(text))/2,4,preview&&!(UtilitySettings.bowOptimizer&&UtilitySettings.bowAccuracy)?0x73888888:textAlpha<<24|0xFFFFFF);
+            mc.fontRendererObj.drawStringWithShadow(hudText(percent),4,4,preview&&!(UtilitySettings.bowOptimizer&&UtilitySettings.bowAccuracy)?0x73888888:textAlpha<<24|0xFFFFFF);
         }finally{GlStateManager.popMatrix();GlStateManager.color(1,1,1,1);}
     }
     // shortcut: counts vanilla server-confirmed player hits, not mobs or servers that omit the arrow-hit signal.
