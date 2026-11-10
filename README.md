@@ -80,4 +80,6 @@ The one-off Python converter needs `tools/requirements-minimap.txt` (no new Java
 
 ## License
 
-Licensed under the **GNU General Public License v3.0**. See `LICENSE`.
+The mod's source code and binaries are licensed under the **GNU General Public License v3.0**. See `LICENSE`.
+
+Bundled map previews and the terrain meshes downloaded per map are derived from Overcast Community's PGM map repositories and are licensed under **CC BY-SA 4.0** by their respective map authors (see `LICENSE-CC-BY-SA-4.0.txt` and `NOTICE.md`, including `Maps/ATTRIBUTION.txt`). The mod is therefore distributed as a combined work: code (GPL-3.0) and map data (CC BY-SA 4.0).

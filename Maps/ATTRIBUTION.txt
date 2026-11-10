@@ -1,0 +1,347 @@
+Map author attribution list
+Generated from the bundled map.xml files (780 maps; 342 unique author names found).
+Each map.xml also carries author UUIDs; non-map contributions are not listed.
+Mod source code is by the Over The Limit authors and licensed GPL-3.0 (see LICENSE).
+
+0uzi
+3lii3
+_3Each
+___gavin
+__Argentina 6
+_CherryPie_
+_DISTRACTION_
+_hej
+_iMan
+_IQ
+_Just
+_nathy
+_Nathy
+_Pear
+_pkb
+Aaewe
+abejita23
+abejita23 23
+adenines
+Akinakumushi
+alejitox
+alejitox 21
+Alexander_
+alexandrp_ 9
+ALM
+Alphaboy98yt
+alphaschrank
+Alternqtive
+Alternqtive 24
+Ammzzy
+Ampoloo 32
+Anarquista
+Anarquista 35
+Antnecb
+Apagarlo 3
+applenick
+arcadeboss
+Arizhem
+Artdamensi0n
+Artdamension
+Arzanex
+ATub
+Avaleer
+Aymbaut
+bapplenick
+Beanes
+bepiess
+Bizazir
+BlanchePanda
+Blazy
+Bleanny
+BowArrowLauncher
+BrettOgden
+bunbunbui
+byRobo
+C2Furious
+Capitainenini31
+Carisma
+Carloo
+Cazadorian
+Cazadorian/dragonstomper64
+Celesian
+chle_
+CincoDeMayo
+CincoDeMayo 13
+Clay2A
+confect1on
+CoWinkKeyDinkInc
+Crazy_
+crazymc98
+CredensJustitiam
+Creephunter
+cs_
+D347HxD
+Dams100
+Dawthon
+dennisbuilds
+Dentmaged
+dentmaged
+derlox
+DerStiv
+Detail
+DetrexYT69
+Diamyx
+Diegooh
+Diezhyl
+Digitalight
+DoomRobotBoy
+DoomyBoy
+Dowly_
+dsr12
+Edde
+EDJM9
+EgoPlaZa
+EgoPlaZa 30
+ElDanii
+ElectroidFilms
+Eliminate
+EllisTea
+emcode
+envyother
+EpicPuppy613
+EsotericSorcery
+eunsoule
+Fbpr27 18
+FbprZ7
+FiIshywishi
+Flamiix
+Fouled
+Fox98cr
+Frapuccino
+FruitlogicFAN
+FrutlogicTWIN
+Furrie
+GatitoConSueter
+GatitoConSueter 11
+Gaul05
+GoldenOre
+GonkfSLE
+GoReds99
+Gr3nDy
+Gr3ndy
+GrapeLime
+grapplenick
+grizt 4
+Guarz
+guini2
+halfmaster1
+HardstyleRaver
+HardstyleRaver2
+HUDV
+Hydrosion
+ICE__MAN
+IcyCode
+IKamux 22
+IlPapaya fka ItsEloz
+ImJeezus
+Indicado
+insolentes
+isaalei
+Isaalei 25
+ItsMeKiing
+ItsMeKiing / FruitlogicKING
+ItsMiiOlly
+Ivisha
+JacketJack_
+JapaneseSquid
+Javg_
+jcane
+JcNumbers
+Jexel
+JTBC
+Juiceswl
+Julianswl
+Just_
+Justcupcakes
+justTNT__
+JXEY
+k6ren
+Kallowy
+katanyaa
+Kazoha
+Kazoha 1
+killtrixy
+Kiloh
+krovax
+Krovax
+KuNet
+Kurbi_
+Le0nardo_
+LeoDerLastwagen
+Lich_of_Flowers
+LKFJimmy
+llehc
+LordDracula
+Lorzz
+Lowie375
+Lucas_Slam
+Ludavigi
+lunaceee
+Lunaceee
+lunacy
+Lyzak
+maatthi 26
+MagiG67
+MajorMcDonalds
+mariogoat
+Mariogoat
+Masspec
+MCFilms
+McYukon
+Melanyz
+MELS2315202321
+mennd 17
+Metacognitive
+MewTwoKing
+Mewzzy
+Micaleh 19
+miniature_Joe
+miniature_joe
+minuyo
+Minuyo
+MishM0sh
+Mista_Milk
+Mistereman
+mitchiii
+mitchiii <3
+mitchiii_
+MonstoBusta
+MrFrendly
+MrTinyPig
+Namize
+nard164
+NAZDT
+Necrozma
+nichome
+Nidho0gg
+Nidho0gg 33
+nigges60
+Nishiant
+nixter1029
+Noorthside
+nuttydragon
+NxRawrr
+OAF6
+obcursus
+Obelistics
+ocal
+Oprad
+orview
+oseh
+Pablete1234
+Palmenikoo
+Palmenikoo 14
+PANxo
+panxo
+pcki
+Pe241
+PeakDominance
+Penuuy
+PhantomOrion
+Pibo
+Pipeee
+Plastix
+poopypeggy
+Posighdun
+Pqlette
+profbananaslug
+ProfessorUtonium
+Pugzy
+purpplenick
+Put0veda
+Pyrolith
+Quantee
+Quanteey
+Qwuiblington
+Ref
+ref
+ressp 8
+RHCube
+Riilo
+Robeens
+rockymine
+Ruediger_LP
+Salgadoh
+samschaap
+samthecat43
+Santiagx
+Sebasxxtian
+Sedum_Paul
+Shimane
+Shimane 10
+Shuliett
+Shuliett 2
+Siceth
+Sko0l 20
+slayersource
+Soleclaw
+Solo_Runner
+StanleyTheCow
+Stealth5061
+Steve
+Strangey
+stuntguy3000
+stupid3700
+Suavely
+SuperMatiu 16
+tammaki
+teagod
+Technodono
+Teheggi
+Telajo 7
+tenwy 31
+Terrowin94
+The_Good_1
+TheDirtyOne
+TheM1ghtyBear
+TigerClaw456
+TinyPigMX
+TinyPigMX 15
+Tkes
+tkes
+TommyHillfigger
+Trionaf
+ttam
+ttam 5
+Tundren
+Tundren 12
+Tywnis
+Tywnis 34
+Uli152 27
+uracils
+Valky
+Valoryie
+Vand
+Veilaa
+Vice
+Vicei in Minecraft, aka Vice
+ViceTechnicolour
+ViceWatercolour
+Vichoo
+VitaminK1
+vYurita
+wake6258
+Wesdial
+Witmoos
+Wyviryn
+Xenor06
+Xerocoles
+xRob3
+Xuph
+Yoyo_
+Zan
+ZazSsav
+Zero_Frosty
+Zet
+Zet 28
+Zuiuzz
+Zynnphony
+zZKiIng
+zzuf
+zzuf 29
