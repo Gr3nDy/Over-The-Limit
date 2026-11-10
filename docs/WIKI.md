@@ -2,7 +2,7 @@
 
 **Over The Limit (OTL)** is a client-side Forge 1.8.9 mod for the [Overcast Community](https://overcastcommunity.com/) PGM-style server family (`play.oc.tc`, `vanish.oc.tc`).
 
-**Current release:** [v0.3.6](https://github.com/Gr3nDy/Over-The-Limit/releases/tag/v0.3.6) · **Source:** [github.com/Gr3nDy/Over-The-Limit](https://github.com/Gr3nDy/Over-The-Limit) (branch `beta`)
+**Current release:** [v0.3.7](https://github.com/Gr3nDy/Over-The-Limit/releases/tag/v0.3.7) · **Source:** [github.com/Gr3nDy/Over-The-Limit](https://github.com/Gr3nDy/Over-The-Limit) (branch `beta`)
 
 ## Installing
 

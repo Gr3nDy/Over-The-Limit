@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.3.7 - 2026-11-11
+
+### Changed
+- License files reorganized into `license/`; the release jar now bundles `license/LICENSE`, `license/LICENSE-CC-BY-SA-4.0.txt` and `license/NOTICE.md` under `META-INF/`.
+- The redundant `COMMUNITY_MAPS_LICENSE.txt` is no longer bundled in the jar.
+- No gameplay or settings changes; at runtime this release is identical to v0.3.6.
+
 ## v0.3.6 - 2026-11-11
 
 ### Changed
