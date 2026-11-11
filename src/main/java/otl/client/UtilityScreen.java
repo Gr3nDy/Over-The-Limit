@@ -33,7 +33,7 @@ public final class UtilityScreen extends GuiScreen {
             pageSize=Math.max(1,1+(h-110)/42);page=Math.min(page,(OtlModule.ALL.size()-1)/pageSize);
             for(int i=0;i<pageSize&&page*pageSize+i<OtlModule.ALL.size();i++){
                 int index=page*pageSize+i;OtlModule m=OtlModule.ALL.get(index);
-                GuiButton toggle=new NeutralButton(20+index,x+14,y+64+i*42,w-112,20,m.name+": "+(m.available()?state(m.enabled()):"DISABLED"),false);
+                GuiButton toggle=new NeutralButton(20+index,x+14,y+64+i*42,w-112,20,m.name+": "+(m.available()?state(m.enabled()):"LOCKED"),false);
                 toggle.enabled=m.available();buttonList.add(toggle);
                 GuiButton options=new NeutralButton(40+index,x+w-94,y+64+i*42,80,20,"Settings",false);
                 options.enabled=m.available()&&m.settings(this)!=null;buttonList.add(options);
@@ -82,7 +82,7 @@ public final class UtilityScreen extends GuiScreen {
     public void onGuiClosed(){UtilitySettings.save();}
     public void drawScreen(int mx,int my,float partial){
         drawDefaultBackground();BedrockUi.panel(x,y,w,h);
-         drawString(fontRendererObj,chatSettings?"Reliable Chat":"Over The Limit "+Otl.VERSION,x+14,y+12,0xFFEAEAEA);
+         drawString(fontRendererObj,chatSettings?"Reliable Chat":"Over The Limit "+Otl.VERSION,x+14,y+12,0xFFFFFFFF);
         drawString(fontRendererObj,ServerScope.active()?ServerScope.current()+(ReliableChat.fullChat()?" | Full chat":" | All-only chat"):"Inactive here - settings remain editable",x+14,y+27,0xFFAAAAAA);
         if(chatSettings){
             if(page==0)drawString(fontRendererObj,UtilitySettings.unlimitedHistory?"Unlimited history uses more memory.":"100 messages per view. History is session-only.",x+14,y+222,0xFFAAAAAA);

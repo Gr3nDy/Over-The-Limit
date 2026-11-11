@@ -17,7 +17,7 @@ final class ColorSwatches extends GuiScreen {
         mc.displayGuiScreen(parent);
     }
     public void drawScreen(int mx,int my,float partial){
-        drawDefaultBackground();drawRect(x,y,x+w,y+190,0xF0202020);
+        drawDefaultBackground();BedrockUi.panel(x,y,w,190);
         drawString(fontRendererObj,kind==0?"Your kill border color":kind==1?"Your death border color":"Your assist border color",x+15,y+14,0xFFFFFFFF);
         drawString(fontRendererObj,"Pick a swatch, or use hex in Colors.",x+15,y+29,0xFFAAAAAA);
         super.drawScreen(mx,my,partial);

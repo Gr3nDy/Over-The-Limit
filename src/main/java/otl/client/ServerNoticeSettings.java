@@ -9,7 +9,7 @@ public final class ServerNoticeSettings extends GuiScreen {
     public void initGui(){
         UtilitySettings.load();w=Math.min(350,width-24);x=(width-w)/2;y=Math.max(0,(height-232)/2);buttonList.clear();
         buttonList.add(new ModuleReset(90,x+w-27,y+6,"server_notices"));
-        buttonList.add(new NeutralButton(0,x+14,y+46,w-28,20,"Server Notices: UNAVAILABLE",false));
+        buttonList.add(new NeutralButton(0,x+14,y+46,w-28,20,"Server Notices: LOCKED",false));
         BedrockUi.section(fontRendererObj,"DISPLAY",x+14,y+72,w-28);
         buttonList.add(new NeutralButton(1,x+14,y+86,w-28,20,"Mode: "+UtilitySettings.noticeMode.label,false));
         buttonList.add(new PresetSlider(2,x+14,y+110,w-28,"Panel/border opacity: ","%",PresetSlider.PERCENT,UtilitySettings.noticeOpacity,25,s->UtilitySettings.noticeOpacity=s.getValueInt()));

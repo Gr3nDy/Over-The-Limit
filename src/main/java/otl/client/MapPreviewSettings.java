@@ -27,8 +27,8 @@ public final class MapPreviewSettings extends GuiScreen {
         if(b.id==2){mc.displayGuiScreen(parent);return;}
     }
     public void drawScreen(int mx,int my,float partial){
-        drawDefaultBackground();drawRect(x-1,y-1,x+w+1,y+h+1,0xFF555555);drawRect(x,y,x+w,y+h,0xF0181818);
-        drawString(fontRendererObj,"Map Preview",x+14,y+12,0xFFEAEAEA);
+        drawDefaultBackground();BedrockUi.panel(x,y,w,h);
+        drawString(fontRendererObj,"Map Preview",x+14,y+12,0xFFFFFFFF);
         drawString(fontRendererObj,"Map images in vote books and gold chat links.",x+14,y+27,0xFFAAAAAA);
         super.drawScreen(mx,my,partial);
     }

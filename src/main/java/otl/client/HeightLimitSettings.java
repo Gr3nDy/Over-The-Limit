@@ -10,7 +10,7 @@ public final class HeightLimitSettings extends GuiScreen {
     public void initGui(){
         UtilitySettings.load();w=Math.min(350,width-24);x=(width-w)/2;y=(height-248)/2;buttonList.clear();
         buttonList.add(new ModuleReset(90,x+w-27,y+6,"height_limit_overlay"));
-        buttonList.add(new NeutralButton(0,x+14,y+46,w-28,20,"Height Limit Overlay: DISABLED",false));
+        buttonList.add(new NeutralButton(0,x+14,y+46,w-28,20,"Height Limit Overlay: LOCKED",false));
         buttonList.add(new NeutralButton(6,x+14,y+70,w-28,20,"Height Limit Indicator: "+(UtilitySettings.heightLimitIndicator?"ON":"OFF"),false));
         BedrockUi.section(fontRendererObj,"INDICATOR",x+14,y+96,w-28);
         buttonList.add(new PresetSlider(1,x+14,y+110,w-28,"Darkness opacity: ","%",PresetSlider.PERCENT,UtilitySettings.heightLimitOpacity,25,s->UtilitySettings.heightLimitOpacity=s.getValueInt()));

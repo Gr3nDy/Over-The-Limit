@@ -77,8 +77,8 @@ public final class KillFeedSettings extends GuiScreen {
     protected void mouseReleased(int mx,int my,int state){super.mouseReleased(mx,my,state);applyColors();UtilitySettings.save();}
     public void onGuiClosed(){applyColors();UtilitySettings.save();}
     public void drawScreen(int mx,int my,float partial){
-        drawDefaultBackground();drawRect(x-1,y-1,x+w+1,y+h+1,0xFF555555);BedrockUi.panel(x,y,w,h);
-        drawString(fontRendererObj,"Kill Feed",x+14,y+12,0xFFEAEAEA);
+        drawDefaultBackground();BedrockUi.panel(x,y,w,h);
+        drawString(fontRendererObj,"Kill Feed",x+14,y+12,0xFFFFFFFF);
         if(page==1){
             drawString(fontRendererObj,"Background = black fill; outline = colored stroke.",x+14,y+153,0xFFAAAAAA);
         }else if(page==2){
