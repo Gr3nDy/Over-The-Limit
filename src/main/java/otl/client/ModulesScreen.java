@@ -33,8 +33,8 @@ final class ModulesScreen extends GuiScreen {
         buttonList.clear();
         buttonList.add(new NeutralButton(0,contentX(),y+h-24,104,18,"EDIT HUD LAYOUT",false));
         buttonList.add(new NeutralButton(3,x+w-86,y+h-24,72,18,"DONE",false));
-        buttonList.add(new NeutralButton(4,x+14,y+h-24,86,18,"+ NEW PROFILE",false));
-        buttonList.add(new NeutralButton(5,x+8,divider()-22,RAIL-16,16,"IMPORT",false));
+        buttonList.add(new NeutralButton(4,x+8,y+h-24,40,18,"+ NEW",false));
+        buttonList.add(new NeutralButton(5,x+52,y+h-24,56,18,"IMPORT",false));
         renameField=null;
         int row=editing==null?-1:profiles.indexOf(editing);
         if(row>=0&&row>=railScroll&&row<railScroll+railRows()){
