@@ -12,46 +12,169 @@
 
 ## Using it
 
-Press **P** to open the HUD editor. From the editor you can toggle, resize, and reposition every HUD module, per-module settings live under its *Settings* button. Press **Esc** to close.
+Press **P** to open the HUD editor. From the editor you can toggle, resize, and reposition every HUD module; per-module settings live under each *Settings* button. Press **Esc** to close.<br>
+Every module also has a **Reset** button in its settings screen that restores that module's defaults. Settings live in `config/Over The Limit/settings.json` and `profiles/<name>.json` (per-profile); the `config/Over The Limit/profiles/` folder holds your profiles.
 
 ## Modules
 
-| Module | What it does | Default |
-| --- | --- | --- |
-| Face Rig | Animates skin-based eyes and expressions; includes an in-game editor | OFF |
-| Reliable Chat | Channel/PM tabs, drafts, scrollable history, optional team speech bubbles | ON |
-| Map Preview | Book/chat map previews, searchable map gallery, `/map` info cards | ON |
-| Prefered Hand | Configurable first-person hand rendering | OFF |
-| Kill Feed | Deaths, causes and weapons with a configurable HUD and 1,000-message history | ON |
-| Kill Confirm | Queued kill tags, streaks, EXP recap after death | OFF |
-| Bow Optimizer | Predicted release sound, same-slot durability fix, live accuracy HUD, hit marker | OFF |
-| Server Notices | Server announcements in a standalone HUD | OFF |
-| Height Limit Overlay | Shows the map's block placement limit as an in-world overlay | OFF |
-| Minimap | Downloads per-map terrain meshes on demand; square, player-centered isometric viewport | OFF |
+### Face Rig — OFF by default
 
-## Building from source
+Animates skin-based faces for yourself and other players using server-confirmed overlay data.
 
-Requires JDK 8.
+- **Face Rig** master switch in Mods.
+- **Face settings**: blush, glowing eyes, glances, blinking, hat — each with *Only me / All / None* modes.
+- **Editor**: in-game editor opened from Mods. Paint eye marks per skin, or automatic detection runs from the skin pixels.
+- **World lighting** can be toggled from *natural* to *fullbright* (night lighting changes).
+- Painted marks are stored per skin and persist across relogs; automatic detection is re-done per texture.
 
-```text
-gradlew.bat clean build --offline --no-daemon
-```
+### Reliable Chat — ON by default
 
-The verified, reobfuscated `OTL.jar` is created in `build/libs/`. Tests only: `gradlew.bat test --offline --no-daemon`. In-game fixtures: `gradlew.bat runClient -PotlSmoke --offline --no-daemon` (scope with `-PotlSmokeScope=<name>`, e.g. `bow`, `minimap`, `killconfirm`).
+A tabbed chat with channel history, drafts, and optional team speech bubbles.
 
-## Repository map
+**Basic options (General tab):**
+- **Reliable Chat** master switch (when off, the mod stays out of chat completely).
+- **Unread counts** — unread message counts on channel tabs.
+- **Remember drafts** — drafts persist per channel; **Unlimited history** — no 100-line cap; **Shift+Tab cycling** — cycle channels with Shift+Tab.
+- **Show Tab Chat**, and **Tab position** (Bottom Left / Bottom Right / Top Left / Top Right) — where the channel strip renders.
 
-- `src/main/java/otl/client/` — the mod (modules, HUD, screens, settings)
-- `src/main/resources/assets/otl/maps/` — bundled map previews (`map.xml`, `map.png`) and the `minimap-index.json` catalog
-- `Maps/` — OvercastCommunity PGM map meshes (downloaded on demand per map)
-- `docs/` — [Architecture](ARCHITECTURE.md) · [Local testing](LOCAL_TESTING.md)
-- `tools/generate_minimap_models.py` — the mesh generator (not a runtime dependency)
-- `license/` — LICENSE, CC BY-SA-4.0, NOTICE, ATTRIBUTION
+**Team bubbles:**
+- **Team speech bubbles** (OFF by default) — renders a floating speech bubble above a player's head in world when they send a team-chat message.
+- **Mode** — *Team Chat only* (only explicit team-chat lines bubble) or *Team & Team Chat* (own-team global chat also bubbles when it matches your team color).
+- **Text limit** (20–200 characters) and **Duration** (1–15 seconds).
+- Bubbles are suppressed on announced FFA and other teamless maps, stay hidden while an announced map's metadata is unknown, team maps restore them automatically, and world changes clear old bubbles.
+- Only messages in `§`-anchored `(Any Team)`/`[…]`/`(Team)` prefixes are recognised; quotes and map lookups never create bubbles.
+
+**Appearance:**
+- **Chat background** — a snap slider, 0–100% opacity (default 25%).
+- **Tabs – not typing** and **Tabs – typing** — separate opacity sliders for idle and focused states, plus a reset to 25%.
+
+### Map Preview — ON by default
+
+Shows previews of map names announced in chat, `/map` commands, and vote books.
+
+- **Gold map links** — hover a gold map name in chat to see the preview image.
+- **Vote books** — face-hover any map name on an open written book to preview it (favorites get a star; the gallery can filter Favorites only).
+- **`/map` command** with an in-game card: map name, game mode, objective, teams, dimensions, build height limit, contributors.
+- **Gallery** — browse every bundled map, search by name, open a map's info card.
+- **Large Map Preview** toggle — bigger previews in chat (also in HUD editor).
+- **Preview on command** — `/map <name>` in chat opens the card (default: on).
+- **Favorites** — star maps; they live in your favorites filter everywhere.
+- Map previews are also usable in the HUD editor's *Map Preview* preview.
+
+### Prefered Hand — OFF by default
+
+Visually chooses which hand your items render in first-person.
+
+- **Main Hand** — Right or Left.
+- **Type** — categories of item to force to your chosen hand: *Weapons/Cards*, *All items*, *Tools only* or *Everything*.
+- When enabled, wraps `ItemRenderer` so your preferred slot renders as if you were right/left-handed.
+
+### Kill Feed — ON by default
+
+A configurable death feed, independent of chat.
+
+- **Player heads**: *Only me / Off / All / Team* — whose head shows on kill rows.
+- **Show entries**: *All / Only Me / Only My Team*.
+- **Hide deaths in chat** — kill lines disappear from chat so they only appear in the feed.
+- **Outline / Background opacity**, **Row size** 50–150%, **Outline** color, **visible rows** (1–5), **fade duration** (1–30 seconds), and an optional **slide-in animation** (default OFF).
+- **Kill history** — hover the feed to reveal the raw original chat line that produced it.
+- KillFeed never disappears at world changes; history is session-only.
+
+### Kill Confirm — OFF by default
+
+Shows a focused, richer HUD for your own kills, streak milestones and chapterenders.
+
+**Toggles:**
+- **Kill Confirmation** master switch.
+- **Sound** for confirmations, **victim heads** in streaks, **Hide kill confirm** (hide the EXP recap), **Total EXP** (host-confirmedEXP only).
+
+**Feedback:**
+- A queued row appears for each of your kills, with EXP reward, when the queue resolves.
+- **Streak milestones** — at 5/10/15/20/25/30 (then every 10): **RAMPAGE** (5+), **BEYOND THE LIMIT** (30+) and **THE LIMIT BREAKER** (100+), each with the exact streak count. Rapid chains advance through NONA KILL and MULTI KILL (10+).
+- **Rapid-chain tags** — within three seconds of each other, tags like CLEAN SWEEP (five different opponents), BRAWLER (three melee kills), DEMOLITION (explosion kill), HOT HAND (three bow kills), MIXED ARSENAL (melee + bow in any order). Three bonus tags per chain maximum.
+- **REDEMPTION** — you kill a player who killed you five times since you last killed them.
+- **DOMINATION** — five kills against one opponent in a rapid chain.
+- **Long-range**: LONG SHOT at 30+ blocks; **POINT BLANK** (≤3); **EXTREME RANGE** replaces LONG SHOT at 60+.
+- **EXP recap on death** — a three-line total of EXP gained that life (Kills EXP / Assists EXP / total EXP). Only appears when your previous life earned something.
+
+**Interactions:**
+- Kill Feed can stay on independently of Kill Confirmation.
+
+### Bow Optimizer — OFF by default
+
+Toned-down bow optimization: local feedback, none of the vanilla numeris.
+
+**Everything here is local-feedback only — no changes to charge speed, damage or outgoing packets.**
+
+**Independent toggles under the module switch:**
+- **Optimization** — replaces the same-slot durability equip dip with a local continuous render.
+- **Live Bow Accuracy** — server-confirmed arrow hits divided by valid local shots.
+  - **Prefix** — shown as `Bow Accuracy: N%` (ON by default; OFF to show only `N%`).
+  - **Mode** — *Always* (default), *On Hit* (two-second flash after a confirmed hit), *Holding Bow* (shown while a bow is equipped + one-second grace after switching).
+  - **Fade In / Fade Out** sliders (0–100% means 0–1s), **Animate Percentage** (smooth count-up, default ON), **Background opacity** (0–100%, default 25%), **Accuracy size** (50–150%), **Decimal places** (0–2, default 2).
+- **Bow Hit Sound** (OFF) — replaces the vanilla hit sound with a quieter tick (COD-inspired).
+- **Bow-Kill Sound** (OFF) — low chime on your server-confirmed bow kills.
+- **Hit Marker** (OFF) — a white/red crosshair marker on confirmed hits/kills; size adjustable 50–200%.
+- Accuracy resets on map/world changes, reconnects, and recognized PGM match endings/starts.
+
+### Server Notices — OFF by default
+
+Separates server announcements from player chat into their own overlay.
+
+- **Server Notices** master switch (locked OFF in this release).
+- **Mode** — *All*, *Joins & leaves only*, *Non-joins only*.
+- **Panel/border opacity** slider, **Size** slider.
+- **10-second display window**; up to 100 buffered lines; player/team/observer chat never routed here.
+
+### Height Limit Overlay — OFF by default
+
+Overlay-only build-height marker for PGM maps where all build must stop at a fixed Y.
+
+- **Height Limit Overlay** master switch (locked OFF in this release).
+- Reads the build limit from the announced PGM map metadata (`<maxbuildheight>`).
+- **Opacity**, **Size**, **Indicator seconds** sliders, **Top-only** toggle.
+
+### Minimap — OFF by default
+
+An isometric terrain viewport that downloads each map's mesh on demand.
+
+- **Minimap** master switch.
+- **Zoom level** (1–5) and **Alt Zoom level** sliders, snapped. Press `;` in world to swap between them.
+- **Player marker size** 50–150% slider.
+- **Border** (ON by default) — square cyber-border around the panel.
+- **Coordinates**, **Cardinals** (N/E/S/W), **Static rotation**, **Large background** opacity.
+- **Static/Follow mode** — static always centres on the map's bounds vs. follow the player.
+- **Background opacity** 0–100%.
+- **Current map** — set from the server's `Playing … by …` notice, or the centered `Created by …` title. Arbitrary `/map` lookups and player quotes never switch the current minimap.
+- **Missing maps** — a map without a local mesh shows `Preview unavailable` (with a `/map` hint), not a stale map.
+- World changes clear the old map immediately.
+- Meshes downloaded per map from the configured mesh repositories on first play and cached under `config/Over The Limit/Maps/`.
+
+## Configuration
+
+OTL's data lives entirely in `config/Over The Limit/`:
+
+- `settings.json` — global module settings
+- `profiles/Default.json` — per-profile settings (create more profiles from Mods)
+- `face.json` — Face Rig preferences, including painted marks
+- `marks/<name>.txt` — painted face marks per skin
+- `profiles/` — all saved profiles
+- `Maps/` — downloaded terrain meshes, cached
+- `map_cache/` — map preview cache
+
+Legacy `config/overcast_util` and `config/otl` folders are migrated automatically on first launch; `config/overcast_util` is left as a rollback copy.
+
+## Troubleshooting
+
+- **Logs**: `logs/latest.log` inside your client directory — search for `OTL:` for mod-specific lines.
+- **Smoke tests**: `gradlew.bat runClient -PotlSmoke --offline` runs the built-in test fixtures.
+- **Minimap says "Preview unavailable"** for your current map: wait a few seconds after joining (the mesh downloads the first time a map is played); dead maps can 404 once — join again to retry.
+- **Chat looks wrong after a config reset**: hit `P → Mods → Reliable Chat → Settings → Reset chat options`.
 
 ## Licensing
 
 - **Source code and binaries**: GNU General Public License v3.0 (`license/LICENSE`)
-- **Map data** (previews bundled in the jar; meshes downloaded on demand from the public repos): Creative Commons Attribution-ShareAlike 4.0 International, by the respective map authors (`license/LICENSE-CC-BY-SA-4.0.txt`, `license/NOTICE.md`, `license/ATTRIBUTION.txt`)
+- **Map data** (previews bundled in the jar; meshes downloaded on demand): Creative Commons Attribution-ShareAlike 4.0 International, by the respective map authors (`license/LICENSE-CC-BY-SA-4.0.txt`, `license/NOTICE.md`, `license/ATTRIBUTION.txt`)
 - Game content © Mojang Studios. Not affiliated with or endorsed by Mojang or the Overcast Community.
 
 ## Problems or questions?
