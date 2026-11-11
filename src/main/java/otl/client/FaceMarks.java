@@ -8,8 +8,10 @@ import net.minecraft.util.ResourceLocation;
 
 /** Painted face marks with automatic detection as the fallback; stored as plain text under config/Over The Limit. */
 final class FaceMarks {
-    private static final Map<String,int[]> PAINTED=new HashMap<>();
-    private static final Map<String,int[]> AUTO=new HashMap<>();
+    /** Painted marks are persisted to disk, so eviction is safe: a miss re-reads from disk. */
+    private static final Map<String,int[]> PAINTED=new LinkedHashMap<String,int[]>(){private static final long serialVersionUID=1L;@Override protected boolean removeEldestEntry(Map.Entry<String,int[]> e){return size()>512;}};
+    /** Auto-detected marks are derived, so eviction is safe: a miss re-detects. */
+    private static final Map<String,int[]> AUTO=new LinkedHashMap<String,int[]>(){private static final long serialVersionUID=1L;@Override protected boolean removeEldestEntry(Map.Entry<String,int[]> e){return size()>512;}};
     private static final int[] NONE=new int[0];
     static boolean lastSaveOk=true;
     private FaceMarks(){}
