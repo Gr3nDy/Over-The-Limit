@@ -52,10 +52,15 @@ final class TeamBubbles {
             String text=ChatRules.plain(formatted).trim();
             String query=text.startsWith("Playing ")?MapPreview.serverQuery(text):null;
             if(query!=null&&!query.equals(currentMap)){
-                currentMap=query;teamMap=false;teamColor=0;bubbles.clear();int token=++mapRequest;
+                currentMap=query;teamColor=0;bubbles.clear();
+                // Most maps are already in the bundled index: read those on the spot so bubbles
+                // come back with the map change instead of a network round-trip later.
+                MapInfo known=null;
                 MapInfo local=MapInfo.findLocal(query);
-                if(local!=null&&local.exact(query))teamMap=TeamBubbleRules.teamMap(local);
-                else MapRemote.lookup(query,map->MinecraftAccess.get().addScheduledTask(()->{
+                if(local!=null)try{known=MapInfo.read(local.dir,true,null,id->MapRemote.cachedInclude(id));}catch(Exception ignored){}
+                if(known!=null){teamMap=TeamBubbleRules.teamMap(known);return;}
+                teamMap=false;int token=++mapRequest;
+                MapRemote.lookup(query,map->MinecraftAccess.get().addScheduledTask(()->{
                     if(mapRequest==token)teamMap=TeamBubbleRules.teamMap(map);
                 }));
                 return;

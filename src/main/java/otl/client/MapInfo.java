@@ -22,9 +22,22 @@ final class MapInfo {
     final File cache;
     final boolean incomplete;
     final java.util.Set<String> kitBlocks;
+    /** Named and anonymous regions from the map's <regions> block, as bounding boxes. */
+    final java.util.List<Region> regions;
+
+    /** One map region, flattened to a bounding box; cylinders/circles/spheres use their extents. */
+    static final class Region {
+        final String name;
+        final double[] min,max;
+        Region(String name,double[] box){
+            this.name=name==null?"":name;
+            this.min=java.util.Arrays.copyOfRange(box,0,3);
+            this.max=java.util.Arrays.copyOfRange(box,3,6);
+        }
+    }
 
     private MapInfo(String name, String version, String objective, String created, String gamemode,
-                     String authors, String contributors, String teams, String dir, int players, boolean bundled, File cache, String variants, boolean incomplete, int maxBuildHeight, java.util.Set<String> kitBlocks) {
+                     String authors, String contributors, String teams, String dir, int players, boolean bundled, File cache, String variants, boolean incomplete, int maxBuildHeight, java.util.Set<String> kitBlocks, java.util.List<Region> regions) {
         this.name = name;
         this.version = version;
         this.objective = objective;
@@ -40,13 +53,21 @@ final class MapInfo {
         this.variants=variants;this.incomplete=incomplete;
         this.maxBuildHeight=maxBuildHeight;
         this.kitBlocks=java.util.Collections.unmodifiableSet(new java.util.HashSet<>(kitBlocks));
+        this.regions=java.util.Collections.unmodifiableList(regions);
     }
 
+    private volatile File pngFile;
+    private volatile boolean pngReady;
     ResourceLocation texture() {
         if (bundled) return MapPreview.galleryTexture(dir + "/map.png");
         if (cache == null) return null;
-        File png = new File(cache, "map.png");
-        return png.isFile() ? MapPreview.fileTexture(dir, png) : null;
+        if (!pngReady) {
+            File png = new File(cache, "map.png");
+            if (!png.isFile()) return null;
+            pngFile = png;
+            pngReady = true;
+        }
+        return MapPreview.fileTexture(dir, pngFile);
     }
 
     boolean exact(String query){
@@ -129,11 +150,93 @@ final class MapInfo {
                 Element item=(Element)items.item(i);String material=item.getAttribute("material");
                 if(!material.isEmpty())kitBlocks.add(kitMaterial(material));
             }
+            List<Region> regions=new ArrayList<>();
+            Element regionsEl=metadata.first("regions");
+            if(regionsEl!=null)collectRegions(regionsEl,metadata,regions,maxBuildHeight);
             return new MapInfo(nvl(metadata.value("name"),pretty(last(dir))),metadata.value("version"),objective,metadata.value("created"),
                     nvl(metadata.value("gamemode"),gamemode),metadata.people("authors","author"),metadata.people("contributors","contributor"),
-                    String.join(", ",labels),dir,players,bundled,cache,String.join(", ",variants),incomplete,maxBuildHeight,kitBlocks);
+                    String.join(", ",labels),dir,players,bundled,cache,String.join(", ",variants),incomplete,maxBuildHeight,kitBlocks,regions);
         }catch(Exception e){System.err.println("OTL: could not read map metadata "+dir+": "+e.getMessage());}
-        return new MapInfo(pretty(last(dir)),"","","",gamemode,"","","",dir,0,bundled,cache,"default",true,-1,java.util.Collections.emptySet());
+        return new MapInfo(pretty(last(dir)),"","","",gamemode,"","","",dir,0,bundled,cache,"default",true,-1,java.util.Collections.emptySet(),java.util.Collections.emptyList());
+    }
+
+    /** Flattens shape children (through union/intersection) into bounding boxes; everything else is skipped. */
+    private static void collectRegions(Element container,MapXml meta,List<Region> out,int height){
+        for(Element e:MapXml.children(container)){
+            String tag=e.getTagName();
+            if(tag.equals("union")||tag.equals("intersection"))collectRegions(e,meta,out,height);
+            else{
+                double[] box=regionBox(e,meta,height);
+                if(box!=null&&out.size()<2000)out.add(new Region(meta.expand(e.getAttribute("id")),box));
+            }
+        }
+    }
+
+    /** Bounding box of one shape in world coordinates; null for unrecognized or non-numeric regions. */
+    private static double[] regionBox(Element e,MapXml meta,int height){
+        // 2D shapes (rectangle/circle) have no y level: span the map's build limit instead of the full world.
+        double top=height>0?height+1:256;
+        String tag=e.getTagName();
+        try{
+            switch(tag){
+                case "cuboid":{
+                    double[] a=p3(meta.expand(e.getAttribute("min"))),b=p3(meta.expand(e.getAttribute("max")));
+                    if(a==null||b==null)return null;
+                    return new double[]{Math.min(a[0],b[0]),Math.min(a[1],b[1]),Math.min(a[2],b[2]),Math.max(a[0],b[0])+1,Math.max(a[1],b[1])+1,Math.max(a[2],b[2])+1};
+                }
+                case "rectangle":{
+                    double[] a=p2(meta.expand(e.getAttribute("min"))),b=p2(meta.expand(e.getAttribute("max")));
+                    if(a==null||b==null)return null;
+                    return new double[]{Math.min(a[0],b[0]),0,Math.min(a[1],b[1]),Math.max(a[0],b[0])+1,top,Math.max(a[1],b[1])+1};
+                }
+                case "cylinder":{
+                    double[] base=p3(meta.expand(e.getAttribute("base")));
+                    if(base==null)return null;
+                    double r=Double.parseDouble(meta.expand(e.getAttribute("radius")));
+                    double h=Math.max(1,Double.parseDouble(meta.expand(e.getAttribute("height"))));
+                    return new double[]{base[0]-r,base[1],base[2]-r,base[0]+r,base[1]+h,base[2]+r};
+                }
+                case "circle":{
+                    double[] c=p2(meta.expand(e.getAttribute("center")));
+                    if(c==null)return null;
+                    double r=Double.parseDouble(meta.expand(e.getAttribute("radius")));
+                    return new double[]{c[0]-r,0,c[1]-r,c[0]+r,top,c[1]+r};
+                }
+                case "sphere":{
+                    double[] o=p3(meta.expand(e.getAttribute("origin")));
+                    if(o==null)return null;
+                    double r=Double.parseDouble(meta.expand(e.getAttribute("radius")));
+                    return new double[]{o[0]-r,o[1]-r,o[2]-r,o[0]+r,o[1]+r,o[2]+r};
+                }
+                case "block":{
+                    double[] b=p3(e.getTextContent().trim());
+                    return b==null?null:new double[]{b[0],b[1],b[2],b[0]+1,b[1]+1,b[2]+1};
+                }
+                case "point":{
+                    double[] b=p3(e.getTextContent().trim());
+                    return b==null?null:new double[]{b[0]-.5,b[1]-.5,b[2]-.5,b[0]+.5,b[1]+.5,b[2]+.5};
+                }
+            }
+        }catch(NumberFormatException ignored){}
+        return null;
+    }
+
+    private static double[] p3(String v){
+        if(v==null)return null;
+        String[] parts=v.trim().split(",");
+        try{
+            if(parts.length!=3)return null;
+            return new double[]{Double.parseDouble(parts[0].trim()),Double.parseDouble(parts[1].trim()),Double.parseDouble(parts[2].trim())};
+        }catch(NumberFormatException e){return null;}
+    }
+
+    private static double[] p2(String v){
+        if(v==null)return null;
+        String[] parts=v.trim().split(",");
+        try{
+            if(parts.length!=2)return null;
+            return new double[]{Double.parseDouble(parts[0].trim()),Double.parseDouble(parts[1].trim())};
+        }catch(NumberFormatException e){return null;}
     }
 
     private static String nvl(String value, String fallback) {

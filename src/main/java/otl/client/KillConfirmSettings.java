@@ -2,24 +2,24 @@ package otl.client;
 
 import net.minecraft.client.gui.*;
 
-public final class KillConfirmSettings extends GuiScreen {
-    private final GuiScreen parent;private int x,y,w;
+public final class KillConfirmSettings extends SettingsScreen {
+    private final GuiScreen parent;
     public KillConfirmSettings(GuiScreen parent){this.parent=parent;}
     public boolean doesGuiPauseGame(){return false;}
-    public void initGui(){
-        UtilitySettings.load();w=Math.min(350,width-24);x=(width-w)/2;y=(height-278)/2;buttonList.clear();
-        buttonList.add(new ModuleReset(90,x+w-27,y+6,"kill_confirm"));
-        buttonList.add(new NeutralButton(0,x+14,y+42,w-28,20,"Kill Confirm: "+(UtilitySettings.killConfirm?"ON":"OFF"),false));
-        BedrockUi.section(fontRendererObj,"APPEARANCE",x+14,y+72,w-28);
-        buttonList.add(new PresetSlider(1,x+14,y+88,w-28,"Size: ","%",PresetSlider.SIZE,UtilitySettings.killConfirmSize,75,s->UtilitySettings.killConfirmSize=s.getValueInt()));
-        buttonList.add(new PresetSlider(3,x+14,y+112,w-28,"Background opacity: ","%",PresetSlider.PERCENT,UtilitySettings.killConfirmOpacity,25,s->UtilitySettings.killConfirmOpacity=s.getValueInt()));
-        BedrockUi.section(fontRendererObj,"CHAT & FEEDBACK",x+14,y+142,w-28);
-        buttonList.add(new NeutralButton(6,x+14,y+158,w-28,20,"Hide rewards in chat: "+(UtilitySettings.hideKillConfirmChat?"ON":"OFF"),false));
-        buttonList.add(new NeutralButton(7,x+14,y+182,w-28,20,"Kill/assist sounds: "+(UtilitySettings.killConfirmSounds?"ON":"OFF"),false));
-        buttonList.add(new NeutralButton(8,x+14,y+206,w-28,20,"Total EXP, Kills & Assists: "+(UtilitySettings.totalExpKills?"ON":"OFF"),false));
-        buttonList.add(new NeutralButton(9,x+14,y+230,w-28,20,"Kill icon: "+(UtilitySettings.killConfirmPlayerHead?"Player Head":"Skull"),false));
-        buttonList.add(new NeutralButton(4,x+14,y+256,110,20,"Reset position",false));
-        buttonList.add(new NeutralButton(5,x+w-94,y+256,80,20,"Back",false));
+    protected String title(){return "Kill Confirm";}
+    protected void buildPanel(){
+        resetButton("kill_confirm");
+        buttonList.add(new NeutralButton(0,panel.left(),panel.row(),panel.width(),20,"Kill Confirm: "+(UtilitySettings.killConfirm?"ON":"OFF"),false));
+        panel.section("APPEARANCE");
+        buttonList.add(new PresetSlider(1,panel.left(),panel.row(),panel.width(),"Size: ","%",PresetSlider.SIZE,UtilitySettings.killConfirmSize,75,s->UtilitySettings.killConfirmSize=s.getValueInt()));
+        buttonList.add(new PresetSlider(3,panel.left(),panel.row(),panel.width(),"Background opacity: ","%",PresetSlider.PERCENT,UtilitySettings.killConfirmOpacity,25,s->UtilitySettings.killConfirmOpacity=s.getValueInt()));
+        buttonList.add(new ChoiceButton(this,9,panel.left(),panel.choice(),panel.width(),"Kill icon",new String[]{"Skull","Player Head"},UtilitySettings.killConfirmPlayerHead?1:0,v->UtilitySettings.killConfirmPlayerHead=v==1));
+        panel.section("CHAT & FEEDBACK");
+        buttonList.add(new NeutralButton(6,panel.left(),panel.row(),panel.width(),20,"Hide rewards in chat: "+(UtilitySettings.hideKillConfirmChat?"ON":"OFF"),false));
+        buttonList.add(new NeutralButton(7,panel.left(),panel.row(),panel.width(),20,"Kill/assist sounds: "+(UtilitySettings.killConfirmSounds?"ON":"OFF"),false));
+        buttonList.add(new NeutralButton(8,panel.left(),panel.row(),panel.width(),20,"Total EXP, Kills & Assists: "+(UtilitySettings.totalExpKills?"ON":"OFF"),false));
+        pin(new NeutralButton(4,actionX(),footerY(),110,20,"Reset position",false));
+        back(5);
     }
     protected void actionPerformed(GuiButton b){
         if(b.id==90){((ModuleReset)b).reset();initGui();return;}
@@ -35,9 +35,4 @@ public final class KillConfirmSettings extends GuiScreen {
     }
     protected void mouseReleased(int x,int y,int state){super.mouseReleased(x,y,state);UtilitySettings.save();}
     public void onGuiClosed(){UtilitySettings.save();}
-    public void drawScreen(int mx,int my,float partial){
-        drawDefaultBackground();BedrockUi.panel(x,y,w,278);
-        drawString(fontRendererObj,"Kill Confirm",x+14,y+12,0xFFFFFFFF);
-        super.drawScreen(mx,my,partial);
-    }
 }

@@ -166,8 +166,8 @@ otl/                         (repo root: Over The Limit)
    │  ├─ TeamBubbles / TeamBubbleRules
    │  ├─ MapPreview / MapPreviewSettings / MapGalleryScreen / MapPreviewIndex (generated)
    │  ├─ MapInfo / MapRemote / MapInfoScreen   (/map card + public repo fallback)
-   │  ├─ PlayerSignals / CompactScreen / NeutralButton
-   │  └─ (ui kit: CompactScreen, NeutralButton shared by every screen)
+   │  ├─ PlayerSignals / SettingsScreen / SettingsPanel / NeutralButton
+   │  └─ (ui kit: SettingsScreen + SettingsPanel rows, NeutralButton shared by every screen)
    ├─ main/resources/          mcmod.info, assets (fonts, map data)
    └─ otlSmoke/java/...        automated in-client smoke harness (`-PotlSmoke`)
 ```
@@ -178,7 +178,7 @@ otl/                         (repo root: Over The Limit)
 2. `UtilitySettings` → field + one load line + one save line (clamped).
 3. Gate the feature at its use-site on `ServerScope.active() && <flag>`.
 4. Register any listeners/layers in `Otl.init` (unconditional register, conditional body).
-5. Optional: `settings(back)` screen using `CompactScreen`/`NeutralButton`.
+5. Optional: `settings(back)` screen: extend `SettingsScreen` (title/subtitle/buildPanel) and declare rows through `panel`.
 6. Smoke: toggle on/off, rejoin a world, confirm no stray listeners or GL state.
 
 ## 8. Build and deploy

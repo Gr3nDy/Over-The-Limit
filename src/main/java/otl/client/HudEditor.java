@@ -6,7 +6,7 @@ import net.minecraft.client.gui.*;
 
 /** Gameplay HUD positions and editor hit boxes share bounds. */
 final class HudEditor extends GuiScreen {
-    private static final String[] IDS={HudLayout.NOTICES,HudLayout.TABS,HudLayout.CONFIRM,HudLayout.KILLS,HudLayout.BOW,HudLayout.MINIMAP};
+    private static final String[] IDS={HudLayout.NOTICES,HudLayout.TEAM_BAR,HudLayout.TABS,HudLayout.CONFIRM,HudLayout.KILLS,HudLayout.REGION,HudLayout.BOW,HudLayout.MINIMAP};
     private String selected=HudLayout.KILLS,dragging;
     private int dx,dy,corner=-1,startScale,guideX=-1,guideY=-1;
     private HudLayout.Rect start;
@@ -22,11 +22,13 @@ final class HudEditor extends GuiScreen {
         if(HudLayout.HEIGHT.equals(id))return HeightLimitOverlay.bounds();
         if(HudLayout.BOW.equals(id))return BowAccuracy.bounds();
         if(HudLayout.MINIMAP.equals(id))return Minimap.bounds();
+        if(HudLayout.REGION.equals(id))return Regions.bounds();
+        if(HudLayout.TEAM_BAR.equals(id))return TeamBar.bounds();
         return ServerNotices.bounds();
     }
-    private boolean enabled(String id){return HudLayout.MINIMAP.equals(id)?UtilitySettings.minimap:HudLayout.BOW.equals(id)?UtilitySettings.bowAccuracy:HudLayout.HEIGHT.equals(id)?UtilitySettings.heightLimitIndicator:HudLayout.CONFIRM.equals(id)?UtilitySettings.killConfirm:HudLayout.KILLS.equals(id)?UtilitySettings.killFeed:HudLayout.TABS.equals(id)?UtilitySettings.showTabChat:UtilitySettings.nonPlayerChat;}
-    private static int size(String id){return HudLayout.MINIMAP.equals(id)?UtilitySettings.minimapSize:HudLayout.BOW.equals(id)?UtilitySettings.bowAccuracySize:HudLayout.HEIGHT.equals(id)?UtilitySettings.heightLimitSize:HudLayout.CONFIRM.equals(id)?UtilitySettings.killConfirmSize:HudLayout.KILLS.equals(id)?UtilitySettings.killFeedSize:HudLayout.NOTICES.equals(id)?UtilitySettings.noticeSize:UtilitySettings.tabHudSize;}
-    private static void size(String id,int value){if(HudLayout.MINIMAP.equals(id))UtilitySettings.minimapSize=value;else if(HudLayout.BOW.equals(id))UtilitySettings.bowAccuracySize=value;else if(HudLayout.HEIGHT.equals(id))UtilitySettings.heightLimitSize=value;else if(HudLayout.CONFIRM.equals(id))UtilitySettings.killConfirmSize=value;else if(HudLayout.KILLS.equals(id))UtilitySettings.killFeedSize=value;else if(HudLayout.NOTICES.equals(id))UtilitySettings.noticeSize=value;else UtilitySettings.tabHudSize=value;}
+    private boolean enabled(String id){return HudLayout.TEAM_BAR.equals(id)?UtilitySettings.teamBar:HudLayout.MINIMAP.equals(id)?UtilitySettings.minimap:HudLayout.REGION.equals(id)?UtilitySettings.regionHud:HudLayout.BOW.equals(id)?UtilitySettings.bowAccuracy:HudLayout.HEIGHT.equals(id)?UtilitySettings.heightLimitIndicator:HudLayout.CONFIRM.equals(id)?UtilitySettings.killConfirm:HudLayout.KILLS.equals(id)?UtilitySettings.killFeed:HudLayout.TABS.equals(id)?UtilitySettings.showTabChat:UtilitySettings.nonPlayerChat;}
+    private static int size(String id){return HudLayout.TEAM_BAR.equals(id)?UtilitySettings.teamBarSize:HudLayout.MINIMAP.equals(id)?UtilitySettings.minimapSize:HudLayout.REGION.equals(id)?100:HudLayout.BOW.equals(id)?UtilitySettings.bowAccuracySize:HudLayout.HEIGHT.equals(id)?UtilitySettings.heightLimitSize:HudLayout.CONFIRM.equals(id)?UtilitySettings.killConfirmSize:HudLayout.KILLS.equals(id)?UtilitySettings.killFeedSize:HudLayout.NOTICES.equals(id)?UtilitySettings.noticeSize:UtilitySettings.tabHudSize;}
+    private static void size(String id,int value){if(HudLayout.TEAM_BAR.equals(id))UtilitySettings.teamBarSize=value;else if(HudLayout.MINIMAP.equals(id))UtilitySettings.minimapSize=value;else if(HudLayout.REGION.equals(id))return;else if(HudLayout.BOW.equals(id))UtilitySettings.bowAccuracySize=value;else if(HudLayout.HEIGHT.equals(id))UtilitySettings.heightLimitSize=value;else if(HudLayout.CONFIRM.equals(id))UtilitySettings.killConfirmSize=value;else if(HudLayout.KILLS.equals(id))UtilitySettings.killFeedSize=value;else if(HudLayout.NOTICES.equals(id))UtilitySettings.noticeSize=value;else UtilitySettings.tabHudSize=value;}
     private List<String> order(){List<String> ids=new ArrayList<>(Arrays.asList(IDS));ids.remove(selected);ids.add(selected);return ids;}
     int toolsY(HudLayout.Rect r){return r.y+r.h+17<=height?r.y+r.h+2:Math.max(2,r.y-16);}
     HudLayout.Rect frame(HudLayout.Rect r){
@@ -37,8 +39,12 @@ final class HudEditor extends GuiScreen {
     private static int handle(HudLayout.Rect r,int mx,int my){
         for(int i=0;i<4;i++){int x=i%2==0?r.x:r.x+r.w,y=i<2?r.y:r.y+r.h;if(Math.abs(mx-x)<=4&&Math.abs(my-y)<=4)return i;}return -1;
     }
+    /** Only elements with a size setting can be resized; the region text sizes itself. */
+    private static boolean resizable(String id){return !HudLayout.REGION.equals(id);}
     private void toggle(String id){
-        if(HudLayout.MINIMAP.equals(id))UtilitySettings.minimap=!UtilitySettings.minimap;
+        if(HudLayout.TEAM_BAR.equals(id))UtilitySettings.teamBar=!UtilitySettings.teamBar;
+        else if(HudLayout.MINIMAP.equals(id))UtilitySettings.minimap=!UtilitySettings.minimap;
+        else if(HudLayout.REGION.equals(id))UtilitySettings.regionHud=!UtilitySettings.regionHud;
         else if(HudLayout.BOW.equals(id)){UtilitySettings.bowAccuracy=!UtilitySettings.bowAccuracy;BowAccuracy.INSTANCE.reset();}
         else if(HudLayout.HEIGHT.equals(id))UtilitySettings.heightLimitIndicator=!UtilitySettings.heightLimitIndicator;
         else if(HudLayout.CONFIRM.equals(id)){UtilitySettings.killConfirm=!UtilitySettings.killConfirm;KillConfirm.state.clear();}
@@ -52,9 +58,9 @@ final class HudEditor extends GuiScreen {
     protected void mouseClicked(int mx,int my,int button)throws IOException{
         for(GuiButton b:buttonList)if(b.visible&&b.enabled&&mx>=b.xPosition&&mx<b.xPosition+b.width&&my>=b.yPosition&&my<b.yPosition+b.height){super.mouseClicked(mx,my,button);return;}
         List<String> ids=order();
-        if(button==0)for(int i=ids.size()-1;i>=0;i--){String id=ids.get(i);HudLayout.Rect r=bounds(id),f=frame(r);int handle=handle(r,mx,my);if(!f.contains(mx,my)&&handle<0)continue;
+        if(button==0)for(int i=ids.size()-1;i>=0;i--){String id=ids.get(i);HudLayout.Rect r=bounds(id),f=frame(r);int handle=handle(r,mx,my);if(!resizable(id))handle=-1;if(!f.contains(mx,my)&&handle<0)continue;
             selected=id;
-            if(my>=toolsY(r)&&my<toolsY(r)+12&&mx<f.x+17){mc.displayGuiScreen(HudLayout.MINIMAP.equals(id)?new MinimapSettings(this):HudLayout.BOW.equals(id)?new BowOptimizerSettings(this):HudLayout.HEIGHT.equals(id)?new HeightLimitSettings(this):HudLayout.CONFIRM.equals(id)?new KillConfirmSettings(this):HudLayout.KILLS.equals(id)?new KillFeedSettings(this):HudLayout.NOTICES.equals(id)?new ServerNoticeSettings(this):new UtilityScreen(true,this));return;}
+            if(my>=toolsY(r)&&my<toolsY(r)+12&&mx<f.x+17){mc.displayGuiScreen(HudLayout.TEAM_BAR.equals(id)?new TeamBarSettings(this):HudLayout.MINIMAP.equals(id)?new MinimapSettings(this):HudLayout.REGION.equals(id)?new RegionSettings(this):HudLayout.BOW.equals(id)?new BowOptimizerSettings(this):HudLayout.HEIGHT.equals(id)?new HeightLimitSettings(this):HudLayout.CONFIRM.equals(id)?new KillConfirmSettings(this):HudLayout.KILLS.equals(id)?new KillFeedSettings(this):HudLayout.NOTICES.equals(id)?new ServerNoticeSettings(this):new UtilityScreen(this));return;}
             if(my>=toolsY(r)&&my<toolsY(r)+12&&mx>=f.x+f.w-17){toggle(id);return;}
             dragging=id;corner=handle;start=r;startScale=size(id);dx=mx-r.x;dy=my-r.y;return;
         }
@@ -90,13 +96,13 @@ final class HudEditor extends GuiScreen {
             drawRect(f.x,f.y,f.x+f.w,f.y+f.h,0x20101010);
             drawRect(f.x,f.y,f.x+f.w,f.y+1,color);drawRect(f.x,f.y+f.h-1,f.x+f.w,f.y+f.h,color);
             drawRect(f.x,f.y,f.x+1,f.y+f.h,color);drawRect(f.x+f.w-1,f.y,f.x+f.w,f.y+f.h,color);
-            if(HudLayout.MINIMAP.equals(id))Minimap.drawPreview();else if(HudLayout.BOW.equals(id))BowAccuracy.drawPreview();else if(HudLayout.HEIGHT.equals(id))HeightLimitOverlay.drawPreview();else if(HudLayout.CONFIRM.equals(id))KillConfirm.draw(true);else if(HudLayout.KILLS.equals(id))KillFeed.drawPreview();else if(HudLayout.NOTICES.equals(id))ServerNotices.drawPreview();else ReliableChat.drawTabsPreview();
+            if(HudLayout.TEAM_BAR.equals(id))TeamBar.drawPreview();else if(HudLayout.MINIMAP.equals(id))Minimap.drawPreview();else if(HudLayout.REGION.equals(id))Regions.drawPreview();else if(HudLayout.BOW.equals(id))BowAccuracy.drawPreview();else if(HudLayout.HEIGHT.equals(id))HeightLimitOverlay.drawPreview();else if(HudLayout.CONFIRM.equals(id))KillConfirm.draw(true);else if(HudLayout.KILLS.equals(id))KillFeed.drawPreview();else if(HudLayout.NOTICES.equals(id))ServerNotices.drawPreview();else ReliableChat.drawTabsPreview();
             int gy=toolsY(r);drawRect(f.x+2,gy,f.x+f.w-2,gy+12,0xDD202020);
             gear(f.x+4,gy+2);drawString(fontRendererObj,on?"x":"+",f.x+f.w-12,gy+2,0xFFFFFFFF);
-            String label=HudLayout.MINIMAP.equals(id)?"Minimap":HudLayout.BOW.equals(id)?"Bow Accuracy":HudLayout.HEIGHT.equals(id)?"Height Limit":HudLayout.CONFIRM.equals(id)?"Kill Confirm":HudLayout.KILLS.equals(id)?"Kill Feed":HudLayout.NOTICES.equals(id)?"Server Notices":"Chat tabs";
+            String label=HudLayout.TEAM_BAR.equals(id)?"Team Bar":HudLayout.MINIMAP.equals(id)?"Minimap":HudLayout.REGION.equals(id)?"Region Text":HudLayout.BOW.equals(id)?"Bow Accuracy":HudLayout.HEIGHT.equals(id)?"Height Limit":HudLayout.CONFIRM.equals(id)?"Kill Confirm":HudLayout.KILLS.equals(id)?"Kill Feed":HudLayout.NOTICES.equals(id)?"Server Notices":"Chat tabs";
             drawString(fontRendererObj,fontRendererObj.trimStringToWidth(label+(on?"":" (disabled)"),f.w-36),f.x+19,gy+2,on?0xFFFFFFFF:0xFFAAAAAA);
-            for(int i=0;i<4;i++){int x=i%2==0?r.x:r.x+r.w,y=i<2?r.y:r.y+r.h;drawRect(x-2,y-2,x+3,y+3,color);}
-            if(handle(r,mx,my)>=0)hover="Drag corner to resize";
+            for(int i=0;i<4;i++){if(!resizable(id))break;int x=i%2==0?r.x:r.x+r.w,y=i<2?r.y:r.y+r.h;drawRect(x-2,y-2,x+3,y+3,color);}
+            if(resizable(id)&&handle(r,mx,my)>=0)hover="Drag corner to resize";
             else if(f.contains(mx,my)&&my>=gy&&my<gy+12){if(mx<f.x+17)hover="Settings";else if(mx>=f.x+f.w-17)hover=on?"Disable":"Enable";}
         }
         if(guideX>=0)drawRect(guideX,0,guideX+1,height,0xAA7DDFFF);

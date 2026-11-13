@@ -15,6 +15,8 @@ final class PresetSlider extends GuiSlider {
     static final int[] SHORT_SECONDS={1,2,4,6,8,10};
     static final int[] ZOOM={1,2,3,4,5};
     static final int[] ROWS={1,2,3,4,5};
+    static final int[] PLAYERS=range(1,75);
+    private static int[] range(int from,int to){int[] values=new int[to-from+1];for(int i=0;i<values.length;i++)values[i]=from+i;return values;}
 
     private static final int RESET=14;
     private final int[] presets;
@@ -46,11 +48,13 @@ final class PresetSlider extends GuiSlider {
         int centre=yPosition+height-5,t=track();
         BedrockUi.inset(xPosition,yPosition,width,height);
         mc.fontRendererObj.drawStringWithShadow(displayString,xPosition+6,yPosition+2,enabled?BedrockUi.CAPTION:0xFF808080);
-        drawRect(xPosition+4,centre-1,xPosition+4+t,centre+1,0xFF353535);
+        drawRect(xPosition+3,centre-3,xPosition+5+t,centre+3,0xFF171819);
+        drawRect(xPosition+4,centre-2,xPosition+4+t,centre+2,0xFF303132);
         int knob=xPosition+4+(int)(sliderValue*t);
-        drawRect(knob-1,centre-1,knob+1,centre+1,0xFFFFFFFF);
-        drawRect(knob-2,centre-5,knob+2,centre-1,0xFFFFFFFF);
-        drawRect(knob-2,centre+1,knob+2,centre+5,0xFFFFFFFF);
+        drawRect(xPosition+4,centre-2,knob,centre+2,enabled?0xFFD0D1D4:0xFF777879);
+        drawRect(knob-3,centre-5,knob+4,centre+5,0xFF171819);
+        drawRect(knob-2,centre-4,knob+3,centre+4,enabled?0xFFD0D1D4:0xFF777879);
+        drawRect(knob-1,centre-3,knob+2,centre-2,0xFFF0F1F4);
         int gx=xPosition+width-RESET,gy=yPosition+3;
         int ink=hovered?0xFFE0E0E0:0xFFA0A0A0;
         drawRect(gx+1,gy,gx+7,gy+1,ink);drawRect(gx+1,gy+7,gx+7,gy+8,ink);

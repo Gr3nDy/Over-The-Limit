@@ -4,9 +4,12 @@ buildscript {
         mavenCentral()
     }
     dependencies { classpath 'net.minecraftforge.gradle:ForgeGradle:2.1-SNAPSHOT' }
+    // 2.1-SNAPSHOT is the only ForgeGradle line cached for offline builds. Reuse that artifact
+    // instead of re-resolving a moving snapshot; pin a release here when one is published.
+    configurations.all { resolutionStrategy.cacheChangingModulesFor 365, 'days' }
 }
 apply plugin: 'net.minecraftforge.gradle.forge'
-version = '0.3.7'
+version = '0.3.8'
 group = 'otl'
 archivesBaseName = 'OTL'
 sourceCompatibility = targetCompatibility = '1.8'
@@ -19,7 +22,37 @@ repositories { mavenCentral() }
 dependencies { testCompile 'junit:junit:4.13.2' }
 jar { archiveName = 'OTL.jar'; from project(':').file('license/LICENSE'), { into 'META-INF'; rename { 'LICENSE' } }; from project(':').file('license/NOTICE.md'), { into 'META-INF' }; from project(':').file('license/LICENSE-CC-BY-SA-4.0.txt'), { into 'META-INF' }; exclude 'META-INF/*.SF', 'META-INF/*.RSA', 'META-INF/*.DSA', 'module-info.class', 'META-INF/versions/**' }
 tasks.withType(JavaCompile) { options.encoding = 'UTF-8' }
-processResources { exclude '**/*.part' }
+processResources {
+    exclude '**/*.part'
+    inputs.property 'version', project.version
+    eachFile { if (it.path == 'mcmod.info') it.expand(version: project.version) }
+}
+// Bundled map names are generated from the assets so the source tree has no duplicated index.
+task generateMapPreviewIndex {
+    def maps = file('src/main/resources/assets/otl/maps')
+    def output = file("$buildDir/generated/otlIndex/java/otl/client/MapPreviewIndex.java")
+    inputs.dir maps
+    outputs.file output
+    doLast {
+        def paths = []
+        maps.eachFileRecurse { f ->
+            if (f.isFile() && (f.name.endsWith('.png') || f.name.endsWith('.xml'))) paths << maps.toPath().relativize(f.toPath()).toString().replace('\\', '/')
+        }
+        paths.sort()
+        def sb = new StringBuilder()
+        sb << 'package otl.client;\n\nfinal class MapPreviewIndex {\n    static final String[] PATHS={\n'
+        paths.eachWithIndex { p, i ->
+            sb << '        "' << p.replace('\\', '\\\\').replace('"', '\\"') << '"'
+            if (i < paths.size() - 1) sb << ','
+            sb << '\n'
+        }
+        sb << '    };\n}\n'
+        output.parentFile.mkdirs()
+        output.text = sb.toString()
+    }
+}
+sourceSets.main.java.srcDir "$buildDir/generated/otlIndex/java"
+compileJava.dependsOn generateMapPreviewIndex
 if (project.hasProperty('otlSmoke')) { sourceSets.main.java.srcDir 'src/otlSmoke/java' }
 if (project.hasProperty('otlSmokeRemote')) { runClient.jvmArgs '-Dotl.smoke.remote=true' }
 if (project.hasProperty('otlSmokeServer')) { runClient.jvmArgs '-Dotl.smoke.server=true' }
@@ -30,8 +63,20 @@ jar {
     inputs.property 'otlSmoke', project.hasProperty('otlSmoke')
     if (!project.hasProperty('otlSmoke')) exclude '**/OtlSmoke*'
 }
+// The mod metadata must agree with the artifact version.
+task checkVersion {
+    doLast {
+        def src = file('src/main/java/otl/client/Otl.java').getText('UTF-8')
+        def mod = (src =~ /@Mod\([^)]*version="([^"]+)"/)
+        def constant = (src =~ /VERSION="([^"]+)"/)
+        if (!mod.find() || mod.group(1) != project.version)
+            throw new GradleException("Otl.java @Mod version must match project.version ${project.version}")
+        if (!constant.find() || constant.group(1) != project.version)
+            throw new GradleException("Otl.VERSION must match project.version ${project.version}")
+    }
+}
 // The game and smoke runs may overwrite dev-libs, never the manual-copy release.
-task releaseJar(dependsOn: ['test', 'reobfJar']) {
+task releaseJar(dependsOn: ['test', 'checkVersion', 'reobfJar']) {
     doLast {
         if (project.hasProperty('otlSmoke')) throw new GradleException('Release builds must not use -PotlSmoke')
         def jarFile = jar.archivePath

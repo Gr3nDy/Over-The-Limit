@@ -4,8 +4,8 @@ import net.minecraft.client.gui.ScaledResolution;
 
 /** Screen-relative positions keep right/center alignment when GUI scale changes. */
 public final class HudLayout {
-    public static final String TABS="chat_tabs",KILLS="kill_feed",NOTICES="server_notices",CONFIRM="kill_confirm",HEIGHT="height_limit",BOW="bow_accuracy",MINIMAP="minimap";
-    static boolean valid(String id){return TABS.equals(id)||KILLS.equals(id)||NOTICES.equals(id)||CONFIRM.equals(id)||HEIGHT.equals(id)||BOW.equals(id)||MINIMAP.equals(id);}
+    public static final String TABS="chat_tabs",KILLS="kill_feed",NOTICES="server_notices",CONFIRM="kill_confirm",HEIGHT="height_limit",BOW="bow_accuracy",MINIMAP="minimap",REGION="region_text",TEAM_BAR="team_bar";
+    static boolean valid(String id){return TABS.equals(id)||KILLS.equals(id)||NOTICES.equals(id)||CONFIRM.equals(id)||HEIGHT.equals(id)||BOW.equals(id)||MINIMAP.equals(id)||REGION.equals(id)||TEAM_BAR.equals(id);}
     static final class Position {
         final double x,y;
         Position(double x,double y){if(!Double.isFinite(x)||!Double.isFinite(y))throw new IllegalArgumentException("Invalid HUD position");this.x=Math.max(0,Math.min(1,x));this.y=Math.max(0,Math.min(1,y));}
@@ -23,6 +23,8 @@ public final class HudLayout {
         }
         if(TABS.equals(id)){int n=UtilitySettings.tabChatPosition;return new Position(n==1||n==3?1:0,n>=2?0:1);}
         if(HEIGHT.equals(id))return new Position(.5,1);
+        if(TEAM_BAR.equals(id))return new Position(.5,0);
+        if(REGION.equals(id))return new Position(.5,0);
         if(BOW.equals(id))return new Position(1,.5);
         return new Position(KILLS.equals(id)?1:0,0);
     }

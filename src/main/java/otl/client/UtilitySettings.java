@@ -12,7 +12,7 @@ public final class UtilitySettings {
     private static boolean loaded;
     /** Active profile name; profiles keep their own HUD positions and module settings. */
     static String profile="Default";
-    public static boolean chat=true, counts=true, fullscreen=false, otherFaces=true, showTabChat=true, mapPreview=true, nonPlayerChat=false;
+    public static boolean chat=true, counts=true, otherFaces=true, showTabChat=true, mapPreview=true, nonPlayerChat=false;
     static boolean previewOnCommand=true;
     static boolean largeMapPreview=false;
     public static boolean leftHand=false;
@@ -45,6 +45,15 @@ public final class UtilitySettings {
     static int heightLimitOpacity=25;
     static int heightLimitIndicatorSeconds=4;
     static int heightLimitSize=75;
+    /** Top-centre team bar: heads per team with the match timer in the middle. */
+    public static boolean teamBar=true;
+    /** Heads per side (1-75) and the bar's scale; below 10 heads they stay full size. */
+    public static int teamBarPlayers=5,teamBarSize=100;
+    public static boolean teamBarHideBoss=false;
+    /** Keep showing the bar while watching as an observer. */
+    public static boolean teamBarObserver=true;
+    /** A thin vertical bar of the team's colour beside each team row. */
+    public static boolean teamBarTeamColor=true;
     public static boolean killFeed=true,hideKillChat=false;
     static KillFeedRules.HeadMode killFeedHeads=KillFeedRules.HeadMode.ONLY_ME;
     static KillFeedRules.FilterMode killFeedFilter=KillFeedRules.FilterMode.ALL;
@@ -72,25 +81,53 @@ public final class UtilitySettings {
         for(String part:path.split("/"))if(part.equals(".")||part.equals(".."))return null;
         return path;
     }
-    static boolean rememberDrafts=false, unlimitedHistory=false, cycleTabs=true, bubbles=false, bubbleTeamAndChat=false;
+    public static boolean rememberDrafts=false, unlimitedHistory=false, cycleTabs=true, bubbles=false, bubbleTeamAndChat=false, regionOverlay=false, customVotebook=true;
+    /** Auto GG: say "gg" once when the match ends. Off by default: it speaks for the player. */
+    public static boolean autoGg=false;
+    public static boolean regionHud=false;
+    static boolean regionHudPrefix=true;
+    static int regionHudBackground=25;
     static int bubbleCharacters=80, bubbleSeconds=4;
-    static int chatBackground=25;
     static int tabBackgroundOpacity=25;
     static int typingTabBackgroundOpacity=25;
     static final Map<String,String> selected=new HashMap<>();
     /** Extra hosts allowed in addition to oc.tc, for a local test server. */
     static final Set<String> devHosts=new LinkedHashSet<>();
+    /** Set when an unreadable settings file could not be backed up, so saving cannot overwrite it. */
+    private static boolean corrupt;
     private static Path path(){return ConfigDir.parts("settings.json").toPath();}
     static void load(){
         if(loaded)return;loaded=true;
         JsonObject j=null;
+        Path file=path();
         try{
-            if(Files.exists(path()))j=new JsonParser().parse(new String(Files.readAllBytes(path()),StandardCharsets.UTF_8)).getAsJsonObject();
-        }catch(Exception e){System.err.println("Overcast Utilities: could not load settings: "+e.getMessage());}
+            if(Files.exists(file))j=new JsonParser().parse(new String(Files.readAllBytes(file),StandardCharsets.UTF_8)).getAsJsonObject();
+        }catch(Exception e){
+            System.err.println("Overcast Utilities: could not load settings: "+e.getMessage());
+            try{
+                Path bad=file.resolveSibling("settings.json.bad");
+                Files.move(file,bad,StandardCopyOption.REPLACE_EXISTING);
+                System.err.println("Overcast Utilities: unreadable settings kept as "+bad.getFileName());
+            }catch(Exception move){
+                corrupt=true;
+                System.err.println("Overcast Utilities: could not back up unreadable settings; saving disabled");
+            }
+        }
         if(j!=null)read(j);
+        ensureDefault();
+    }
+    /** The Default profile always exists: recreates it with factory settings if deleted. */
+    private static void ensureDefault(){
+        if(Files.exists(profilePath("Default")))return;
+        try{
+            JsonObject fresh=new JsonParser().parse(DEFAULTS.toString()).getAsJsonObject();
+            fresh.addProperty("profile","Default");
+            write(profilePath("Default"),fresh);
+        }catch(Exception e){System.err.println("Overcast Utilities: could not recreate Default profile: "+e.getMessage());}
     }
     private static void read(JsonObject j){
         read(j,"profile",e->profile=safeName(e.getAsString()));
+        read(j,"profile_order",e->{profileOrder.clear();for(JsonElement el:e.getAsJsonArray())profileOrder.add(safeName(el.getAsString()));});
         read(j,"reliable_chat",e->chat=e.getAsBoolean());
         read(j,"face_rig",e->faceRig=e.getAsBoolean());
         // Temporarily unavailable; ignore saved ON preferences.
@@ -100,6 +137,12 @@ public final class UtilitySettings {
         read(j,"height_limit_opacity",e->heightLimitOpacity=Math.max(0,Math.min(100,e.getAsInt())));
             read(j,"height_limit_indicator_seconds",e->heightLimitIndicatorSeconds=Math.max(1,Math.min(10,e.getAsInt())));
             read(j,"height_limit_size",e->heightLimitSize=Math.max(50,Math.min(150,e.getAsInt())));
+        read(j,"team_bar",e->teamBar=e.getAsBoolean());
+        read(j,"team_bar_players",e->teamBarPlayers=Math.max(1,Math.min(75,e.getAsInt())));
+        read(j,"team_bar_size",e->teamBarSize=Math.max(50,Math.min(150,e.getAsInt())));
+        read(j,"team_bar_hide_boss",e->teamBarHideBoss=e.getAsBoolean());
+        read(j,"team_bar_observer",e->teamBarObserver=e.getAsBoolean());
+        read(j,"team_bar_team_color",e->teamBarTeamColor=e.getAsBoolean());
         read(j,"kill_feed",e->killFeed=e.getAsBoolean());
         read(j,"kill_feed_heads",e->killFeedHeads=KillFeedRules.HeadMode.parse(e.getAsString()));
         read(j,"kill_feed_filter",e->killFeedFilter=KillFeedRules.FilterMode.parse(e.getAsString()));
@@ -126,7 +169,6 @@ public final class UtilitySettings {
             try{JsonObject p=e.getValue().getAsJsonObject();hudPositions.put(e.getKey(),new HudLayout.Position(p.get("x").getAsDouble(),p.get("y").getAsDouble()));}catch(RuntimeException invalid){System.err.println("OTL: ignored invalid HUD position");}
         }
         read(j,"unread_counts",e->counts=e.getAsBoolean());
-        read(j,"fullscreen_menu",e->fullscreen=e.getAsBoolean());
         read(j,"other_faces",e->otherFaces=e.getAsBoolean());
         read(j,"show_tab_chat",e->showTabChat=e.getAsBoolean());
         read(j,"map_preview",e->mapPreview=e.getAsBoolean());
@@ -159,6 +201,12 @@ public final class UtilitySettings {
         read(j,"minimap_zoom",e->minimapZoom=Math.max(1,Math.min(5,e.getAsInt())));
         read(j,"minimap_alt_zoom",e->minimapAltZoom=Math.max(1,Math.min(5,e.getAsInt())));
         read(j,"minimap_head_size",e->minimapHeadSize=Math.max(50,Math.min(150,e.getAsInt())));
+        read(j,"region_overlay",e->regionOverlay=e.getAsBoolean());
+        read(j,"region_hud",e->regionHud=e.getAsBoolean());
+        read(j,"region_hud_prefix",e->regionHudPrefix=e.getAsBoolean());
+        read(j,"region_hud_background",e->regionHudBackground=Math.max(0,Math.min(100,e.getAsInt())));
+        read(j,"custom_votebook",e->customVotebook=e.getAsBoolean());
+        read(j,"auto_gg",e->autoGg=e.getAsBoolean());
         read(j,"bow_hit_sound",e->bowHitSound=e.getAsBoolean());
         read(j,"bow_kill_sound",e->bowKillSound=e.getAsBoolean());
         read(j,"bow_hit_marker",e->bowHitMarker=e.getAsBoolean());
@@ -173,7 +221,6 @@ public final class UtilitySettings {
         read(j,"bubble_team_and_chat",e->bubbleTeamAndChat=e.getAsBoolean());
         read(j,"bubble_characters",e->bubbleCharacters=Math.max(20,Math.min(200,e.getAsInt())));
         read(j,"bubble_seconds",e->bubbleSeconds=Math.max(1,Math.min(15,e.getAsInt())));
-        read(j,"chat_background_opacity",e->chatBackground=Math.max(0,Math.min(100,e.getAsInt())));
         read(j,"tab_background_opacity",e->tabBackgroundOpacity=Math.max(0,Math.min(100,e.getAsInt())));
         read(j,"typing_tab_background_opacity",e->typingTabBackgroundOpacity=Math.max(0,Math.min(100,e.getAsInt())));
         read(j,"notice_opacity",e->noticeOpacity=Math.max(0,Math.min(100,e.getAsInt())));
@@ -196,13 +243,14 @@ public final class UtilitySettings {
         }catch(RuntimeException bad){System.err.println("Overcast Utilities: ignored invalid setting "+key+": "+bad.getMessage());}
     }
     static void save(){
-        load();try{
+        load();if(corrupt)return;
+        try{
             write(path(),snapshot());
             write(profilePath(profile),profileSnapshot());
         }catch(Exception e){System.err.println("Overcast Utilities: could not save settings: "+e.getMessage());}
     }
     private static JsonObject snapshot(){
-            JsonObject j=new JsonObject();j.addProperty("schema_version",1);j.addProperty("profile",profile);j.addProperty("reliable_chat",chat);j.addProperty("unread_counts",counts);j.addProperty("fullscreen_menu",fullscreen);j.addProperty("other_faces",otherFaces);j.addProperty("show_tab_chat",showTabChat);j.addProperty("map_preview",mapPreview);j.addProperty("tab_chat_position",tabChatPosition);
+            JsonObject j=new JsonObject();j.addProperty("schema_version",1);j.addProperty("profile",profile);j.addProperty("reliable_chat",chat);j.addProperty("unread_counts",counts);j.addProperty("other_faces",otherFaces);j.addProperty("show_tab_chat",showTabChat);j.addProperty("map_preview",mapPreview);j.addProperty("tab_chat_position",tabChatPosition);
             j.addProperty("face_rig",faceRig);
             j.addProperty("height_limit_overlay",heightLimitOverlay);
             j.addProperty("height_limit_indicator",heightLimitIndicator);
@@ -210,6 +258,11 @@ public final class UtilitySettings {
             j.addProperty("height_limit_opacity",heightLimitOpacity);
             j.addProperty("height_limit_indicator_seconds",heightLimitIndicatorSeconds);
             j.addProperty("height_limit_size",heightLimitSize);
+            j.addProperty("team_bar",teamBar);
+            j.addProperty("team_bar_players",teamBarPlayers);j.addProperty("team_bar_size",teamBarSize);
+            j.addProperty("team_bar_hide_boss",teamBarHideBoss);
+            j.addProperty("team_bar_observer",teamBarObserver);
+        j.addProperty("team_bar_team_color",teamBarTeamColor);
             j.addProperty("kill_feed",killFeed);j.addProperty("hide_kill_chat",hideKillChat);
             j.addProperty("kill_feed_heads",killFeedHeads.name());
             j.addProperty("kill_feed_filter",killFeedFilter.name());
@@ -253,18 +306,25 @@ public final class UtilitySettings {
             j.addProperty("minimap_zoom",minimapZoom);
             j.addProperty("minimap_alt_zoom",minimapAltZoom);
             j.addProperty("minimap_head_size",minimapHeadSize);
+            j.addProperty("region_overlay",regionOverlay);
+            j.addProperty("region_hud",regionHud);
+            j.addProperty("region_hud_prefix",regionHudPrefix);
+            j.addProperty("region_hud_background",regionHudBackground);
+            j.addProperty("custom_votebook",customVotebook);
+            j.addProperty("auto_gg",autoGg);
             j.addProperty("bow_hit_sound",bowHitSound);
             j.addProperty("bow_kill_sound",bowKillSound);
             j.addProperty("bow_hit_marker",bowHitMarker);
             j.addProperty("bow_hit_marker_size",bowHitMarkerSize);
             j.addProperty("main_hand_left",mainHandLeft);j.addProperty("hand_type",handType.name());
             j.addProperty("remember_drafts",rememberDrafts);j.addProperty("unlimited_history",unlimitedHistory);j.addProperty("shift_tab",cycleTabs);j.addProperty("team_bubbles",bubbles);j.addProperty("bubble_team_and_chat",bubbleTeamAndChat);j.addProperty("bubble_characters",bubbleCharacters);j.addProperty("bubble_seconds",bubbleSeconds);
-            j.addProperty("chat_background_opacity",chatBackground);j.addProperty("non_player_chat",nonPlayerChat);
+            j.addProperty("non_player_chat",nonPlayerChat);
             j.addProperty("tab_background_opacity",tabBackgroundOpacity);
             j.addProperty("typing_tab_background_opacity",typingTabBackgroundOpacity);
             j.addProperty("notice_opacity",noticeOpacity);j.addProperty("notice_mode",noticeMode.name());
             j.addProperty("notice_size",noticeSize);
             JsonArray favorites=new JsonArray();for(String key:mapFavorites)favorites.add(new JsonPrimitive(key));j.add("map_favorites",favorites);
+            JsonArray order=new JsonArray();for(String n:profileOrder)order.add(new JsonPrimitive(n));j.add("profile_order",order);
             JsonObject channels=new JsonObject();selected.forEach(channels::addProperty);j.add("selected_channels",channels);
             JsonArray hosts=new JsonArray();for(String h:devHosts)hosts.add(new JsonPrimitive(h));j.add("dev_hosts",hosts);
             return j;
@@ -272,18 +332,22 @@ public final class UtilitySettings {
     private static Path profiles(){return path().getParent().resolve("profiles");}
     private static Path profilePath(String name){return profiles().resolve(safeName(name)+".json");}
     static String safeName(String name){
-        String value=name==null?"":name.replaceAll("[^A-Za-z0-9 _-]","").trim();
+        String value=name==null?"":name.replaceAll("[^A-Za-z0-9 _()-]","").trim();
         if(value.isEmpty())value="Profile";
         return value.length()>24?value.substring(0,24):value;
     }
+    /** Saved rail ordering; profile files missing from it are appended in directory order. */
+    static List<String> profileOrder=new ArrayList<>();
     static List<String> profileNames(){
         List<String> names=new ArrayList<>();
         try{if(Files.isDirectory(profiles()))try(DirectoryStream<Path> list=Files.newDirectoryStream(profiles(),"*.json")){
             for(Path file:list){String name=file.getFileName().toString();names.add(name.substring(0,name.length()-5));}
         }}catch(Exception e){System.err.println("Overcast Utilities: could not list profiles: "+e.getMessage());}
         if(!names.contains(profile))names.add(profile);
-        names.sort(String.CASE_INSENSITIVE_ORDER);
-        return names;
+        List<String> out=new ArrayList<>();
+        for(String n:profileOrder)if(names.remove(n))out.add(n);
+        out.addAll(names);
+        return out;
     }
     /** Saves the current profile, then loads another one; a missing or invalid file changes nothing. */
     static void switchProfile(String name){
@@ -292,8 +356,12 @@ public final class UtilitySettings {
         JsonObject next=readProfile(profilePath(target));
         if(next==null)return;
         save();
+        // Speech-bubble prefs are global: preserve them across profile switches.
+        boolean keepBubbles=bubbles,keepBubbleChat=bubbleTeamAndChat;
+        int keepChars=bubbleCharacters,keepSeconds=bubbleSeconds;
         resetDefaults();
         read(next);
+        bubbles=keepBubbles;bubbleTeamAndChat=keepBubbleChat;bubbleCharacters=keepChars;bubbleSeconds=keepSeconds;
         profile=target;
         save();
         ReliableChat.applyPreferences();
@@ -313,8 +381,14 @@ public final class UtilitySettings {
     }
     static boolean deleteProfile(String name){
         String target=safeName(name);
-        if(target.equals(profile))return false;
+        if(target.equals(profile)||target.equals("Default"))return false;
         try{Files.deleteIfExists(profilePath(target));return true;}catch(Exception e){System.err.println("Overcast Utilities: could not delete profile: "+e.getMessage());return false;}
+    }
+    /** Persists the rail order; names are sanitized and duplicates dropped. */
+    static void saveProfileOrder(List<String> names){
+        profileOrder.clear();
+        for(String n:names){String s=safeName(n);if(!profileOrder.contains(s))profileOrder.add(s);}
+        save();
     }
     /** Renames a profile file; a taken name gets a number. Returns the resulting name. */
     static String renameProfile(String from,String to){
@@ -322,6 +396,8 @@ public final class UtilitySettings {
         String source=safeName(from),target=safeName(to);
         if(target.equals(source))return source;
         target=uniqueName(target);
+        final String dest=target;
+        profileOrder.replaceAll(n->n.equals(source)?dest:n);
         try{
             Files.move(profilePath(source),profilePath(target));
             if(profile.equals(source)){profile=target;save();}
@@ -358,8 +434,8 @@ public final class UtilitySettings {
     private static String uniqueName(String name){
         String base=safeName(name),candidate=base;
         if(!Files.exists(profilePath(candidate)))return candidate;
-        String stem=base.length()>20?base.substring(0,20):base;
-        for(int i=2;i<1000;i++){candidate=stem+" "+i;if(!Files.exists(profilePath(candidate)))break;}
+        String stem=base.length()>18?base.substring(0,18):base;
+        for(int i=2;i<1000;i++){candidate=stem+" ("+i+")";if(!Files.exists(profilePath(candidate)))break;}
         return candidate;
     }
     /** HUD positions and settings return to defaults; favorites, channels and dev hosts are shared. */
@@ -377,7 +453,9 @@ public final class UtilitySettings {
         }catch(Exception e){System.err.println("Overcast Utilities: could not read profile "+file.getFileName()+": "+e.getMessage());return null;}
     }
     private static void write(Path file,JsonObject j)throws Exception{
-        AtomicFiles.write(file,new GsonBuilder().setPrettyPrinting().create().toJson(j).getBytes(StandardCharsets.UTF_8));
+        byte[] data=new GsonBuilder().setPrettyPrinting().create().toJson(j).getBytes(StandardCharsets.UTF_8);
+        if(Files.isRegularFile(file)&&Arrays.equals(Files.readAllBytes(file),data))return;
+        AtomicFiles.write(file,data);
     }
     /** Captured before any load, so a new profile always starts from factory settings. */
     private static final JsonObject DEFAULTS=profileSnapshot();

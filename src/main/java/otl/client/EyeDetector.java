@@ -6,10 +6,10 @@ import java.util.*;
  * Finds eye rectangles in the 8x8 face texels. An eye is the bounding rectangle of
  * its dark pupil plus the lighter eye-white column beside it, with the pupil column
  * kept separate so the renderer can replay the skin's own pixels there.
- * Brows are darker cells one or two rows above each eye. Pure heuristic, unit-testable.
+ * Pure heuristic, unit-testable.
  */
 final class EyeDetector {
-    static final int NONE=0,EYE=1,PUPIL=2,BROW=3;
+    static final int NONE=0,EYE=1,PUPIL=2;
     private static final int WHITE_RISE=6,WHITE_DIFF=60;
     /** A pupil/iris is clearly darker than the rest of its own row and fairly neutral. */
     private static final int ROW_DROP=35,INK_CHROMA=110;
@@ -22,18 +22,25 @@ final class EyeDetector {
     /**
      * Reads the face plane first; only when that finds nothing does it fall back to the
      * skin as it is drawn (hat layer over face), so eyes designed on the hat still work.
+     * Each plane is tried strict first, then lenient, for stylized or colored eyes.
      */
     static int[] detect(int[] face,int[] hat){
         if(face==null||face.length<64)return null;
-        int[] marks=detectOn(face);
-        if(marks!=null)return marks;
-        if(hat==null||hat.length<64)return null;
-        int[] shown=new int[64];
-        for(int i=0;i<64;i++)shown[i]=((hat[i]>>>24)>=128)?hat[i]:face[i];
-        return detectOn(shown);
+        int[] shown=null;
+        if(hat!=null&&hat.length==64){
+            shown=new int[64];
+            for(int i=0;i<64;i++)shown[i]=((hat[i]>>>24)>=128)?hat[i]:face[i];
+        }
+        for(boolean lenient:new boolean[]{false,true}){
+            int[] marks=detectOn(face,lenient);
+            if(marks!=null)return marks;
+            if(shown!=null){marks=detectOn(shown,lenient);if(marks!=null)return marks;}
+        }
+        return null;
     }
 
-    private static int[] detectOn(int[] plane){
+    private static int[] detectOn(int[] plane,boolean lenient){
+        int drop=lenient?25:ROW_DROP,chromaCap=lenient?255:INK_CHROMA,shape=lenient?2:1;
         int skin=skinTone(plane),skinLum=lum(skin);
         boolean[] ink=new boolean[64];
         int[] rowLum=rowLuminance(plane);
@@ -42,19 +49,17 @@ final class EyeDetector {
             if((plane[i]>>>24)<64||rowLum[r]<0)continue;
             int p=plane[i];
             // Compare with the row, not a global tone: hair rows stay flat, dark skin stays dark.
-            ink[i]=lum(p)<rowLum[r]-ROW_DROP&&chroma(p)<=INK_CHROMA;
+            ink[i]=lum(p)<rowLum[r]-drop&&chroma(p)<=chromaCap;
         }
         List<Blob> blobs=new ArrayList<>();
         collect(ink,blobs);
-        int[] pair=pair(blobs);
+        int[] pair=pair(blobs,shape);
         if(pair==null)return null;
         int[] marks=new int[64];
         Blob a=blobs.get(pair[0]),b=blobs.get(pair[1]);
         if(a.minC>b.minC){Blob tmp=a;a=b;b=tmp;}
         paint(marks,plane,skin,skinLum,a);
         paint(marks,plane,skin,skinLum,b);
-        brow(marks,ink,a);
-        brow(marks,ink,b);
         return hasMark(marks)?marks:null;
     }
 
@@ -85,7 +90,7 @@ final class EyeDetector {
     }
 
     /** Two blobs on the same line, a short nose bridge apart, reading as a pair of eyes. */
-    private static int[] pair(List<Blob> blobs){
+    private static int[] pair(List<Blob> blobs,int shape){
         int bestA=-1,bestB=-1,best=0;
         for(int a=0;a<blobs.size();a++)for(int b=a+1;b<blobs.size();b++){
             Blob A=blobs.get(a),B=blobs.get(b);
@@ -95,9 +100,9 @@ final class EyeDetector {
             if(gap<1||gap>3)continue;
             int rowL=(L.minR+L.maxR)/2,rowR=(R.minR+R.maxR)/2;
             if(Math.abs(rowL-rowR)>1)continue;
-            if(Math.abs((L.maxC-L.minC)-(R.maxC-R.minC))>1)continue;
+            if(Math.abs((L.maxC-L.minC)-(R.maxC-R.minC))>shape)continue;
             int heightL=L.maxR-L.minR,heightR=R.maxR-R.minR;
-            if(Math.abs(heightL-heightR)>1)continue;
+            if(Math.abs(heightL-heightR)>shape)continue;
             int score=6*Math.min(L.size,R.size)+3*(3-gap)-5*Math.abs(rowL-rowR)-4*Math.abs(heightL-heightR)+(Math.min(L.minR,R.minR)>=4?5:0);
             if(score>best){best=score;bestA=left;bestB=right;}
         }
@@ -135,16 +140,6 @@ final class EyeDetector {
         if(bestN==0||brightestN==0)return best;
         long avgDark=bestSum/bestN,avgBright=brightestSum/brightestN;
         return avgBright-avgDark>=25?best:minC;
-    }
-
-    private static void brow(int[] marks,boolean[] ink,Blob b){
-        for(int top=Math.max(0,b.minR-2);top<b.minR;top++){
-            for(int c=Math.max(0,b.minC-1);c<=Math.min(7,b.maxC+1);c++){
-                int i=top*8+c;
-                if(marks[i]!=NONE||!ink[i])continue;
-                marks[i]=BROW;
-            }
-        }
     }
 
     private static boolean hasMark(int[] marks){for(int m:marks)if(m!=NONE)return true;return false;}

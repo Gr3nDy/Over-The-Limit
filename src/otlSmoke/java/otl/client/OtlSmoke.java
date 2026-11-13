@@ -23,9 +23,11 @@ public final class OtlSmoke {
     final boolean serverOnly=Boolean.getBoolean("otl.smoke.serverOnly");
     final String scope=System.getProperty("otl.smoke.scope","all");
     int scopeEnd=63;
+    int ggBaseline;
     long serverStarted;
     ResourceLocation allureTexture;
     boolean allureWasFavorite;
+    MapInfoScreen card,searchCard;String cardDir;long cardWait;
     final Map<String,Object> accuracyPreferences=new HashMap<>();
     ItemStack accuracyHeld;int accuracySlot,accuracyPerspective;HudLayout.Position accuracyPosition;
     final AccuracySounds accuracySounds=new AccuracySounds();
@@ -36,10 +38,90 @@ public final class OtlSmoke {
     final List<String> packets=Collections.synchronizedList(new ArrayList<String>());
     @Mod.EventHandler public void init(FMLInitializationEvent e){FMLCommonHandler.instance().bus().register(this);}
     void require(boolean ok,String message){if(!ok)throw new AssertionError(message);}
+    MapInfo cardInfo(MapInfoScreen screen){
+        return screen==null?null:ReflectionHelper.getPrivateValue(MapInfoScreen.class,screen,"info");
+    }
     void line(String text){MinecraftForge.EVENT_BUS.post(new net.minecraftforge.client.event.ClientChatReceivedEvent((byte)1,new ChatComponentText(text)));}
+    /** A chat line already cancelled by Reliable Chat, as it reaches the client in-game. */
+    void cancelledLine(String text){
+        net.minecraftforge.client.event.ClientChatReceivedEvent e=new net.minecraftforge.client.event.ClientChatReceivedEvent((byte)1,new ChatComponentText(text));
+        e.setCanceled(true);MinecraftForge.EVENT_BUS.post(e);
+    }
+    /** A PGM vote line: symbol + map name sharing one /votenext command, with a tag hover. */
+    void voteLine(String symbol,String map,String tags){
+        ChatComponentText root=new ChatComponentText(symbol+" ");
+        root.getChatStyle().setChatClickEvent(new net.minecraft.event.ClickEvent(net.minecraft.event.ClickEvent.Action.RUN_COMMAND,"/votenext -o "+map));
+        root.getChatStyle().setChatHoverEvent(new net.minecraft.event.HoverEvent(net.minecraft.event.HoverEvent.Action.SHOW_TEXT,new ChatComponentText(tags)));
+        ChatComponentText name=new ChatComponentText(map);
+        name.getChatStyle().setColor(net.minecraft.util.EnumChatFormatting.GOLD).setBold(true);
+        root.appendSibling(name);
+        MinecraftForge.EVENT_BUS.post(new net.minecraftforge.client.event.ClientChatReceivedEvent((byte)1,root));
+    }
     List<GuiButton> buttons(GuiScreen screen){return ReflectionHelper.getPrivateValue(GuiScreen.class,screen,"buttonList","field_146292_n");}
     void click(int id){for(GuiButton b:buttons(face))if(b.id==id){face.actionPerformed(b);return;}throw new AssertionError("Missing button "+id);}
+    /** Everything the team bar could read from a real match, printed so the live scope can be checked. */
+    /** Raw chat text with § shown as & so colour codes survive the console. */
+    static String visible(String text){return text==null?"null":text.replace('\u00a7','&');}
+    void dumpMatch(Minecraft mc){
+        net.minecraft.scoreboard.Scoreboard board=mc.theWorld.getScoreboard();
+        net.minecraft.scoreboard.ScoreObjective sidebar=board.getObjectiveInDisplaySlot(1);
+        System.out.println("OTL_LIVE: sidebar="+(sidebar==null?"none":ChatRules.plain(sidebar.getDisplayName())));
+        if(sidebar!=null)for(net.minecraft.scoreboard.Score score:board.getSortedScores(sidebar)){
+            net.minecraft.scoreboard.ScorePlayerTeam team=board.getPlayersTeam(score.getPlayerName());
+            System.out.println("OTL_LIVE:   ["+score.getScorePoints()+"] "+visible(score.getPlayerName())
+                +(team==null?"":"  prefix="+visible(team.getColorPrefix())+" suffix="+visible(team.getColorSuffix())));
+        }
+        System.out.println("OTL_LIVE: boss="+ChatRules.plain(net.minecraft.entity.boss.BossStatus.bossName==null?"":net.minecraft.entity.boss.BossStatus.bossName));
+        try{
+            Object tab=mc.ingameGUI.getTabList();
+            java.lang.reflect.Field footer=ReflectionHelper.findField(tab.getClass(),"footer","field_175255_h");
+            Object value=footer.get(tab);
+            System.out.println("OTL_LIVE: footer="+(value instanceof net.minecraft.util.IChatComponent?
+                visible(((net.minecraft.util.IChatComponent)value).getFormattedText()):String.valueOf(value)));
+        }catch(Exception e){System.out.println("OTL_LIVE: footer=unknown ("+e.getClass().getSimpleName()+")");}
+        for(net.minecraft.scoreboard.ScorePlayerTeam team:board.getTeams()){
+            if(team.getTeamName().contains("TabView"))continue;
+            System.out.println("OTL_LIVE: team '"+team.getTeamName()+"' members="+team.getMembershipCollection());
+        }
+        for(TeamBar.Side side:TeamBar.sides(mc))System.out.println("OTL_LIVE: bar side '"+side.name+"' "+side.members);
+        TeamBar.Timer timer=TeamBar.INSTANCE.timer(mc);
+        System.out.println("OTL_LIVE: bar timer="+(timer==null?"none":timer.label+" countdown="+timer.countdown));
+    }
+
+    /** Replaces the sidebar's only score line, the way PGM updates it once per second. */
+    void sidebar(net.minecraft.scoreboard.Scoreboard board,net.minecraft.scoreboard.ScoreObjective objective,String text){
+        for(net.minecraft.scoreboard.Score score:new ArrayList<>(board.getSortedScores(objective)))board.removeObjectiveFromEntity(score.getPlayerName(),objective);
+        board.getValueFromObjective(text,objective).setScorePoints(1);
+    }
+    /** Adds a tab-list entry the way the server does; a grey name is how PGM marks a dead player. */
+    void tabEntry(Minecraft mc,String name,String formatted){
+        com.mojang.authlib.GameProfile profile=new com.mojang.authlib.GameProfile(
+            java.util.UUID.nameUUIDFromBytes(name.getBytes(java.nio.charset.StandardCharsets.UTF_8)),name);
+        net.minecraft.client.network.NetworkPlayerInfo info=new net.minecraft.client.network.NetworkPlayerInfo(profile);
+        info.setDisplayName(new ChatComponentText(formatted));
+        Map<UUID,net.minecraft.client.network.NetworkPlayerInfo> map=ReflectionHelper.getPrivateValue(
+            net.minecraft.client.network.NetHandlerPlayClient.class,mc.getNetHandler(),"playerInfoMap");
+        map.put(profile.getId(),info);
+    }
+    /** Removes a tab-list entry the way the server does when a player disconnects. */
+    void removeTabEntry(Minecraft mc,String name){
+        Map<UUID,net.minecraft.client.network.NetworkPlayerInfo> map=ReflectionHelper.getPrivateValue(
+            net.minecraft.client.network.NetHandlerPlayClient.class,mc.getNetHandler(),"playerInfoMap");
+        UUID gone=null;
+        for(net.minecraft.client.network.NetworkPlayerInfo info:map.values())
+            if(info.getGameProfile().getName().equals(name)){gone=info.getGameProfile().getId();break;}
+        if(gone!=null)map.remove(gone);
+    }
     GuiButton find(GuiScreen s,String label){for(GuiButton b:buttons(s))if(b.displayString.equals(label))return b;throw new AssertionError("Missing button "+label);}
+    /** Clicks the ON/OFF strip of a module card in the browser grid (tab ALL). */
+    void cardToggle(ModulesScreen s,int index)throws java.io.IOException{
+        int w=Math.min(470,s.width-16),h=Math.min(272,s.height-16),x=(s.width-w)/2,y=(s.height-h)/2;
+        int contentX=x+132+8,cardW=Math.max(70,(x+w-14-contentX-12)/3);
+        int cardH=Math.max(64,((y+h-32)-10-(y+52))/2);
+        int scrollRow=ReflectionHelper.getPrivateValue(ModulesScreen.class,s,"scrollRow");
+        int cx=contentX+(index%3)*(cardW+4),cy=y+52+((index/3)-scrollRow)*(cardH+4);
+        s.mouseClicked(cx+cardW/2,cy+cardH-10,0);
+    }
     List<ChatLine> chatHistory(String key){return ReflectionHelper.getPrivateValue(GuiNewChat.class,ReliableChat.session().views.get(key).hud,"chatLines","field_146252_h");}
     final java.util.concurrent.CountDownLatch metadataBlocked=new java.util.concurrent.CountDownLatch(1),releaseMetadata=new java.util.concurrent.CountDownLatch(1);
     String hoverQuery(){return remoteEnabled?"Hallows":"Allure";}
@@ -265,7 +347,7 @@ public final class OtlSmoke {
         for(String name:new String[]{"minimap","minimapSize","minimapOpacity","minimapLargeOpacity","minimapLargeBackground","minimapHeadSize","minimapZoom","minimapAltZoom","minimapBorder"})minimapPreferences.put(name,UtilitySettings.class.getDeclaredField(name).get(null));
         minimapPosition=UtilitySettings.hudPositions.get(HudLayout.MINIMAP);
         minimapX=mc.thePlayer.posX;minimapY=mc.thePlayer.posY;minimapZ=mc.thePlayer.posZ;minimapFlying=mc.thePlayer.capabilities.isFlying;
-        UtilitySettings.minimap=false;line("            Allure            ");line(" Capture the enemy's wool!");line(" Created by jcane");
+        UtilitySettings.minimap=false;UtilitySettings.minimapBorder=true;line("            Allure            ");line(" Capture the enemy's wool!");line(" Created by jcane");
         MinimapSettings options=new MinimapSettings(null);mc.displayGuiScreen(options);
         options.actionPerformed(find(options,"Minimap: OFF"));
         net.minecraftforge.fml.client.config.GuiSlider size=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==1).findFirst().get();
@@ -371,12 +453,15 @@ public final class OtlSmoke {
         }
     }
     void prepareScope(Minecraft mc){
+        // The custom vote screen hijacks book opens; only the vote scope exercises it.
+        UtilitySettings.customVotebook=scope.equals("vote");
         if(serverOnly||scope.equals("all"))return;
         mc.setServerData(new net.minecraft.client.multiplayer.ServerData("OTL fixture","play.oc.tc",false));
         switch(scope){
             case "chat":state=0;scopeEnd=3;return;
-            case "face":state=4;scopeEnd=5;FaceConfig.reset();UtilitySettings.faceRig=true;UtilitySettings.otherFaces=true;UtilitySettings.fullscreen=false;mc.displayGuiScreen(face=new FaceScreen());return;
-            case "menu":state=6;scopeEnd=6;mc.displayGuiScreen(new UtilityScreen());return;
+            case "face":state=4;scopeEnd=5;FaceConfig.reset();UtilitySettings.faceRig=true;UtilitySettings.otherFaces=true;mc.displayGuiScreen(face=new FaceScreen());return;
+            case "menu":state=6;scopeEnd=6;UtilitySettings.faceRig=true;mc.displayGuiScreen(new ModulesScreen(null));return;
+            case "gui":state=64;scopeEnd=68;mc.displayGuiScreen(new ModulesScreen(null));return;
             case "maps":state=7;scopeEnd=23;sniffPackets(mc);return;
             case "hand":state=24;scopeEnd=30;return;
             case "bubbles":state=31;scopeEnd=32;UtilitySettings.nonPlayerChat=false;UtilitySettings.mainHandLeft=false;UtilitySettings.handType=LeftHand.Type.ALL;mc.displayGuiScreen(new PreferedHandSettings(new UtilityScreen()));return;
@@ -387,6 +472,9 @@ public final class OtlSmoke {
             case "bow":state=55;scopeEnd=58;return;
             case "accuracy":state=56;scopeEnd=58;return;
             case "minimap":state=59;scopeEnd=63;return;
+            case "vote":state=69;scopeEnd=78;return;
+            case "teambar":state=79;scopeEnd=89;UtilitySettings.teamBar=true;return;
+            case "live":state=90;scopeEnd=110;UtilitySettings.teamBar=true;UtilitySettings.devHosts.add("localhost");return;
             default:throw new IllegalArgumentException("Unknown smoke scope: "+scope);
         }
     }
@@ -444,31 +532,34 @@ public final class OtlSmoke {
                 line("Alex: You are not in a party.");require(partyHistory.size()==1,"Player quote copied as party warning");
                 line("Overcast Community\nview our /servers or click the beacon");require(!ReliableChat.fullChat()&&ReliableChat.tabKeys().size()==1,"Return to lobby");line("Welcome to Overcast Community!");
                 checkBubbles();
-                FaceConfig.reset();UtilitySettings.faceRig=true;UtilitySettings.otherFaces=true;UtilitySettings.fullscreen=false;mc.displayGuiScreen(face=new FaceScreen());
+                FaceConfig.reset();UtilitySettings.faceRig=true;UtilitySettings.otherFaces=true;mc.displayGuiScreen(face=new FaceScreen());
                 require(buttons(face).stream().noneMatch(b->b.displayString.contains("Advanced")||b.displayString.contains("Expression")),"Obsolete controls");
             }else if(state==4){
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-face-rig.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
                 click(11);require(buttons(face).stream().anyMatch(b->b.displayString.equals("Save")),"Editor save missing");
+                require(buttons(face).stream().noneMatch(b->b.id==23),"Removed Brow tool still present");
+                require(find(face,"Auto-detect")!=null,"Auto-detect tool missing");
             }else if(state==5){
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-editor.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
                 int[] original=FaceMarks.marks(mc.thePlayer.getLocationSkin());original=original==null?null:original.clone();
                 int x=ReflectionHelper.getPrivateValue(FaceScreen.class,face,"gx"),y=ReflectionHelper.getPrivateValue(FaceScreen.class,face,"gy");face.panelMouseClicked(x+2,y+2,0);click(28);
                 require(Arrays.equals(original,FaceMarks.marks(mc.thePlayer.getLocationSkin())),"Cancel changed marks");
-                mc.displayGuiScreen(new UtilityScreen());
+                mc.displayGuiScreen(new ModulesScreen(null));
             }else if(state==6){
-                UtilityScreen menu=(UtilityScreen)mc.currentScreen;
-                menu.actionPerformed(find(menu,"Face Rig: ON"));require(!UtilitySettings.faceRig,"Module toggle did not apply");
-                require(find(menu,"Face Rig: OFF")!=null,"Module list did not refresh");
-                menu.actionPerformed(find(menu,"Face Rig: OFF"));require(UtilitySettings.faceRig,"Module toggle did not revert");
-                require(find(menu,"Reliable Chat: ON")!=null,"Second module missing from list");
-                require(find(menu,"Map Preview: ON")!=null,"Map Preview module missing from list");
-                UtilitySettings.leftHand=false;menu.initGui();
-                for(int p=0;p<OtlModule.ALL.size()&&!buttons(menu).stream().anyMatch(b->b.displayString.equals("Prefered Hand: OFF"));p++)menu.actionPerformed(find(menu,">"));
-                menu.actionPerformed(find(menu,"Prefered Hand: OFF"));
-                require(UtilitySettings.leftHand,"Left Hand toggle did not apply");
-                ReflectionHelper.setPrivateValue(UtilitySettings.class,null,false,"loaded");UtilitySettings.leftHand=false;UtilitySettings.load();
-                require(UtilitySettings.leftHand,"Left Hand preference did not persist");
-                menu.actionPerformed(find(menu,"Prefered Hand: ON"));require(!UtilitySettings.leftHand,"Prefered Hand toggle did not restore");
+                ModulesScreen menu=(ModulesScreen)mc.currentScreen;
+                require(find(menu,"DONE")!=null,"Modules menu missing its Done button");
+                boolean faceRig=UtilitySettings.faceRig;
+                cardToggle(menu,0);
+                require(UtilitySettings.faceRig!=faceRig,"Module card toggle did not apply");
+                cardToggle(menu,0);
+                require(UtilitySettings.faceRig==faceRig,"Module card toggle did not revert");
+                boolean leftHand=UtilitySettings.leftHand;
+                cardToggle(menu,4);
+                require(UtilitySettings.leftHand!=leftHand,"Left Hand card toggle did not apply");
+                ReflectionHelper.setPrivateValue(UtilitySettings.class,null,false,"loaded");UtilitySettings.leftHand=leftHand;UtilitySettings.load();
+                require(UtilitySettings.leftHand!=leftHand,"Left Hand preference did not persist");
+                cardToggle(menu,4);
+                require(UtilitySettings.leftHand==leftHand,"Left Hand card toggle did not restore");
                 UtilitySettings.mainHandLeft=false;UtilitySettings.handType=LeftHand.Type.ALL;
                 PreferedHandSettings hands=new PreferedHandSettings(menu);mc.displayGuiScreen(hands);
                 require(find(hands,"Main Hand: Right")!=null&&find(hands,"Type: ALL")!=null,"Preferred hand defaults missing");
@@ -488,13 +579,11 @@ public final class OtlSmoke {
                 require("".equals(ServerScope.host("localhost:25565")),"dev host not removed");
                 require("".equals(ServerScope.host("play.oc.tc.example.com")),"Scope suffix bypass");
                 require("".equals(ServerScope.host("localhost:abc")),"Scope bad port");
-                for(int p=0;p<OtlModule.ALL.size()&&!buttons(menu).stream().anyMatch(b->b.displayString.equals("Height Limit Overlay: DISABLED"));p++)menu.actionPerformed(find(menu,">"));
-                GuiButton heightToggle=find(menu,"Height Limit Overlay: DISABLED");
                 OtlModule height=OtlModule.ALL.stream().filter(m->m.id.equals("height_limit_overlay")).findFirst().get();
-                require(!heightToggle.enabled&&!height.available()&&!height.enabled(),"Height module was not visibly locked DISABLED");
-                GuiButton heightOptions=buttons(menu).stream().filter(b->b.id==40+OtlModule.ALL.indexOf(height)).findFirst().get();
-                require(!heightOptions.enabled,"Disabled height module still offered settings");
-                menu.actionPerformed(heightToggle);height.setEnabled(true);
+                require(!height.available()&&!height.enabled(),"Height module was not visibly locked");
+                ReflectionHelper.setPrivateValue(ModulesScreen.class,menu,OtlModule.ALL.indexOf(height)/3,"scrollRow");
+                menu.initGui();
+                cardToggle(menu,OtlModule.ALL.indexOf(height));
                 require(!UtilitySettings.heightLimitOverlay&&mc.currentScreen==menu,"Disabled height module could be re-enabled");
                 menu.drawScreen(0,0,0);
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-menu.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
@@ -584,7 +673,7 @@ public final class OtlSmoke {
                     mc.theWorld.setBlockState(placement,original);HeightLimitOverlay.INSTANCE.tick(overlayTick);
                     require(!tracked.get(chunk)[1].get(bit),"Removed block stayed in overlay");
                 }finally{mc.theWorld.setBlockState(placement,original);mc.thePlayer.inventory.mainInventory[mc.thePlayer.inventory.currentItem]=oldHeld;ReflectionHelper.setPrivateValue(HeightLimitOverlay.class,HeightLimitOverlay.INSTANCE,activeMap,"map");}
-                }else System.out.println("OTL_SMOKE: height-overlay runtime fixtures SKIPPED (module locked DISABLED)");
+                }else System.out.println("OTL_SMOKE: height-overlay runtime fixtures SKIPPED (module locked LOCKED)");
                 require(!"".equals(cached.authors)&&!"".equals(cached.contributors),"Missing author credits");
                 require("100rooms".equals(MapInfo.norm("100 Rooms")),"Map name normalization");
                 MapInfoScreen card=new MapInfoScreen("Allure");
@@ -615,8 +704,7 @@ public final class OtlSmoke {
                 String selected=paths.get(grid.perPage());
                 gallery.mouseClicked(grid.x(0)+5,grid.y(0)+5,0);
                 require(mc.currentScreen instanceof MapInfoScreen,"Gallery cell did not open card");
-                MapInfo selectedInfo=ReflectionHelper.getPrivateValue(MapInfoScreen.class,(MapInfoScreen)mc.currentScreen,"info");
-                require(selectedInfo.dir.equals(selected.substring(0,selected.length()-8).replace("CommunityMaps/master/","")),"Gallery opened a different map");
+                card=(MapInfoScreen)mc.currentScreen;cardDir=selected.substring(0,selected.length()-8).replace("CommunityMaps/master/","");
                 ((MapInfoScreen)mc.currentScreen).actionPerformed(find(mc.currentScreen,"Back"));
                 require(mc.currentScreen==gallery,"Card did not return to gallery");
                 gallery.actionPerformed(find(gallery,"Prev"));require((int)ReflectionHelper.getPrivateValue(MapGalleryScreen.class,gallery,"page")==0,"Gallery Prev failed");
@@ -632,8 +720,15 @@ public final class OtlSmoke {
                 gallery.drawScreen(0,0,0);
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-gallery.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
                 gallery.mouseClicked(grid.x(0)+5,grid.y(0)+5,0);
-                require("Allure".equals(((MapInfo)ReflectionHelper.getPrivateValue(MapInfoScreen.class,(MapInfoScreen)mc.currentScreen,"info")).name),"Gallery search/click failed");
+                searchCard=(MapInfoScreen)mc.currentScreen;cardWait=System.currentTimeMillis();
             }else if(state==10){
+                // Cards read their map.xml off the worker thread, so the info lands a tick or two later.
+                if(cardInfo(card)==null||cardInfo(searchCard)==null){
+                    require(System.currentTimeMillis()-cardWait<15000,"Gallery card never loaded its map");
+                    return;
+                }
+                require(cardDir.equals(cardInfo(card).dir),"Gallery opened a different map");
+                require("Allure".equals(cardInfo(searchCard).name),"Gallery search/click failed");
                 if(!allureWasFavorite)UtilitySettings.mapFavorites.remove(UtilitySettings.favoriteKey("ctw/allure"));UtilitySettings.save();
                 ResourceLocation texture=MapPreview.galleryTexture("ctw/allure/map.png");
                 require(texture==MapPreview.galleryTexture("ctw/allure/map.png"),"Preview texture was duplicated");
@@ -836,7 +931,7 @@ public final class OtlSmoke {
                     ((ServerNoticeSettings)mc.currentScreen).actionPerformed(find(mc.currentScreen,"Server Notices: OFF"));
                     require(UtilitySettings.nonPlayerChat,"Server notices toggle did not enable");
                 }else{
-                    GuiButton locked=find(mc.currentScreen,"Server Notices: UNAVAILABLE");
+                    GuiButton locked=find(mc.currentScreen,"Server Notices: LOCKED");
                     require(locked!=null&&!locked.enabled,"Server notices not visibly locked");
                     ((ServerNoticeSettings)mc.currentScreen).actionPerformed(locked);
                     require(!UtilitySettings.nonPlayerChat,"Locked Server Notices toggle did not stay disabled");
@@ -862,9 +957,8 @@ public final class OtlSmoke {
                 ReliableChat.expirePending(System.nanoTime()+9000000000L);line("\u26a0 Unrelated later warning");
                 require(chatHistory("party").size()==partyBefore+1,"Expired command context captured a later warning");ReliableChat.session().select("all");
                 KillFeed.history.clear();UtilitySettings.killFeed=true;UtilitySettings.hideKillChat=false;
-                UtilityScreen menu=new UtilityScreen();mc.displayGuiScreen(menu);
-                for(int p=0;p<OtlModule.ALL.size()&&!buttons(menu).stream().anyMatch(b->b.displayString.equals("Kill Feed: ON"));p++)menu.actionPerformed(find(menu,">"));
-                require(find(menu,"Kill Feed: ON")!=null,"Kill Feed missing from modules menu");
+                ModulesScreen menu=new ModulesScreen(null);mc.displayGuiScreen(menu);
+                require(OtlModule.byId("kill_feed")!=null&&OtlModule.byId("kill_feed").available(),"Kill Feed missing from the module browser");
                 KillFeedSettings options=new KillFeedSettings(menu);mc.displayGuiScreen(options);
                 net.minecraftforge.fml.client.config.GuiSlider count=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==14).findFirst().get();
                 count.setValue(1);count.updateSlider();require(KillFeed.rows()==1,"Visible Kill Feed limit did not apply");count.setValue(5);count.updateSlider();
@@ -918,7 +1012,7 @@ public final class OtlSmoke {
                 sizeReset.mousePressed(mc,sizeReset.xPosition+sizeReset.width-5,sizeReset.yPosition+8);
                 opacityReset.mousePressed(mc,opacityReset.xPosition+opacityReset.width-5,opacityReset.yPosition+8);
                 outlineReset.mousePressed(mc,outlineReset.xPosition+outlineReset.width-5,outlineReset.yPosition+8);
-                require(UtilitySettings.killFeedSize==75&&UtilitySettings.killBackgroundOpacity==25&&UtilitySettings.killBorderOpacity==100&&UtilitySettings.killBorderColor==0xFFBD45&&UtilitySettings.deathBorderColor==0xFF5555&&UtilitySettings.assistBorderColor==0x55FFFF,"Appearance resets failed");
+                require(UtilitySettings.killFeedSize==75&&UtilitySettings.killBackgroundOpacity==25&&UtilitySettings.killBorderOpacity==100&&UtilitySettings.killBorderColor==0xFFBD45&&UtilitySettings.deathBorderColor==0xFF5555&&UtilitySettings.assistBorderColor==0x55FFFF,String.format("Appearance resets failed: size=%d bg=%d outline=%d colors=%06X/%06X/%06X",UtilitySettings.killFeedSize,UtilitySettings.killBackgroundOpacity,UtilitySettings.killBorderOpacity,UtilitySettings.killBorderColor,UtilitySettings.deathBorderColor,UtilitySettings.assistBorderColor));
                 options.actionPerformed(find(options,"Appearance"));
                 net.minecraftforge.fml.client.config.GuiSlider sizeSnap=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==4).findFirst().get();
                 int snapTrack=sizeSnap.width-22,snapX=sizeSnap.xPosition+4+(int)(snapTrack*0.7D);
@@ -994,10 +1088,11 @@ public final class OtlSmoke {
                 ((KillFeedSettings)mc.currentScreen).actionPerformed(find(mc.currentScreen,"Back"));require(mc.currentScreen==editor,"Widget settings did not return to editor");
                 editor.actionPerformed(find(editor,"Mods"));require(mc.currentScreen instanceof ModulesScreen,"Mods button did not open modules");
                 ModulesScreen modules=(ModulesScreen)mc.currentScreen;
-                String home=UtilitySettings.profile;UtilitySettings.minimapBorder=true;
+                String home=UtilitySettings.profile;UtilitySettings.minimapBorder=true;UtilitySettings.teamBarTeamColor=false;
                 String created=UtilitySettings.newProfile();
                 require(created!=null&&created.equals(UtilitySettings.profile),"New profile was not activated");
                 require(UtilitySettings.minimapBorder,"New profile did not start from defaults");
+                require(UtilitySettings.teamBarTeamColor,"A new profile did not get the Team Bar colour line default");
                 String json=UtilitySettings.profileExport(created);
                 require(json!=null&&json.contains("\"profile\""),"Profile export was empty");
                 String renamed=UtilitySettings.renameProfile(created,"Shared test");
@@ -1006,6 +1101,8 @@ public final class OtlSmoke {
                 String numbered=UtilitySettings.renameProfile(second,"Shared test");
                 require(numbered.startsWith("Shared test ")&&!numbered.equals("Shared test"),"Duplicate profile name was not numbered");
                 UtilitySettings.switchProfile(home);require(home.equals(UtilitySettings.profile),"Profile switch did not return");
+                require(!UtilitySettings.teamBarTeamColor,"Switching back did not restore the profile's Team Bar colour line");
+                UtilitySettings.teamBarTeamColor=true;
                 UtilitySettings.minimapBorder=true;UtilitySettings.save();
                 require(UtilitySettings.deleteProfile(renamed)&&UtilitySettings.deleteProfile(numbered),"Could not delete temporary profiles");
                 String imported=UtilitySettings.importProfile(json);
@@ -1123,12 +1220,12 @@ public final class OtlSmoke {
                 KillConfirm.state.clear();UtilitySettings.killConfirm=false;line("+5 raindrops | Kill");require(KillConfirm.state.reward==null&&ServerNotices.history.size()==noticeCount+1,"Disabled module counted/hidden reward");UtilitySettings.hideKillConfirmChat=false;
                 UtilitySettings.killFeed=true;UtilitySettings.nonPlayerChat=false;UtilitySettings.killConfirmSounds=false;UtilitySettings.save();
                 require(org.lwjgl.opengl.GL11.glGetError()==0,"Kill Confirm left a GL error");
-                UtilityScreen appearance=new UtilityScreen(true);mc.displayGuiScreen(appearance);appearance.actionPerformed(find(appearance,"Appearance"));
+                UtilityScreen appearance=new UtilityScreen();mc.displayGuiScreen(appearance);appearance.actionPerformed(find(appearance,"Appearance"));
                 net.minecraftforge.fml.client.config.GuiSlider tabs=(net.minecraftforge.fml.client.config.GuiSlider)buttons(appearance).stream().filter(b->b.id==16).findFirst().get();
                 net.minecraftforge.fml.client.config.GuiSlider typingTabs=(net.minecraftforge.fml.client.config.GuiSlider)buttons(appearance).stream().filter(b->b.id==17).findFirst().get();
-                int chatBackground=UtilitySettings.chatBackground;tabs.setValue(35);tabs.updateSlider();typingTabs.setValue(70);typingTabs.updateSlider();appearance.onGuiClosed();
+                tabs.setValue(35);tabs.updateSlider();typingTabs.setValue(70);typingTabs.updateSlider();appearance.onGuiClosed();
                 UtilitySettings.tabBackgroundOpacity=100;UtilitySettings.typingTabBackgroundOpacity=100;ReflectionHelper.setPrivateValue(UtilitySettings.class,null,false,"loaded");UtilitySettings.load();
-                require(UtilitySettings.tabBackgroundOpacity==35&&UtilitySettings.typingTabBackgroundOpacity==70&&UtilitySettings.chatBackground==chatBackground,"Typing/idle tab opacity did not persist independently");
+                require(UtilitySettings.tabBackgroundOpacity==35&&UtilitySettings.typingTabBackgroundOpacity==70,"Typing/idle tab opacity did not persist independently");
                 appearance.actionPerformed(find(appearance,"Reset chat options"));require(UtilitySettings.tabBackgroundOpacity==25&&UtilitySettings.typingTabBackgroundOpacity==25,"Tab background reset failed");
             }else if(state==48){
                 UtilitySettings.killConfirm=true;UtilitySettings.totalExpKills=true;UtilitySettings.hideKillConfirmChat=false;UtilitySettings.killFeed=false;
@@ -1264,6 +1361,512 @@ public final class OtlSmoke {
                 UtilitySettings.save();
                 System.out.println("OTL_SMOKE: join banner while disabled, current-map matching, unknown-model fallback and world-change clearing PASS");
                 if(scope.equals("all"))System.out.println("OTL_SMOKE: PASS - Minimap, Bow Optimizer/Accuracy, Kill Confirm, native component compatibility, HUD and prior fixtures");
+            }
+            if(state==64){
+                mc.currentScreen.drawScreen(0,0,0);
+                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-modules-updated.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+                mc.displayGuiScreen(new BowOptimizerSettings(null));
+            }else if(state==65){
+                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-switches-updated.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+                BowOptimizerSettings options=(BowOptimizerSettings)mc.currentScreen;
+                boolean before=UtilitySettings.bowHitSound;
+                options.actionPerformed(find(options,"Bow Hit Sound: "+(before?"ON":"OFF")));
+                require(UtilitySettings.bowHitSound!=before,"Switch row did not toggle");
+                options.actionPerformed(find(options,"Bow Hit Sound: "+(!before?"ON":"OFF")));
+                require(UtilitySettings.bowHitSound==before,"Switch row did not restore");
+                options.actionPerformed(find(options,"Bow Accuracy"));
+            }else if(state==66){
+                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-accuracy-updated.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+                mc.displayGuiScreen(new UtilityScreen());
+            }else if(state==67){
+                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-chat-switches-updated.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+                require(find(mc.currentScreen,"Reliable Chat: "+(UtilitySettings.chat?"ON":"OFF"))!=null,"Chat switch missing");
+                mc.displayGuiScreen(new ModulesScreen(null));
+            }else if(state==68){
+                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-modules-updated.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+                ModulesScreen browser=(ModulesScreen)mc.currentScreen;
+                ProfileTransferScreen exporter=new ProfileTransferScreen(browser,UtilitySettings.profile);
+                mc.displayGuiScreen(exporter);
+                require(find(exporter,"Copy to Clipboard")!=null,"Export action missing");
+                exporter.drawScreen(0,0,0);
+                ProfileTransferScreen importer=new ProfileTransferScreen(browser,null);
+                mc.displayGuiScreen(importer);
+                require(find(importer,"Paste from Clipboard")!=null,"Import action missing");
+                importer.drawScreen(0,0,0);
+                mc.displayGuiScreen(browser);
+                require(buttons(browser).stream().noneMatch(b->b.displayString.equals("EDIT HUD LAYOUT")),"Old HUD footer still present");
+                int bx=ReflectionHelper.getPrivateValue(ModulesScreen.class,browser,"x"),by=ReflectionHelper.getPrivateValue(ModulesScreen.class,browser,"y");
+                browser.mouseClicked(bx+10,by+10,0);
+                require(mc.currentScreen instanceof HudEditor,"Top-left back arrow did not open HUD editor");
+                SettingsScreen[] screens={new KillFeedSettings(null),new KillConfirmSettings(null),new MinimapSettings(null),new HeightLimitSettings(null),new ServerNoticeSettings(null),new TeamBarSettings(null),new UtilityScreen(),new MapPreviewSettings(null),new PreferedHandSettings(null),new BowOptimizerSettings(null),new RegionSettings(null),new ColorSwatches(null,0)};
+                for(SettingsScreen screen:screens){
+                    screen.setWorldAndResolution(mc,427,240);
+                    require(screen.panelW()==411&&screen.panelH()==224,"Settings panel is not the compact 470x272 frame");
+                    require(screen.panelX()==8&&screen.panelY()==8,"Settings panel is not centred");
+                    final int[] picked={-1};
+                    ChoiceButton choice=new ChoiceButton(screen,999,10,10,120,"Test",new String[]{"All","None","Only me"},0,v->picked[0]=v);
+                    choice.mousePressed(mc,15,25);require(picked[0]==-1,"Selected choice changed value");
+                    choice.mousePressed(mc,65,25);require(picked[0]==1,"Choice did not select clicked value");
+                    screen.drawScreen(0,0,0);
+                    List<GuiButton> controls=buttons(screen);
+                    int bandTop=screen.contentTop(),bandBottom=screen.contentBottom();
+                    for(int i=0;i<controls.size();i++)for(int j=i+1;j<controls.size();j++){
+                        GuiButton a=controls.get(i),b=controls.get(j);
+                        // Only the visible part of a scrolled row can collide with anything.
+                        int aTop=Math.max(a.yPosition,bandTop),aBottom=Math.min(a.yPosition+a.height,bandBottom);
+                        int bTop=Math.max(b.yPosition,bandTop),bBottom=Math.min(b.yPosition+b.height,bandBottom);
+                        if(aBottom<=aTop||bBottom<=bTop)continue;
+                        require(!(a.xPosition<b.xPosition+b.width&&a.xPosition+a.width>b.xPosition&&aTop<bBottom&&aBottom>bTop),screen.getClass().getSimpleName()+" overlapping controls "+a.id+"/"+b.id);
+                    }
+                    for(GuiButton b:controls)require(b.xPosition>=screen.panelX()&&b.xPosition+b.width<=screen.panelX()+screen.panelW(),screen.getClass().getSimpleName()+" control outside the panel");
+                    // Scroll clamps to the page bottom, then re-clamps when a taller window fits more rows.
+                    ReflectionHelper.setPrivateValue(SettingsScreen.class,screen,1000,"scroll");
+                    screen.initGui();
+                    int content=ReflectionHelper.getPrivateValue(SettingsScreen.class,screen,"contentHeight");
+                    int scroll=ReflectionHelper.getPrivateValue(SettingsScreen.class,screen,"scroll");
+                    require(scroll==Math.max(0,content-(screen.contentBottom()-screen.contentTop())),"Scrolling must clamp to the page bottom");
+                    screen.setWorldAndResolution(mc,427,480);
+                    int tallContent=ReflectionHelper.getPrivateValue(SettingsScreen.class,screen,"contentHeight");
+                    int tallScroll=ReflectionHelper.getPrivateValue(SettingsScreen.class,screen,"scroll");
+                    require(tallScroll==Math.max(0,tallContent-(screen.contentBottom()-screen.contentTop())),"Resizing must clear excess scroll");
+                }
+                // Region text: the editor element exists and its toggle flips the same flag the HUD reads.
+                HudLayout.Rect regionBox=HudEditor.bounds(HudLayout.REGION);
+                require(regionBox.w>0&&regionBox.h==12,"Region text has no HUD editor box");
+                require(HudEditor.bounds(HudLayout.REGION).x==Regions.bounds().x,"Editor region box differs from gameplay");
+                boolean wasRegion=UtilitySettings.regionHud;
+                java.lang.reflect.Method toggle=HudEditor.class.getDeclaredMethod("toggle",String.class);
+                toggle.setAccessible(true);
+                toggle.invoke(new HudEditor(),HudLayout.REGION);
+                require(UtilitySettings.regionHud!=wasRegion,"Region text toggle in the HUD editor did nothing");
+                UtilitySettings.regionHud=wasRegion;
+                RegionSettings regionOptions=new RegionSettings(null);regionOptions.setWorldAndResolution(mc,427,240);
+                regionOptions.actionPerformed(find(regionOptions,"Region text: "+(wasRegion?"ON":"OFF")));
+                require(UtilitySettings.regionHud!=wasRegion,"Region text toggle in the options screen did nothing");
+                UtilitySettings.regionHud=wasRegion;
+                mc.displayGuiScreen(new ModulesScreen(null));
+            }else if(state==69){
+                mc.displayGuiScreen(null);
+                line("\u00a7f---- \u00a76Match Stats\u00a7f ----");
+                line("Kills: 4 by \u00a7dMiyanosama\u00a7r, \u00a7bGrimpzy");
+                line("Deaths: 8 by \u00a7cavonpale");
+                line("Assists: 1 by Grimpzy");
+                line("Damage: 26.26\u2764 by Grimpzy");
+                line("Longest Shot: 53 blocks by ran_parr");
+                line("Supervotes: 2");
+                line("Match link: https://oc.tc/matches/6eb82d");
+                // Legacy PGM path: the vote list is chat, never a book.
+                line("\u00a75Click on all of the maps you want to play:");
+                String[] maps={"Home by the Sea","Avalon","Deciduous Nights","Cherry City","Hallows"};
+                for(int i=0;i<maps.length;i++)voteLine(i==1?"\u2714":"\u2715",maps[i],"Classic Casual");
+            }else if(state==70){
+                require(mc.currentScreen instanceof VoteScreen,"Chat vote list did not open the custom votebook");
+                VoteScreen vote=(VoteScreen)mc.currentScreen;
+                require(vote.cardCount()==5,"Chat vote cards were not parsed: "+vote.cardCount());
+                require(vote.votedCount()==1,"Chat vote symbol was not read");
+                line("\u00a77[\u00a7c\u2715 \u00a7e1\u00a77] \u00a7bHome by the Sea\u00a77 by \u00a73sanschaap");
+                require(mc.currentScreen instanceof VoteScreen,"Vote screen closed on a standings update");
+                require(Integer.valueOf(1).equals(VoteBook.standings.get(MapInfo.norm("Home by the Sea"))),"Standings count did not reach the card");
+                require("https://oc.tc/matches/6eb82d".equals(vote.matchLink()),"Match link was not read from chat");
+                require(VoteBook.superVotes==2,"Supervote count was not read from chat: "+VoteBook.superVotes);
+                VoteBook.Stat kills=VoteBook.matchStats.get("Kills");
+                require(kills!=null&&kills.names.size()==2,"Tied kills were not both read: "+(kills==null?null:kills.names));
+                require(kills.styled.get(0).contains("\u00a7d"),"Stat name colours were dropped: "+kills.styled);
+                VoteBook.Stat shot=VoteBook.matchStats.get("Longest shot");
+                require(shot!=null&&"53".equals(shot.value)&&"ran_parr".equals(shot.names.get(0)),"Longest shot units leaked into the value: "+shot.value);
+                require(vote.superEnabled(),"Supervote stayed locked with a vote cast and 2 supervotes");
+                // The local player's own row marks them on a separate last line, not in the name.
+                String me=mc.thePlayer.getName();
+                line("Deaths: 8 by \u00a76\u00a7l[MOD]\u00a7r \u00a7c"+me+", \u00a7cavonpale");
+                VoteBook.Stat deaths=VoteBook.matchStats.get("Deaths");
+                require(deaths!=null&&VoteBook.you(deaths.names.get(VoteBook.pick(deaths.names,me)),me),"A rank-prefixed local name was not marked as (You)");
+                require(!deaths.names.get(VoteBook.pick(deaths.names,me)).toLowerCase(java.util.Locale.ROOT).contains("(you)"),
+                    "PGM's own (You) tag was left inside the stat name: "+deaths.names);
+                // A name PGM already tags with "(You)" must still be read as the local player,
+                // and that tag must not be left inside the drawn name.
+                line("Kills: 9 by \u00a7c"+me+" \u00a77(You)");
+                VoteBook.Stat tagged=VoteBook.matchStats.get("Kills");
+                require(tagged!=null&&VoteBook.you(tagged.names.get(0),me),"PGM's (You) tag broke the local-player match: "+tagged.names);
+                require(!tagged.styled.get(0).toLowerCase(java.util.Locale.ROOT).contains("(you)"),
+                    "PGM's own (You) tag was left in the styled name: "+tagged.styled);
+                require(VoteBook.pick(deaths.names,me)==deaths.names.size()-1,"The local player's own row was not preferred in the tie");
+                // No Killstreak in the block: that column is dropped, the other five stay.
+                require(vote.columns()==5,"Missing categories were not dropped: "+vote.columns());
+                // Every GUI scale: the vote screen must lay itself out without rows colliding.
+                for(int[] size:new int[][]{{427,240},{512,288},{640,360},{854,480},{960,540},{1280,720},{1920,1080}}){
+                    vote.setWorldAndResolution(mc,size[0],size[1]);
+                    vote.drawScreen(-1,-1,0);
+                    require(vote.layoutFits(),"Vote layout collides at "+size[0]+"x"+size[1]);
+                }
+                ScaledResolution real=new ScaledResolution(mc);
+                vote.setWorldAndResolution(mc,real.getScaledWidth(),real.getScaledHeight());
+                vote.drawScreen(-1,-1,0);
+                require(vote.youSlot()>=0,"(You) was not drawn for the local player");
+                require(vote.drawnName(vote.youSlot())!=null&&vote.drawnName(vote.youSlot()).contains("[MOD]"),
+                    "The rank prefix was lost from the (You) column: "+vote.drawnName(vote.youSlot()));
+                vote.mouseClicked(40,40,0);
+                require(mc.currentScreen==vote,"Clicking a card closed the vote screen");
+            }else if(state==71){
+                // A real frame has rendered by now, so the screenshot shows the (You) line.
+                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-vote-screen.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+                mc.displayGuiScreen(null);
+                // Servers that do open a real book must still be replaced.
+                ItemStack voteBook=new ItemStack(net.minecraft.init.Items.written_book);NBTTagCompound voteNbt=new NBTTagCompound();                voteNbt.setString("title","Map Vote");voteNbt.setString("author","PGM");
+                NBTTagList pages=new NBTTagList();
+                String[] maps={"Home by the Sea","Avalon","Deciduous Nights","Cherry City","Hallows"};
+                StringBuilder page=new StringBuilder("{\"text\":\"\",\"extra\":[{\"text\":\"Click on all of the maps you want to play:\",\"color\":\"dark_purple\"},{\"text\":\"\\n\"}");
+                for(int i=0;i<maps.length;i++){
+                    page.append(",{\"text\":\"").append(i==1?"\u2714":"\u2715").append("\",\"color\":\"dark_green\","
+                        +"\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/votenext -o ").append(maps[i]).append("\"},"
+                        +"\"hoverEvent\":{\"action\":\"show_text\",\"value\":{\"text\":\"Classic Casual\"}},"
+                        +"\"extra\":[{\"text\":\" \"},{\"text\":\"").append(maps[i]).append("\",\"color\":\"gold\",\"bold\":true}]}");
+                }
+                page.append("]}");
+                pages.appendTag(new NBTTagString(page.toString()));
+                voteNbt.setTag("pages",pages);voteBook.setTagCompound(voteNbt);
+                mc.thePlayer.inventory.setInventorySlotContents(mc.thePlayer.inventory.currentItem,voteBook);
+                mc.displayGuiScreen(new GuiScreenBook(mc.thePlayer,voteBook,false));
+                require(mc.currentScreen instanceof VoteScreen,"Custom votebook did not replace the vanilla book");
+                require(((VoteScreen)mc.currentScreen).cardCount()==5,"Book vote cards were not parsed");
+                require(((VoteScreen)mc.currentScreen).votedCount()==1,"Book vote symbol was not read");
+                mc.displayGuiScreen(null);
+            }else if(state==72){
+                // In-game Reliable Chat cancels every server line; the vote list must still be read.
+                String[] plain={"Home by the Sea","Avalon","Deciduous Nights","Cherry City","Hallows"};
+                for(int i=0;i<plain.length;i++)cancelledLine((i==1?"\u2714":"\u2715")+" \u00a76\u00a7l"+plain[i]);
+            }else if(state==73){
+                require(mc.currentScreen instanceof VoteScreen,"Clickless vote list did not open the custom votebook");
+                VoteScreen vote=(VoteScreen)mc.currentScreen;
+                require(vote.cardCount()==5,"Clickless vote cards were not parsed: "+vote.cardCount());
+                require(vote.votedCount()==1,"Clickless vote symbol was not read");
+                vote.mouseClicked(40,40,0);
+                require(mc.currentScreen==vote,"Clicking a clickless card closed the vote screen");
+                // Rank names keep every chat colour when the row is cut to width.
+                String rank="\u00a76\u00a7lMOD\u00a7r \u00a7b\u00a7lAl\u00a7cice";
+                String cut=VoteScreen.clip(mc.fontRendererObj,rank,1000);
+                require(cut.equals(rank),"Trimming a rank name lost its colours: "+cut);
+                String narrow=VoteScreen.clip(mc.fontRendererObj,rank,20);
+                require(narrow.startsWith("\u00a76\u00a7lMOD"),"A narrow rank name lost its prefix colours: "+narrow);
+                require(mc.fontRendererObj.getStringWidth(ChatRules.plain(narrow))<=20,"A narrow rank name was not trimmed to width");
+                require(VoteBook.you("Alice","alice"),"(You) did not match the local player ignoring case");
+                require(!VoteBook.you("Alice",null),"(You) appeared with no local player");
+            }else if(state==74){
+                // A book opened from a slot the player is not holding must still be replaced.
+                ItemStack offBook=new ItemStack(net.minecraft.init.Items.written_book);NBTTagCompound offNbt=new NBTTagCompound();
+                offNbt.setString("title","Map Vote");offNbt.setString("author","PGM");
+                NBTTagList offPages=new NBTTagList();
+                StringBuilder offPage=new StringBuilder("{\"text\":\"\",\"extra\":[{\"text\":\"Click on all of the maps you want to play:\",\"color\":\"dark_purple\"},{\"text\":\"\\n\"}");
+                String[] offMaps={"Home by the Sea","Avalon","Deciduous Nights","Cherry City","Hallows"};
+                for(int i=0;i<offMaps.length;i++){
+                    offPage.append(",{\"text\":\"").append(i==1?"\u2714":"\u2715").append("\",\"color\":\"dark_green\","
+                        +"\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/votenext -o ").append(offMaps[i]).append("\"},"
+                        +"\"extra\":[{\"text\":\" \"},{\"text\":\"").append(offMaps[i]).append("\",\"color\":\"gold\",\"bold\":true}]}");
+                }
+                offPage.append("]}");
+                offPages.appendTag(new NBTTagString(offPage.toString()));
+                offNbt.setTag("pages",offPages);offBook.setTagCompound(offNbt);
+                int offSlot=(mc.thePlayer.inventory.currentItem+1)%9;
+                mc.thePlayer.inventory.setInventorySlotContents(offSlot,offBook);
+                mc.thePlayer.inventory.setInventorySlotContents(mc.thePlayer.inventory.currentItem,new ItemStack(net.minecraft.init.Items.stick));
+                mc.displayGuiScreen(new GuiScreenBook(mc.thePlayer,offBook,false));
+                require(mc.currentScreen instanceof VoteScreen,"Book opened from a non-held slot stayed vanilla");
+                require(((VoteScreen)mc.currentScreen).cardCount()==5,"Non-held book vote cards were not parsed");
+                mc.displayGuiScreen(null);
+            }else if(state==75){
+                // Auto GG: one gg per match, re-armed only by the next match starting.
+                UtilitySettings.autoGg=true;
+                AutoGg.INSTANCE.settle=0;
+                line("The match has started!");
+            }else if(state==76){
+                require(AutoGg.INSTANCE.sentCount==0,"Auto GG said gg before the match ended: "+AutoGg.INSTANCE.sentCount);
+                line("Game over!");
+            }else if(state==77){
+                require(AutoGg.INSTANCE.sentCount==1,"Auto GG did not say gg on the first match end: "+AutoGg.INSTANCE.sentCount);
+                line("Game over!");
+            }else if(state==78){
+                require(AutoGg.INSTANCE.sentCount==1,"Auto GG repeated itself within one match: "+AutoGg.INSTANCE.sentCount);
+                UtilitySettings.autoGg=false;
+                AutoGg.INSTANCE.settle=5_000_000_000L;
+            }else if(state==79){
+                // Team Bar: own team, a much larger second team, a third team, and a six-player observer team.
+                net.minecraft.scoreboard.Scoreboard board=mc.theWorld.getScoreboard();
+                for(String team:new String[]{"red","blue","green","observers"})if(board.getTeam(team)==null)board.createTeam(team);
+                // PGM colours each team, which is what the team-colour line reads.
+                board.getTeam("red").setNamePrefix("\u00a7c");
+                board.getTeam("blue").setNamePrefix("\u00a79");
+                board.getTeam("green").setNamePrefix("\u00a7a");
+                for(int i=0;i<5;i++)board.addPlayerToTeam("RedPlayer"+i,"red");
+                for(int i=0;i<75;i++)board.addPlayerToTeam("BluePlayer"+i,"blue");
+                for(int i=0;i<2;i++)board.addPlayerToTeam("GreenPlayer"+i,"green");
+                for(int i=0;i<6;i++)board.addPlayerToTeam("ObsPlayer"+i,"observers");
+                // Sorts before the local player's name, so the "own head first" rule is really tested.
+                board.addPlayerToTeam("AAAPlayer","red");
+                tabEntry(mc,"AAAPlayer","\u00a7cAAAPlayer");
+                if(mc.thePlayer!=null)board.addPlayerToTeam(mc.thePlayer.getName(),"red");
+                // GhostLeaver disconnects: the tab entry goes away and the head must follow, after the grace.
+                board.addPlayerToTeam("GhostLeaver","red");
+                tabEntry(mc,"GhostLeaver","\u00a7cGhostLeaver");
+                TeamBar.sides(mc); // the bar sees the leaver online once, so the grace starts here
+                removeTabEntry(mc,"GhostLeaver");
+                net.minecraft.scoreboard.ScoreObjective objective=board.getObjective("otl_teambar");
+                if(objective==null)objective=board.addScoreObjective("otl_teambar",net.minecraft.scoreboard.IScoreObjectiveCriteria.DUMMY);
+                board.setObjectiveInDisplaySlot(1,objective);
+                sidebar(board,objective,"Time Limit: 10:00");
+                // RedPlayer0 is dead: PGM greys their tab-list name until they respawn.
+                for(int i=0;i<5;i++)tabEntry(mc,"RedPlayer"+i,i==0?"\u00a77RedPlayer0":"\u00a7cRedPlayer"+i);
+                UtilitySettings.teamBarPlayers=5;
+            }else if(state==80){
+                java.util.List<TeamBar.Side> sides=TeamBar.sides(mc);
+                require(sides.size()==3,"Team Bar did not find all three teams: "+sides.size());
+                require("red".equals(sides.get(0).name),"The local player's team was not kept on the left: "+sides.get(0).name);
+                require(sides.get(0).members.size()==8&&sides.get(1).members.size()==75,"Team Bar kept the wrong teams");
+                require(sides.get(0).members.contains("GhostLeaver"),"A leaver was dropped before the grace ran out");
+                require(sides.get(0).members.get(0).equals(mc.thePlayer.getName()),"The local player's own head was not first: "+sides.get(0).members);
+                for(TeamBar.Side side:sides)require(!"observers".equals(side.name),"The observer team became a side");
+                require(TeamBar.dead("RedPlayer0"),"A grey tab-list name was not read as dead");
+                require(!TeamBar.dead("RedPlayer1"),"A team-coloured tab-list name was read as dead");
+                require(!TeamBar.dead("NotInTheTabList"),"A player outside the tab list was read as dead");
+                TeamBar.Timer limit=TeamBar.INSTANCE.timer(mc);
+                require(limit!=null&&limit.seconds>=597&&limit.seconds<=600,"Team Bar did not read the sidebar timer: "+(limit==null?"none":limit.label));
+                require(limit.countdown,"Time-limit timer was not marked as a countdown");
+                require(TeamBar.headSize(1)==16&&TeamBar.headSize(10)==16&&TeamBar.headSize(75)<16,"Head size does not shrink after ten players");
+                TeamBar.Bar bar=TeamBar.INSTANCE.bar(mc,false);
+                require(bar.left.size()==2&&bar.right.size()==1,"Three teams were not stacked one row each: "+bar.left.size()+"/"+bar.right.size());
+                require(bar.left.get(0).size()==5&&bar.right.get(0).size()==5,"Players shown was not applied: "+bar.left.get(0).size()+"/"+bar.right.get(0).size());
+                require(bar.left.get(1).size()==2,"The third team was not drawn as its own row");
+                // The clock must not move when the two columns hold different amounts.
+                require(bar.textX+bar.textW/2==bar.width/2,"The clock is not centred between the team columns");
+                // The right column mirrors the left: short rows hug the right edge instead of hanging left.
+                java.util.List<String> shortRow=java.util.Arrays.asList("A","B"),longRow=java.util.Arrays.asList("A","B","C","D","E");
+                TeamBar.Bar mirror=new TeamBar.Bar(java.util.Collections.singletonList(shortRow),
+                    java.util.Arrays.asList(longRow,shortRow),16,0,null,"");
+                require(mirror.rightStart(longRow)==mirror.rightX,"The widest right row did not start at the column");
+                require(mirror.rightStart(shortRow)>mirror.rightX,"A short right row was not pushed towards the right edge");
+                require(mirror.rightStart(shortRow)+mirror.advance+16==mirror.width,"A right row did not end at the bar's right edge");
+                // Stacked teams must be visibly apart, not butted into one block of heads.
+                require(mirror.height==2*16+TeamBar.ROW_GAP,"Stacked team rows were not separated: "+mirror.height);
+                // Team-colour line: on the outer edge of each column, clock still centred.
+                java.util.List<java.util.List<String>> oneRow=java.util.Collections.singletonList(longRow);
+                TeamBar.Bar lined=new TeamBar.Bar(oneRow,oneRow,16,24,null,"",7);
+                require(lined.leftStart()==7,"The left team line did not sit on the very left");
+                require(lined.rightStart(longRow)+(longRow.size()-1)*lined.advance+16==lined.width-7,"The right team line did not sit on the very right");
+                require(lined.textX+lined.textW/2==lined.width/2,"The team line moved the clock off centre");
+                boolean lineSetting=UtilitySettings.teamBarTeamColor;
+                UtilitySettings.teamBarTeamColor=true;
+                int withLine=TeamBar.INSTANCE.bar(mc,false).width;
+                UtilitySettings.teamBarTeamColor=false;
+                int withoutLine=TeamBar.INSTANCE.bar(mc,false).width;
+                require(withLine>withoutLine,"Turning the team colour line on did not make room for it: "+withLine+" vs "+withoutLine);
+                require(TeamBar.teamColour(mc,sides.get(0).members)==0xFFFF5555,"The team colour line did not read the team's colour: "+Integer.toHexString(TeamBar.teamColour(mc,sides.get(0).members)));
+                require(TeamBar.teamColour(mc,sides.get(1).members)==0xFF5555FF,"The second team got the wrong colour");
+                UtilitySettings.teamBarTeamColor=lineSetting;
+                require(bar.head==16,"Five heads per side were not kept at full size");
+                UtilitySettings.teamBarPlayers=75;
+                TeamBar.Bar wide=TeamBar.INSTANCE.bar(mc,false);
+                require(wide.right.get(0).size()==75&&wide.head<16,"Seventy-five players did not shrink the heads");
+                require(wide.textX+wide.textW/2==wide.width/2,"The clock moved when the rows grew");
+                require(wide.width<=new ScaledResolution(mc).getScaledWidth()-8,"The full bar spills off the screen");
+                UtilitySettings.teamBarPlayers=5;
+                HudLayout.Rect box=HudEditor.bounds(HudLayout.TEAM_BAR);
+                require(box.y<=8&&box.x>=4&&box.x+box.w<=new ScaledResolution(mc).getScaledWidth()-4,"Team Bar HUD bounds are off screen");
+                require(Math.abs(box.x+box.w/2-new ScaledResolution(mc).getScaledWidth()/2)<=2,"Team Bar does not default to top centre");
+                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-team-bar.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+                // Many teams keep stacking downward; the heads shrink so the stack still fits the screen.
+                net.minecraft.scoreboard.Scoreboard many=mc.theWorld.getScoreboard();
+                for(int i=0;i<24;i++){
+                    String extra="extra"+i;
+                    if(many.getTeam(extra)==null)many.createTeam(extra);
+                    many.addPlayerToTeam("Extra"+i+"P0",extra);
+                    many.addPlayerToTeam("Extra"+i+"P1",extra);
+                }
+                TeamBar.Bar stacked=TeamBar.INSTANCE.bar(mc,false);
+                int rows=Math.max(stacked.left.size(),stacked.right.size());
+                require(rows==14,"Twenty-seven teams were not stacked one row each: "+rows);
+                require(stacked.head<16,"A tall stack did not shrink the heads: "+stacked.head);
+                require(stacked.height<=new ScaledResolution(mc).getScaledHeight()-8,"The team stack spills off the screen: "+stacked.height);
+                for(int i=0;i<24;i++)if(many.getTeam("extra"+i)!=null)many.removeTeam(many.getTeam("extra"+i));
+                // Respawn: the server puts the team colour back, so the head must clear itself.
+                tabEntry(mc,"RedPlayer0","\u00a7cRedPlayer0");
+                // A death that drops the player from the team must not make the head vanish.
+                mc.theWorld.getScoreboard().removePlayerFromTeam("AAAPlayer",mc.theWorld.getScoreboard().getTeam("red"));
+                require(TeamBar.sides(mc).get(0).members.contains("AAAPlayer"),"A dead player's head vanished from the bar");
+                mc.theWorld.getScoreboard().addPlayerToTeam("AAAPlayer","red");
+                // Changing team moves the head; it must not be left behind on the old row.
+                mc.theWorld.getScoreboard().addPlayerToTeam("AAAPlayer","blue");
+                require(!TeamBar.sides(mc).get(0).members.contains("AAAPlayer"),"A player who changed team stayed on the old row");
+                // Going to the observers removes the head from the teams entirely.
+                mc.theWorld.getScoreboard().addPlayerToTeam("AAAPlayer","observers");
+                for(TeamBar.Side side:TeamBar.sides(mc))require(!side.members.contains("AAAPlayer"),"An observer was left on a team row");
+                // Same bar during a count-up match: no limit label, so the timer stays white.
+                sidebar(mc.theWorld.getScoreboard(),mc.theWorld.getScoreboard().getObjective("otl_teambar"),"Time: 0:42");
+            }else if(state==81){
+                require(!TeamBar.dead("RedPlayer0"),"A respawned player stayed greyed out");
+                TeamBar.Timer up=TeamBar.INSTANCE.timer(mc);
+                require(up!=null&&"0:42".equals(up.label)&&!up.countdown,"Count-up timer was not left white: "+(up==null?"none":up.label));
+                // Local clock: read the limit once, then tick from it without any server update.
+                line("The match has started!");
+                sidebar(mc.theWorld.getScoreboard(),mc.theWorld.getScoreboard().getObjective("otl_teambar"),"Time Remaining: 10:00");
+                net.minecraft.entity.boss.BossStatus.bossName=null;
+                long now=System.nanoTime();
+                TeamBar.Timer start=TeamBar.INSTANCE.timer(mc,now);
+                require(start!=null&&"10:00".equals(start.label)&&start.countdown,"Time limit was not read");
+                TeamBar.Timer later=TeamBar.INSTANCE.timer(mc,now+2_000_000_000L);
+                require("9:58".equals(later.label),"The clock did not tick locally: "+later.label);
+                line("Game over!");
+                TeamBar.Timer frozen=TeamBar.INSTANCE.timer(mc,now+2_000_000_000L);
+                require("9:58".equals(frozen.label),"The clock stopped somewhere else: "+frozen.label);
+                sidebar(mc.theWorld.getScoreboard(),mc.theWorld.getScoreboard().getObjective("otl_teambar"),"Time Remaining: 9:50");
+                TeamBar.Timer stillFrozen=TeamBar.INSTANCE.timer(mc,now+9_000_000_000L);
+                require("9:58".equals(stillFrozen.label),"A server update moved the stopped clock: "+stillFrozen.label);
+                line("The match has started!");
+                TeamBar.Timer resumed=TeamBar.INSTANCE.timer(mc,now+10_000_000_000L);
+                require(resumed!=null&&"9:50".equals(resumed.label),"The clock did not resume for the next match: "+(resumed==null?"none":resumed.label));
+                // A new map: the old clock must not linger; the middle resets to 0:00 and waits.
+                sidebar(mc.theWorld.getScoreboard(),mc.theWorld.getScoreboard().getObjective("otl_teambar"),"Players: 24");
+                net.minecraft.entity.boss.BossStatus.bossName=null;
+                line("Playing Allure");
+                TeamBar.Timer changed=TeamBar.INSTANCE.timer(mc,now+11_000_000_000L);
+                require(changed!=null&&"0:00".equals(changed.label),"The clock did not reset to 0:00 on a map change: "+(changed==null?"none":changed.label));
+                require(changed.starting,"The reset clock was not treated as pre-match");
+                require(TeamBar.INSTANCE.bar(mc,false)==null,"Heads were drawn while the new map loaded");
+                // Then PGM counts the next match in from there.
+                net.minecraft.entity.boss.BossStatus.bossName="Match starting in 10 seconds";
+                TeamBar.Timer next=TeamBar.INSTANCE.timer(mc,now+12_000_000_000L);
+                require(next!=null&&next.starting&&"0:10".equals(next.label),"The new map's countdown did not take over: "+(next==null?"none":next.label));
+                net.minecraft.entity.boss.BossStatus.bossName=null;
+            }else if(state==82){
+                net.minecraft.entity.boss.BossStatus.bossName="Time Remaining: 9:50";
+                UtilitySettings.teamBarHideBoss=true;
+                require(TeamBar.hidesBossBar(mc),"Hide bossbar did not hide a PGM clock");
+                UtilitySettings.teamBarHideBoss=false;
+                require(!TeamBar.hidesBossBar(mc),"Hide bossbar stayed on after being turned off");
+                net.minecraft.entity.boss.BossStatus.bossName=null;
+                OtlModule module=OtlModule.byId("team_bar");
+                require(module!=null&&module.enabled(),"Team Bar module is missing from the module list");
+                require(module.settings(new HudEditor()) instanceof TeamBarSettings,"Team Bar has no options page");
+                module.setEnabled(false);
+                require(!UtilitySettings.teamBar,"Team Bar module toggle did not reach the HUD flag");
+                module.setEnabled(true);
+                UtilitySettings.teamBarPlayers=5;UtilitySettings.teamBarSize=100;UtilitySettings.teamBarHideBoss=false;
+            }else if(state==83){
+                // A leaver: seen online once, then the tab entry goes away. The head must follow
+                // after the short grace instead of sitting on the row forever.
+                mc.theWorld.getScoreboard().addPlayerToTeam("GhostLeaver","red");
+                tabEntry(mc,"GhostLeaver","\u00a7cGhostLeaver");
+                TeamBar.sides(mc); // the bar sees the leaver online, so the grace starts here
+                removeTabEntry(mc,"GhostLeaver");
+                require(TeamBar.sides(mc).get(0).members.contains("GhostLeaver"),"A leaver was dropped before the grace ran out");
+                for(TeamBar.Side side:TeamBar.sides(mc,System.nanoTime()+TeamBar.LEFT_GRACE+1_000_000_000L))
+                    require(!side.members.contains("GhostLeaver"),"A player who left the server was drawn forever");
+                // Between matches: PGM writes a bare "0:00" into an idle scoreboard, which is not a clock.
+                TeamBar.INSTANCE.unload(new net.minecraftforge.event.world.WorldEvent.Unload(mc.theWorld));
+                net.minecraft.entity.boss.BossStatus.bossName="0:00";
+                require(TeamBar.INSTANCE.timer(mc)==null,"An idle 0:00 was read as a match clock");
+                // The hub has scoreboard teams too, so no match clock means no heads at all.
+                require(TeamBar.INSTANCE.bar(mc,false)==null,"Team Bar drew heads with no match running");
+                require(TeamBar.INSTANCE.bar(mc,true)!=null,"The HUD editor lost its preview without a match");
+                // Then PGM counts the next one in; that count lands in the middle in red.
+                line("Game over!");
+                net.minecraft.scoreboard.ScoreObjective board=mc.theWorld.getScoreboard().getObjective("otl_teambar");
+                sidebar(mc.theWorld.getScoreboard(),board,"Players: 24"); // no clock in the sidebar here
+                net.minecraft.entity.boss.BossStatus.bossName="Match starting in 10 seconds";
+                long now=System.nanoTime();
+                TeamBar.Timer starting=TeamBar.INSTANCE.timer(mc,now);
+                require(starting!=null&&starting.starting,"The match-start countdown was not recognised: "+(starting==null?"none":starting.label));
+                require("0:10".equals(starting.label),"The countdown did not start at ten: "+starting.label);
+                require(starting.countdown,"The countdown was not marked as a countdown");
+                // The hub runs the same countdown, so it must not earn heads before the match.
+                require(TeamBar.INSTANCE.bar(mc,false)==null,"Heads were drawn during the pre-match countdown");
+                require(TeamBar.INSTANCE.bar(mc,true)!=null,"The HUD editor lost its preview during a countdown");
+                require("0:07".equals(TeamBar.INSTANCE.timer(mc,now+3_000_000_000L).label),"The countdown did not tick locally");
+                // At zero the match clock takes over: a map with no limit counts up from 0:00 in white.
+                TeamBar.Timer running=TeamBar.INSTANCE.timer(mc,now+11_000_000_000L);
+                require(!running.starting&&!running.countdown,"The countdown did not hand over to a match clock");
+                require("0:01".equals(running.label),"A no-limit map did not count up from zero: "+running.label);
+                require("0:03".equals(TeamBar.INSTANCE.timer(mc,now+13_000_000_000L).label),"The count-up did not keep time");
+                // Dead heads: the texels lose their colour instead of just getting a wash.
+                int grey=TeamBar.greyed(0xFFC04020);
+                require(((grey>>16)&255)==((grey>>8)&255)&&((grey>>8)&255)==(grey&255),"Dead heads are not grey");
+                require(((grey>>16)&255)<0xC0,"Dead heads were not dimmed");
+                require(TeamBar.grey("\u00a77\u00a7lRedPlayer"),"A decorated grey tab name was not read as dead");
+                require(!TeamBar.grey("\u00a7c\u00a7lRedPlayer"),"A team-coloured decorated name was read as dead");
+            }else if(state==84){
+                // Match start with no server clock at all: count up from zero in white.
+                net.minecraft.entity.boss.BossStatus.bossName=null;
+                line("The match has started!");
+                long began=System.nanoTime();
+                require("0:00".equals(TeamBar.INSTANCE.timer(mc,began).label),"The new match did not start at zero");
+                TeamBar.Timer up=TeamBar.INSTANCE.timer(mc,began+2_000_000_000L);
+                require("0:02".equals(up.label)&&!up.countdown&&!up.starting,"A no-limit match clock is not counting up white: "+up.label);
+                // A time limit replaces the count-up as soon as PGM sends it.
+                sidebar(mc.theWorld.getScoreboard(),mc.theWorld.getScoreboard().getObjective("otl_teambar"),"Time Remaining: 10:00");
+                TeamBar.Timer limited=TeamBar.INSTANCE.timer(mc,began+3_000_000_000L);
+                require("10:00".equals(limited.label)&&limited.countdown,"The time limit did not take over: "+limited.label);
+                sidebar(mc.theWorld.getScoreboard(),mc.theWorld.getScoreboard().getObjective("otl_teambar"),"Players: 24");
+                net.minecraft.entity.boss.BossStatus.bossName=null;
+            }else if(state==85){
+                // Observer: hidden only when the new option says so.
+                UtilitySettings.teamBarObserver=true;
+                mc.theWorld.getScoreboard().addPlayerToTeam(mc.thePlayer.getName(),"observers");
+                require(TeamBar.observing(mc),"Being on the observer team was not detected");
+                require(TeamBar.INSTANCE.bar(mc,false)!=null,"The bar was hidden in observer with the option ON");
+                UtilitySettings.teamBarObserver=false;
+                require(TeamBar.INSTANCE.bar(mc,false)==null,"The bar stayed visible in observer with the option OFF");
+                require(TeamBar.INSTANCE.bar(mc,true)!=null,"The HUD editor preview followed the observer option");
+                UtilitySettings.teamBarObserver=true;
+                mc.theWorld.getScoreboard().addPlayerToTeam(mc.thePlayer.getName(),"red");
+                require(!TeamBar.observing(mc),"A playing team was read as observers");
+            }else if(state==86){
+                // Respawn: a live body in the world clears the fade even if the tab name is still grey.
+                String me=mc.thePlayer.getName();
+                require(mc.getNetHandler().getPlayerInfo(me)!=null,"The local player is missing from the tab list");
+                // Your own head greys the moment the death screen appears, even though PGM keeps
+                // your own tab name in the team colour.
+                mc.displayGuiScreen(new net.minecraft.client.gui.GuiGameOver());
+                require(TeamBar.dead(me),"The local player's own head did not grey out on death");
+                mc.displayGuiScreen(null);
+                require(!TeamBar.dead(me),"The local player's head stayed grey after respawn");
+                String before=TeamBar.tabName(mc.getNetHandler().getPlayerInfo(me));
+                tabEntry(mc,me,"\u00a77"+me);
+                require(!TeamBar.dead(me),"A respawned player stayed faded behind a stale grey tab name");
+                tabEntry(mc,me,before);
+            }else if(state==87){
+                // Auto GG: never say gg while the map is starting.
+                ggBaseline=AutoGg.INSTANCE.sentCount;
+                UtilitySettings.autoGg=true;
+                line("Playing Allure");
+                line("Your team won!"); // PGM's leftover result right after the map loads
+            }else if(state==88){
+                require(AutoGg.INSTANCE.sentCount==ggBaseline,"Auto GG said gg while the map was starting");
+                // Same match, well past the map-start window: this one is a real ending.
+                ReflectionHelper.setPrivateValue(AutoGg.class,AutoGg.INSTANCE,System.nanoTime()-10_000_000_000L,"startedAt");
+                line("Your team won!");
+            }else if(state==89){
+                require(AutoGg.INSTANCE.sentCount==ggBaseline+1,"Auto GG did not say gg at the real match end: "+AutoGg.INSTANCE.sentCount);
+                UtilitySettings.autoGg=false;
+            }else if(state==90){
+                // Real PGM match on the local server: dump what the scoreboard actually carries.
+                mc.theWorld.sendQuittingDisconnectingPacket();mc.loadWorld(null);
+                mc.displayGuiScreen(new net.minecraft.client.multiplayer.GuiConnecting(new GuiMainMenu(),mc,
+                    new net.minecraft.client.multiplayer.ServerData("Local PGM","localhost:25565",false)));
+            }else if(state==91){
+                require(ServerScope.active(),"Local server scope is inactive");
+                require(mc.thePlayer!=null&&mc.theWorld!=null,"Not connected to the local server");
+                // Join the running match so the bar has real teams and a real clock.
+                mc.thePlayer.sendChatMessage("/join");
+            }else if(state>=92&&state<=98){
+                dumpMatch(mc);
+                if(state==95)ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-team-bar-live.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+            }else if(state==99){
+                // Whatever the real boss bar says, the bar must read the same clock out of it.
+                String boss=net.minecraft.entity.boss.BossStatus.bossName;
+                String plain=ChatRules.plain(boss==null?"":boss);
+                TeamBar.Timer timer=TeamBar.INSTANCE.timer(mc);
+                if(java.util.regex.Pattern.compile("\\d{1,3}:\\d{2}").matcher(plain).find())
+                    require(timer!=null&&plain.contains(timer.label),"Team Bar missed the boss-bar clock: "+plain+" -> "+(timer==null?"none":timer.label));
+                else require(timer==null,"Team Bar invented a timer: "+(timer==null?"none":timer.label));
+                System.out.println("OTL_LIVE: boss-bar clock check PASS ("+plain.trim()+")");
+                mc.thePlayer.sendChatMessage("/leave");
             }
             if(state==scopeEnd){
                 if(!scope.equals("all"))System.out.println("OTL_SMOKE: PASS - "+scope);

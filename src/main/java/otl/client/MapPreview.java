@@ -155,14 +155,17 @@ final class MapPreview {
         return chatQuery(MinecraftAccess.get().ingameGUI.getChatGUI().getChatComponent(mx*scale,MinecraftAccess.get().displayHeight-my*scale-1));
     }
 
+    private final Set<String> chatPending=ConcurrentHashMap.newKeySet();
     ResourceLocation chatTexture(String query){
         String dir=chatMaps.get(query);
         if(dir==null){
             MapRemote.requestCatalog();
-            MapInfo local=MapInfo.findLocal(query);
-            if(local!=null&&local.exact(query))dir=local.dir;
-            else dir=MapRemote.findDirectory(query,MapRemote.catalog);
+            dir=MapRemote.findDirectory(query,MapRemote.catalog);
             if(dir!=null)chatMaps.put(query,dir);
+            else if(chatPending.add(query))MapRemote.lookup(query,map->{
+                if(map!=null)chatMaps.put(query,map.dir);
+                chatPending.remove(query);
+            });
         }
         return dir==null?null:galleryTexture(dir+"/map.png");
     }
@@ -259,42 +262,54 @@ final class MapPreview {
         return null;
     }
 
-    /** Preview texture for a downloaded (non-bundled) map. */
+    /** Preview texture for a downloaded (non-bundled) map. Decoded off the render thread. */
     static ResourceLocation fileTexture(String key,File file){
-        String cacheKey="f:"+key;
-        synchronized(textures){
-            ResourceLocation ready=textures.get(cacheKey);
-            if(ready!=null)return ready;
-        }
-        try(InputStream in=new java.io.FileInputStream(file)){
-            BufferedImage image=readSquare(in);
-            if(image==null)return null;
-            ResourceLocation r=MinecraftAccess.get().getTextureManager().getDynamicTextureLocation("otl_"+key,new DynamicTexture(image));
-            synchronized(textures){textures.put(cacheKey,r);}
-            return r;
-        }catch(Exception ignored){return null;}
+        return asyncTexture("f:"+key,"otl_"+key,()->{
+            try(InputStream in=new java.io.FileInputStream(file)){return readSquare(in);}
+        });
     }
 
     static ResourceLocation galleryTexture(String path){
         if(path.startsWith("CommunityMaps/master/"))path=path.substring("CommunityMaps/master/".length());
         String cacheKey="g:"+path;
+        String dir=path.substring(0,path.length()-8);
+        final String resource=path;
+        if(entries.containsKey(dir))return asyncTexture(cacheKey,"map_gallery_"+path.replace('/','_'),()->{
+            try(InputStream in=MapPreview.class.getResourceAsStream("/assets/otl/maps/"+resource)){
+                return in==null?null:readSquare(in);
+            }
+        });
+        String remote=dir.startsWith("PublicMaps/main/")?dir:"CommunityMaps/master/"+dir;
+        File file=MapRemote.preview(remote);
+        return file==null?null:fileTexture(remote,file);
+    }
+
+    private static final Map<String,BufferedImage> decoded=new ConcurrentHashMap<>();
+    private static final Set<String> decoding=ConcurrentHashMap.newKeySet();
+    /** Decode failures are permanent for the session: retrying a broken PNG every frame is worse. */
+    private static final Set<String> decodeFailed=ConcurrentHashMap.newKeySet();
+
+    /** Decodes on the map worker and uploads the texture on the next render frame. */
+    private static ResourceLocation asyncTexture(String cacheKey,String name,java.util.concurrent.Callable<BufferedImage> source){
         synchronized(textures){
             ResourceLocation ready=textures.get(cacheKey);
             if(ready!=null)return ready;
         }
-        try(InputStream in=MapPreview.class.getResourceAsStream("/assets/otl/maps/"+path)){
-            if(in==null){
-                String dir=path.substring(0,path.length()-8);
-                String remote=dir.startsWith("PublicMaps/main/")?dir:"CommunityMaps/master/"+dir;
-                File file=MapRemote.preview(remote);
-                return file==null?null:fileTexture(remote,file);
-            }
-            BufferedImage image=readSquare(in);
-            if(image==null)return null;
-            ResourceLocation r=MinecraftAccess.get().getTextureManager().getDynamicTextureLocation("map_gallery_"+path.replace('/','_'),new DynamicTexture(image));
+        if(decodeFailed.contains(cacheKey))return null;
+        BufferedImage image=decoded.remove(cacheKey);
+        if(image!=null){
+            ResourceLocation r=MinecraftAccess.get().getTextureManager().getDynamicTextureLocation(name,new DynamicTexture(image));
             synchronized(textures){textures.put(cacheKey,r);}
             return r;
-        }catch(Exception ignored){return null;}
+        }
+        if(decoding.add(cacheKey))INSTANCE.worker.execute(()->{
+            try{
+                BufferedImage read=source.call();
+                if(read==null)decodeFailed.add(cacheKey);else decoded.put(cacheKey,read);
+            }catch(Exception e){decodeFailed.add(cacheKey);}
+            finally{decoding.remove(cacheKey);}
+        });
+        return null;
     }
 
     // Keep these shared textures across reconnects; TextureManager still owns them.
@@ -313,12 +328,13 @@ final class MapPreview {
         }
     }
 
+    /** Center-crop to 1:1 so cards fill their square instead of showing black bars. */
     static BufferedImage square(BufferedImage image){
         if(image.getWidth()==image.getHeight())return image;
-        int side=Math.max(image.getWidth(),image.getHeight());
+        int side=Math.min(image.getWidth(),image.getHeight());
         BufferedImage result=new BufferedImage(side,side,BufferedImage.TYPE_INT_ARGB);
         java.awt.Graphics2D g=result.createGraphics();
-        try{g.drawImage(image,(side-image.getWidth())/2,(side-image.getHeight())/2,null);}finally{g.dispose();}
+        try{g.drawImage(image,-(image.getWidth()-side)/2,-(image.getHeight()-side)/2,null);}finally{g.dispose();}
         return result;
     }
 
@@ -348,16 +364,33 @@ final class MapPreview {
         }
         Normalized normalized=new Normalized(text);
         for(List<Entry> source:Arrays.asList(all,remoteEntries))for(Entry entry:source){
-            for(String name:entry.lowerName==null?new String[]{entry.lowerFolder}:new String[]{entry.lowerName,entry.lowerFolder}){
-                int[] range=normalized.range(name);
-                if(range!=null&&range[1]-range[0]>len){best=entry;start=range[0];len=range[1]-range[0];}
-            }
+            int[] range=entry.lowerName==null?null:normalized.rangeNorm(entry.lowerName);
+            if(range==null)range=normalized.rangeNorm(entry.lowerFolder);
+            if(range!=null&&range[1]-range[0]>len){best=entry;start=range[0];len=range[1]-range[0];}
         }
         if(best==null||start<0)return null;
         int x0=left+font.getStringWidth(text.substring(0,start));
         int x1=x0+font.getStringWidth(text.substring(start,start+len));
         if(mx<x0||mx>x1)return null;
         return new Hover(best,text.substring(start,start+len));
+    }
+
+    /** Catalog lookup by map name for the vote screen (mouse-independent). Null when nothing matches. */
+    static Entry resolveEntry(String text){
+        if(text==null||text.isEmpty())return null;
+        Entry best=null;int len=0;
+        List<String> catalog=MapRemote.catalog;
+        if(INSTANCE.hoverCatalog!=catalog){
+            INSTANCE.hoverCatalog=catalog;INSTANCE.remoteEntries.clear();
+            for(String dir:catalog)INSTANCE.remoteEntries.add(new Entry(dir.substring(dir.lastIndexOf('/')+1),dir));
+        }
+        Normalized normalized=new Normalized(text);
+        for(List<Entry> source:Arrays.asList(INSTANCE.all,INSTANCE.remoteEntries))for(Entry entry:source){
+            int[] range=entry.lowerName==null?null:normalized.rangeNorm(entry.lowerName);
+            if(range==null)range=normalized.rangeNorm(entry.lowerFolder);
+            if(range!=null&&range[1]-range[0]>len){best=entry;len=range[1]-range[0];}
+        }
+        return best;
     }
 
     /** Match server separators/formatting without losing the original mouse-hit coordinates. */
@@ -367,19 +400,21 @@ final class MapPreview {
 
     /** One normalization per hovered line, shared by every candidate name. */
     private static final class Normalized {
-        final String raw;final StringBuilder chars=new StringBuilder();final List<Integer> offsets=new ArrayList<>();
+        final String raw;final String normalized;final List<Integer> offsets=new ArrayList<>();
         Normalized(String text){
             raw=text;
+            StringBuilder chars=new StringBuilder();
             for(int i=0;i<text.length();i++){
                 char c=text.charAt(i);
                 if(c=='\u00a7'&&i+1<text.length()){i++;continue;}
                 if(Character.isLetterOrDigit(c)){chars.append(Character.toLowerCase(c));offsets.add(i);}
             }
+            normalized=chars.toString();
         }
-        int[] range(String name){
-            String key=MapInfo.norm(name);
+        int[] range(String name){return rangeNorm(MapInfo.norm(name));}
+        /** Candidate names are already normalized (Entry keeps the normalized forms). */
+        int[] rangeNorm(String key){
             if(key.length()<2)return null;
-            String normalized=chars.toString();
             for(int at=normalized.indexOf(key);at>=0;at=normalized.indexOf(key,at+1)){
                 int start=offsets.get(at),end=offsets.get(at+key.length()-1)+1;
                 String before=ChatRules.plain(raw.substring(0,start)),after=ChatRules.plain(raw.substring(end));

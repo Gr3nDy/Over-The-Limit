@@ -1,5 +1,33 @@
 # Changelog
 
+## v0.3.8 - 2026-11-14
+
+### Added
+- **Team Bar** (ON by default): one row of player heads per team at the top centre, stacked, with the match clock locked to the exact middle.
+  - Left-column teams read left-to-right, right-column teams right-to-left, so every row hugs the bar's outer edge; your own team always takes the left column and your own head always leads it.
+  - The clock reads PGM's live time (boss bar, then sidebar, then tab footer), ticks locally between server updates, turns **yellow** for a time limit and **white** for a count-up, shows the match-start countdown in **red**, freezes at match end and resumes next match. A map change resets it to `0:00`.
+  - Dead players' heads fade to grey and clear on respawn; a head never disappears on death (a player who drops out of the team for the respawn delay is held for 10 seconds).
+  - Players who leave, move to the observers or change team are moved or removed instead of being left behind.
+  - Heads only appear in a real match, never in the hub.
+  - Options: **Hide bossbar**, **Show in observer**, **Team colour line**, **Players shown** (1–75, default 5) and **Size** (50–150%).
+- **Team colour line**: a thin vertical bar in the team's own PGM colour beside each team row, on the bar's outer edge, one per team. Toggle in Team Bar settings.
+- **Custom Votebook**: replaces the written book with a compact panel — map cards with previews and vote counts, Supervote, a Match Stats row of player heads, a match link and map favorites.
+- **spectrum.oc.tc** is recognised as an Overcast host.
+
+### Changed
+- **Team Bar stacks any number of teams** instead of two: rows alternate left/right, grow downward, and the heads shrink until the whole stack fits the screen. Stacked rows are separated by a small gap so two teams never read as one block.
+- **Settings screens**: the reset button now sits in the module body (top right) instead of the screen header, and every screen fits one compact 470×272 panel at every GUI scale.
+
+### Fixed
+- **`(You)` in the votebook** now appears on its own last line under `Most X: N` / `and N more...`, and is drawn for your own row in every column.
+- Votebook stat rows keep your whole chat-styled name (rank symbol and its own colours) instead of flattening or clipping it.
+- PGM's own `(You)` tag inside a stats name is stripped instead of being cut mid-word, and no longer stops the row being recognised as yours.
+- **Chat HUD crash on team join**: team data is snapshotted before use and the overlay draw is guarded, so a team packet arriving mid-frame can no longer take the game down.
+- Auto GG says `gg` once per match, at the end only, never on map start.
+
+### Removed
+- **Chat background** slider under Reliable Chat. Chat lines no longer draw a background box; the tab opacity sliders are unchanged.
+
 ## v0.3.7 - 2026-11-11
 
 ### Changed

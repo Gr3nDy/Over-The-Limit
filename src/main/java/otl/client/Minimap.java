@@ -93,7 +93,7 @@ final class Minimap {
         Gui.drawRect(outer.x+1,outer.y+outer.h-2,outer.x+outer.w-1,outer.y+outer.h-1,dark);
         Gui.drawRect(outer.x+outer.w-2,outer.y+1,outer.x+outer.w-1,outer.y+outer.h-1,dark);
     }
-    @SubscribeEvent public void chat(ClientChatReceivedEvent event){
+    @SubscribeEvent(priority=net.minecraftforge.fml.common.eventhandler.EventPriority.LOWEST,receiveCanceled=true) public void chat(ClientChatReceivedEvent event){
         if(event.type==2||!ServerScope.active()||ChatRules.playerMessage(event.message.getFormattedText()))return;
         session();
         String next=announcement.receive(event.message.getFormattedText(),System.nanoTime());

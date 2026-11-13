@@ -6,9 +6,9 @@ A real 1.8.9 server beats faked packets for anything involving teams, scoreboard
 
 | Piece | Where |
 |---|---|
-| `SportPaper.jar` (1.8.9 server) + `PGM.jar` | https://github.com/PGMDev/PGM/releases/tag/v0.15 |
-| Maps | any folder from `OvercastCommunity/PublicMaps` (`map.xml` + `region/` + `map.png`) |
-| Java | 8 (SportPaper 1.8.9 target). On this machine: `%TEMP%\opencode\jdk8\zulu8.98.0.107-ca-jdk8.0.512-win_x64` |
+| `SportPaper.jar` (1.8.9 server) + `PGM.jar` | https://dl.pgm.fyi/download/pgm and `/sportpaper` (latest: PGM `0.16-SNAPSHOT`) |
+| Maps | `OvercastCommunity/PublicMaps` (`main`) and `CommunityMaps` (`master`), copied wholesale |
+| Java | 25 for PGM 0.16 (it is compiled for class 69). On this machine: `%LOCALAPPDATA%\jdks\jdk-25.0.5+8` |
 
 ## Windows setup (~5 minutes)
 
@@ -17,25 +17,40 @@ C:\otl-server\
   SportPaper.jar
   start.bat
   plugins\PGM.jar
-  local-maps\<gamemode>\<map>\   (copy map folders here)
+  refresh-pool.ps1
+  public-maps\      community-maps\      default-maps\      local-maps\
 ```
 
 `start.bat`:
 
 ```bat
-java -Xmx2G -Dterminal.jline=false -jar SportPaper.jar nogui
+set JAVA_HOME=%LOCALAPPDATA%\jdks\jdk-25.0.5+8
+java -Xmx3G -Dterminal.jline=false -jar SportPaper.jar nogui
 PAUSE
 ```
 
-First run creates the files; then set `eula.txt` → `eula=true`. For offline local testing only, set `server-ip=127.0.0.1` before setting `online-mode=false` in `server.properties`; do not expose an offline-mode server to other machines. Point PGM at the folder in `plugins/PGM/config.yml`:
+First run creates the files; then set `eula.txt` → `eula=true`. For offline local testing only, set `server-ip=127.0.0.1` before setting `online-mode=false` in `server.properties`; do not expose an offline-mode server to other machines. Point PGM at every map folder in `plugins/PGM/config.yml` (recursive, so gamemode subfolders are enough):
 
 ```yaml
 map:
   folders:
+    - "public-maps"
+    - "community-maps"
+    - "default-maps"
     - "local-maps"
+  experiments:
+    payload: true
 ```
 
-Start it, wait for `Done`, connect to `localhost` from 1.8.9.
+Then rebuild the pool so it only names maps PGM actually loaded — a pool entry for a rejected map stops the pool from enabling:
+
+```
+powershell -ExecutionPolicy Bypass -File refresh-pool.ps1
+```
+
+The script skips maps PGM rejected in the last boot, maps declaring `min-server-version="1.21"`, and decodes UTF-8 names and XML entities. Start it, wait for `Done`, connect to `localhost` from 1.8.9.
+
+Keep `empty-server-suspend: P1D` in `sportpaper.yml`: with the 1-minute default the listener closes while you edit code, and the next client connect fails with no error.
 
 ## Let the mod run there
 
@@ -74,6 +89,8 @@ Add `-PotlSmokeServer` to also connect the development client to `localhost:2556
 Command checks send Enter through both Reliable Chat and vanilla chat, then check the screen on a later tick. They do not call an open-card helper. The local-server check also exercises bare `/map` and its server response. Remote checks require both gallery catalogs and verify Infection: Cataclysm's default Infection objective, shared teams and 40-player capacity rather than its inactive OITQ variant.
 
 Use `-PotlSmokeServerOnly` instead of `-PotlSmokeServer` for direct localhost checks without loading/unloading the integrated fixture world. With `-PotlSmokeRemote`, this checks the exact `/map 100┈Rooms` input and captures a Public-map vote-book fixture hover in `run/screenshots/otl-public-book-hover.png`. Integrated fixtures are explicitly skipped in this mode; run them separately for full coverage.
+
+`-PotlSmokeScope=live` joins the running match on `localhost:25565`, dumps the real sidebar, boss bar, scoreboard teams and team-bar sides twice, saves `run/screenshots/otl-team-bar-live.png`, then asserts that the boss-bar clock PGM sends (`Time Remaining: m:ss`) is the one Team Bar shows, and leaves. It needs the local server up; run `-PotlSmokeScope=teambar` for the fixture version.
 
 The direct checks also hover a gold `/map` link through real chat hit testing in both Reliable Chat and vanilla chat, saving `otl-gold-chat-hover.png` and `otl-gold-vanilla-hover.png`. Unit tests reject plain gold text, non-map commands, bare `/map`, and non-gold links, and cover inherited styles and Unicode separators.
 

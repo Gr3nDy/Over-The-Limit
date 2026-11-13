@@ -6,13 +6,12 @@ final class FacePose {
     final float wink;   // extra closure on the character's left eye while aiming a bow
     final float pupilX; // -1 .. +1, positive glances toward the player's right
     final float pupilY; // -1 .. +1, positive looks down
-    final float brow;   // -1 furrow .. +1 raise
     final float wide;   // 0 normal .. 1 wide-eyed
     private static final float GLANCE_SLOT=80f,BLINK_TICKS=2.5f;
-    private FacePose(float lid,float wink,float pupilX,float pupilY,float brow,float wide){
-        this.lid=lid;this.wink=wink;this.pupilX=pupilX;this.pupilY=pupilY;this.brow=brow;this.wide=wide;
+    private FacePose(float lid,float wink,float pupilX,float pupilY,float wide){
+        this.lid=lid;this.wink=wink;this.pupilX=pupilX;this.pupilY=pupilY;this.wide=wide;
     }
-    static FacePose calm(){return new FacePose(0,0,0,0,0,0);}
+    static FacePose calm(){return new FacePose(0,0,0,0,0);}
 
     static FacePose of(int seed,float age,float intervalTicks,boolean blinking,boolean glancing,boolean aiming,float sinceFire){
         float lid=blinking?blink(seed,age,Math.max(24,intervalTicks)):0;
@@ -26,11 +25,10 @@ final class FacePose {
             px=from[0]+(to[0]-from[0])*ease;
             py=from[1]+(to[1]-from[1])*ease;
         }
-        float brow=aiming?-0.8f:0;
         float wide=aiming?0.15f:0;
         float wink=aiming?1f:0;
         if(sinceFire>=0&&sinceFire<14)wide=Math.max(wide,1-sinceFire/14);
-        return new FacePose(clamp(lid),clamp(wink),clamp(px),clamp(py),brow,clamp(wide));
+        return new FacePose(clamp(lid),clamp(wink),clamp(px),clamp(py),clamp(wide));
     }
 
     /** Deterministic blink pulse; per-slot jitter and an occasional double blink. */

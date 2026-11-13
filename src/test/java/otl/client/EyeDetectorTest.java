@@ -41,12 +41,12 @@ public class EyeDetectorTest {
         assertNotNull(marks);
         assertEquals(8,count(marks,EyeDetector.EYE)+count(marks,EyeDetector.PUPIL));
         assertEquals(4,count(marks,EyeDetector.PUPIL));
-        assertEquals(0,count(marks,EyeDetector.BROW));
+        assertEquals(0,count(marks,3));
         assertEquals(EyeDetector.EYE,at(marks,1,5));assertEquals(EyeDetector.PUPIL,at(marks,2,5));
         assertEquals(EyeDetector.PUPIL,at(marks,5,6));assertEquals(EyeDetector.EYE,at(marks,6,6));
     }
 
-    @Test public void findsBrows(){int[] marks=EyeDetector.detect(faceWithEyes(true),null);assertNotNull(marks);assertEquals(4,count(marks,EyeDetector.BROW));assertEquals(8,count(marks,EyeDetector.EYE)+count(marks,EyeDetector.PUPIL));}
+    @Test public void ignoresBrows(){int[] marks=EyeDetector.detect(faceWithEyes(true),null);assertNotNull(marks);assertEquals(0,count(marks,3));assertEquals(8,count(marks,EyeDetector.EYE)+count(marks,EyeDetector.PUPIL));}
 
     @Test public void realSkinRectModel(){
         int[] marks=EyeDetector.detect(realSkin(),null);
@@ -93,5 +93,25 @@ public class EyeDetectorTest {
         int[] f=plainSkin();
         for(int c=0;c<8;c++)f[2*8+c]=0xFF201810;
         assertNull(EyeDetector.detect(f,null));
+    }
+
+    @Test public void coloredPupilsDetectedLeniently(){
+        // Bright blue irises fail the neutral-ink rule; the lenient pass must still find them.
+        int[] f=plainSkin();
+        int BLUE=0xFF3264E6;
+        for(int r=5;r<=6;r++){f[r*8+1]=WHITE;f[r*8+2]=BLUE;f[r*8+5]=BLUE;f[r*8+6]=WHITE;}
+        int[] marks=EyeDetector.detect(f,null);
+        assertNotNull(marks);
+        assertEquals(4,count(marks,EyeDetector.PUPIL));
+    }
+
+    @Test public void lowContrastPupilsDetectedLeniently(){
+        // Pupils only ~27 luminance under the row median fail strict, pass lenient.
+        int[] f=plainSkin();
+        int FAINT=0xFF8C8C8C;
+        for(int r=5;r<=6;r++){f[r*8+1]=WHITE;f[r*8+2]=FAINT;f[r*8+5]=FAINT;f[r*8+6]=WHITE;}
+        int[] marks=EyeDetector.detect(f,null);
+        assertNotNull(marks);
+        assertEquals(4,count(marks,EyeDetector.PUPIL));
     }
 }

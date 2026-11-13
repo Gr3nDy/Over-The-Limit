@@ -110,9 +110,9 @@ public final class KillConfirm {
                 if(kill){
                     String victim=rows.get(i).victim;
                     if(!UtilitySettings.killConfirmPlayerHead)KillFeed.skull(x,(int)y-2,alpha*visibility);
-                    else if(victim!=null)KillFeed.head(victim,x+2,(int)y-2,alpha*visibility);
+                    else if(victim!=null)KillFeed.head(victim,x+2,(int)y-4,alpha*visibility);
                 }
-                mc.fontRendererObj.drawStringWithShadow(mc.fontRendererObj.trimStringToWidth(text,WIDTH-right-(recap?4:20)),x+(recap?0:16),y,color);
+                mc.fontRendererObj.drawStringWithShadow(mc.fontRendererObj.trimStringToWidth(text,WIDTH-right-(recap?4:22)),x+(recap?0:18),y,color);
             }
         }finally{GlStateManager.popMatrix();if(!blend)GlStateManager.disableBlend();GlStateManager.color(1,1,1,1);}
     }

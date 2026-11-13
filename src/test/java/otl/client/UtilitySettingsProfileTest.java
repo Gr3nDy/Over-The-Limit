@@ -19,7 +19,11 @@ public class UtilitySettingsProfileTest {
         assertFalse(defaults.has("dev_hosts"));
         assertEquals(25,defaults.get("minimap_opacity").getAsInt());
         assertEquals(25,defaults.get("kill_background_opacity").getAsInt());
-        assertEquals(25,defaults.get("chat_background_opacity").getAsInt());
+        assertFalse(defaults.has("chat_background_opacity"));
+        // Every Team Bar option is per profile, including the new colour line.
+        assertTrue(defaults.get("team_bar_team_color").getAsBoolean());
+        assertEquals(5,defaults.get("team_bar_players").getAsInt());
+        assertEquals(100,defaults.get("team_bar_size").getAsInt());
         assertEquals("Default",defaults.get("profile").getAsString());
     }
 }

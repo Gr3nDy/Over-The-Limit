@@ -32,7 +32,7 @@ public class FacePoseTest {
 
     @Test public void aimingFurrowsAndWidens(){
         FacePose aiming=FacePose.of(1,50,48,true,true,true,-1);
-        assertTrue(aiming.brow<0);assertTrue(aiming.wide>0);
+        assertTrue(aiming.wide>0);
         assertEquals("aiming should wink the left eye",1,aiming.wink,0.0001f);
         FacePose fired=FacePose.of(1,50,48,true,true,true,0);
         assertEquals(1,fired.wide,0.0001f);

@@ -14,8 +14,8 @@ import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 
 /**
- * Draws the animated face over the player's head: eyes, pupils, brows, blush and glow.
- * Original implementation for OTL. Eyes, pupils and brows replay the player's own face
+ * Draws the animated face over the player's head: eyes, pupils, blush and glow.
+ * Original implementation for OTL. Eyes and pupils replay the player's own face
  * pixels, so the eye colour follows the skin instead of a fixed white. Pupils are the
  * skin's own pupil cells, shifted for a glance. Lids use validated face skin. Blush is a
  * crisp light-pink bar on the outer skin layer. Head box: face texel (c,r) covers
@@ -24,10 +24,9 @@ import org.lwjgl.opengl.GL11;
  * each eye, mirrored outward on both cheeks. Sneaking hides the rig for that player.
  */
 public final class FaceOverlay implements LayerRenderer<AbstractClientPlayer> {
-    private static final int EYE=1,PUPIL=2,BROW=3,LID=4;
+    private static final int EYE=1,PUPIL=2,LID=4;
     private static final float HAT_SCALE=9f/8f;
     private static final float PUPIL_RANGE=0.5f;
-    private static final int BROW_TINT=0xFF7A6758;
     private static final int BLUSH_COLOR=0xD0FFB6C1;
     private static final int GLOW_TINT=0x7896CCFF;
     private static final Map<Long,List<Group>> GROUP_CACHE=new LinkedHashMap<Long,List<Group>>(32,0.75f,true){
@@ -159,17 +158,6 @@ public final class FaceOverlay implements LayerRenderer<AbstractClientPlayer> {
                     u+(px0-ox)/t/64f,v+(py0-oy)/t/64f,
                     u+(px1-ox)/t/64f,v+(py1-oy)/t/64f,tint);
             }
-        }
-        for(int i=0;i<64;i++){
-            if(marks[i]!=BROW)continue;
-            boolean hatPlane=overHat;
-            float t=hatPlane?HAT_SCALE:1f,left=hatPlane?-4.5f:-4f,top=hatPlane?-8.5f:-8f,base=hatPlane?-4.5f:-4f;
-            float lift=(-pose.brow*0.25f-pose.wide*0.1f)*(hatPlane?HAT_SCALE:1f);
-            int c=i%8,r=i/8;
-            float bx=left+c*t,by=top+r*t+lift;
-            int col=srcCol(face,hat,i);
-            float u=col/64f,v=(8+r)/64f;
-            uvQuad(wr,s,bx,by,bx+t,by+t,base-0.014f,u,v,u+1/64f,v+1/64f,BROW_TINT);
         }
     }
 

@@ -14,7 +14,7 @@ final class ModuleReset extends GuiButton {
     public void drawButton(Minecraft mc,int mx,int my){
         if(!visible)return;
         hovered=BedrockUi.hit(mx,my,xPosition,yPosition,width,height);
-        BedrockUi.iconBox(xPosition,yPosition,hovered,false);
+        // Header reset stays a glyph; hover changes only the glyph colour.
         BedrockUi.resetArrow(xPosition,yPosition,hovered);
         if(hovered){
             FontRenderer font=mc.fontRendererObj;String tip="Reset Module";

@@ -125,13 +125,12 @@ public class MapPreviewTest {
         assertEquals(24,info.players);assertTrue(info.objective.contains("wool"));
     }
 
-    @Test public void squarePreviewKeepsAllSourcePixelsWithoutStretching(){
+    @Test public void squarePreviewCropsInsteadOfPadding(){
         BufferedImage source=new BufferedImage(4,2,BufferedImage.TYPE_INT_ARGB);
-        source.setRGB(0,0,0xffff0000);source.setRGB(3,1,0xff00ff00);
+        source.setRGB(1,0,0xffff0000);source.setRGB(2,1,0xff00ff00);
         BufferedImage result=MapPreview.square(source);
-        assertEquals(4,result.getWidth());assertEquals(4,result.getHeight());
-        assertEquals(0xffff0000,result.getRGB(0,1));assertEquals(0xff00ff00,result.getRGB(3,2));
-        assertEquals(0,result.getRGB(0,0));assertEquals(0,result.getRGB(3,3));
+        assertEquals(2,result.getWidth());assertEquals(2,result.getHeight());
+        assertEquals(0xffff0000,result.getRGB(0,0));assertEquals(0xff00ff00,result.getRGB(1,1));
         assertSame(result,MapPreview.square(result));
     }
 

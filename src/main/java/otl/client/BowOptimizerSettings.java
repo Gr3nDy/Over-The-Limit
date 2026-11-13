@@ -2,40 +2,43 @@ package otl.client;
 
 import net.minecraft.client.gui.*;
 
-public final class BowOptimizerSettings extends GuiScreen {
+public final class BowOptimizerSettings extends SettingsScreen {
     private final GuiScreen parent;
-    private int x,y,w,page;
+    private int page;
     public BowOptimizerSettings(GuiScreen parent){this.parent=parent;}
     public boolean doesGuiPauseGame(){return false;}
-    public void initGui(){
-        UtilitySettings.load();w=Math.min(350,width-24);x=(width-w)/2;y=(height-(page==1?256:230))/2;buttonList.clear();
-        buttonList.add(new ModuleReset(90,x+w-27,y+6,"bow_optimizer"));
-        buttonList.add(new NeutralButton(0,x+14,y+40,w-28,20,"Bow Optimizer: "+(UtilitySettings.bowOptimizer?"ON":"OFF"),false));
-        int tabWidth=(w-32)/2;
-        buttonList.add(new NeutralButton(20,x+14,y+64,tabWidth,18,"General",page==0));
-        buttonList.add(new NeutralButton(21,x+18+tabWidth,y+64,tabWidth,18,"Bow Accuracy",page==1));
+    protected String title(){return "Bow Optimizer";}
+    protected String subtitle(){return "Accuracy = server-reported player hits / shots.";}
+    protected void buildPanel(){
+        resetButton("bow_optimizer");
+        buttonList.add(new NeutralButton(0,panel.left(),panel.row(),panel.width(),20,"Bow Optimizer: "+(UtilitySettings.bowOptimizer?"ON":"OFF"),false));
+        int tabs=panel.row(18);
+        buttonList.add(new NeutralButton(20,panel.columnX(2,0),tabs,panel.columnWidth(2),18,"General",page==0));
+        buttonList.add(new NeutralButton(21,panel.columnX(2,1),tabs,panel.columnWidth(2),18,"Bow Accuracy",page==1));
         if(page==0){
-            BedrockUi.section(fontRendererObj,"FEEDBACK",x+14,y+88,w-28);
-            buttonList.add(new NeutralButton(1,x+14,y+104,w-28,20,"Optimization: "+(UtilitySettings.bowOptimization?"ON":"OFF"),false));
-            buttonList.add(new NeutralButton(8,x+14,y+128,tabWidth,20,"Bow Hit Sound: "+(UtilitySettings.bowHitSound?"ON":"OFF"),false));
-            buttonList.add(new NeutralButton(14,x+18+tabWidth,y+128,tabWidth,20,"Bow-Kill Sound: "+(UtilitySettings.bowKillSound?"ON":"OFF"),false));
-            buttonList.add(new NeutralButton(9,x+14,y+152,w-28,20,"Hit Marker: "+(UtilitySettings.bowHitMarker?"ON":"OFF"),false));
-            buttonList.add(new PresetSlider(10,x+14,y+176,w-28,"Hit marker size: ","%",PresetSlider.HIT_SIZE,UtilitySettings.bowHitMarkerSize,100,s->UtilitySettings.bowHitMarkerSize=s.getValueInt()));
+            panel.section("FEEDBACK");
+            buttonList.add(new NeutralButton(1,panel.left(),panel.row(),panel.width(),20,"Optimization: "+(UtilitySettings.bowOptimization?"ON":"OFF"),false));
+            buttonList.add(new NeutralButton(8,panel.left(),panel.row(),panel.width(),20,"Bow Hit Sound: "+(UtilitySettings.bowHitSound?"ON":"OFF"),false));
+            buttonList.add(new NeutralButton(14,panel.left(),panel.row(),panel.width(),20,"Bow-Kill Sound: "+(UtilitySettings.bowKillSound?"ON":"OFF"),false));
+            buttonList.add(new NeutralButton(9,panel.left(),panel.row(),panel.width(),20,"Hit Marker: "+(UtilitySettings.bowHitMarker?"ON":"OFF"),false));
+            buttonList.add(new PresetSlider(10,panel.left(),panel.row(),panel.width(),"Hit marker size: ","%",PresetSlider.HIT_SIZE,UtilitySettings.bowHitMarkerSize,100,s->UtilitySettings.bowHitMarkerSize=s.getValueInt()));
         }else{
-            BedrockUi.section(fontRendererObj,"ACCURACY READOUT",x+14,y+90,w-28);
-            buttonList.add(new NeutralButton(2,x+14,y+104,w-28,20,"Live Bow Accuracy: "+(UtilitySettings.bowAccuracy?"ON":"OFF"),false));
-            buttonList.add(new PresetSlider(3,x+14,y+128,tabWidth,"Background: ","%",PresetSlider.PERCENT,UtilitySettings.bowAccuracyOpacity,25,s->UtilitySettings.bowAccuracyOpacity=s.getValueInt()));
-            buttonList.add(new PresetSlider(5,x+18+tabWidth,y+128,tabWidth,"Size: ","%",PresetSlider.SIZE,UtilitySettings.bowAccuracySize,100,s->UtilitySettings.bowAccuracySize=s.getValueInt()));
-            buttonList.add(new NeutralButton(4,x+14,y+152,tabWidth,20,"Decimal places: "+UtilitySettings.bowAccuracyDecimals,false));
-            buttonList.add(new NeutralButton(11,x+18+tabWidth,y+152,tabWidth,20,"Prefix: "+(UtilitySettings.bowAccuracyPrefix?"ON":"OFF"),false));
-            buttonList.add(new PresetSlider(15,x+14,y+176,tabWidth,"Fade In: ","%",PresetSlider.PERCENT,UtilitySettings.bowAccuracyFadeIn,0,s->UtilitySettings.bowAccuracyFadeIn=s.getValueInt()));
-            buttonList.add(new PresetSlider(16,x+18+tabWidth,y+176,tabWidth,"Fade Out: ","%",PresetSlider.PERCENT,UtilitySettings.bowAccuracyFadeOut,50,s->UtilitySettings.bowAccuracyFadeOut=s.getValueInt()));
-            buttonList.add(new NeutralButton(12,x+14,y+200,tabWidth,20,"Mode: "+UtilitySettings.bowAccuracyMode.label,false));
-            buttonList.add(new NeutralButton(13,x+18+tabWidth,y+200,tabWidth,20,"Animate Percentage: "+(UtilitySettings.bowAccuracyAnimate?"ON":"OFF"),false));
+            panel.section("ACCURACY READOUT");
+            buttonList.add(new NeutralButton(2,panel.left(),panel.row(),panel.width(),20,"Live Bow Accuracy: "+(UtilitySettings.bowAccuracy?"ON":"OFF"),false));
+            int row=panel.row();
+            buttonList.add(new PresetSlider(3,panel.columnX(2,0),row,panel.columnWidth(2),"Background: ","%",PresetSlider.PERCENT,UtilitySettings.bowAccuracyOpacity,25,s->UtilitySettings.bowAccuracyOpacity=s.getValueInt()));
+            buttonList.add(new PresetSlider(5,panel.columnX(2,1),row,panel.columnWidth(2),"Size: ","%",PresetSlider.SIZE,UtilitySettings.bowAccuracySize,100,s->UtilitySettings.bowAccuracySize=s.getValueInt()));
+            row=panel.choice();
+            buttonList.add(new ChoiceButton(this,4,panel.columnX(2,0),row,panel.columnWidth(2),"Decimal places",new String[]{"0","1","2"},UtilitySettings.bowAccuracyDecimals,v->UtilitySettings.bowAccuracyDecimals=v));
+            buttonList.add(new NeutralButton(11,panel.columnX(2,1),row,panel.columnWidth(2),20,"Prefix: "+(UtilitySettings.bowAccuracyPrefix?"ON":"OFF"),false));
+            row=panel.row();
+            buttonList.add(new PresetSlider(15,panel.columnX(2,0),row,panel.columnWidth(2),"Fade In: ","%",PresetSlider.PERCENT,UtilitySettings.bowAccuracyFadeIn,0,s->UtilitySettings.bowAccuracyFadeIn=s.getValueInt()));
+            buttonList.add(new PresetSlider(16,panel.columnX(2,1),row,panel.columnWidth(2),"Fade Out: ","%",PresetSlider.PERCENT,UtilitySettings.bowAccuracyFadeOut,50,s->UtilitySettings.bowAccuracyFadeOut=s.getValueInt()));
+            buttonList.add(new ChoiceButton(this,12,panel.left(),panel.choice(),panel.width(),"Mode",java.util.Arrays.stream(BowAccuracy.Mode.values()).map(v->v.label).toArray(String[]::new),UtilitySettings.bowAccuracyMode.ordinal(),v->UtilitySettings.bowAccuracyMode=BowAccuracy.Mode.values()[v]));
+            buttonList.add(new NeutralButton(13,panel.left(),panel.row(),panel.width(),20,"Animate Percentage: "+(UtilitySettings.bowAccuracyAnimate?"ON":"OFF"),false));
         }
-        int footer=y+(page==1?228:202);
-        buttonList.add(new NeutralButton(6,x+14,footer,110,20,"Reset HUD position",false));
-        buttonList.add(new NeutralButton(7,x+w-94,footer,80,20,"Back",false));
+        pin(new NeutralButton(6,actionX(),footerY(),110,20,"Reset HUD position",false));
+        back(7);
     }
     protected void actionPerformed(GuiButton button){
         if(button.id==90){((ModuleReset)button).reset();initGui();return;}
@@ -57,10 +60,4 @@ public final class BowOptimizerSettings extends GuiScreen {
     }
     protected void mouseReleased(int x,int y,int state){super.mouseReleased(x,y,state);UtilitySettings.save();}
     public void onGuiClosed(){UtilitySettings.save();}
-    public void drawScreen(int mx,int my,float partial){
-        drawDefaultBackground();BedrockUi.panel(x,y,w,page==1?256:230);
-        drawString(fontRendererObj,"Bow Optimizer",x+14,y+10,0xFFFFFFFF);
-        drawString(fontRendererObj,"Accuracy = server-reported player hits / shots.",x+14,y+25,0xFFAAAAAA);
-        super.drawScreen(mx,my,partial);
-    }
 }

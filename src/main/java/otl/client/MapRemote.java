@@ -38,6 +38,9 @@ final class MapRemote {
             new ArrayBlockingQueue<Runnable>(16),r->{Thread t=new Thread(r,"OTL Map Lookup");t.setDaemon(true);return t;});
     private static final ExecutorService imageWorker = new ThreadPoolExecutor(1,1,0L,TimeUnit.MILLISECONDS,
             new ArrayBlockingQueue<Runnable>(16),r->{Thread t=new Thread(r,"OTL Map Images");t.setDaemon(true);return t;});
+    /** Catalog downloads get their own thread so queued map images are not stuck behind them. */
+    private static final ExecutorService catalogWorker = new ThreadPoolExecutor(1,1,0L,TimeUnit.MILLISECONDS,
+            new ArrayBlockingQueue<Runnable>(2),r->{Thread t=new Thread(r,"OTL Map Catalog");t.setDaemon(true);return t;});
 
     static File cacheDir() {
         return ConfigDir.parts("map_cache");
@@ -106,10 +109,11 @@ final class MapRemote {
     static void requestCatalog(){
         if(System.currentTimeMillis()<catalogRetry||!catalogLoading.compareAndSet(false,true))return;
         File root=cacheDir();
-        try{imageWorker.execute(()->{
+        try{catalogWorker.execute(()->{
             List<String> all=new ArrayList<>();int failed=0;
             for(String source:SOURCES)try{all.addAll(directories(source,root));}catch(Exception e){failed++;System.err.println("OTL: catalog "+source+": "+e.getMessage());}
-            catalog=Collections.unmodifiableList(all);
+            // A partial refresh must not drop the maps of the source that failed.
+            if(failed==0||catalog.isEmpty())catalog=Collections.unmodifiableList(all);
             catalogStatus=failed==0?"CommunityMaps + PublicMaps":"Repository unavailable; showing cached/bundled maps";
             catalogRetry=System.currentTimeMillis()+(failed==0?TTL:60000);catalogLoading.set(false);
         });}catch(RejectedExecutionException e){catalogLoading.set(false);}
@@ -161,10 +165,20 @@ final class MapRemote {
         List<String> parsed = null;
         if (cache.isFile() && now - cache.lastModified() < TTL) parsed = readLines(cache);
         if (parsed == null || parsed.isEmpty()) {
-            String[] parts = source.split("/");
-            String url = "https://api.github.com/repos/OvercastCommunity/" + parts[0] + "/git/trees/" + parts[1] + "?recursive=1";
-            parsed = parseTree(source, downloadText(url));
-            AtomicFiles.write(cache.toPath(), String.join("\n",parsed).getBytes(StandardCharsets.UTF_8));
+            try {
+                String[] parts = source.split("/");
+                String url = "https://api.github.com/repos/OvercastCommunity/" + parts[0] + "/git/trees/" + parts[1] + "?recursive=1";
+                parsed = parseTree(source, downloadText(url));
+                AtomicFiles.write(cache.toPath(), String.join("\n",parsed).getBytes(StandardCharsets.UTF_8));
+            } catch (Exception e) {
+                // Offline or rate-limited: serve the last downloaded tree instead of no maps.
+                if (cache.isFile()) parsed = readLines(cache);
+                if (parsed == null || parsed.isEmpty()) throw e;
+                System.err.println("OTL: using the stale map index for " + source + ": " + e.getMessage());
+                dirs.put(key,parsed);
+                dirsAt.put(key,now - TTL + 60000); // retry the refresh in a minute
+                return parsed;
+            }
         }
         dirs.put(key,parsed);
         dirsAt.put(key,now);

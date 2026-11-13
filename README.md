@@ -2,7 +2,9 @@
 
 ![OVER THE LIMIT](docs/assets/otl-banner.svg)
 
-**Over The Limit (OTL)** is a client-side Forge 1.8.9 mod for the Overcast Community server. Press **P** for the HUD editor and modules (rebind or unbind Mod Menu in Controls); Face Rig is available from Mods. [Download the release](https://github.com/Gr3nDy/Over-The-Limit/releases/tag/v0.3.7) · [Wiki](docs/WIKI.md) · [What's new](CHANGELOG.md)
+![beta](https://img.shields.io/badge/branch-beta-orange) ![release](https://img.shields.io/badge/release-v0.3.8-blue) ![Minecraft](https://img.shields.io/badge/Minecraft-1.8.9-green)
+
+**Over The Limit (OTL)** is a client-side Forge 1.8.9 mod for the Overcast Community server. Press **P** for the HUD editor and modules (rebind or unbind Mod Menu in Controls); Face Rig is available from Mods. [Download the release](https://github.com/Gr3nDy/Over-The-Limit/releases/tag/v0.3.8) · [Wiki](docs/WIKI.md) · [What's new](CHANGELOG.md)
 
 ## Modules
 
@@ -11,17 +13,21 @@
 | **Face Rig** | Animates skin-based eyes and expressions; includes an in-game editor. |
 | **Reliable Chat** | Adds channel/PM tabs, drafts, scrollable history and optional team speech bubbles. |
 | **Map Preview** | Shows book/chat map previews, a searchable gallery and `/map` info cards. |
+| **Custom Votebook** | Replaces the vote book with map cards, Supervote, match stats and a match link. |
+| **Team Bar** | One row of heads per team at the top centre, stacked, with the match clock in the middle. |
 | **Prefered Hand** | Visually chooses the first-person hand for items, blocks, tools or weapons. |
 | **Kill Feed** | Displays deaths, causes and weapons with a configurable HUD and history. |
 | **Kill Confirm** | Shows queued kill tags, streaks and immediate EXP feedback; OFF by default. |
 | **Bow Optimizer** | Separately toggleable optimization, movable live accuracy HUD, optional hit sound and crosshair hit marker. Module OFF by default. |
 | **Server Notices** | Separates server announcements from chat in a standalone HUD; OFF by default. |
+| **Region Borders** | Wireframes of the current map's regions, plus the region name you are standing in; OFF by default. |
 | **Height Limit Overlay** | Shows the current map's build height as an in-world overlay. |
 | **Minimap** | Per-map terrain meshes downloaded on demand in a square, player-centered isometric viewport; OFF by default. |
+| **Auto GG** | Says `gg` once per match, at the end only; OFF by default. |
 
 ## Download
 
-Download `OTL.jar` from the [v0.3.7 release](https://github.com/Gr3nDy/Over-The-Limit/releases/tag/v0.3.7) or [browse all releases](https://github.com/Gr3nDy/Over-The-Limit/releases).
+Download `OTL.jar` from the [v0.3.8 release](https://github.com/Gr3nDy/Over-The-Limit/releases/tag/v0.3.8) or [browse all releases](https://github.com/Gr3nDy/Over-The-Limit/releases).
 
 Place `OTL.jar` in your Forge 1.8.9 client's `mods` folder manually.
 
@@ -41,7 +47,7 @@ Development and smoke jars stay in `build/dev-libs/`, so `runClient` cannot over
 
 Tests only: `gradlew.bat test --offline --no-daemon`.
 In-game fixtures: `gradlew.bat runClient -PotlSmoke --offline --no-daemon`.
-For a focused run, add `-PotlSmokeScope=killconfirm` (or `bow`, `hand`, or another module name); use the full run for shared-code changes.
+For a focused run, add `-PotlSmokeScope=teambar` (or `killconfirm`, `bow`, `hand`, or another module name); use the full run for shared-code changes.
 Add `-PotlSmokeRemote` to require live lookups from **both** map repositories. Without it, remote checks are explicitly disabled, not reported as passed.
 
 ### Generate minimap models

@@ -27,8 +27,8 @@ final class MapInfoScreen extends GuiScreen {
     MapInfoScreen(String query,GuiScreen parent) {
         this.query = query;
         this.parent = parent;
-        info = MapInfo.findLocal(query);
-        if (info == null||info.incomplete||!info.exact(query)) MapRemote.lookup(query, found -> {
+        // Both the bundled index scan and the repository lookup touch disk/network.
+        MapRemote.lookup(query, found -> {
             if (found == null) failed = true; else info = found;
         });
     }

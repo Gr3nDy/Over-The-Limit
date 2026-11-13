@@ -88,7 +88,7 @@ public final class BowAccuracy {
             if(ChatRules.playerMessage(formatted))return;
             for(String line:ChatRules.plain(formatted).split("[\\r\\n]+")){
                 String text=line.trim();
-                if(text.matches("(?i)^(?:Game over!|Tied!|Your team won!|Your team lost!?|[^\\r\\n]{1,80} wins?!|[A-Za-z0-9_]{1,16} has ended the match\\.)$")){
+                if(MatchEnd.is(text)){
                     reset();ended=true;continue;
                 }
                 if(text.equalsIgnoreCase("The match has started!")||text.equalsIgnoreCase("Go!")){reset();continue;}

@@ -76,6 +76,11 @@ final class SkinFace {
         try{
             Minecraft mc=MinecraftAccess.get();
             ITextureObject t=mc.getTextureManager().getTexture(texture);
+            if(t==null){
+                // A plain resource skin (the default Steve) is only registered on its first bind.
+                mc.getTextureManager().bindTexture(texture);
+                t=mc.getTextureManager().getTexture(texture);
+            }
             if(t==null)return new int[0];
             int previous=GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
             try{

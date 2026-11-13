@@ -21,6 +21,8 @@ final class KillFeed {
     static final KillFeedRules.History history=new KillFeedRules.History();
     private static final Map<String,ItemStack> weapons=new HashMap<>();
     private static final Map<String,int[]> heads=new HashMap<>();
+    /** 16px keeps every face texel on exactly 2px; 12px forced an uneven 1px/2px mix. */
+    private static final int HEAD=16,HEAD_ADVANCE=18;
     private static int scroll;
     private static boolean dragging;
     private static final Tooltip tooltip=new Tooltip();
@@ -97,12 +99,12 @@ final class KillFeed {
             victimHead=heads.shows(death.victim,local);
             assistHead=death.assist&&heads.shows(local,local);
             assist=death.assist?KillFeedRules.assistLabel(local,color):"";
-            int heads=(actorHead?14:0)+(victimHead?14:0)+(assistHead?14:0),assistWidth=assist.isEmpty()?0:mc.fontRendererObj.getStringWidth(" + ")+mc.fontRendererObj.getStringWidth(assist);
+            int heads=(actorHead?HEAD_ADVANCE:0)+(victimHead?HEAD_ADVANCE:0)+(assistHead?HEAD_ADVANCE:0),assistWidth=assist.isEmpty()?0:mc.fontRendererObj.getStringWidth(" + ")+mc.fontRendererObj.getStringWidth(assist);
             int budget=Math.max(10,limit-9-34-extra-heads-assistWidth-mc.fontRendererObj.getStringWidth(detail));
             actor=suicide?"":mc.fontRendererObj.trimStringToWidth(KillFeedRules.feedLabel(death.killerLabel,death,local),budget/2);
             victim=mc.fontRendererObj.trimStringToWidth(KillFeedRules.feedLabel(death.victimLabel,death,local),suicide?budget:budget/2);
-            actorWidth=mc.fontRendererObj.getStringWidth(actor)+assistWidth+(assistHead?14:0);
-            w=10+heads-(assistHead?14:0)+actorWidth+(suicide?0:4)+16+4+extra+mc.fontRendererObj.getStringWidth(victim)+mc.fontRendererObj.getStringWidth(detail);
+            actorWidth=mc.fontRendererObj.getStringWidth(actor)+assistWidth+(assistHead?HEAD_ADVANCE:0);
+            w=10+heads-(assistHead?HEAD_ADVANCE:0)+actorWidth+(suicide?0:4)+16+4+extra+mc.fontRendererObj.getStringWidth(victim)+mc.fontRendererObj.getStringWidth(detail);
         }
         boolean valid(KillFeedRules.Death death){
             return assistFlag==death.assist&&heads==UtilitySettings.killFeedHeads&&limit==widthLimit()&&color==TeamBubbles.teamColor()&&local.equals(MinecraftAccess.get().thePlayer.getName());
@@ -187,15 +189,15 @@ final class KillFeed {
                 Gui.drawRect(x,y,x+w,y+1,border);Gui.drawRect(x,y+19,x+w,y+20,border);
                 Gui.drawRect(x,y+1,x+1,y+19,border);Gui.drawRect(x+w-1,y+1,x+w,y+19,border);
             }
-            if(text.actorHead)head(death.killer,x+5,y+4,fade);
-            if(!suicide)mc.fontRendererObj.drawStringWithShadow(actor,x+5+(text.actorHead?14:0),y+6,textColor);
+            if(text.actorHead)head(death.killer,x+5,y+2,fade);
+            if(!suicide)mc.fontRendererObj.drawStringWithShadow(actor,x+5+(text.actorHead?HEAD_ADVANCE:0),y+6,textColor);
             if(death.assist){
-                int meX=x+5+(text.actorHead?14:0)+mc.fontRendererObj.getStringWidth(actor);
+                int meX=x+5+(text.actorHead?HEAD_ADVANCE:0)+mc.fontRendererObj.getStringWidth(actor);
                 mc.fontRendererObj.drawStringWithShadow(" + ",meX,y+6,textColor);meX+=mc.fontRendererObj.getStringWidth(" + ");
-                if(text.assistHead){head(mc.thePlayer.getName(),meX,y+4,fade);meX+=14;}
+                if(text.assistHead){head(mc.thePlayer.getName(),meX,y+2,fade);meX+=HEAD_ADVANCE;}
                 mc.fontRendererObj.drawStringWithShadow(text.assist,meX,y+6,textColor);
             }
-            int iconX=x+5+actorWidth+(text.actorHead?14:0)+(suicide?0:4);
+            int iconX=x+5+actorWidth+(text.actorHead?HEAD_ADVANCE:0)+(suicide?0:4);
             if(suicide)skull(iconX,y+2,fade);
             else if(death.cause==KillFeedRules.Cause.MELEE&&death.weapon==null){
                 Gui.drawRect(iconX+3,y+5,iconX+13,y+15,KillFeedRules.faded(0xFFB98662,fade));
@@ -205,7 +207,7 @@ final class KillFeed {
             else drawItem(icon(death),iconX,y+2,fade);
             if(!suicide&&extraIcon>0)contextIcon(death,iconX+18,y+2,fade);
             int textX=iconX+20+(suicide?0:extraIcon);
-            if(text.victimHead){head(death.victim,textX,y+4,fade);textX+=14;}
+            if(text.victimHead){head(death.victim,textX,y+2,fade);textX+=HEAD_ADVANCE;}
             mc.fontRendererObj.drawStringWithShadow(victim,textX,y+6,textColor);
             int afterName=textX+mc.fontRendererObj.getStringWidth(victim);
             if(suicide&&extraIcon>0)contextIcon(death,afterName+2,y+2,fade);
@@ -298,12 +300,12 @@ final class KillFeed {
     static void head(String name,int x,int y,float opacity){
         int[] pixels=face(name);
         if(pixels.length!=64){
-            Gui.drawRect(x+2,y+1,x+10,y+12,KillFeedRules.faded(0xFF8A8A8A,opacity));
+            Gui.drawRect(x,y,x+HEAD,y+HEAD,KillFeedRules.faded(0xFF8A8A8A,opacity));
             return;
         }
         for(int row=0;row<8;row++)for(int col=0;col<8;col++){
             int pixel=pixels[row*8+col];if((pixel>>>24)<16)continue;
-            Gui.drawRect(x+col*3/2,y+row*3/2,x+(col+1)*3/2,y+(row+1)*3/2,KillFeedRules.faded(pixel,opacity));
+            Gui.drawRect(x+col*2,y+row*2,x+col*2+2,y+row*2+2,KillFeedRules.faded(pixel,opacity));
         }
     }
     static int[] face(String name){

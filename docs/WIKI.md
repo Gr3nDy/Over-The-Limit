@@ -1,8 +1,10 @@
 # Over The Limit — Wiki
 
-**Over The Limit (OTL)** is a client-side Forge 1.8.9 mod for the [Overcast Community](https://overcastcommunity.com/) PGM-style server family (`play.oc.tc`, `vanish.oc.tc`).
+**Over The Limit (OTL)** is a client-side Forge 1.8.9 mod for the [Overcast Community](https://overcastcommunity.com/) PGM-style server family (`play.oc.tc`, `vanish.oc.tc`, `spectrum.oc.tc`).
 
-**Current release:** [v0.3.7](https://github.com/Gr3nDy/Over-The-Limit/releases/tag/v0.3.7) · **Source:** [github.com/Gr3nDy/Over-The-Limit](https://github.com/Gr3nDy/Over-The-Limit) (branch `beta`)
+**Current release:** [v0.3.8](https://github.com/Gr3nDy/Over-The-Limit/releases/tag/v0.3.8) · **Source:** [github.com/Gr3nDy/Over-The-Limit](https://github.com/Gr3nDy/Over-The-Limit) (branch `beta`)
+
+**New in v0.3.8:** Team Bar (stacked per-team heads with the match clock), Custom Votebook with a `(You)` line, reset buttons moved into each module body, and the chat background slider removed. Full list in the [changelog](../CHANGELOG.md).
 
 ## Installing
 
@@ -13,7 +15,7 @@
 ## Using it
 
 Press **P** to open the HUD editor. From the editor you can toggle, resize, and reposition every HUD module; per-module settings live under each *Settings* button. Press **Esc** to close.<br>
-Every module also has a **Reset** button in its settings screen that restores that module's defaults. Settings live in `config/Over The Limit/settings.json` and `profiles/<name>.json` (per-profile); the `config/Over The Limit/profiles/` folder holds your profiles.
+Every module also has a **Reset** button in its settings screen — now inside the module body, top right — that restores that module's defaults. Settings live in `config/Over The Limit/settings.json` and `profiles/<name>.json` (per-profile); the `config/Over The Limit/profiles/` folder holds your profiles. Every module option, including the Team Bar ones, is stored per profile, and a new profile starts from factory defaults.
 
 ## Modules
 
@@ -45,8 +47,8 @@ A tabbed chat with channel history, drafts, and optional team speech bubbles.
 - Only messages in `§`-anchored `(Any Team)`/`[…]`/`(Team)` prefixes are recognised; quotes and map lookups never create bubbles.
 
 **Appearance:**
-- **Chat background** — a snap slider, 0–100% opacity (default 25%).
 - **Tabs – not typing** and **Tabs – typing** — separate opacity sliders for idle and focused states, plus a reset to 25%.
+- Chat lines themselves are drawn without a background box.
 
 ### Map Preview — ON by default
 
@@ -60,6 +62,29 @@ Shows previews of map names announced in chat, `/map` commands, and vote books.
 - **Preview on command** — `/map <name>` in chat opens the card (default: on).
 - **Favorites** — star maps; they live in your favorites filter everywhere.
 - Map previews are also usable in the HUD editor's *Map Preview* preview.
+
+### Team Bar — ON by default
+
+One row of player heads per team at the top centre, stacked, with the match clock in the middle.
+
+- **Team Bar** master switch; heads only appear during a real match, never in the hub.
+- **Layout** — one row per team, alternating left and right columns. Your own team takes the left column and your own head always leads it. Left rows read left-to-right, right rows right-to-left, so both hug the bar's outer edge.
+- **Any number of teams** — rows keep stacking downward and the heads shrink until the whole stack fits the screen. A small gap separates stacked rows.
+- **Clock** — read live from PGM (boss bar, then sidebar, then tab footer) and ticked locally between server updates. **Yellow** for a time limit, **white** for a count-up, **red** for the match-start countdown. Freezes at match end, resumes on the next match, and resets to `0:00` when the map changes.
+- **Dead players** fade to grey and clear on respawn; a head never disappears on death. Players who leave, go to the observers or change team are moved or removed.
+- **Team colour line** (ON by default) — a thin vertical bar in the team's own colour beside each row, on the bar's outer edge.
+- **Hide bossbar** — hides PGM's boss-bar clock while the Team Bar shows it.
+- **Show in observer** (ON by default) — keep the bar while watching.
+- **Players shown** (1–75, default 5) and **Size** (50–150%).
+
+### Custom Votebook — ON by default
+
+Replaces the written vote book with a compact panel.
+
+- Map cards with previews and vote counts, and a **Supervote** button that unlocks once you have voted.
+- **Match Stats** row — one column per category, each with the leading player's head, name and value, plus `and N more...` for ties.
+- Your own row shows **`(You)`** on its own last line, under the value, in every column where you appear.
+- **Match link** to the match page, and map **favorites** with a star on the card.
 
 ### Prefered Hand — OFF by default
 
@@ -126,6 +151,12 @@ Separates server announcements from player chat into their own overlay.
 - **Panel/border opacity** slider, **Size** slider.
 - **10-second display window**; up to 100 buffered lines; player/team/observer chat never routed here.
 
+### Region Borders — OFF by default
+
+Wireframes of the current map's regions from its `map.xml`, plus the region name you are standing in.
+
+- **Region Borders** master switch, **Region text** toggle, **Prefix**, **Background** opacity.
+
 ### Height Limit Overlay — OFF by default
 
 Overlay-only build-height marker for PGM maps where all build must stop at a fixed Y.
@@ -133,6 +164,12 @@ Overlay-only build-height marker for PGM maps where all build must stop at a fix
 - **Height Limit Overlay** master switch (locked OFF in this release).
 - Reads the build limit from the announced PGM map metadata (`<maxbuildheight>`).
 - **Opacity**, **Size**, **Indicator seconds** sliders, **Top-only** toggle.
+
+### Auto GG — OFF by default
+
+- **Auto GG** master switch. Says `gg` once per match, when the server announces the end.
+- Never fires on map start: a result line left over from the previous match is ignored until this client sees the match begin.
+- The `gg` is sent once per match only, so a double "Game over!" cannot repeat it.
 
 ### Minimap — OFF by default
 
@@ -161,6 +198,8 @@ OTL's data lives entirely in `config/Over The Limit/`:
 - `profiles/` — all saved profiles
 - `Maps/` — downloaded terrain meshes, cached
 - `map_cache/` — map preview cache
+
+Every module option is per profile; a profile that is missing a newer option falls back to its factory default instead of inheriting the previous profile. Settings removed in a release (such as the old `chat_background_opacity`) are ignored and dropped on the next save, so an existing profile keeps loading without errors.
 
 Legacy `config/overcast_util` and `config/otl` folders are migrated automatically on first launch; `config/overcast_util` is left as a rollback copy.
 

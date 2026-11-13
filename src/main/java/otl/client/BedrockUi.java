@@ -2,26 +2,41 @@ package otl.client;
 
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.Gui;
+import net.minecraft.client.renderer.GlStateManager;
+import net.minecraft.client.renderer.RenderHelper;
+import net.minecraft.client.Minecraft;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
 
 /** Flat Bedrock chrome: neutral mid-gray panels, light-gray beveled buttons, dark button text. */
 final class BedrockUi {
     // Sidebar/panel grays (neutral, lighter than Java's near-black menus).
-    static final int PANEL=0xFF3B3B3B,EDGE=0xFF4B4B4B,INSET=0xFF2D2D2D,SLOT=0xFF464646;
-    static final int TEXT=0xFFFFFFFF,MUTED=0xFFE0E0E0,DIM=0xFFB0B0B0,ACCENT=0xFF6CC349,CAPTION=0xFFFFFFFF;
-    private static final int BUTTON_FACE=0xFF8F8F8F,BUTTON_HOVER=0xFFA6A6A6,BUTTON_DISABLED=0xFF4A4A4A;
+    static final int PANEL=BedrockTokens.SURFACE_PANEL,EDGE=BedrockTokens.SURFACE_EDGE,INSET=BedrockTokens.SURFACE_INSET,SLOT=BedrockTokens.SURFACE_CARD;
+    static final int TEXT=BedrockTokens.TEXT_PRIMARY,MUTED=BedrockTokens.TEXT_MUTED,DIM=BedrockTokens.TEXT_DIM,ACCENT=BedrockTokens.STATE_ACCENT,CAPTION=BedrockTokens.TEXT_PRIMARY;
+    private static final int BUTTON_FACE=0xFFD0D1D4,BUTTON_HOVER=BedrockTokens.STATE_HOVER,BUTTON_DISABLED=0xFF4A4A4A;
     private static final int BUTTON_TEXT=0xFF282828,DISABLED_TEXT=0xFF9B9B9B;
     private static final int BEVEL_LIGHT=0xFFC6C6C6,BEVEL_DARK=0xFF545454;
 
     static void panel(int x,int y,int w,int h){
         Gui.drawRect(x,y,x+w,y+h,PANEL);
-        Gui.drawRect(x,y,x+w,y+1,EDGE);
-        Gui.drawRect(x,y,x+1,y+h,0xFF4E4E4E);
-        Gui.drawRect(x,y+h-1,x+w,y+h,0xFF242424);
-        Gui.drawRect(x+w-1,y,x+w,y+h,0xFF242424);
+        Gui.drawRect(x,y,x+w,y+2,EDGE);
+        Gui.drawRect(x,y,x+2,y+h,EDGE);
+        Gui.drawRect(x,y+h-2,x+w,y+h,0xFF202122);
+        Gui.drawRect(x+w-2,y,x+w,y+h,0xFF202122);
     }
     static void inset(int x,int y,int w,int h){
         Gui.drawRect(x,y,x+w,y+h,INSET);
         Gui.drawRect(x,y,x+w,y+1,0xFF3A3A3A);
+    }
+    static void header(FontRenderer font,String title,int x,int y,int w){
+        Gui.drawRect(x+2,y+2,x+w-2,y+24,0xFFE6E8EB);
+        Gui.drawRect(x+2,y+24,x+w-2,y+26,0xFF202122);
+        font.drawString(font.trimStringToWidth(title,Math.max(0,w-32)),x+14,y+10,0xFF202122);
+    }
+    static void headerCentered(FontRenderer font,String title,int x,int y,int w){
+        Gui.drawRect(x+2,y+2,x+w-2,y+24,0xFFE6E8EB);
+        Gui.drawRect(x+2,y+24,x+w-2,y+26,0xFF202122);
+        plainCentered(font,title,x+w/2,y+9,0xFF202122);
     }
     static void caption(FontRenderer font,String label,int x,int y){
         font.drawStringWithShadow(label,x,y,CAPTION);
@@ -34,6 +49,12 @@ final class BedrockUi {
     static void centered(FontRenderer font,String text,int cx,int y,int color){
         font.drawStringWithShadow(text,cx-font.getStringWidth(text)/2,y,color);
     }
+    static void plainCentered(FontRenderer font,String text,int cx,int y,int color){
+        font.drawString(text,cx-font.getStringWidth(text)/2,y,color);
+    }
+    static void backArrow(FontRenderer font,int x,int y,boolean hover){
+        plainCentered(font,"<",x+9,y+4,hover?0xFFFFFFFF:0xFF303132);
+    }
     static void button(FontRenderer font,int x,int y,int w,int h,String label,boolean hover,boolean enabled){
         button(font,x,y,w,h,label,hover,enabled,255);
     }
@@ -42,22 +63,24 @@ final class BedrockUi {
         int face=!enabled?BUTTON_DISABLED:hover?BUTTON_HOVER:BUTTON_FACE;
         int bevel=enabled?BEVEL_LIGHT:0xFF5A5A5A;
         int a=Math.max(0,Math.min(255,alpha))<<24;
-        Gui.drawRect(x,y,x+w,y+h,a|(face&0xFFFFFF));
-        Gui.drawRect(x,y,x+w,y+1,a|(bevel&0xFFFFFF));
-        Gui.drawRect(x,y,x+1,y+h,a|(bevel&0xFFFFFF));
-        Gui.drawRect(x,y+h-1,x+w,y+h,a|(BEVEL_DARK&0xFFFFFF));
-        Gui.drawRect(x+w-1,y,x+w,y+h,a|(BEVEL_DARK&0xFFFFFF));
+        Gui.drawRect(x,y,x+w,y+h,a|0x202122);
+        Gui.drawRect(x+1,y+1,x+w-1,y+h-2,a|(face&0xFFFFFF));
+        Gui.drawRect(x+1,y+1,x+w-1,y+2,a|(bevel&0xFFFFFF));
+        Gui.drawRect(x+1,y+1,x+2,y+h-2,a|(bevel&0xFFFFFF));
+        Gui.drawRect(x+1,y+h-3,x+w-1,y+h-1,a|(BEVEL_DARK&0xFFFFFF));
         int tx=x+(w-font.getStringWidth(label))/2;
-        font.drawString(label,tx,y+(h-8)/2+1,a|(enabled?BUTTON_TEXT&0xFFFFFF:DISABLED_TEXT&0xFFFFFF));
+        font.drawString(label,tx,y+(h-font.FONT_HEIGHT)/2,a|(enabled?BUTTON_TEXT&0xFFFFFF:DISABLED_TEXT&0xFFFFFF));
     }
     /** Bedrock switch: gray track, white knob, piston green when on. */
     static void toggle(int x,int y,boolean on,boolean hover){
-        Gui.drawRect(x,y,x+26,y+12,on?0xFF3F9142:hover?0xFF5A5A5A:0xFF4A4A4A);
-        Gui.drawRect(x,y,x+26,y+1,on?ACCENT:0xFF5A5A5A);
-        Gui.drawRect(x,y+11,x+26,y+12,0xFF2A2A2A);
+        Gui.drawRect(x,y,x+26,y+12,0xFF171819);
+        Gui.drawRect(x+1,y+1,x+25,y+11,on?0xFF3C8527:hover?0xFF777879:0xFF58595A);
+        Gui.drawRect(x+1,y+1,x+25,y+2,on?ACCENT:0xFF999A9B);
         int knob=on?x+14:x;
-        Gui.drawRect(knob+1,y+1,knob+12,y+11,0xFFFFFFFF);
-        Gui.drawRect(knob+1,y+1,knob+12,y+2,0xFFE8E8E8);
+        Gui.drawRect(knob,y-1,knob+12,y+13,0xFF171819);
+        Gui.drawRect(knob+1,y,knob+11,y+12,0xFFE6E8EB);
+        Gui.drawRect(knob+2,y+1,knob+10,y+2,0xFFFFFFFF);
+        Gui.drawRect(knob+1,y+10,knob+11,y+12,0xFFB5B7BA);
     }
     /** Small square icon button used for row actions; glyph stays a string fallback. */
     static void icon(FontRenderer font,int x,int y,String glyph,boolean hover,boolean danger){
@@ -66,16 +89,13 @@ final class BedrockUi {
     }
     /** Hover/pressed chip behind an icon glyph. */
     static void iconBox(int x,int y,boolean hover,boolean danger){
-        Gui.drawRect(x,y,x+11,y+12,hover?0xFF4A4A4A:0xFF353535);
+        if(hover)Gui.drawRect(x,y,x+11,y+12,0xFF4A4A4A);
     }
     /** Pencil: rename. Vertical pencil, eraser up, lead down. */
     static void pencil(int x,int y,boolean hover){
-        int eraser=hover?0xFFE79BA6:0xFFCE8B96,ferrule=hover?0xFFB0BEC5:0xFF8A98A0,body=hover?0xFFFFE082:0xFFE6C65A,lead=hover?0xFF404040:0xFF303030;
-        Gui.drawRect(x+3,y+1,x+9,y+3,eraser);
-        Gui.drawRect(x+3,y+3,x+9,y+4,ferrule);
-        Gui.drawRect(x+3,y+4,x+9,y+9,body);
-        Gui.drawRect(x+4,y+9,x+8,y+10,ferrule);
-        Gui.drawRect(x+5,y+10,x+7,y+11,lead);
+        int ink=hover?TEXT:0xFFB8B9BA;
+        for(int i=0;i<6;i++)Gui.drawRect(x+3+i,y+8-i,x+5+i,y+10-i,ink);
+        Gui.drawRect(x+2,y+10,x+5,y+11,ink);
     }
     /** Two overlapping pages: copy. */
     static void duplicate(int x,int y,boolean hover){
@@ -88,9 +108,17 @@ final class BedrockUi {
         Gui.drawRect(x+3,y+9,x+11,y+10,ink);Gui.drawRect(x+10,y+3,x+11,y+10,ink);
     }
     static boolean hit(int mx,int my,int x,int y,int w,int h){return mx>=x&&mx<x+w&&my>=y&&my<y+h;}
+    static void item(Item item,int x,int y){
+        if(item==null)return;
+        GlStateManager.pushMatrix();
+        RenderHelper.enableGUIStandardItemLighting();
+        Minecraft.getMinecraft().getRenderItem().renderItemAndEffectIntoGUI(new ItemStack(item),x,y);
+        RenderHelper.disableStandardItemLighting();
+        GlStateManager.popMatrix();
+    }
     /** Counterclockwise circular arrow, chunky 2px pixels like Bedrock glyphs. */
     static void resetArrow(int x,int y,boolean hover){
-        int ink=hover?0xFFFFFFFF:0xFFD8D8D8;
+        int ink=hover?0xFFFFFFFF:0xFFF0F1F2;
         float cx=x+6f,cy=y+6f,r=4.2f;
         for(int deg=225;deg<=525;deg+=9){
             double rad=Math.toRadians(deg);

@@ -33,6 +33,7 @@ public class ChatRulesTest {
         assertEquals("172.65.223.142",ServerScope.host("172.65.223.142:25565"));
         assertEquals("",ServerScope.host("172.65.223.142.evil.net"));
         assertEquals("play.oc.tc",ServerScope.host("PLAY.OC.TC:25565"));assertEquals("vanish.oc.tc",ServerScope.host("vanish.oc.tc"));
+        assertEquals("spectrum.oc.tc",ServerScope.host("spectrum.oc.tc:25565"));
         for(String s:new String[]{"oc.tc","evilplay.oc.tc","play.oc.tc.evil.net","localhost","127.0.0.1","play.oc.tc:notaport",""})assertEquals("",ServerScope.host(s));
     }
     @Test public void privateNamesAndDirection(){

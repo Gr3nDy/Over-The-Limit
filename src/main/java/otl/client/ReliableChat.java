@@ -93,7 +93,6 @@ public final class ReliableChat {
             if(mc.gameSettings.chatVisibility==EntityPlayer.EnumChatVisibility.HIDDEN||drawn.isEmpty())return;
             final boolean open=getChatOpen();final int offset=position(),limit=getLineCount();
             final float scale=getChatScale(),opacity=mc.gameSettings.chatOpacity*.9F+.1F;
-            final int width=MathHelper.ceiling_float_int(getChatWidth()/scale);
             int shown=0;
             GlStateManager.pushMatrix();
             try{
@@ -106,8 +105,6 @@ public final class ReliableChat {
                     int alpha=(int)((open?255:(int)(255*fade))*opacity);shown++;
                     if(alpha<=3)continue;
                     int y=-i*9;
-                    int background=ChatAppearance.backgroundAlpha(alpha,UtilitySettings.chatBackground);
-                    if(background>0)Gui.drawRect(0,y-9,width+4,y,background<<24);
                     GlStateManager.enableBlend();GlStateManager.tryBlendFuncSeparate(770,771,1,0);
                     mc.fontRendererObj.drawStringWithShadow(line.getChatComponent().getFormattedText(),0,y-8,0xFFFFFF|(alpha<<24));
                     GlStateManager.disableAlpha();GlStateManager.disableBlend();
