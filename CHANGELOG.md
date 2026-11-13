@@ -27,6 +27,7 @@
 - **Reliable Chat scrollbar** is a slim rounded pill instead of a boxed bar with `^`/`v` arrows, and can be turned off under Reliable Chat → Appearance.
 - Reliable Chat no longer leaves the history scrolled up: closing the chat returns it to the newest message, and the floating `New messages` indicator is gone.
 - **Settings-screen scrollbar** can now be clicked and dragged; before it was drawn but ignored the mouse, so long pages could only be scrolled with the wheel.
+- **Team Bar clock stays centred** when no teams exist yet or you are watching from the observer team. The bar was placed using the HUD editor's preview width (which invents placeholder heads), so a clock-only bar landed up to ~90px off centre. The clock also no longer disappears when no team is on the scoreboard.
 - **Chat HUD crash on team join**: team data is snapshotted before use and the overlay draw is guarded, so a team packet arriving mid-frame can no longer take the game down.
 - Auto GG says `gg` once per match, at the end only, never on map start.
 

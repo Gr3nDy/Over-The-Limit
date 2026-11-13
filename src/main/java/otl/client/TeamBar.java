@@ -288,9 +288,12 @@ final class TeamBar {
         if(counting&&!preview){
             // Counting in: the middle only, so nothing suggests the teams are set yet.
         }else if(sides.isEmpty()){
-            if(!preview)return null;
-            int fake=Math.max(1,Math.min(shown,8));
-            left.add(placeholders(fake));right.add(placeholders(fake));
+            // No teams yet (or you are watching from the observer team): keep the clock alone and
+            // centred instead of dropping the bar, so it never sits off centre or disappears.
+            if(preview){
+                int fake=Math.max(1,Math.min(shown,8));
+                left.add(placeholders(fake));right.add(placeholders(fake));
+            }
         }else{
             // One block of rows per team, alternating columns. A team keeps the column its size
             // gives it, so joining a team never drags the block across the bar. Ten heads fill a
@@ -345,6 +348,13 @@ final class TeamBar {
         Bar bar=INSTANCE.bar(mc,true);
         return HudLayout.bounds(HudLayout.TEAM_BAR,bar.width,bar.height);
     }
+
+    /**
+     * Where a bar is drawn. Always measured from the bar itself: bounds() measures the editor's
+     * preview bar, which invents placeholder heads and is far wider than the clock-only bar, so
+     * using it for the overlay pushed the clock off centre before any team existed.
+     */
+    static HudLayout.Rect placed(Bar bar){return HudLayout.bounds(HudLayout.TEAM_BAR,bar.width,bar.height);}
 
     /** Timer shown in the middle, or null while nothing carries a clock. */
     Timer timer(Minecraft mc){return timer(mc,System.nanoTime());}
@@ -580,14 +590,15 @@ final class TeamBar {
             return; // a HUD element must never take the game down
         }
         if(bar==null)return;
-        draw(mc,bar,bounds().x,bounds().y);
+        HudLayout.Rect box=placed(bar);
+        draw(mc,bar,box.x,box.y);
     }
 
     /** The HUD editor's preview: real teams when a match is running, otherwise a placeholder row. */
     static void drawPreview(){
         Minecraft mc=MinecraftAccess.get();
         Bar bar=INSTANCE.bar(mc,true);
-        HudLayout.Rect box=HudLayout.bounds(HudLayout.TEAM_BAR,bar.width,bar.height);
+        HudLayout.Rect box=placed(bar);
         draw(mc,bar,box.x,box.y);
     }
 

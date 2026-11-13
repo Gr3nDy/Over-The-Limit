@@ -1712,6 +1712,12 @@ public final class OtlSmoke {
                 require(bar.left.get(1).get(0).equals(mc.thePlayer.getName()),"The local head was not at the inner end of a left block: "+bar.left.get(1));
                 // The clock must not move when the two columns hold different amounts.
                 require(bar.textX+bar.textW/2==bar.width/2,"The clock is not centred between the team columns");
+                // And it must land on the screen centre. The overlay used to place the bar from the
+                // preview width, so a clock-only bar sat well left of centre.
+                int screenW=new ScaledResolution(mc).getScaledWidth();
+                HudLayout.Rect placed=TeamBar.placed(bar);
+                require(Math.abs(placed.x+bar.textX+bar.textW/2-screenW/2)<=1,
+                    "The clock is not on the screen centre: "+(placed.x+bar.textX+bar.textW/2)+" vs "+screenW/2);
                 // Rows are flush against the clock and grow outward, so no gap ever sits next to it.
                 java.util.List<String> shortRow=java.util.Arrays.asList("A","B"),longRow=java.util.Arrays.asList("A","B","C","D","E");
                 TeamBar.Bar mirror=new TeamBar.Bar(java.util.Collections.singletonList(shortRow),
@@ -1961,6 +1967,27 @@ public final class OtlSmoke {
             }else if(state==89){
                 require(AutoGg.INSTANCE.sentCount==ggBaseline+1,"Auto GG did not say gg at the real match end: "+AutoGg.INSTANCE.sentCount);
                 UtilitySettings.autoGg=false;
+                // Watching from the observer team, with nobody on a real team yet: the clock must
+                // still be drawn, alone, and still on the screen centre.
+                net.minecraft.scoreboard.Scoreboard board=mc.theWorld.getScoreboard();
+                for(String team:new String[]{"red","blue","green"})if(board.getTeam(team)!=null)board.removeTeam(board.getTeam(team));
+                if(board.getTeam("observers")==null)board.createTeam("observers");
+                board.addPlayerToTeam(mc.thePlayer.getName(),"observers");
+                // A real match clock, so the bar is past the count-in branch and really has no teams.
+                line("Playing Allure");
+                net.minecraft.scoreboard.ScoreObjective clock=board.getObjective("otl_teambar");
+                if(clock==null)clock=board.addScoreObjective("otl_teambar",net.minecraft.scoreboard.IScoreObjectiveCriteria.DUMMY);
+                board.setObjectiveInDisplaySlot(1,clock);
+                sidebar(board,clock,"Time Limit: 10:00");
+                TeamBar.Timer running=TeamBar.INSTANCE.timer(mc);
+                require(running!=null&&!running.starting,"The bar is still counting in: "+(running==null?"none":running.label));
+                TeamBar.Bar alone=TeamBar.INSTANCE.bar(mc,false);
+                require(alone!=null,"The clock vanished while observing with no teams");
+                require(alone.left.isEmpty()&&alone.right.isEmpty(),"Heads were drawn with no teams: "+alone.left+"/"+alone.right);
+                int sw=new ScaledResolution(mc).getScaledWidth();
+                HudLayout.Rect where=TeamBar.placed(alone);
+                require(Math.abs(where.x+alone.textX+alone.textW/2-sw/2)<=1,
+                    "The clock is off centre while observing: "+(where.x+alone.textX+alone.textW/2)+" vs "+sw/2);
             }else if(state==90){
                 // Real PGM match on the local server: dump what the scoreboard actually carries.
                 mc.theWorld.sendQuittingDisconnectingPacket();mc.loadWorld(null);

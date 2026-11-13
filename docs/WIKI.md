@@ -73,7 +73,7 @@ One row of player heads per team at the top centre, stacked, with the match cloc
 - **Ten heads per row** — a bigger team wraps onto the rows below at full size instead of shrinking its heads.
 - **Your own head** always leads its team, at the inner end of a left block and at the outer end of a right block.
 - **Any number of teams** — rows keep stacking downward. Ten heads fill a row and the rest wrap onto the rows below, so heads stay full size.
-- **Clock** — read live from PGM (boss bar, then sidebar, then tab footer) and ticked locally between server updates. **Yellow** for a time limit, **red** in its last 25 seconds, **red** for the match-start countdown, **white** for a count-up. It freezes at match end and holds that final time until the map changes, then resets to `0:00`.
+- **Clock** - read live from PGM (boss bar, then sidebar, then tab footer) and ticked locally between server updates. **Yellow** for a time limit, **red** in its last 25 seconds, **red** for the match-start countdown, **white** for a count-up. It freezes at match end and holds that final time until the map changes, then resets to `0:00`. The clock sits on the screen centre at all times, including before teams are assigned and while you are watching from the observer team.
 - **Dead players** fade to grey and clear on respawn; a head never disappears on death. Players who leave, go to the observers or change team are moved or removed.
 - **Team colour line** (ON by default) — a thin vertical bar in the team's own colour beside each row, on the bar's outer edge.
 - **Hide bossbar** — hides PGM's boss-bar clock while the Team Bar shows it.
