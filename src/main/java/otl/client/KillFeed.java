@@ -21,6 +21,8 @@ final class KillFeed {
     static final KillFeedRules.History history=new KillFeedRules.History();
     private static final Map<String,ItemStack> weapons=new HashMap<>();
     private static final Map<String,int[]> heads=new HashMap<>();
+    /** The skin each cached head was sampled from, so an unchanged skin is never re-read. */
+    private static final Map<String,ResourceLocation> headSkins=new HashMap<>();
     /** 16px keeps every face texel on exactly 2px; 12px forced an uneven 1px/2px mix. */
     private static final int HEAD=16,HEAD_ADVANCE=18;
     private static int scroll;
@@ -44,7 +46,7 @@ final class KillFeed {
         history.add(death);if(scroll>0&&visible(death))scroll=Math.min(scroll+1,Math.max(0,visibleEntries().size()-rows()));
         if(UtilitySettings.hideKillChat)event.setCanceled(true);
     }
-    @SubscribeEvent public void unload(WorldEvent.Unload event){if(event.world.isRemote){history.clear();heads.clear();rowCache.clear();scroll=0;dragging=false;}}
+    @SubscribeEvent public void unload(WorldEvent.Unload event){if(event.world.isRemote){history.clear();heads.clear();headSkins.clear();rowCache.clear();scroll=0;dragging=false;}}
     @SubscribeEvent public void overlay(RenderGameOverlayEvent.Post event){
         if(event.type==RenderGameOverlayEvent.ElementType.CHAT&&!(MinecraftAccess.get().currentScreen instanceof GuiChat)&&!(MinecraftAccess.get().currentScreen instanceof HudEditor))draw(-1,-1,false);
     }
@@ -313,14 +315,25 @@ final class KillFeed {
         NetworkPlayerInfo info=mc.getNetHandler()==null?null:mc.getNetHandler().getPlayerInfo(name);
         ResourceLocation skin=info==null?null:info.getLocationSkin();
         if(mc.thePlayer!=null&&name.equalsIgnoreCase(mc.thePlayer.getName()))skin=mc.thePlayer.getLocationSkin();
-        int[] pixels=skinFace(skin);
-        if(pixels.length==64){heads.put(key,pixels);return pixels;}
-        // Keep the last real head while a skin is reloading or its texture is momentarily released.
+        // A head only changes when the player's skin actually changes. Re-sampling an unchanged
+        // texture every frame is what made a head flicker to another skin mid-upload.
+        ResourceLocation known=headSkins.get(key);
         int[] remembered=heads.get(key);
+        if(remembered!=null&&skin!=null&&skin.equals(known))return remembered;
+        // While a skin is loading or momentarily released, the tab entry hands back the default
+        // skin. Keep the real head we already have instead of flashing back to Steve.
+        if(remembered!=null&&isDefaultSkin(info,skin))return remembered;
+        int[] pixels=skinFace(skin);
+        if(pixels.length==64){heads.put(key,pixels);headSkins.put(key,skin);return pixels;}
+        // Keep the last real head while a skin is reloading or its texture is momentarily released.
         if(remembered!=null)return remembered;
-        pixels=skinFace(DefaultPlayerSkin.getDefaultSkinLegacy());
-        if(pixels.length==64)heads.put(key,pixels);
-        return pixels;
+        // Never remember the fallback: a real skin arriving later must replace it.
+        return skinFace(DefaultPlayerSkin.getDefaultSkinLegacy());
+    }
+    /** True when the tab entry is still reporting the fallback skin for this account. */
+    private static boolean isDefaultSkin(NetworkPlayerInfo info,ResourceLocation skin){
+        if(info==null||skin==null)return false;
+        return skin.equals(DefaultPlayerSkin.getDefaultSkin(info.getGameProfile().getId()));
     }
     private static int[] skinFace(ResourceLocation skin){
         return skin==null?new int[0]:SkinFace.composite(skin);

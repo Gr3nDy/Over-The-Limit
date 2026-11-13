@@ -43,7 +43,9 @@ final class TeamBar {
     /** The sixteen chat colour codes as RGB, for the team-colour line. */
     private static final int[] COLOURS={0xFF000000,0xFF0000AA,0xFF00AA00,0xFF00AAAA,0xFFAA0000,0xFFAA00AA,0xFFFFAA00,0xFFAAAAAA,
         0xFF555555,0xFF5555FF,0xFF55FF55,0xFF55FFFF,0xFFFF5555,0xFFFF55FF,0xFFFFFF55,0xFFFFFFFF};
-    private static final int WHITE=0xFFFFFFFF,YELLOW=0xFFFFD34F,RED=0xFFFF5555;
+    static final int WHITE=0xFFFFFFFF,YELLOW=0xFFFFD34F,RED=0xFFFF5555;
+    /** A time limit turns red in its last stretch, so the end of the match reads at a glance. */
+    static final int LOW_TIME=25;
     private static final int FALLBACK=0xFF8A8A8A,DEAD_FALLBACK=0xFF5A5A5A;
     private static final Pattern TIME=Pattern.compile("(\\d{1,3}):(\\d{2})");
     /** PGM counts the players in before the match: "Match starting in 10 seconds". */
@@ -65,6 +67,12 @@ final class TeamBar {
     private boolean local;
     /** Display value captured when the match ended, so the stopped clock cannot drift. */
     private int frozenSeconds=-1;
+    /**
+     * Which source supplied this match's clock, locked so two sources cannot fight over the
+     * display: the boss bar, the sidebar and the tab footer can each be a second or two apart,
+     * and switching between them made the clock jump for no reason.
+     */
+    private int clockSource;
     private static Field footerField;
     private static boolean footerBroken;
     /** Last complete read of the teams, used when a team packet lands mid-frame. */
@@ -121,10 +129,17 @@ final class TeamBar {
             this.height=Math.max(band,rows*band+(rows-1)*ROW_GAP);
             this.label=label;
         }
-        /** Where a right-column row starts: short rows hug the bar's right edge, mirroring the left column. */
-        int rightStart(List<String> members){return rightX+column-line-row(members,head,advance);}
-        /** Where a left-column row starts: right after its colour line. */
-        int leftStart(){return line;}
+        /**
+         * Where a right-column row starts: flush against the clock, growing outward to the right,
+         * so an empty tail always falls on the bar's outside and never next to the clock.
+         */
+        int rightStart(List<String> members){return rightX;}
+        /** Where a left-column row starts: flush against the clock, growing outward to the left. */
+        int leftStart(List<String> members){return column-row(members,head,advance);}
+        /** The team-colour line for a left row: at the row's outer end, not stranded in the gap. */
+        int leftLine(List<String> members){return column-line-row(members,head,advance);}
+        /** The team-colour line for a right row: just past the row's outer end. */
+        int rightLine(List<String> members){return rightX+row(members,head,advance)+LINE_GAP;}
     }
 
     @SubscribeEvent(priority=EventPriority.LOWEST,receiveCanceled=true) public void chat(ClientChatReceivedEvent event){
@@ -145,19 +160,19 @@ final class TeamBar {
 
     /** A new map has loaded: nothing has carried a clock yet, so the middle starts again at 0:00. */
     private void reset(long now){
-        ended=false;frozenSeconds=-1;local=false;preMatch=true;baseSeconds=0;baseNanos=now;direction=0;
+        ended=false;frozenSeconds=-1;local=false;preMatch=true;baseSeconds=0;baseNanos=now;direction=0;clockSource=0;
     }
 
     @SubscribeEvent public void unload(WorldEvent.Unload event){if(event.world.isRemote)clear();}
 
-    private void clear(){actionBar=null;baseSeconds=-1;direction=0;ended=false;frozenSeconds=-1;world=null;preMatch=false;local=false;lastMembers.clear();goneAt.clear();tabSeen.clear();lastSides=new ArrayList<>();}
+    private void clear(){actionBar=null;baseSeconds=-1;direction=0;ended=false;frozenSeconds=-1;world=null;preMatch=false;local=false;clockSource=0;lastMembers.clear();goneAt.clear();tabSeen.clear();lastSides=new ArrayList<>();}
 
     private void syncWorld(Minecraft mc){
         if(world!=mc.theWorld)clear();
         world=mc.theWorld;
     }
 
-    /** Every real team, own team first, then most members first. Observers, tab sorting and leavers are dropped. */
+    /** Every real team, most members first; the local head leads its own team. Observers, tab sorting and leavers are dropped. */
     static List<Side> sides(Minecraft mc){return sides(mc,System.nanoTime());}
     /** The now parameter lets the smoke test age a leaver past the grace without waiting. */
     static List<Side> sides(Minecraft mc,long now){
@@ -187,24 +202,18 @@ final class TeamBar {
             members=online(mc,members,now);
             if(!members.isEmpty())found.add(new Side(team.getTeamName(),members));
         }
-        // Most members first: a one-player leftover team sorts behind the real ones.
-        found.sort((a,b)->a.members.size()!=b.members.size()?b.members.size()-a.members.size():a.name.compareTo(b.name));
+        // Fixed order by team name, never by player count: a team keeps its column for the whole
+        // match, so the bar cannot reshuffle itself when somebody joins or leaves. Observers and
+        // PGM's tab-sorting teams are already dropped above, so this order is the match's teams.
+        found.sort((a,b)->String.CASE_INSENSITIVE_ORDER.compare(a.name,b.name));
         for(int i=0;i<found.size();i++){
             List<String> members=new ArrayList<>(found.get(i).members);
             Collections.sort(members,String.CASE_INSENSITIVE_ORDER);
             found.set(i,new Side(found.get(i).name,members));
         }
-        // The player's own team always takes the left column, so the bar does not flip per match.
-        if(mc.thePlayer!=null){
-            ScorePlayerTeam mine=mc.theWorld.getScoreboard().getPlayersTeam(mc.thePlayer.getName());
-            if(mine!=null)for(int i=0;i<found.size();i++)
-                if(found.get(i).name.equals(mine.getTeamName())){
-                    Side own=found.remove(i);
-                    found.add(0,own);
-                    break;
-                }
-        }
-        // Your own head leads your team, so it never gets cut off by the "players shown" limit.
+        // Teams keep the fixed order above, so a team's column never changes mid-match. Your own
+        // head leads the team list here so the "players shown" limit cannot cut it off; a
+        // right-column block moves it to the outer end of its last row when the bar places it.
         if(mc.thePlayer!=null)for(int i=0;i<found.size();i++){
             Side side=found.get(i);
             int at=-1;
@@ -256,33 +265,45 @@ final class TeamBar {
         return current;
     }
 
-    /** Head size: same 16px up to ten players, then it shrinks with the team so the row stays compact. */    static int headSize(int shown){
-        return shown<=10?BASE_HEAD:Math.max(3,BASE_HEAD*10/shown);
-    }
+    /** Ten heads is one row; a bigger team wraps onto the rows below instead of shrinking its heads. */
+    static final int MAX_PER_ROW=10;
+    /** Head size: full size, since a row never holds more than MAX_PER_ROW heads. */
+    static int headSize(int shown){return BASE_HEAD;}
     private static int advance(int head){return head+(head>=8?2:0);}
     private static int row(List<String> members,int head,int advance){return members.isEmpty()?0:(members.size()-1)*advance+head;}
 
-    /** Sizes the bar for the current teams and options; null in game until two teams exist. */
+    /** Sizes the bar for the current teams and options; null in game while nothing carries a clock. */
     Bar bar(Minecraft mc,boolean preview){
         if(!preview&&!UtilitySettings.teamBarObserver&&observing(mc))return null;
         int shown=Math.max(1,Math.min(75,UtilitySettings.teamBarPlayers));
         List<List<String>> left=new ArrayList<>(),right=new ArrayList<>();
         List<Side> sides=sides(mc);
-        if(sides.isEmpty()){
+        Timer timer=timer(mc);
+        // Heads are a match thing: the hub keeps scoreboard teams and runs its own countdown, so
+        // only a match clock earns a bar. The pre-match count-in draws the clock alone, in red,
+        // and the heads come back when the match really starts.
+        // shortcut: a no-limit map joined mid-match shows no heads until the kickoff line
+        if(timer==null&&!preview)return null;
+        boolean counting=timer!=null&&timer.starting;
+        if(counting&&!preview){
+            // Counting in: the middle only, so nothing suggests the teams are set yet.
+        }else if(sides.isEmpty()){
             if(!preview)return null;
             int fake=Math.max(1,Math.min(shown,8));
             left.add(placeholders(fake));right.add(placeholders(fake));
         }else{
-            // One row per team, alternating columns: the own team sorts first, so it stays left.
+            // One block of rows per team, alternating columns. A team keeps the column its size
+            // gives it, so joining a team never drags the block across the bar. Ten heads fill a
+            // row; the rest wrap onto the rows below rather than shrinking. A right-column block
+            // hugs the clock, so the local head moves to the outer end of its last row.
             for(int i=0;i<sides.size();i++){
-                List<String> members=sides.get(i).members;
-                (i%2==0?left:right).add(members.subList(0,Math.min(shown,members.size())));
+                List<String> members=new ArrayList<>(sides.get(i).members.subList(0,Math.min(shown,sides.get(i).members.size())));
+                if(i%2==1&&mc.thePlayer!=null&&members.remove(mc.thePlayer.getName()))members.add(mc.thePlayer.getName());
+                List<List<String>> column=i%2==0?left:right;
+                for(int from=0;from<members.size();from+=MAX_PER_ROW)
+                    column.add(new ArrayList<>(members.subList(from,Math.min(from+MAX_PER_ROW,members.size()))));
             }
         }
-        Timer timer=timer(mc);
-        // Heads are a match thing: the hub keeps scoreboard teams and runs its own countdown, so
-        // only a running match clock earns heads. // shortcut: a no-limit map joined mid-match shows none until the kickoff line
-        if((timer==null||timer.starting)&&!preview)return null;
         String label=timer!=null?timer.label:preview?"10:00":"";
         int textW=label.isEmpty()?0:mc.fontRendererObj.getStringWidth(label);
         int scale=Math.max(50,Math.min(150,UtilitySettings.teamBarSize));
@@ -330,9 +351,10 @@ final class TeamBar {
     /** The now parameter lets the smoke test check local ticking without waiting. */
     Timer timer(Minecraft mc,long now){
         syncWorld(mc);
-        // Once the match has ended the clock stands still; only the next countdown is taken in.
+        // Once the match has ended the clock stands still until the map changes: the next map's
+        // count-in must not overwrite the final time. "Playing <map>" resets it.
         String line=clockLine(mc);
-        if(line!=null&&(!ended||STARTING.matcher(line).find()))ingest(line,now);
+        if(line!=null&&!ended)ingest(line,now);
         if(baseSeconds<0)return null;
         // A fresh map with no clock yet (direction 0 and pre-match only comes from reset()): hold
         // the middle at 0:00 in the countdown colour, and no heads until the match really starts.
@@ -408,16 +430,36 @@ final class TeamBar {
         return text!=null&&(TIME.matcher(text).find()||STARTING.matcher(text).find());
     }
 
-    /** Boss bar first: PGM puts the real match clock there. Then sidebar, then the tab footer. */
+    /**
+     * The clock line, always from the same source for as long as that source keeps reporting one.
+     * A source that disappears (the boss bar closing, the tab footer cleared) unlocks the choice,
+     * so the clock carries on from the next source instead of stopping.
+     */
     private String clockLine(Minecraft mc){
-        String boss=ChatRules.plain(BossStatus.bossName==null?"":BossStatus.bossName).trim();
-        if(clock(boss))return boss;
-        String side=sidebarTime(mc);
-        if(side!=null)return side;
-        String footer=footerTime();
-        if(footer!=null)return footer;
-        // The action bar never says when it disappears, so only trust it while it is fresh.
-        if(actionBar!=null&&System.nanoTime()-actionBarAt<3_000_000_000L&&clock(actionBar))return actionBar;
+        if(clockSource!=0){
+            String locked=sourceLine(mc,clockSource);
+            if(locked!=null)return locked;
+            clockSource=0;
+        }
+        for(int source=1;source<=4;source++){
+            String line=sourceLine(mc,source);
+            if(line!=null){clockSource=source;return line;}
+        }
+        return null;
+    }
+
+    /** One clock source on its own: 1 boss bar, 2 sidebar, 3 tab footer, 4 action bar. */
+    private String sourceLine(Minecraft mc,int source){
+        if(source==1){
+            String boss=ChatRules.plain(BossStatus.bossName==null?"":BossStatus.bossName).trim();
+            return clock(boss)?boss:null;
+        }
+        if(source==2)return sidebarTime(mc);
+        if(source==3)return footerTime();
+        if(source==4){
+            // The action bar never says when it disappears, so only trust it while it is fresh.
+            return actionBar!=null&&System.nanoTime()-actionBarAt<3_000_000_000L&&clock(actionBar)?actionBar:null;
+        }
         return null;
     }
 
@@ -465,23 +507,23 @@ final class TeamBar {
     }
 
     /**
-     * A dead player is greyed out by the server in the tab list (PGM does this), so the head
-     * follows the same signal. A player standing in the world alive is never faded, so the head
-     * clears on respawn even before the server recolours the tab name.
+     * A dead player is greyed out by the server in the tab list (PGM does this), and that grey is
+     * the window the head follows: it stays grey until the respawn recolours the name, even while
+     * the player's body is already back in the world. The body is only a fallback for names with no
+     * tab entry, where the scoreboard team colour is the same signal one step coarser.
      */
     static boolean dead(String name){
         Minecraft mc=MinecraftAccess.get();
-        // Your own head cannot trust the world lookup: your entity is dropped while the death
-        // screen is up, and PGM keeps your own tab name in the team colour. mc.thePlayer is the
-        // authority for yourself, so your head greys the moment you die and clears on respawn.
-        if(mc.thePlayer!=null&&name!=null&&name.equalsIgnoreCase(mc.thePlayer.getName()))
-            return !mc.thePlayer.isEntityAlive()||mc.thePlayer.getHealth()<=0F
-                ||mc.currentScreen instanceof net.minecraft.client.gui.GuiGameOver;
-        net.minecraft.entity.player.EntityPlayer player=mc.theWorld==null?null:mc.theWorld.getPlayerEntityByName(name);
-        if(player!=null)return !player.isEntityAlive()||player.getHealth()<=0F;
+        boolean self=mc.thePlayer!=null&&name!=null&&name.equalsIgnoreCase(mc.thePlayer.getName());
+        // Your own body knows first: your entity is dropped while the death screen is up, and PGM
+        // can keep your own tab name in the team colour until the respawn.
+        if(self&&(!mc.thePlayer.isEntityAlive()||mc.thePlayer.getHealth()<=0F
+            ||mc.currentScreen instanceof net.minecraft.client.gui.GuiGameOver))return true;
         NetworkPlayerInfo info=mc.getNetHandler()==null?null:mc.getNetHandler().getPlayerInfo(name);
         if(info!=null)return grey(tabName(info));
-        // No tab entry yet: the scoreboard team colour is the same signal, one step coarser.
+        if(self)return false;
+        net.minecraft.entity.player.EntityPlayer player=mc.theWorld==null?null:mc.theWorld.getPlayerEntityByName(name);
+        if(player!=null)return !player.isEntityAlive()||player.getHealth()<=0F;
         return mc.theWorld!=null&&grey(teamPrefix(mc,name));
     }
 
@@ -555,25 +597,34 @@ final class TeamBar {
         for(int r=0;r<bar.left.size();r++){
             List<String> members=bar.left.get(r);
             int top=y+r*(band+ROW_GAP)+(band-bar.head)/2;
-            // The line sits on the very left of the bar, one per team, the height of its heads.
-            if(lineW>0)Gui.drawRect(x,top,x+lineW,top+bar.head,teamColour(mc,members));
-            int start=x+bar.leftStart();
+            // The line sits at the row's own outer end, so it stays attached to its heads.
+            if(lineW>0)Gui.drawRect(x+bar.leftLine(members),top,x+bar.leftLine(members)+lineW,top+bar.head,teamColour(mc,members));
+            int start=x+bar.leftStart(members);
             for(int i=0;i<members.size();i++)head(members.get(i),start+i*bar.advance,top,bar.head);
         }
         for(int r=0;r<bar.right.size();r++){
             List<String> members=bar.right.get(r);
             int top=y+r*(band+ROW_GAP)+(band-bar.head)/2;
-            // Right column hugs the right edge, mirroring the left column, so short rows line up
-            // with the bar's outer edge instead of leaving a ragged gap on the right.
+            // Rows are flush with the clock and grow outward, so both columns read from the middle.
             int start=x+bar.rightStart(members);
-            if(lineW>0)Gui.drawRect(x+bar.rightX+bar.column-lineW,top,x+bar.rightX+bar.column,top+bar.head,teamColour(mc,members));
+            if(lineW>0)Gui.drawRect(x+bar.rightLine(members),top,x+bar.rightLine(members)+lineW,top+bar.head,teamColour(mc,members));
             for(int i=0;i<members.size();i++)head(members.get(i),start+i*bar.advance,top,bar.head);
         }
         if(bar.textW>0){
-            int colour=bar.timer==null?WHITE:bar.timer.starting?RED:bar.timer.countdown?YELLOW:WHITE;
             // Sits on the first head row, not the middle of the stack, so extra teams stack below it.
-            mc.fontRendererObj.drawStringWithShadow(bar.label,x+bar.textX,y+(band-8)/2,colour);
+            mc.fontRendererObj.drawStringWithShadow(bar.label,x+bar.textX,y+(band-8)/2,colour(bar.timer));
         }
+    }
+
+    /**
+     * Clock colour: red for the match-start count-in, red for the last 25 seconds of a time limit,
+     * yellow for a limit that still has time left, white for a count-up.
+     */
+    static int colour(Timer timer){
+        if(timer==null)return WHITE;
+        if(timer.starting)return RED;
+        if(timer.countdown)return timer.seconds<=LOW_TIME?RED:YELLOW;
+        return WHITE;
     }
 
     /** A row's team colour, taken from the scoreboard prefix PGM puts on the team. */

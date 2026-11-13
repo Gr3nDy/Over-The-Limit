@@ -17,6 +17,8 @@ abstract class SettingsScreen extends GuiScreen {
     static final int TOOL=14;
     private final Set<GuiButton> pinned=new HashSet<>();
     private int scroll,contentHeight;
+    /** True while the scrollbar thumb is being dragged, so the strip is grabbable. */
+    private boolean scrollDrag;
     protected SettingsPanel panel;
 
     protected abstract String title();
@@ -62,6 +64,9 @@ abstract class SettingsScreen extends GuiScreen {
     }
     /** Rows scrolled out of the band are clipped when drawn, so they must not take clicks either. */
     @Override protected void mouseClicked(int mx,int my,int button)throws IOException{
+        // The strip is outside the content band, so it has to be claimed before the hidden-row
+        // pass below swallows the click.
+        if(button==0&&scrollbarHit(mx,my)){scrollDrag=true;scrollTo(my);return;}
         if(BedrockUi.hit(mx,my,panelX()+2,contentTop(),panelW()-4,Math.max(0,contentBottom()-contentTop()))){super.mouseClicked(mx,my,button);return;}
         java.util.List<GuiButton> hidden=new java.util.ArrayList<>();
         for(GuiButton b:buttonList)if(!pinned.contains(b)&&b.visible){b.visible=false;hidden.add(b);}
@@ -82,20 +87,47 @@ abstract class SettingsScreen extends GuiScreen {
         drawRect(panelX()+2,bottom,panelX()+panelW()-2,panelY()+panelH()-2,BedrockUi.PANEL);
         drawRect(panelX()+2,bottom,panelX()+panelW()-2,bottom+1,0xFF3A3A3A);
         for(GuiButton b:buttonList)if(pinned.contains(b))b.drawButton(mc,mx,my);
-        scrollbar(top,bottom);
+        scrollbar(mx,my,top,bottom);
     }
     private void scissor(int x,int y,int w,int h){
         int sf=new ScaledResolution(mc).getScaleFactor();
         GL11.glEnable(GL11.GL_SCISSOR_TEST);
         GL11.glScissor(x*sf,mc.displayHeight-(y+h)*sf,w*sf,h*sf);
     }
-    private void scrollbar(int top,int bottom){
+    private void scrollbar(int mx,int my,int top,int bottom){
         int view=bottom-top,max=Math.max(0,contentHeight-view);
         if(view<=0||max<=0)return;
         int sx=panelX()+panelW()-8;
         drawRect(sx,top,sx+4,bottom,0xFF141414);
-        int thumb=Math.max(16,view*view/(view+max));
+        int thumb=thumbHeight(view,max);
         int ty=top+(view-thumb)*scroll/max;
-        drawRect(sx,ty,sx+4,ty+thumb,0xFF7A7A7A);
+        boolean hot=scrollDrag||BedrockUi.hit(mx,my,sx-2,ty,8,thumb);
+        drawRect(sx,ty,sx+4,ty+thumb,hot?0xFFFFFFFF:0xFF7A7A7A);
     }
+    private int scrollMax(){int view=contentBottom()-contentTop();return view<=0?0:Math.max(0,contentHeight-view);}
+    private static int thumbHeight(int view,int max){return Math.max(16,view*view/(view+max));}
+    /** The 4px strip plus a couple of pixels of grab room on either side. */
+    private boolean scrollbarHit(int mx,int my){
+        return scrollMax()>0&&mx>=panelX()+panelW()-10&&mx<panelX()+panelW()-2
+            &&my>=contentTop()&&my<contentBottom();
+    }
+    /** Centre the thumb on the cursor; the wheel and this share one clamped scroll value. */
+    private void scrollTo(int my){
+        int top=contentTop(),view=contentBottom()-top,max=scrollMax();
+        if(max<=0)return;
+        int travel=Math.max(1,view-thumbHeight(view,max));
+        int next=Math.max(0,Math.min(max,(int)Math.round((my-top-thumbHeight(view,max)/2D)*max/travel)));
+        if(next!=scroll){scroll=next;initGui();}
+    }
+    @Override protected void mouseClickMove(int mx,int my,int button,long elapsed){
+        if(scrollDrag){scrollTo(my);return;}
+        super.mouseClickMove(mx,my,button,elapsed);
+    }
+    @Override protected void mouseReleased(int mx,int my,int state){
+        scrollDrag=false;
+        super.mouseReleased(mx,my,state);
+    }
+    // smoke helpers
+    int scrollValue(){return scroll;}
+    int scrollMaxValue(){return scrollMax();}
 }

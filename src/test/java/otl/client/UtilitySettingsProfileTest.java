@@ -20,6 +20,7 @@ public class UtilitySettingsProfileTest {
         assertEquals(25,defaults.get("minimap_opacity").getAsInt());
         assertEquals(25,defaults.get("kill_background_opacity").getAsInt());
         assertFalse(defaults.has("chat_background_opacity"));
+        assertTrue(defaults.get("chat_scrollbar").getAsBoolean());
         // Every Team Bar option is per profile, including the new colour line.
         assertTrue(defaults.get("team_bar_team_color").getAsBoolean());
         assertEquals(5,defaults.get("team_bar_players").getAsInt());

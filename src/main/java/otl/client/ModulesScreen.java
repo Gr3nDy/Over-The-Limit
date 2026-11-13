@@ -137,15 +137,17 @@ final class ModulesScreen extends GuiScreen {
 
     public void handleMouseInput()throws IOException{
         int wheel=Mouse.getEventDWheel();
-        if(wheel!=0){
-            int mx=Mouse.getEventX()*width/mc.displayWidth,my=height-Mouse.getEventY()*height/mc.displayHeight;
-            if(mx>=x+6&&mx<x+8+RAIL&&my>=y+30&&my<y+30+railRows()*ROW_H){
-                railScroll=Math.max(0,Math.min(railScroll+(wheel>0?-1:1),Math.max(0,profiles.size()-railRows())));
-            }else if(mx>=contentX()&&mx<x+w&&my>=y+52&&my<divider()){
-                scrollRow=Math.max(0,Math.min(scrollRow+(wheel>0?-1:1),rows()-VISIBLE_ROWS));
-            }
-        }
+        if(wheel!=0)scrollWheel(Mouse.getEventX()*width/mc.displayWidth,height-Mouse.getEventY()*height/mc.displayHeight-1,wheel);
         super.handleMouseInput();
+    }
+
+    /** One wheel notch moves the list under the cursor: the profile rail or the module grid. */
+    void scrollWheel(int mx,int my,int wheel){
+        if(mx>=railLeft()&&mx<railLeft()+railWidth()&&my>=y+30&&my<y+30+railRows()*ROW_H){
+            railScroll=Math.max(0,Math.min(railScroll+(wheel>0?-1:1),Math.max(0,profiles.size()-railRows())));
+        }else if(mx>=contentX()&&mx<x+w&&my>=y+52&&my<divider()){
+            scrollRow=Math.max(0,Math.min(scrollRow+(wheel>0?-1:1),rows()-VISIBLE_ROWS));
+        }
     }
 
     protected void mouseClicked(int mx,int my,int button)throws IOException{
@@ -297,4 +299,11 @@ final class ModulesScreen extends GuiScreen {
         drawString(fontRendererObj,!usable?"LOCKED":on?"ON":"OFF",cx+10,state+3,!usable?0xFFCC7777:on?0xFF8FE0A8:0xFFB8B8B8);
         if(usable)BedrockUi.toggle(cx+cw-34,state+1,on,stateHover);
     }
+
+    // smoke helpers: the module grid scrollbar's geometry and position
+    int rowCount(){return rows();}
+    int firstRow(){return scrollRow;}
+    int trackLeft(){return x+w-7;}
+    int trackTopY(){return y+52;}
+    int trackBottomY(){return divider()-6;}
 }

@@ -15,7 +15,7 @@ public final class ReliableChatModule extends OtlModule {
     public void reset() {
         UtilitySettings.restore("reliable_chat","unread_counts","other_faces","remember_drafts","unlimited_history","shift_tab",
                 "team_bubbles","bubble_team_and_chat","bubble_characters","bubble_seconds","show_tab_chat","tab_chat_position",
-                "tab_background_opacity","typing_tab_background_opacity");
+                "tab_background_opacity","typing_tab_background_opacity","chat_scrollbar");
         UtilitySettings.hudPositions.remove(HudLayout.TABS);
         ReliableChat.applyPreferences();
     }

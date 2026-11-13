@@ -113,6 +113,11 @@ public final class OtlSmoke {
         if(gone!=null)map.remove(gone);
     }
     GuiButton find(GuiScreen s,String label){for(GuiButton b:buttons(s))if(b.displayString.equals(label))return b;throw new AssertionError("Missing button "+label);}
+    /** One named team from a sides() result, or null. */
+    TeamBar.Side side(java.util.List<TeamBar.Side> sides,String name){
+        for(TeamBar.Side side:sides)if(side.name.equals(name))return side;
+        return null;
+    }
     /** Clicks the ON/OFF strip of a module card in the browser grid (tab ALL). */
     void cardToggle(ModulesScreen s,int index)throws java.io.IOException{
         int w=Math.min(470,s.width-16),h=Math.min(272,s.height-16),x=(s.width-w)/2,y=(s.height-h)/2;
@@ -1165,9 +1170,22 @@ public final class OtlSmoke {
                 require(hit!=null&&hit.getChatStyle().getChatClickEvent()!=null,"Vanilla click component action was lost");
                 for(int i=0;i<90;i++)ReliableChat.receive(new ChatComponentText("<History>: scroll message "+i),0);
                 ReliableChatScreen chat=(ReliableChatScreen)mc.currentScreen;ChatScroll.Bar bar=chat.scrollbar();require(bar!=null,"Chat scrollbar missing");
-                chat.mouseClicked(bar.x+4,bar.top+1,0);require(ReliableChat.currentView().scroll()>0,"Scrollbar up button did not scroll");
+                require(UtilitySettings.chatScrollbar,"The chat scrollbar defaults to on");
+                // Clicking the track grabs the thumb there; there are no arrow buttons any more.
+                chat.mouseClicked(bar.x+4,bar.top+1,0);require(ReliableChat.currentView().scroll()>0,"Clicking the scrollbar track did not scroll");
                 bar=chat.scrollbar();chat.mouseClicked(bar.x+4,bar.thumbTop+1,0);chat.mouseClickMove(bar.x+4,bar.trackTop,0,100);chat.mouseReleased(bar.x+4,bar.trackTop,0);
                 require(ReliableChat.currentView().scroll()==bar.max,"Scrollbar drag did not reach oldest messages");
+                // Closing the chat drops the scroll position, so reopening never starts mid-history.
+                mc.displayGuiScreen(null);
+                require(ReliableChat.currentView().scroll()==0,"Closing the chat left the view scrolled up");
+                mc.displayGuiScreen(new ReliableChatScreen(""));
+                require(ReliableChat.currentView().scroll()==0,"Reopening the chat did not show the newest line");
+                // Turning the scrollbar off hides it and makes its strip click-through.
+                UtilitySettings.chatScrollbar=false;
+                ReliableChat.currentView().scrollTo(0);
+                chat.mouseClicked(bar.x+4,bar.top+1,0);
+                require(ReliableChat.currentView().scroll()==0,"A hidden scrollbar still scrolled the chat");
+                UtilitySettings.chatScrollbar=true;
             }else if(state==44){
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-chat-draggable-scrollbar.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
                 ReliableChatScreen chat=(ReliableChatScreen)mc.currentScreen;ChatScroll.Bar bar=chat.scrollbar();
@@ -1395,14 +1413,48 @@ public final class OtlSmoke {
                 importer.drawScreen(0,0,0);
                 mc.displayGuiScreen(browser);
                 require(buttons(browser).stream().noneMatch(b->b.displayString.equals("EDIT HUD LAYOUT")),"Old HUD footer still present");
+                // The module grid scrolls past two rows: the scrollbar must actually move it.
+                require(browser.rowCount()>2,"The module grid has nothing to scroll");
+                int tx=browser.trackLeft();
+                browser.mouseClicked(tx,browser.trackBottomY()-2,0);
+                require(browser.firstRow()==browser.rowCount()-2,"Clicking the module scrollbar track did not reach the last row");
+                browser.mouseReleased(tx,browser.trackBottomY()-2,0);
+                browser.mouseClicked(tx,browser.trackTopY()+2,0);
+                require(browser.firstRow()==0,"Clicking the module scrollbar top did not return to the first row");
+                browser.mouseReleased(tx,browser.trackTopY()+2,0);
+                // The wheel over the grid must move the same list the scrollbar shows.
+                int gridX=browser.trackLeft()-120;
+                for(int i=0;i<3;i++)browser.scrollWheel(gridX,browser.trackTopY()+40,-120);
+                require(browser.firstRow()==3,"The mouse wheel did not scroll the module grid: "+browser.firstRow());
+                for(int i=0;i<9;i++)browser.scrollWheel(gridX,browser.trackTopY()+40,120);
+                require(browser.firstRow()==0,"The wheel did not scroll the module grid back to the top");
+                // A wheel over the profile rail must leave the grid alone.
+                browser.scrollWheel(gridX,browser.trackTopY()+40,-120);
+                int gridRow=browser.firstRow();
+                browser.scrollWheel(browser.trackLeft()-420,browser.trackTopY()-10,-120);
+                require(browser.firstRow()==gridRow,"A wheel over the profile rail moved the module grid");
+                browser.scrollWheel(gridX,browser.trackTopY()+40,-120);
+                browser.drawScreen(0,0,0);
+                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-modules-scrolled.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
                 int bx=ReflectionHelper.getPrivateValue(ModulesScreen.class,browser,"x"),by=ReflectionHelper.getPrivateValue(ModulesScreen.class,browser,"y");
                 browser.mouseClicked(bx+10,by+10,0);
                 require(mc.currentScreen instanceof HudEditor,"Top-left back arrow did not open HUD editor");
                 SettingsScreen[] screens={new KillFeedSettings(null),new KillConfirmSettings(null),new MinimapSettings(null),new HeightLimitSettings(null),new ServerNoticeSettings(null),new TeamBarSettings(null),new UtilityScreen(),new MapPreviewSettings(null),new PreferedHandSettings(null),new BowOptimizerSettings(null),new RegionSettings(null),new ColorSwatches(null,0)};
+                int scrollable=0;
                 for(SettingsScreen screen:screens){
                     screen.setWorldAndResolution(mc,427,240);
                     require(screen.panelW()==411&&screen.panelH()==224,"Settings panel is not the compact 470x272 frame");
                     require(screen.panelX()==8&&screen.panelY()==8,"Settings panel is not centred");
+                    // The scrollbar strip must be draggable, not just painted.
+                    if(screen.scrollMaxValue()>0){
+                        scrollable++;
+                        int sx=screen.panelX()+screen.panelW()-8,top=screen.contentTop(),bottom=screen.contentBottom();
+                        screen.mouseClicked(sx,bottom-2,0);
+                        require(screen.scrollValue()==screen.scrollMaxValue(),"Clicking the settings scrollbar did not reach the bottom");
+                        screen.mouseClickMove(sx,top,0,100);
+                        screen.mouseReleased(sx,top,0);
+                        require(screen.scrollValue()==0,"Dragging the settings scrollbar did not return to the top");
+                    }
                     final int[] picked={-1};
                     ChoiceButton choice=new ChoiceButton(screen,999,10,10,120,"Test",new String[]{"All","None","Only me"},0,v->picked[0]=v);
                     choice.mousePressed(mc,15,25);require(picked[0]==-1,"Selected choice changed value");
@@ -1430,6 +1482,7 @@ public final class OtlSmoke {
                     int tallScroll=ReflectionHelper.getPrivateValue(SettingsScreen.class,screen,"scroll");
                     require(tallScroll==Math.max(0,tallContent-(screen.contentBottom()-screen.contentTop())),"Resizing must clear excess scroll");
                 }
+                require(scrollable>0,"No settings screen scrolls, so the scrollbar test proved nothing");
                 // Region text: the editor element exists and its toggle flips the same flag the HUD reads.
                 HudLayout.Rect regionBox=HudEditor.bounds(HudLayout.REGION);
                 require(regionBox.w>0&&regionBox.h==12,"Region text has no HUD editor box");
@@ -1492,6 +1545,24 @@ public final class OtlSmoke {
                 require(VoteBook.pick(deaths.names,me)==deaths.names.size()-1,"The local player's own row was not preferred in the tie");
                 // No Killstreak in the block: that column is dropped, the other five stay.
                 require(vote.columns()==5,"Missing categories were not dropped: "+vote.columns());
+                // PGM can carry your value inside the tag: "(You: 12)". The whole tag must leave
+                // the name, and your value is drawn on its own last line instead.
+                line("Deaths: 5 by \u00a7czKiller \u00a77(You: 12)");
+                VoteBook.Stat taggedValue=VoteBook.matchStats.get("Deaths");
+                require(taggedValue!=null&&"zKiller".equals(taggedValue.names.get(0)),
+                    "A (You: N) tag was left inside the stat name: "+(taggedValue==null?null:taggedValue.names));
+                require("12".equals(taggedValue.you),"The (You: N) value was not read: "+(taggedValue==null?null:taggedValue.you));
+                require("".equals(VoteBook.youTag("\u00a77Alice (You)")),"A plain (You) tag was not read as empty");
+                require(VoteBook.youTag("xX(Youtube)Xx")==null,"A name containing (You...) was read as the tag");
+                require("xX(Youtube)Xx".equals(VoteBook.withoutYouTag("xX(Youtube)Xx")),"A name containing (You...) was stripped");
+                // A name can change colour part-way (rank tag, then the name). Every code has to
+                // survive, or the whole name is drawn in the first colour.
+                line("Assists: 3 by \u00a76\u00a7l[MOD]\u00a7r \u00a7cTwoTone");
+                VoteBook.Stat twoTone=VoteBook.matchStats.get("Assists");
+                require(twoTone!=null&&twoTone.styled.get(0).contains("\u00a76")&&twoTone.styled.get(0).contains("\u00a7c"),
+                    "A mid-name colour change was dropped: "+(twoTone==null?null:twoTone.styled));
+                // Back to the rank-prefixed tie the render assertions below expect.
+                line("Deaths: 8 by \u00a76\u00a7l[MOD]\u00a7r \u00a7c"+me+", \u00a7cavonpale");
                 // Every GUI scale: the vote screen must lay itself out without rows colliding.
                 for(int[] size:new int[][]{{427,240},{512,288},{640,360},{854,480},{960,540},{1280,720},{1920,1080}}){
                     vote.setWorldAndResolution(mc,size[0],size[1]);
@@ -1618,10 +1689,12 @@ public final class OtlSmoke {
             }else if(state==80){
                 java.util.List<TeamBar.Side> sides=TeamBar.sides(mc);
                 require(sides.size()==3,"Team Bar did not find all three teams: "+sides.size());
-                require("red".equals(sides.get(0).name),"The local player's team was not kept on the left: "+sides.get(0).name);
-                require(sides.get(0).members.size()==8&&sides.get(1).members.size()==75,"Team Bar kept the wrong teams");
-                require(sides.get(0).members.contains("GhostLeaver"),"A leaver was dropped before the grace ran out");
-                require(sides.get(0).members.get(0).equals(mc.thePlayer.getName()),"The local player's own head was not first: "+sides.get(0).members);
+                // Fixed order by team name, so a team's column can never change during a match.
+                require("blue".equals(sides.get(0).name)&&"green".equals(sides.get(1).name)&&"red".equals(sides.get(2).name),
+                    "Teams were not in a fixed name order: "+sides.get(0).name+"/"+sides.get(1).name+"/"+sides.get(2).name);
+                require(sides.get(0).members.size()==75&&sides.get(2).members.size()==8,"Team Bar kept the wrong teams");
+                require(sides.get(2).members.contains("GhostLeaver"),"A leaver was dropped before the grace ran out");
+                require(sides.get(2).members.get(0).equals(mc.thePlayer.getName()),"The local player's own head was not first in its own team: "+sides.get(2).members);
                 for(TeamBar.Side side:sides)require(!"observers".equals(side.name),"The observer team became a side");
                 require(TeamBar.dead("RedPlayer0"),"A grey tab-list name was not read as dead");
                 require(!TeamBar.dead("RedPlayer1"),"A team-coloured tab-list name was read as dead");
@@ -1629,27 +1702,30 @@ public final class OtlSmoke {
                 TeamBar.Timer limit=TeamBar.INSTANCE.timer(mc);
                 require(limit!=null&&limit.seconds>=597&&limit.seconds<=600,"Team Bar did not read the sidebar timer: "+(limit==null?"none":limit.label));
                 require(limit.countdown,"Time-limit timer was not marked as a countdown");
-                require(TeamBar.headSize(1)==16&&TeamBar.headSize(10)==16&&TeamBar.headSize(75)<16,"Head size does not shrink after ten players");
+                require(TeamBar.headSize(1)==16&&TeamBar.headSize(75)==16,"Heads shrank instead of wrapping to another row");
                 TeamBar.Bar bar=TeamBar.INSTANCE.bar(mc,false);
-                require(bar.left.size()==2&&bar.right.size()==1,"Three teams were not stacked one row each: "+bar.left.size()+"/"+bar.right.size());
-                require(bar.left.get(0).size()==5&&bar.right.get(0).size()==5,"Players shown was not applied: "+bar.left.get(0).size()+"/"+bar.right.get(0).size());
-                require(bar.left.get(1).size()==2,"The third team was not drawn as its own row");
+                require(bar.left.size()==2&&bar.right.size()==1,"Three teams were not stacked one block each: "+bar.left.size()+"/"+bar.right.size());
+                require(bar.left.get(0).size()==5&&bar.right.get(0).size()==2,"Players shown was not applied: "+bar.left.get(0).size()+"/"+bar.right.get(0).size());
+                require(bar.left.get(1).size()==5,"The third team was not drawn as its own block");
+                // Columns follow the fixed name order, not the local player or team sizes.
+                require(bar.left.get(1).contains(mc.thePlayer.getName()),"The local team's block is not in the column the fixed order gives it");
+                require(bar.left.get(1).get(0).equals(mc.thePlayer.getName()),"The local head was not at the inner end of a left block: "+bar.left.get(1));
                 // The clock must not move when the two columns hold different amounts.
                 require(bar.textX+bar.textW/2==bar.width/2,"The clock is not centred between the team columns");
-                // The right column mirrors the left: short rows hug the right edge instead of hanging left.
+                // Rows are flush against the clock and grow outward, so no gap ever sits next to it.
                 java.util.List<String> shortRow=java.util.Arrays.asList("A","B"),longRow=java.util.Arrays.asList("A","B","C","D","E");
                 TeamBar.Bar mirror=new TeamBar.Bar(java.util.Collections.singletonList(shortRow),
                     java.util.Arrays.asList(longRow,shortRow),16,0,null,"");
-                require(mirror.rightStart(longRow)==mirror.rightX,"The widest right row did not start at the column");
-                require(mirror.rightStart(shortRow)>mirror.rightX,"A short right row was not pushed towards the right edge");
-                require(mirror.rightStart(shortRow)+mirror.advance+16==mirror.width,"A right row did not end at the bar's right edge");
+                require(mirror.rightStart(longRow)==mirror.rightX&&mirror.rightStart(shortRow)==mirror.rightX,"A right row was not flush with the clock");
+                require(mirror.leftStart(longRow)==mirror.column-((longRow.size()-1)*mirror.advance+16),"A left row was not flush with the clock");
+                require(mirror.leftStart(shortRow)+((shortRow.size()-1)*mirror.advance+16)==mirror.column,"A short left row left a gap next to the clock");
                 // Stacked teams must be visibly apart, not butted into one block of heads.
                 require(mirror.height==2*16+TeamBar.ROW_GAP,"Stacked team rows were not separated: "+mirror.height);
-                // Team-colour line: on the outer edge of each column, clock still centred.
+                // Team-colour line: at each row's own outer end, clock still centred.
                 java.util.List<java.util.List<String>> oneRow=java.util.Collections.singletonList(longRow);
                 TeamBar.Bar lined=new TeamBar.Bar(oneRow,oneRow,16,24,null,"",7);
-                require(lined.leftStart()==7,"The left team line did not sit on the very left");
-                require(lined.rightStart(longRow)+(longRow.size()-1)*lined.advance+16==lined.width-7,"The right team line did not sit on the very right");
+                require(lined.leftLine(longRow)==0,"The left team line did not sit on the row's outer end");
+                require(lined.rightLine(longRow)+(7-2)==lined.width,"The right team line did not sit on the row's outer end");
                 require(lined.textX+lined.textW/2==lined.width/2,"The team line moved the clock off centre");
                 boolean lineSetting=UtilitySettings.teamBarTeamColor;
                 UtilitySettings.teamBarTeamColor=true;
@@ -1657,13 +1733,16 @@ public final class OtlSmoke {
                 UtilitySettings.teamBarTeamColor=false;
                 int withoutLine=TeamBar.INSTANCE.bar(mc,false).width;
                 require(withLine>withoutLine,"Turning the team colour line on did not make room for it: "+withLine+" vs "+withoutLine);
-                require(TeamBar.teamColour(mc,sides.get(0).members)==0xFFFF5555,"The team colour line did not read the team's colour: "+Integer.toHexString(TeamBar.teamColour(mc,sides.get(0).members)));
-                require(TeamBar.teamColour(mc,sides.get(1).members)==0xFF5555FF,"The second team got the wrong colour");
+                require(TeamBar.teamColour(mc,sides.get(2).members)==0xFFFF5555,"The team colour line did not read the team's colour: "+Integer.toHexString(TeamBar.teamColour(mc,sides.get(2).members)));
+                require(TeamBar.teamColour(mc,sides.get(0).members)==0xFF5555FF,"The second team got the wrong colour");
                 UtilitySettings.teamBarTeamColor=lineSetting;
                 require(bar.head==16,"Five heads per side were not kept at full size");
                 UtilitySettings.teamBarPlayers=75;
                 TeamBar.Bar wide=TeamBar.INSTANCE.bar(mc,false);
-                require(wide.right.get(0).size()==75&&wide.head<16,"Seventy-five players did not shrink the heads");
+                // Ten heads fill a row; a bigger team wraps onto the rows below at full size.
+                require(wide.left.get(0).size()==TeamBar.MAX_PER_ROW,"A full row did not hold ten heads: "+wide.left.get(0).size());
+                require(wide.left.size()>=8,"Seventy-five players did not wrap onto rows below: "+wide.left.size());
+                require(wide.head==16,"Wrapped rows shrank the heads instead of using another row");
                 require(wide.textX+wide.textW/2==wide.width/2,"The clock moved when the rows grew");
                 require(wide.width<=new ScaledResolution(mc).getScaledWidth()-8,"The full bar spills off the screen");
                 UtilitySettings.teamBarPlayers=5;
@@ -1671,7 +1750,7 @@ public final class OtlSmoke {
                 require(box.y<=8&&box.x>=4&&box.x+box.w<=new ScaledResolution(mc).getScaledWidth()-4,"Team Bar HUD bounds are off screen");
                 require(Math.abs(box.x+box.w/2-new ScaledResolution(mc).getScaledWidth()/2)<=2,"Team Bar does not default to top centre");
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-team-bar.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
-                // Many teams keep stacking downward; the heads shrink so the stack still fits the screen.
+                // Many teams keep stacking downward; a stack taller than the screen shrinks to fit.
                 net.minecraft.scoreboard.Scoreboard many=mc.theWorld.getScoreboard();
                 for(int i=0;i<24;i++){
                     String extra="extra"+i;
@@ -1682,18 +1761,17 @@ public final class OtlSmoke {
                 TeamBar.Bar stacked=TeamBar.INSTANCE.bar(mc,false);
                 int rows=Math.max(stacked.left.size(),stacked.right.size());
                 require(rows==14,"Twenty-seven teams were not stacked one row each: "+rows);
-                require(stacked.head<16,"A tall stack did not shrink the heads: "+stacked.head);
                 require(stacked.height<=new ScaledResolution(mc).getScaledHeight()-8,"The team stack spills off the screen: "+stacked.height);
                 for(int i=0;i<24;i++)if(many.getTeam("extra"+i)!=null)many.removeTeam(many.getTeam("extra"+i));
                 // Respawn: the server puts the team colour back, so the head must clear itself.
                 tabEntry(mc,"RedPlayer0","\u00a7cRedPlayer0");
                 // A death that drops the player from the team must not make the head vanish.
                 mc.theWorld.getScoreboard().removePlayerFromTeam("AAAPlayer",mc.theWorld.getScoreboard().getTeam("red"));
-                require(TeamBar.sides(mc).get(0).members.contains("AAAPlayer"),"A dead player's head vanished from the bar");
+                require(side(TeamBar.sides(mc),"red").members.contains("AAAPlayer"),"A dead player's head vanished from the bar");
                 mc.theWorld.getScoreboard().addPlayerToTeam("AAAPlayer","red");
                 // Changing team moves the head; it must not be left behind on the old row.
                 mc.theWorld.getScoreboard().addPlayerToTeam("AAAPlayer","blue");
-                require(!TeamBar.sides(mc).get(0).members.contains("AAAPlayer"),"A player who changed team stayed on the old row");
+                require(!side(TeamBar.sides(mc),"red").members.contains("AAAPlayer"),"A player who changed team stayed on the old row");
                 // Going to the observers removes the head from the teams entirely.
                 mc.theWorld.getScoreboard().addPlayerToTeam("AAAPlayer","observers");
                 for(TeamBar.Side side:TeamBar.sides(mc))require(!side.members.contains("AAAPlayer"),"An observer was left on a team row");
@@ -1718,6 +1796,11 @@ public final class OtlSmoke {
                 sidebar(mc.theWorld.getScoreboard(),mc.theWorld.getScoreboard().getObjective("otl_teambar"),"Time Remaining: 9:50");
                 TeamBar.Timer stillFrozen=TeamBar.INSTANCE.timer(mc,now+9_000_000_000L);
                 require("9:58".equals(stillFrozen.label),"A server update moved the stopped clock: "+stillFrozen.label);
+                // The next map's count-in must not overwrite the final time; only the map change does.
+                net.minecraft.entity.boss.BossStatus.bossName="Match starting in 10 seconds";
+                TeamBar.Timer heldThroughCountIn=TeamBar.INSTANCE.timer(mc,now+9_500_000_000L);
+                require("9:58".equals(heldThroughCountIn.label)&&!heldThroughCountIn.starting,"The count-in overwrote the ended match's final time: "+heldThroughCountIn.label);
+                net.minecraft.entity.boss.BossStatus.bossName=null;
                 line("The match has started!");
                 TeamBar.Timer resumed=TeamBar.INSTANCE.timer(mc,now+10_000_000_000L);
                 require(resumed!=null&&"9:50".equals(resumed.label),"The clock did not resume for the next match: "+(resumed==null?"none":resumed.label));
@@ -1728,12 +1811,30 @@ public final class OtlSmoke {
                 TeamBar.Timer changed=TeamBar.INSTANCE.timer(mc,now+11_000_000_000L);
                 require(changed!=null&&"0:00".equals(changed.label),"The clock did not reset to 0:00 on a map change: "+(changed==null?"none":changed.label));
                 require(changed.starting,"The reset clock was not treated as pre-match");
-                require(TeamBar.INSTANCE.bar(mc,false)==null,"Heads were drawn while the new map loaded");
+                // Counting in: the clock shows alone, no heads yet, so nothing suggests teams are set.
+                TeamBar.Bar countingIn=TeamBar.INSTANCE.bar(mc,false);
+                require(countingIn!=null&&countingIn.left.isEmpty()&&countingIn.right.isEmpty(),"Heads were drawn while the new map loaded");
                 // Then PGM counts the next match in from there.
                 net.minecraft.entity.boss.BossStatus.bossName="Match starting in 10 seconds";
                 TeamBar.Timer next=TeamBar.INSTANCE.timer(mc,now+12_000_000_000L);
                 require(next!=null&&next.starting&&"0:10".equals(next.label),"The new map's countdown did not take over: "+(next==null?"none":next.label));
+                // Two sources that disagree must not fight over the display: the first one that
+                // reported a clock keeps it, so the number cannot jump between them.
+                sidebar(mc.theWorld.getScoreboard(),mc.theWorld.getScoreboard().getObjective("otl_teambar"),"Time Remaining: 9:20");
+                TeamBar.Timer locked=TeamBar.INSTANCE.timer(mc,now+12_000_000_000L);
+                require(locked!=null&&"0:10".equals(locked.label),"A second clock source overwrote the locked one: "+(locked==null?"none":locked.label));
+                // When the locked source disappears, the next one carries on instead of stopping.
                 net.minecraft.entity.boss.BossStatus.bossName=null;
+                TeamBar.Timer handedOver=TeamBar.INSTANCE.timer(mc,now+12_000_000_000L);
+                require(handedOver!=null&&"9:20".equals(handedOver.label),"The clock did not hand over to the next source: "+(handedOver==null?"none":handedOver.label));
+                sidebar(mc.theWorld.getScoreboard(),mc.theWorld.getScoreboard().getObjective("otl_teambar"),"Players: 24");
+                // Clock colours: red count-in, yellow limit, red in the last 25 seconds, white count-up.
+                require(TeamBar.colour(next)==TeamBar.RED,"The count-in was not red");
+                require(TeamBar.colour(new TeamBar.Timer("5:00",300,true,false))==TeamBar.YELLOW,"A limit with time left was not yellow");
+                require(TeamBar.colour(new TeamBar.Timer("0:26",26,true,false))==TeamBar.YELLOW,"A limit just above 25 seconds turned red too early");
+                require(TeamBar.colour(new TeamBar.Timer("0:25",25,true,false))==TeamBar.RED,"25 seconds left was not red");
+                require(TeamBar.colour(new TeamBar.Timer("0:00",0,true,false))==TeamBar.RED,"The last second was not red");
+                require(TeamBar.colour(new TeamBar.Timer("0:25",25,false,false))==TeamBar.WHITE,"A count-up was coloured like a time limit");
             }else if(state==82){
                 net.minecraft.entity.boss.BossStatus.bossName="Time Remaining: 9:50";
                 UtilitySettings.teamBarHideBoss=true;
@@ -1755,7 +1856,7 @@ public final class OtlSmoke {
                 tabEntry(mc,"GhostLeaver","\u00a7cGhostLeaver");
                 TeamBar.sides(mc); // the bar sees the leaver online, so the grace starts here
                 removeTabEntry(mc,"GhostLeaver");
-                require(TeamBar.sides(mc).get(0).members.contains("GhostLeaver"),"A leaver was dropped before the grace ran out");
+                require(side(TeamBar.sides(mc),"red").members.contains("GhostLeaver"),"A leaver was dropped before the grace ran out");
                 for(TeamBar.Side side:TeamBar.sides(mc,System.nanoTime()+TeamBar.LEFT_GRACE+1_000_000_000L))
                     require(!side.members.contains("GhostLeaver"),"A player who left the server was drawn forever");
                 // Between matches: PGM writes a bare "0:00" into an idle scoreboard, which is not a clock.
@@ -1765,18 +1866,21 @@ public final class OtlSmoke {
                 // The hub has scoreboard teams too, so no match clock means no heads at all.
                 require(TeamBar.INSTANCE.bar(mc,false)==null,"Team Bar drew heads with no match running");
                 require(TeamBar.INSTANCE.bar(mc,true)!=null,"The HUD editor lost its preview without a match");
-                // Then PGM counts the next one in; that count lands in the middle in red.
+                // Then PGM loads the next map; the count-in lands in the middle in red.
                 line("Game over!");
                 net.minecraft.scoreboard.ScoreObjective board=mc.theWorld.getScoreboard().getObjective("otl_teambar");
                 sidebar(mc.theWorld.getScoreboard(),board,"Players: 24"); // no clock in the sidebar here
+                line("Playing Allure"); // the map change is what clears the ended match
                 net.minecraft.entity.boss.BossStatus.bossName="Match starting in 10 seconds";
                 long now=System.nanoTime();
                 TeamBar.Timer starting=TeamBar.INSTANCE.timer(mc,now);
                 require(starting!=null&&starting.starting,"The match-start countdown was not recognised: "+(starting==null?"none":starting.label));
                 require("0:10".equals(starting.label),"The countdown did not start at ten: "+starting.label);
                 require(starting.countdown,"The countdown was not marked as a countdown");
-                // The hub runs the same countdown, so it must not earn heads before the match.
-                require(TeamBar.INSTANCE.bar(mc,false)==null,"Heads were drawn during the pre-match countdown");
+                require(TeamBar.colour(starting)==TeamBar.RED,"The match-start countdown was not red");
+                // The count-in shows the clock alone: heads would suggest the teams are set.
+                TeamBar.Bar countingBar=TeamBar.INSTANCE.bar(mc,false);
+                require(countingBar!=null&&countingBar.left.isEmpty()&&countingBar.right.isEmpty(),"Heads were drawn during the pre-match countdown");
                 require(TeamBar.INSTANCE.bar(mc,true)!=null,"The HUD editor lost its preview during a countdown");
                 require("0:07".equals(TeamBar.INSTANCE.timer(mc,now+3_000_000_000L).label),"The countdown did not tick locally");
                 // At zero the match clock takes over: a map with no limit counts up from 0:00 in white.
@@ -1820,16 +1924,29 @@ public final class OtlSmoke {
                 // Respawn: a live body in the world clears the fade even if the tab name is still grey.
                 String me=mc.thePlayer.getName();
                 require(mc.getNetHandler().getPlayerInfo(me)!=null,"The local player is missing from the tab list");
-                // Your own head greys the moment the death screen appears, even though PGM keeps
-                // your own tab name in the team colour.
+                // Your own head follows the same two signals as everyone else's: the local body
+                // when it knows, and the server's grey tab name when PGM's dead state leaves the
+                // body looking alive.
                 mc.displayGuiScreen(new net.minecraft.client.gui.GuiGameOver());
                 require(TeamBar.dead(me),"The local player's own head did not grey out on death");
                 mc.displayGuiScreen(null);
                 require(!TeamBar.dead(me),"The local player's head stayed grey after respawn");
-                String before=TeamBar.tabName(mc.getNetHandler().getPlayerInfo(me));
-                tabEntry(mc,me,"\u00a77"+me);
-                require(!TeamBar.dead(me),"A respawned player stayed faded behind a stale grey tab name");
-                tabEntry(mc,me,before);
+                net.minecraft.client.network.NetworkPlayerInfo self=mc.getNetHandler().getPlayerInfo(me);
+                String before=TeamBar.tabName(self);
+                self.setDisplayName(new ChatComponentText("\u00a77"+me));
+                require(TeamBar.dead(me),"The server's grey tab name did not grey the local player's head");
+                self.setDisplayName(before==null?null:new ChatComponentText(before));
+                require(!TeamBar.dead(me),"The local player's head stayed grey after the tab name cleared");
+                // A respawning player is already back in the world, but PGM keeps the grey tab name
+                // until the respawn finishes: the head must stay grey with the name, not clear early.
+                net.minecraft.client.entity.EntityOtherPlayerMP respawning=new net.minecraft.client.entity.EntityOtherPlayerMP(mc.theWorld,
+                    new com.mojang.authlib.GameProfile(java.util.UUID.randomUUID(),"RespawningMate"));
+                mc.theWorld.addEntityToWorld(-9103,respawning);
+                tabEntry(mc,"RespawningMate","\u00a77RespawningMate");
+                require(TeamBar.dead("RespawningMate"),"A live body cleared the head while the tab name was still grey");
+                removeTabEntry(mc,"RespawningMate");
+                require(!TeamBar.dead("RespawningMate"),"A live body was read as dead without a tab entry");
+                mc.theWorld.removeEntityFromWorld(-9103);
             }else if(state==87){
                 // Auto GG: never say gg while the map is starting.
                 ggBaseline=AutoGg.INSTANCE.sentCount;

@@ -162,7 +162,9 @@ final class VoteScreen extends GuiScreen {
                     ABBR[slot]+" "+stat.value},room),cx,labelY,0xFFAAAAAA);
                 if(extra>0)drawCenteredString(fontRendererObj,"\u00a77and "+extra+" more...",cx,moreY,0xFFAAAAAA);
                 // "(You)" sits on its own last line, so it never eats room from the rank name.
-                if(VoteBook.you(stat.names.get(pick),local)){drawCenteredString(fontRendererObj,"\u00a77(You)",cx,youY,0xFFAAAAAA);youSlot=slot;}
+                // PGM's "(You: 12)" tag keeps your value on that line instead of inside the name.
+                String own=stat.you!=null?stat.you:(VoteBook.you(stat.names.get(pick),local)?"":null);
+                if(own!=null){drawCenteredString(fontRendererObj,"\u00a77(You"+(own.isEmpty()?"":": "+own)+")",cx,youY,0xFFAAAAAA);youSlot=slot;}
                 drawnName[slot]=shownName;
                 names[slot]=new int[]{cx-fontRendererObj.getStringWidth(shownName)/2,nameY-2,cx+fontRendererObj.getStringWidth(shownName)/2,moreY+10,extra,slot};
             }else{

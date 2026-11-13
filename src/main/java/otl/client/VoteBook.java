@@ -54,6 +54,8 @@ final class VoteBook {
     private static final Pattern STANDINGS=Pattern.compile("^\\[[\u2714\u2715\u2717\u2718xX\u00d7]\\s*(\\d+)\\]\\s*(.+)$");
     /** "Most kills: 47 by Alice", "Longest Shot: 53 blocks by X", "Damage: 177.73\u2764 by X". */
     private static final Pattern STAT=Pattern.compile("^\\s*(?:Most\\s+)?(Kills?|Deaths?|Assists?|Damage(?:\\s+dealt)?|Killstreak|Longest\\s+shot(?:\\s+distance)?)\\s*[:=-]\\s*([0-9]+(?:\\.[0-9]+)?)\\s*(?:blocks?|hearts?|hp)?\\s*[^\\w\\s]*\\s*(?:by\\s+)?(.+?)\\s*$",Pattern.CASE_INSENSITIVE);
+    /** PGM's own tag inside a stats name: "(You)", or "(You: 12)" carrying your own value. */
+    private static final Pattern YOU=Pattern.compile("(?i)\\(\\s*you\\b([^)]*)\\)?");
     private static final Pattern LINK=Pattern.compile("Match link\\s*:\\s*(https?://\\S+)");
     private static final Pattern SUPERVOTES=Pattern.compile("(?i)(?:super\\s*votes?|votes?\\s*left)\\s*[:x-]?\\s*(\\d+)|(?:\\b(\\d+)\\s+super\\s*votes?)");
     private VoteBook(){}
@@ -156,9 +158,13 @@ final class VoteBook {
         Stat stat=matchStats.get(key);
         if(stat==null||!stat.value.equals(value)){stat=new Stat(value);matchStats.put(key,stat);}
         for(String display:names){
-            // PGM tags your own row with "(You)" inside the name; the screen draws its own line
-            // for it instead. The tag carries its own colour codes, so they are trimmed with it.
-            String plain=withoutYouTag(ChatRules.plain(display)).trim();
+            // PGM tags your own row inside the name, either "(You)" or "(You: 12)" with your own
+            // value; the screen draws that on its own last line instead. The tag carries its own
+            // colour codes, so they are trimmed with it.
+            String tagged=ChatRules.plain(display);
+            String own=youTag(tagged);
+            if(own!=null)stat.you=own;
+            String plain=withoutYouTag(tagged).trim();
             display=withoutYouTag(display);
             if(!plain.isEmpty())stat.add(plain,display);
         }
@@ -175,6 +181,9 @@ final class VoteBook {
                 char code=Character.toLowerCase(styled.charAt(i+1));
                 if(((code>='0'&&code<='9')||(code>='a'&&code<='f')||code=='r'))style.setLength(0);
                 style.append(c).append(styled.charAt(i+1));
+                // A colour change in the middle of a name belongs to that name, so it goes into
+                // the current name too. Dropping it here flattened every name to its first colour.
+                if(current.length()>0)current.append(c).append(styled.charAt(i+1));
                 i+=2;continue;
             }
             boolean separator=c==','||c=='&'||(c==' '&&styled.regionMatches(true,i," and ",0,5));
@@ -223,9 +232,26 @@ final class VoteBook {
             &&(at==0||!Character.isLetterOrDigit(name.charAt(at-1)));
     }
 
-    /** Drops PGM's "(You)" marker, which it writes inside the name and with its own colour codes. */
+    /**
+     * Drops PGM's "(You)" / "(You: 12)" marker, which it writes inside the name with its own
+     * colour codes. The whole tag has to go: stripping only "(You" left the value glued to the
+     * name as ": 12)", which is what showed up as "Name: 12" in the vote screen.
+     */
     static String withoutYouTag(String text){
-        return text==null?null:text.replaceAll("(?i)(?:\u00a7.)*\\s*\\(you\\)?","");
+        return text==null?null:text.replaceAll("(?i)(?:\u00a7.)*\\s*\\(\\s*you\\b[^)]*\\)?","");
+    }
+
+    /**
+     * Your own value from that tag: "" for a plain "(You)", "12" for "(You: 12)", null when the
+     * name carries no tag. The value sits after the "you" word, usually behind a colon.
+     */
+    static String youTag(String text){
+        if(text==null)return null;
+        Matcher m=YOU.matcher(text);
+        if(!m.find())return null;
+        String value=m.group(1)==null?"":m.group(1).trim();
+        if(value.startsWith(":"))value=value.substring(1).trim();
+        return value;
     }
 
     /** Which tied player to show as the column's model: you, when you are in the tie. */
@@ -239,6 +265,8 @@ final class VoteBook {
         final String value;
         final List<String> names=new ArrayList<>();
         final List<String> styled=new ArrayList<>();
+        /** Your own value from a "(You: 12)" tag, "" for a plain "(You)", null when untagged. */
+        String you;
         Stat(String value){this.value=value;}
         void add(String plain,String display){
             for(String known:names)if(known.equalsIgnoreCase(plain))return;

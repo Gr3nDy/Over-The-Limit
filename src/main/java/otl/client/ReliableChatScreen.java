@@ -41,7 +41,7 @@ final class ReliableChatScreen extends GuiChat {
         draggingScroll=null;
         if(boundView!=null)storeDraft();restoreDraft();view.unread=0;return true;
     }
-    @Override public void onGuiClosed(){if(inputField!=null&&ReliableChat.active())storeDraft();super.onGuiClosed();ReliableChat.restoreTemporaryChannel();}
+    @Override public void onGuiClosed(){if(inputField!=null&&ReliableChat.active())storeDraft();if(ReliableChat.active())ReliableChat.currentView().bottom();super.onGuiClosed();ReliableChat.restoreTemporaryChannel();}
     @Override public void sendChatMessage(String msg,boolean addToChat){
         if(!ReliableChat.active()){super.sendChatMessage(msg,addToChat);return;}
         // A transfer may happen between reading the input and sending it. Never publish a stale PM draft.
@@ -99,16 +99,27 @@ final class ReliableChatScreen extends GuiChat {
         int moreW=Math.min(width-left-2,Math.max(26,fontRendererObj.getStringWidth(more)+8));
         tabs.add(new Tab("overflow",left,moreW));drawRect(left,top,left+moreW,top+17,ChatAppearance.tabColor(0xDD252525,UtilitySettings.typingTabBackgroundOpacity));drawString(fontRendererObj,more,left+4,top+5,FaceUi.TEXT);
         }
-        ReliableChat.View current=s.view();
-        if(current.scroll()>0&&current.newBelow>0){String label="New messages \u2193";int w=fontRendererObj.getStringWidth(label)+12;drawRect(4,height-51,4+w,height-36,0xEE303030);drawString(fontRendererObj,label,10,height-47,FaceUi.TEXT);}
         items.clear();if(overflow||context!=null)drawMenu(s);
-        ChatScroll.Bar bar=scrollbar();
+        ChatScroll.Bar bar=UtilitySettings.chatScrollbar?scrollbar():null;
         if(bar!=null){
-            drawRect(bar.x,bar.top,bar.x+9,bar.top+bar.height,0xB0202020);
-            drawRect(bar.x+1,bar.thumbTop,bar.x+8,bar.thumbTop+bar.thumbHeight,0xE0BBBBBB);
-            drawString(fontRendererObj,"^",bar.x+2,bar.top+1,0xFFFFFFFF);drawString(fontRendererObj,"v",bar.x+2,bar.top+bar.height-9,0xFFFFFFFF);
+            // A slim pill instead of the old boxed bar with ^/v arrows: a barely-there track and
+            // a rounded thumb. The hit box stays 9px wide so it is still easy to grab.
+            pill(bar.x+3,bar.trackTop,3,bar.trackHeight,0x40000000);
+            pill(bar.x+1,bar.thumbTop,7,bar.thumbHeight,draggingScroll!=null?0xF0FFFFFF:0xB0E8E8E8);
         }
     }
+    /**
+     * A rounded-ended bar: the middle is full width, the first and last rows are inset by one
+     * pixel on each side. At 3-7px wide that reads as a pill without any texture or shader.
+     */
+    private static void pill(int x,int y,int w,int h,int colour){
+        if(h<=0)return;
+        drawRect(x+1,y,x+w-1,y+h,colour);
+        if(h>=3){
+            drawRect(x,y+1,x+w,y+h-1,colour);
+        }
+    }
+
     private void drawMenu(ReliableChat.Session s){
         int w=Math.min(210,width-8),x=Math.max(4,Math.min(menuX,width-w-4));menuX=x;
         List<String> hidden=new ArrayList<>();
@@ -135,13 +146,12 @@ final class ReliableChatScreen extends GuiChat {
     @Override protected void mouseClicked(int x,int y,int button)throws IOException{
         if(!ReliableChat.active()){super.mouseClicked(x,y,button);return;}
         syncView();
-        if(button==0&&!overflow&&context==null){
+        if(button==0&&!overflow&&context==null&&UtilitySettings.chatScrollbar){
             ChatScroll.Bar bar=scrollbar();
             if(bar!=null&&bar.contains(x,y)){
                 ReliableChat.View v=ReliableChat.currentView();
-                if(y<bar.trackTop)v.scrollTo(v.scroll()+1);
-                else if(y>=bar.top+bar.height-10)v.scrollTo(v.scroll()-1);
-                else{draggingScroll=v;scrollGrab=y>=bar.thumbTop&&y<bar.thumbTop+bar.thumbHeight?y-bar.thumbTop:bar.thumbHeight/2;v.scrollTo(bar.offset(y,scrollGrab));}
+                // No arrows any more: clicking the track grabs the thumb there and starts a drag.
+                draggingScroll=v;scrollGrab=y>=bar.thumbTop&&y<bar.thumbTop+bar.thumbHeight?y-bar.thumbTop:bar.thumbHeight/2;v.scrollTo(bar.offset(y,scrollGrab));
                 return;
             }
         }
@@ -156,8 +166,6 @@ final class ReliableChatScreen extends GuiChat {
                 if(button==0)select(tab.key);return;
             }
         }
-        ReliableChat.View v=ReliableChat.currentView();
-        if(button==0&&v.scroll()>0&&v.newBelow>0&&x>=4&&x<=fontRendererObj.getStringWidth("New messages \u2193")+16&&y>=height-51&&y<height-36){v.bottom();return;}
         if(overflow||context!=null){overflow=false;context=null;confirm=null;return;}
         super.mouseClicked(x,y,button);
     }

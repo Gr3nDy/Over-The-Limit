@@ -4,7 +4,7 @@
 
 **Current release:** [v0.3.8](https://github.com/Gr3nDy/Over-The-Limit/releases/tag/v0.3.8) · **Source:** [github.com/Gr3nDy/Over-The-Limit](https://github.com/Gr3nDy/Over-The-Limit) (branch `beta`)
 
-**New in v0.3.8:** Team Bar (stacked per-team heads with the match clock), Custom Votebook with a `(You)` line, reset buttons moved into each module body, and the chat background slider removed. Full list in the [changelog](../CHANGELOG.md).
+**New in v0.3.8:** Team Bar (stacked per-team heads with the match clock), Custom Votebook with a `(You)` line, a slimmer toggleable chat scrollbar, reset buttons moved into each module body, and the chat background slider removed. Full list in the [changelog](../CHANGELOG.md).
 
 ## Installing
 
@@ -48,7 +48,8 @@ A tabbed chat with channel history, drafts, and optional team speech bubbles.
 
 **Appearance:**
 - **Tabs – not typing** and **Tabs – typing** — separate opacity sliders for idle and focused states, plus a reset to 25%.
-- Chat lines themselves are drawn without a background box.
+- **Chat scrollbar** — the slim pill you drag to browse history; turn it off to hide it entirely.
+- Chat lines themselves are drawn without a background box, and closing the chat returns the history to the newest message.
 
 ### Map Preview — ON by default
 
@@ -67,10 +68,12 @@ Shows previews of map names announced in chat, `/map` commands, and vote books.
 
 One row of player heads per team at the top centre, stacked, with the match clock in the middle.
 
-- **Team Bar** master switch; heads only appear during a real match, never in the hub.
-- **Layout** — one row per team, alternating left and right columns. Your own team takes the left column and your own head always leads it. Left rows read left-to-right, right rows right-to-left, so both hug the bar's outer edge.
-- **Any number of teams** — rows keep stacking downward and the heads shrink until the whole stack fits the screen. A small gap separates stacked rows.
-- **Clock** — read live from PGM (boss bar, then sidebar, then tab footer) and ticked locally between server updates. **Yellow** for a time limit, **white** for a count-up, **red** for the match-start countdown. Freezes at match end, resumes on the next match, and resets to `0:00` when the map changes.
+- **Team Bar** master switch; heads only appear during a real match, never in the hub. During the match-start count-in the clock shows alone.
+- **Layout** — teams are listed in a fixed order by team name, so a team keeps its column for the whole match and the bar never reshuffles when somebody joins or leaves. Rows alternate left and right: the left column is flush against the clock and grows leftward, the right column is flush against the clock and grows rightward, so no empty space ever sits next to the clock.
+- **Ten heads per row** — a bigger team wraps onto the rows below at full size instead of shrinking its heads.
+- **Your own head** always leads its team, at the inner end of a left block and at the outer end of a right block.
+- **Any number of teams** — rows keep stacking downward. Ten heads fill a row and the rest wrap onto the rows below, so heads stay full size.
+- **Clock** — read live from PGM (boss bar, then sidebar, then tab footer) and ticked locally between server updates. **Yellow** for a time limit, **red** in its last 25 seconds, **red** for the match-start countdown, **white** for a count-up. It freezes at match end and holds that final time until the map changes, then resets to `0:00`.
 - **Dead players** fade to grey and clear on respawn; a head never disappears on death. Players who leave, go to the observers or change team are moved or removed.
 - **Team colour line** (ON by default) — a thin vertical bar in the team's own colour beside each row, on the bar's outer edge.
 - **Hide bossbar** — hides PGM's boss-bar clock while the Team Bar shows it.
@@ -83,7 +86,8 @@ Replaces the written vote book with a compact panel.
 
 - Map cards with previews and vote counts, and a **Supervote** button that unlocks once you have voted.
 - **Match Stats** row — one column per category, each with the leading player's head, name and value, plus `and N more...` for ties.
-- Your own row shows **`(You)`** on its own last line, under the value, in every column where you appear.
+- Your own row shows **`(You)`** on its own last line, under the value, in every column where you appear. If PGM sends `(You: 12)` with your own value, that line reads `(You: 12)` and your name stays clean.
+- Names keep their full chat styling, so a rank tag and a differently coloured name both show in their own colours.
 - **Match link** to the match page, and map **favorites** with a star on the card.
 
 ### Prefered Hand — OFF by default

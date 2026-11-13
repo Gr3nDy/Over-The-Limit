@@ -53,20 +53,19 @@ public final class ReliableChat {
     @SubscribeEvent public void worldUnload(WorldEvent.Unload e){if(e.world.isRemote)contextDirty=true;}
     static final class View {
         final String key,name;final GuiNewChat hud=new QuietChat();
-        int unread,newBelow;long used,activity;boolean closed;String draft="";
+        int unread;long used,activity;boolean closed;String draft="";
         View(String key,String name){this.key=key;this.name=name;}
         void append(IChatComponent text,int id,boolean own){
             // The selected channel is already the user's active channel even when the
             // chat screen is closed, so messages in it must not create an unread badge.
             boolean reading=active()&&session().selected.equals(key);
             if(!own&&!reading)unread=Math.min(100,unread+1);
-            if(scroll()>0&&!own)newBelow++;
             hud.printChatMessageWithOptionalDeletion(text,id);activity=++clock;
         }
         int scroll(){return ReflectionHelper.getPrivateValue(GuiNewChat.class,hud,"scrollPos","field_146250_j");}
-        void bottom(){hud.resetScroll();newBelow=0;unread=0;}
+        void bottom(){hud.resetScroll();unread=0;}
         int totalLines(){return ((QuietChat)hud).drawn.size();}
-        void scrollTo(int offset){((QuietChat)hud).position(offset);if(scroll()==0)newBelow=0;}
+        void scrollTo(int offset){((QuietChat)hud).position(offset);}
     }
     static final class TimedLine extends ChatLine {
         final long receivedAt;
@@ -160,7 +159,7 @@ public final class ReliableChat {
         }
         void clear(String key){
             View v=views.get(key);if(v==null)return;
-            if(key.startsWith("pm:")){v.unread=0;v.newBelow=0;v.draft="";visible.remove(key);views.remove(key);pending.remove(host+"|"+key);if(selected.equals(key))select(ChatRules.ALL);}
+            if(key.startsWith("pm:")){v.unread=0;v.draft="";visible.remove(key);views.remove(key);pending.remove(host+"|"+key);if(selected.equals(key))select(ChatRules.ALL);}
             else{v.hud.clearChatMessages();v.bottom();}
         }
         void clearPrivateExceptLatest(){
@@ -347,8 +346,6 @@ public final class ReliableChat {
                 mc.fontRendererObj.drawStringWithShadow(mc.fontRendererObj.trimStringToWidth(label,w-8),left+4,topY+4,0xFFFFFFFF);
                 left+=w;if(left>=box.w/scale)break;
             }
-            View current=s.view();
-            if(current.newBelow>0)mc.fontRendererObj.drawStringWithShadow("New messages",0,box.y+30*scale<sr.getScaledHeight()?19:-12,0xFFFFFF55);
             }finally{GlStateManager.popMatrix();}
         }
         private int font(Minecraft mc,String s){return mc.fontRendererObj.getStringWidth(s);}
@@ -372,8 +369,8 @@ public final class ReliableChat {
         @Override public void refreshChat(){original.refreshChat();for(Session s:sessions.values())for(View v:s.views.values())v.hud.refreshChat();}
         @Override public java.util.List<String> getSentMessages(){return original.getSentMessages();}
         @Override public void addToSentMessages(String text){original.addToSentMessages(text);}
-        @Override public void scroll(int n){target().scroll(n);if(active()&&currentView().scroll()==0)currentView().newBelow=0;}
-        @Override public void resetScroll(){if(!active())original.resetScroll();}
+        @Override public void scroll(int n){target().scroll(n);}
+        @Override public void resetScroll(){original.resetScroll();}
         @Override public IChatComponent getChatComponent(int x,int y){
             mirror();
             if(active()&&MinecraftAccess.get().currentScreen instanceof ReliableChatScreen)y-=18*new ScaledResolution(MinecraftAccess.get()).getScaleFactor();

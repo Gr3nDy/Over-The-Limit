@@ -90,6 +90,8 @@ public final class UtilitySettings {
     static int bubbleCharacters=80, bubbleSeconds=4;
     static int tabBackgroundOpacity=25;
     static int typingTabBackgroundOpacity=25;
+    /** Draw the chat scrollbar while browsing history. */
+    static boolean chatScrollbar=true;
     static final Map<String,String> selected=new HashMap<>();
     /** Extra hosts allowed in addition to oc.tc, for a local test server. */
     static final Set<String> devHosts=new LinkedHashSet<>();
@@ -223,6 +225,7 @@ public final class UtilitySettings {
         read(j,"bubble_seconds",e->bubbleSeconds=Math.max(1,Math.min(15,e.getAsInt())));
         read(j,"tab_background_opacity",e->tabBackgroundOpacity=Math.max(0,Math.min(100,e.getAsInt())));
         read(j,"typing_tab_background_opacity",e->typingTabBackgroundOpacity=Math.max(0,Math.min(100,e.getAsInt())));
+        read(j,"chat_scrollbar",e->chatScrollbar=e.getAsBoolean());
         read(j,"notice_opacity",e->noticeOpacity=Math.max(0,Math.min(100,e.getAsInt())));
         read(j,"notice_size",e->noticeSize=Math.max(50,Math.min(150,e.getAsInt())));
         read(j,"notice_mode",e->noticeMode=ServerNoticeRules.Mode.parse(e.getAsString()));
@@ -321,6 +324,7 @@ public final class UtilitySettings {
             j.addProperty("non_player_chat",nonPlayerChat);
             j.addProperty("tab_background_opacity",tabBackgroundOpacity);
             j.addProperty("typing_tab_background_opacity",typingTabBackgroundOpacity);
+            j.addProperty("chat_scrollbar",chatScrollbar);
             j.addProperty("notice_opacity",noticeOpacity);j.addProperty("notice_mode",noticeMode.name());
             j.addProperty("notice_size",noticeSize);
             JsonArray favorites=new JsonArray();for(String key:mapFavorites)favorites.add(new JsonPrimitive(key));j.add("map_favorites",favorites);
