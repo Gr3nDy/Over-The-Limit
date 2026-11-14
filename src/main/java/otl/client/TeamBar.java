@@ -73,8 +73,6 @@ final class TeamBar {
     private boolean ended;
     /** True while the middle slot counts the players in instead of showing the match clock. */
     private boolean preMatch=false;
-    /** True while the clock is a local count-up, not a server value. */
-    private boolean local;
     /** Display value captured when the match ended, so the stopped clock cannot drift. */
     private int frozenSeconds=-1;
     /**
@@ -93,6 +91,10 @@ final class TeamBar {
     private final int[] hint=new int[5];
     /** Direction inferred from the chosen source's own change; 0 when it cannot be told. */
     private int directionHint;
+    /** True once a source has been seen ticking in this match. Until then a line that never
+     *  moves is still trusted; afterwards it is not, so losing the clock's source cannot freeze
+     *  the bar or drag it onto a static "Time Limit" line. */
+    private boolean observed;
     /**
      * How long a source may report the same value before it is treated as not counting. PGM
      * updates its clock about once a second, so a live source changes well inside this window.
@@ -185,14 +187,23 @@ final class TeamBar {
 
     /** A new map has loaded: nothing has carried a clock yet, so the middle starts again at 0:00. */
     private void reset(long now){
-        ended=false;frozenSeconds=-1;local=false;preMatch=true;baseSeconds=0;baseNanos=now;direction=0;clockSource=0;
+        ended=false;frozenSeconds=-1;preMatch=true;baseSeconds=0;baseNanos=now;direction=0;clockSource=0;
         // The old map's clock lines must not make a source look like it is still counting.
+        forgetSources();
+    }
+
+    /**
+     * Forget what each source last said. The pre-match count-in and the previous map both tick,
+     * so neither may leave a source looking like a running match clock or lend it a direction.
+     */
+    private void forgetSources(){
+        observed=false;
         java.util.Arrays.fill(lastLine,null);java.util.Arrays.fill(changedAt,0L);java.util.Arrays.fill(changes,0);java.util.Arrays.fill(lastSeconds,-1);java.util.Arrays.fill(hint,0);directionHint=0;
     }
 
     @SubscribeEvent public void unload(WorldEvent.Unload event){if(event.world.isRemote)clear();}
 
-    private void clear(){actionBar=null;baseSeconds=-1;direction=0;ended=false;frozenSeconds=-1;world=null;preMatch=false;local=false;clockSource=0;java.util.Arrays.fill(lastLine,null);java.util.Arrays.fill(changedAt,0L);java.util.Arrays.fill(changes,0);java.util.Arrays.fill(lastSeconds,-1);java.util.Arrays.fill(hint,0);directionHint=0;lastMembers.clear();goneAt.clear();tabSeen.clear();lastSides=new ArrayList<>();}
+    private void clear(){actionBar=null;baseSeconds=-1;direction=0;ended=false;frozenSeconds=-1;world=null;preMatch=false;clockSource=0;forgetSources();lastMembers.clear();goneAt.clear();tabSeen.clear();lastSides=new ArrayList<>();}
 
     private void syncWorld(Minecraft mc){
         if(world!=mc.theWorld)clear();
@@ -442,8 +453,9 @@ final class TeamBar {
 
     /** A match has started with no server clock: count up from 0:00 in white until one arrives. */
     private void begin(long now){
-        ended=false;frozenSeconds=-1;preMatch=false;local=true;
+        ended=false;frozenSeconds=-1;preMatch=false;
         baseSeconds=0;baseNanos=now;direction=1;
+        forgetSources();
     }
 
     /** Takes one server clock line: it re-anchors the local clock every time the value moves. */
@@ -471,14 +483,18 @@ final class TeamBar {
         boolean countdown=lower.contains("remaining")||lower.contains("left")||lower.contains("limit");
         // An idle PGM server writes a bare "0:00" into its scoreboard; that is not a match clock.
         if(baseSeconds<0&&raw==0&&!countdown)return;
-        boolean wasLocal=local;local=false;
-        if(baseSeconds<0||Math.abs(raw-baseSeconds)>5){
-            // A new clock: the label decides, but a source seen ticking keeps its own direction,
-            // and a confirmed local count-up keeps counting up.
-            baseSeconds=raw;baseNanos=now;direction=countdown?-1:directionHint!=0?directionHint:wasLocal?1:0;
-        }else if(raw!=baseSeconds){
-            // An observed drop is a countdown even when the label does not say so.
-            direction=raw<baseSeconds||countdown?-1:1;
+        // A new value re-anchors the clock; the same value leaves it alone so the display keeps
+        // ticking between updates. The direction comes from the label, or from a source seen
+        // stepping between two of its own reads - never from comparing the server's value with a
+        // locally advanced one, which after a source gap points the wrong way. A local count-up is
+        // not proof of anything either: Overcast's footer is a bare "Time: 10:00", so guessing
+        // "up" made a time-limit map count up from its own limit. Unknown stays a still number
+        // until one tick settles it, at most a second.
+        if(baseSeconds<0||raw!=baseSeconds){
+            // A jump of more than a few seconds is a different clock, not this one ticking, so
+            // what this match proved about its direction does not carry over to it.
+            boolean continuation=baseSeconds>=0&&Math.abs(raw-baseSeconds)<=5;
+            direction=countdown?-1:directionHint!=0?directionHint:continuation&&observed?direction:0;
             baseSeconds=raw;baseNanos=now;
         }
     }
@@ -514,9 +530,11 @@ final class TeamBar {
             // say "remaining": PGM's tab footer is just "Time: 4:31". Only a one-second step counts
             // as ticking; a big jump is a new clock, not a direction.
             int value=seconds(lines[source]);
-            if(value>=0&&lastSeconds[source]>=0&&value!=lastSeconds[source]
-                &&Math.abs(value-lastSeconds[source])<=2)
-                hint[source]=value<lastSeconds[source]?-1:1;
+            if(value>=0&&lastSeconds[source]>=0&&value!=lastSeconds[source]){
+                // A one-second step is this source ticking; a bigger jump is a different clock,
+                // so the old direction must not be applied to the new number.
+                hint[source]=Math.abs(value-lastSeconds[source])<=2?(value<lastSeconds[source]?-1:1):0;
+            }
             lastSeconds[source]=value;
             if(!lines[source].equals(lastLine[source])){
                 // The first sight is only a baseline: it says a clock exists, not that it counts.
@@ -537,12 +555,17 @@ final class TeamBar {
                 if(changedAt[source]>freshest){freshest=changedAt[source];chosen=source;}
             }
         }
-        // Nothing ticked recently: a paused clock keeps its own number, and a line that never
-        // ticked is still shown when it is all there is, so the bar is never empty on a join.
-        if(chosen==0&&clockSource!=0&&lines[clockSource]!=null)chosen=clockSource;
-        if(chosen==0)for(int source=1;source<=4;source++)if(lines[source]!=null){chosen=source;break;}
+        // Nothing ticked recently: a paused clock keeps its own number. A line that never ticked
+        // does not, because it may be the map's static "Time Limit" line rather than the match.
+        if(chosen==0&&clockSource!=0&&lines[clockSource]!=null&&changes[clockSource]>0)chosen=clockSource;
+        // A line that never moved is still usable when it is all there is (a join, or the first
+        // second of a match). Once this match has had a ticking clock, its source going away -
+        // PGM swapping the boss bar's text, say - must not hand the bar to a static line or leave
+        // it stuck: the local clock counts on from its last value until a source ticks again.
+        if(chosen==0&&!observed)for(int source=1;source<=4;source++)if(lines[source]!=null){chosen=source;break;}
         clockSource=chosen;
         if(chosen==0)return null;
+        observed|=changes[chosen]>0;
         // Only a source that is ticking right now may set the direction; a hint left over from
         // an earlier clock must not turn this match's count-up into a countdown.
         directionHint=now-changedAt[chosen]<STALE?hint[chosen]:0;
@@ -660,10 +683,15 @@ final class TeamBar {
         return team!=null&&OBSERVERS.matcher(ChatRules.plain(team.getTeamName())).matches();
     }
 
-    /** The boss bar is the clock the bar already shows, so hiding it loses nothing. */
+    /**
+     * The boss bar is the clock the bar already shows, so hiding it loses nothing. The same goes
+     * for the observer: when the bar is not shown there, the server's own timer must not be left
+     * behind as the only clock on screen.
+     */
     static boolean hidesBossBar(Minecraft mc){
-        if(!UtilitySettings.teamBar||!UtilitySettings.teamBarHideBoss)return false;
+        if(!UtilitySettings.teamBar)return false;
         if(mc.thePlayer==null||mc.gameSettings.hideGUI)return false;
+        if(!UtilitySettings.teamBarHideBoss&&!(observing(mc)&&!UtilitySettings.teamBarObserver))return false;
         String boss=ChatRules.plain(BossStatus.bossName==null?"":BossStatus.bossName);
         return TIME.matcher(boss).find();
     }

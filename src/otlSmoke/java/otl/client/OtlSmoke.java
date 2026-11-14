@@ -1889,6 +1889,31 @@ public final class OtlSmoke {
                 require(!UtilitySettings.teamBar,"Team Bar module toggle did not reach the HUD flag");
                 module.setEnabled(true);
                 UtilitySettings.teamBarPlayers=5;UtilitySettings.teamBarSize=100;UtilitySettings.teamBarHideBoss=false;
+                // A time-limit map as Overcast really sends it: the kickoff line starts a local
+                // count-up, then the clock arrives as the tab footer's bare "Time: 10:00" with no
+                // direction word. Guessing "up" from that made a countdown run up from its limit.
+                line("Playing Allure");
+                line("The match has started!");
+                tabFooter(mc,"Time: 10:00");
+                TeamBar.Timer joined=TeamBar.INSTANCE.timer(mc,now);
+                require(joined!=null&&"10:00".equals(joined.label),"The time limit was not shown on join: "+(joined==null?"none":joined.label));
+                require(!joined.countdown,"A clock with no direction yet was drawn as a countdown: "+joined.label);
+                tabFooter(mc,"Time: 9:59");
+                TeamBar.Timer counting=TeamBar.INSTANCE.timer(mc,now+1_000_000_000L);
+                require(counting!=null&&counting.countdown&&"9:59".equals(counting.label),
+                    "A time limit counted up from its own limit: "+(counting==null?"none":counting.label));
+                tabFooter(mc,"");
+                // Its source going away (PGM swapping the boss bar's text mid-match) must not stop
+                // the clock: it keeps counting from the last value with no server line at all.
+                TeamBar.Timer alone=TeamBar.INSTANCE.timer(mc,now+3_000_000_000L);
+                require(alone!=null&&"9:57".equals(alone.label)&&alone.countdown,
+                    "The clock stopped when its source went away: "+(alone==null?"none":alone.label));
+                // And a line that never moves must not be picked up when it does: the bar would
+                // jump back to the map's limit.
+                sidebar(board,sidebar,"Time Limit: 10:00");
+                TeamBar.Timer held=TeamBar.INSTANCE.timer(mc,now+4_000_000_000L);
+                require(held!=null&&"9:56".equals(held.label),"The bar jumped to the static limit: "+(held==null?"none":held.label));
+                sidebar(board,sidebar,"Players: 24");
             }else if(state==83){
                 // A leaver: seen online once, then the tab entry goes away. The head must follow
                 // after the short grace instead of sitting on the row forever.
@@ -1957,6 +1982,14 @@ public final class OtlSmoke {
                 UtilitySettings.teamBarObserver=false;
                 require(TeamBar.INSTANCE.bar(mc,false)==null,"The bar stayed visible in observer with the option OFF");
                 require(TeamBar.INSTANCE.bar(mc,true)!=null,"The HUD editor preview followed the observer option");
+                // The server's own timer goes with the bar: with the bar hidden in observer, the
+                // boss-bar clock must not be left on screen on its own.
+                net.minecraft.entity.boss.BossStatus.bossName="Time Remaining: 4:31";
+                UtilitySettings.teamBarHideBoss=false;
+                require(TeamBar.hidesBossBar(mc),"The server timer stayed on screen while the bar was hidden in observer");
+                UtilitySettings.teamBarObserver=true;
+                require(!TeamBar.hidesBossBar(mc),"The server timer was hidden while the bar was shown in observer");
+                net.minecraft.entity.boss.BossStatus.bossName=null;
                 UtilitySettings.teamBarObserver=true;
                 mc.theWorld.getScoreboard().addPlayerToTeam(mc.thePlayer.getName(),"red");
                 require(!TeamBar.observing(mc),"A playing team was read as observers");
