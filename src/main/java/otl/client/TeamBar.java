@@ -186,6 +186,10 @@ final class TeamBar {
             // shortcut: a player typing "Playing x" in chat also resets it; the next server clock line repairs it
             if(text.startsWith("Playing ")){announced=true;matchOver=false;reset(System.nanoTime());return;}
             if(MatchEnd.kickoff(text)){begin(System.nanoTime());return;}
+            // PGM sends its time limit as a chat message - "Time Remaining: 5:00", once a minute -
+            // and puts it in no scoreboard, boss bar or tab footer at all. Without this the bar had
+            // no clock to read and counted up from the kickoff, so a timed match looked untimed.
+            if(!ended&&clock(text))ingest(text,System.nanoTime());
         }
     }
 
@@ -515,7 +519,7 @@ final class TeamBar {
         int raw=Integer.parseInt(m.group(1))*60+Integer.parseInt(m.group(2));
         preMatch=false; // a real clock replaced the countdown
         String lower=line.toLowerCase(Locale.ROOT);
-        boolean countdown=lower.contains("remaining")||lower.contains("left")||lower.contains("limit");
+        boolean countdown=lower.contains("remaining")||lower.contains("left")||lower.contains("limit")||lower.contains("ends in");
         // An idle PGM server writes a bare "0:00" into its scoreboard; that is not a match clock.
         if(baseSeconds<0&&raw==0&&!countdown)return;
         // A new value re-anchors the clock; the same value leaves it alone so the display keeps

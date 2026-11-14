@@ -1879,6 +1879,11 @@ public final class OtlSmoke {
                 sidebar(mc.theWorld.getScoreboard(),mc.theWorld.getScoreboard().getObjective("otl_teambar"),"Time Remaining: 9:50");
                 TeamBar.Timer stillFrozen=TeamBar.INSTANCE.timer(mc,now+9_000_000_000L);
                 require("9:58".equals(stillFrozen.label),"A server update moved the stopped clock: "+stillFrozen.label);
+                // PGM's restart countdown ("Server restarting in 30 seconds") contains "starting in
+                // 30", so it was read as a match count-in and replaced the final time with 0:30.
+                line("Server restarting in 30 seconds");
+                TeamBar.Timer restarted=TeamBar.INSTANCE.timer(mc,now+9_200_000_000L);
+                require("9:58".equals(restarted.label),"A server restart countdown replaced the final time: "+restarted.label);
                 // The next map's count-in must not overwrite the final time; only the map change does.
                 net.minecraft.entity.boss.BossStatus.bossName="Match starting in 10 seconds";
                 TeamBar.Timer heldThroughCountIn=TeamBar.INSTANCE.timer(mc,now+9_500_000_000L);
@@ -2036,6 +2041,27 @@ public final class OtlSmoke {
                 require("0:00".equals(TeamBar.INSTANCE.timer(mc,began).label),"The new match did not start at zero");
                 TeamBar.Timer up=TeamBar.INSTANCE.timer(mc,began+2_000_000_000L);
                 require("0:02".equals(up.label)&&!up.countdown&&!up.starting,"A no-limit match clock is not counting up white: "+up.label);
+                // PGM sends its time limit as a CHAT message and nowhere else - "Time Remaining:
+                // 5:00", once a minute. The bar used to ignore it and count up from the kickoff, so
+                // a timed match looked untimed. This is the exact shape from a real server.
+                line("Time Remaining: 05:00");
+                long chatAt=System.nanoTime();
+                TeamBar.Timer fromChat=TeamBar.INSTANCE.timer(mc,chatAt);
+                require(fromChat!=null&&fromChat.countdown&&fromChat.seconds>=298&&fromChat.seconds<=300,
+                    "PGM's chat time limit was ignored: "+(fromChat==null?"none":fromChat.label));
+                TeamBar.Timer chatTicks=TeamBar.INSTANCE.timer(mc,chatAt+5_000_000_000L);
+                require(chatTicks.countdown&&chatTicks.seconds>=293&&chatTicks.seconds<=296,
+                    "The chat time limit did not count down between announcements: "+chatTicks.label);
+                // The next announcement, a minute later, re-anchors it.
+                line("Time Remaining: 04:00");
+                TeamBar.Timer reanchored=TeamBar.INSTANCE.timer(mc,System.nanoTime());
+                require(reanchored.countdown&&reanchored.seconds>=238&&reanchored.seconds<=240,
+                    "A later chat time limit did not re-anchor the clock: "+reanchored.label);
+                // Sudden death is announced the same way and is a countdown too.
+                line("Sudden Death Ends In: 04:00");
+                TeamBar.Timer sudden=TeamBar.INSTANCE.timer(mc,System.nanoTime());
+                require(sudden.countdown,"Sudden death was read as a count-up: "+sudden.label);
+
                 // A time limit replaces the count-up as soon as PGM sends it.
                 sidebar(mc.theWorld.getScoreboard(),mc.theWorld.getScoreboard().getObjective("otl_teambar"),"Time Remaining: 10:00");
                 TeamBar.Timer limited=TeamBar.INSTANCE.timer(mc,began+3_000_000_000L);
