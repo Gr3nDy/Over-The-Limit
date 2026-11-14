@@ -9,6 +9,7 @@
 - **Team Bar clock** is locked to one source for the whole match, so the boss bar, sidebar and tab footer can no longer fight over the display and make the number jump.
 
 ### Fixed
+- **Touchdown flags sometimes stayed banners**: an older map lookup could overwrite the current map's detection. New map announcements now invalidate earlier lookups, and an unknown map can also be identified by a Touchdown gamemode in the sidebar.
 - **Touchdown crashed when you took the flag**: a banner *item* (the flag on a carrier's head, or any banner in a slot) has no world, and the banner renderer called `getBlockType()` on it, which threw a `NullPointerException` every frame. Each throw also skipped the item renderer's matrix pop, so the GL matrix stack filled up and the client died with `1283: Stack overflow`. Banner items now go straight to the vanilla renderer.
 - **Touchdown flags that were still banners**: PGM places a flag from a block face, so on some posts it is a wall banner rather than a standing one, and only standing banners were converted. Both kinds are now replaced.
 - **Touchdown stayed on after its map ended**: once a Football had been seen, every later map kept drawing footballs, because nothing but a world reload cleared the flag. The Football signal is now re-read per match and a map we can name always overrides it, so a leftover Football in the inventory cannot make the next map a Touchdown map.

@@ -48,9 +48,9 @@ final class Touchdown {
     }
 
     private static void resolve(String query){
+        int token=++lookup;
         MapInfo local=MapInfo.findLocal(query);
         if(local!=null){apply(local.gamemode);return;}
-        int token=++lookup;
         MapRemote.lookup(query,map->MinecraftAccess.get().addScheduledTask(()->{
             if(lookup==token)apply(map==null?"":map.gamemode);
         }));
@@ -73,7 +73,25 @@ final class Touchdown {
             world=mc.theWorld;
             if(mc.theWorld==null){reset();gamemode="";lookup++;}
         }
-        if(!mapKnown&&!ballSeen&&UtilitySettings.touchdown&&hasFootball(mc))ballSeen=true;
+        if(!mapKnown&&!ballSeen&&UtilitySettings.touchdown&&(hasFootball(mc)||sidebarTouchdown(mc)))ballSeen=true;
+    }
+
+    private static boolean sidebarTouchdown(Minecraft mc){
+        if(mc.theWorld==null)return false;
+        net.minecraft.scoreboard.Scoreboard board=mc.theWorld.getScoreboard();
+        net.minecraft.scoreboard.ScoreObjective sidebar=board.getObjectiveInDisplaySlot(1);
+        if(sidebar==null)return false;
+        if(touchdownLabel(sidebar.getDisplayName()))return true;
+        for(net.minecraft.scoreboard.Score score:board.getSortedScores(sidebar)){
+            String name=score.getPlayerName();
+            net.minecraft.scoreboard.ScorePlayerTeam team=board.getPlayersTeam(name);
+            if(touchdownLabel(net.minecraft.scoreboard.ScorePlayerTeam.formatPlayerName(team,name)))return true;
+        }
+        return false;
+    }
+
+    private static boolean touchdownLabel(String text){
+        return ChatRules.plain(text).trim().matches("(?i)^(?:gamemode\\s*:\\s*)?touchdown$");
     }
 
     private static boolean hasFootball(Minecraft mc){

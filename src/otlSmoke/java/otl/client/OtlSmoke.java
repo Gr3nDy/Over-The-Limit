@@ -2304,6 +2304,20 @@ public final class OtlSmoke {
                 Touchdown.announce("");
             }else if(state==114){
                 require(!Touchdown.active(),"Touchdown stayed on after the Football was gone");
+                net.minecraft.scoreboard.Scoreboard tdBoard=mc.theWorld.getScoreboard();
+                net.minecraft.scoreboard.ScoreObjective previousSidebar=tdBoard.getObjectiveInDisplaySlot(1);
+                net.minecraft.scoreboard.ScoreObjective tdSidebar=tdBoard.addScoreObjective("otl_td_test",net.minecraft.scoreboard.IScoreObjectiveCriteria.DUMMY);
+                tdBoard.setObjectiveInDisplaySlot(1,tdSidebar);
+                sidebar(tdBoard,tdSidebar,"Touchdown");
+                Touchdown.INSTANCE.tick(new TickEvent.ClientTickEvent(TickEvent.Phase.END));
+                require(Touchdown.active(),"Touchdown sidebar did not enable the flag replacement on an unknown map");
+                tdBoard.setObjectiveInDisplaySlot(1,previousSidebar);
+                tdBoard.removeObjective(tdSidebar);
+                Touchdown.announce("");
+                int lookupBefore=ReflectionHelper.getPrivateValue(Touchdown.class,null,"lookup");
+                line("Playing Blue Lock by MapMaker");
+                int lookupAfter=ReflectionHelper.getPrivateValue(Touchdown.class,null,"lookup");
+                require(lookupAfter>lookupBefore,"A local map did not invalidate an older remote map lookup");
                 // The bug this guards: a Football left in the inventory used to keep every later map a Touchdown map.
                 mc.thePlayer.inventory.mainInventory[0]=new ItemStack(net.minecraft.init.Items.snowball);
                 mc.thePlayer.inventory.mainInventory[0].setStackDisplayName("\u00a74\u00a7lFootball");
