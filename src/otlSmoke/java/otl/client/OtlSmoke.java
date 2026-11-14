@@ -488,6 +488,7 @@ public final class OtlSmoke {
             case "vote":state=69;scopeEnd=78;return;
             case "teambar":state=79;scopeEnd=89;UtilitySettings.teamBar=true;return;
             case "live":state=90;scopeEnd=110;UtilitySettings.teamBar=true;UtilitySettings.devHosts.add("localhost");return;
+            case "touchdown":state=111;scopeEnd=114;UtilitySettings.touchdown=true;mc.gameSettings.thirdPersonView=0;return;
             default:throw new IllegalArgumentException("Unknown smoke scope: "+scope);
         }
     }
@@ -2168,6 +2169,71 @@ public final class OtlSmoke {
                 else require(timer==null,"Team Bar invented a timer: "+(timer==null?"none":timer.label));
                 System.out.println("OTL_LIVE: boss-bar clock check PASS ("+plain.trim()+")");
                 mc.thePlayer.sendChatMessage("/leave");
+            }else if(state==111){
+                line("Playing Blue Lock by MapMaker");
+                require(Touchdown.active(),"Touchdown map not detected: "+Touchdown.gamemode());
+                net.minecraft.client.resources.model.IBakedModel model=mc.getRenderItem().getItemModelMesher().getItemModel(new ItemStack(net.minecraft.init.Items.snowball));
+                require(model instanceof FootballItemModel,"Football item model missing: "+model);
+                require(model.isBuiltInRenderer(),"Snowball did not switch to the football renderer");
+                require(FootballMesh.quads()>=192,"Football mesh is too small: "+FootballMesh.quads());
+                require(net.minecraft.client.renderer.tileentity.TileEntityItemStackRenderer.instance instanceof FootballItemRenderer,
+                    "Item stack renderer was not replaced");
+                net.minecraft.item.ItemStack football=new ItemStack(net.minecraft.init.Items.snowball);
+                football.setStackDisplayName("\u00a74\u00a7lFootball");
+                net.minecraft.client.renderer.tileentity.TileEntityItemStackRenderer.instance.renderByItem(football);
+                require(org.lwjgl.opengl.GL11.glGetError()==0,"Football item rendering left a GL error");
+            }else if(state==112){
+                mc.displayGuiScreen(null);
+                line("Playing Rind Rushers by MapMaker");
+                require(!Touchdown.active(),"Non-Touchdown map kept the football: "+Touchdown.gamemode());
+                net.minecraft.client.resources.model.IBakedModel model=mc.getRenderItem().getItemModelMesher().getItemModel(new ItemStack(net.minecraft.init.Items.snowball));
+                require(!model.isBuiltInRenderer(),"Snowball stayed a football off a Touchdown map");
+                // Every thrown snowball on a normal server takes this delegate path, so prove it renders.
+                net.minecraft.util.Vec3 aim=mc.thePlayer.getLookVec();
+                net.minecraft.entity.projectile.EntitySnowball plain=new net.minecraft.entity.projectile.EntitySnowball(mc.theWorld,mc.thePlayer);
+                plain.setPosition(mc.thePlayer.posX+aim.xCoord*4,mc.thePlayer.posY+1.5,mc.thePlayer.posZ+aim.zCoord*4);
+                plain.motionX=aim.xCoord;plain.motionY=0.2;plain.motionZ=aim.zCoord;
+                mc.theWorld.spawnEntityInWorld(plain);
+                net.minecraft.client.renderer.entity.Render<net.minecraft.entity.projectile.EntitySnowball> vanilla=
+                    (net.minecraft.client.renderer.entity.Render<net.minecraft.entity.projectile.EntitySnowball>)
+                        mc.getRenderManager().entityRenderMap.get(net.minecraft.entity.projectile.EntitySnowball.class);
+                net.minecraft.client.renderer.entity.RenderManager view=mc.getRenderManager();
+                vanilla.doRender(plain,plain.posX-view.viewerPosX,plain.posY-view.viewerPosY,plain.posZ-view.viewerPosZ,0,0);
+                require(org.lwjgl.opengl.GL11.glGetError()==0,"Plain snowball rendering left a GL error");
+                mc.theWorld.removeEntity(plain);
+            }else if(state==113){
+                line("Playing Blue Lock by MapMaker");
+                require(Touchdown.active(),"Touchdown map not restored");
+                mc.thePlayer.rotationPitch=0;
+                net.minecraft.util.Vec3 look=mc.thePlayer.getLookVec();
+                net.minecraft.util.BlockPos pos=new net.minecraft.util.BlockPos(mc.thePlayer.posX+look.xCoord*8,mc.thePlayer.posY,mc.thePlayer.posZ+look.zCoord*8);
+                mc.theWorld.setBlockState(pos,net.minecraft.init.Blocks.standing_banner.getDefaultState(),3);
+                net.minecraft.tileentity.TileEntityBanner banner=(net.minecraft.tileentity.TileEntityBanner)mc.theWorld.getTileEntity(pos);
+                require(banner!=null,"Standing banner has no tile entity");
+                net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer<net.minecraft.tileentity.TileEntityBanner> renderer=
+                    (net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer<net.minecraft.tileentity.TileEntityBanner>)
+                        net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher.instance.mapSpecialRenderers.get(net.minecraft.tileentity.TileEntityBanner.class);
+                require(renderer instanceof FootballBannerRenderer,"Banner renderer was not replaced");
+                // Camera-relative, exactly as the dispatcher would call it.
+                net.minecraft.client.renderer.entity.RenderManager view=mc.getRenderManager();
+                renderer.renderTileEntityAt(banner,pos.getX()-view.viewerPosX,pos.getY()-view.viewerPosY,pos.getZ()-view.viewerPosZ,0,-1);
+                require(org.lwjgl.opengl.GL11.glGetError()==0,"Football banner rendering left a GL error");
+                net.minecraft.entity.projectile.EntitySnowball ball=new net.minecraft.entity.projectile.EntitySnowball(mc.theWorld,mc.thePlayer);
+                ball.setPosition(mc.thePlayer.posX+look.xCoord*5-look.zCoord*1.6,mc.thePlayer.posY+2.0,mc.thePlayer.posZ+look.zCoord*5+look.xCoord*1.6);
+                ball.motionX=look.xCoord;ball.motionY=0.25;ball.motionZ=look.zCoord;
+                mc.theWorld.spawnEntityInWorld(ball);
+                net.minecraft.client.renderer.entity.Render<net.minecraft.entity.projectile.EntitySnowball> projectile=
+                    (net.minecraft.client.renderer.entity.Render<net.minecraft.entity.projectile.EntitySnowball>)
+                        mc.getRenderManager().entityRenderMap.get(net.minecraft.entity.projectile.EntitySnowball.class);
+                require(projectile instanceof RenderFootballSnowball,"Snowball entity renderer was not replaced");
+                projectile.doRender(ball,ball.posX-view.viewerPosX,ball.posY-view.viewerPosY,ball.posZ-view.viewerPosZ,0,0);
+                require(org.lwjgl.opengl.GL11.glGetError()==0,"Football projectile rendering left a GL error");
+                ball.motionY=0;ball.noClip=true;
+            }else if(state==114){
+                // The world renderer draws both, so the screenshot proves the real pipeline, not our manual calls.
+                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-touchdown.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+                require(org.lwjgl.opengl.GL11.glGetError()==0,"Football world rendering left a GL error");
+                System.out.println("OTL_SMOKE: Touchdown map detection, football item, flag banner and thrown ball PASS");
             }
             if(state==scopeEnd){
                 if(!scope.equals("all"))System.out.println("OTL_SMOKE: PASS - "+scope);

@@ -52,6 +52,9 @@ public final class Otl {
         FMLCommonHandler.instance().bus().register(LeftHand.INSTANCE);
         MinecraftForge.EVENT_BUS.register(TeamBubbles.INSTANCE);
         FMLCommonHandler.instance().bus().register(TeamBubbles.INSTANCE);
+        MinecraftForge.EVENT_BUS.register(Touchdown.INSTANCE);
+        FMLCommonHandler.instance().bus().register(Touchdown.INSTANCE);
+        installTouchdown();
         FMLCommonHandler.instance().bus().register(this);MinecraftForge.EVENT_BUS.register(this);
         net.minecraft.client.renderer.entity.RenderManager rm=MinecraftAccess.get().getRenderManager();
         if(rm!=null)for(RenderPlayer renderer:rm.getSkinMap().values())renderer.addLayer(new FaceOverlay(renderer));
@@ -78,5 +81,32 @@ public final class Otl {
     }
     @SubscribeEvent public void worldUnload(WorldEvent.Unload event){
         if(event.world!=null&&event.world.isRemote)PlayerSignals.clear();
+    }
+    /** The snowball's baked model is swapped once per resource reload; it delegates while no Touchdown map runs. */
+    @SubscribeEvent public void modelBake(net.minecraftforge.client.event.ModelBakeEvent event){
+        net.minecraft.client.resources.model.ModelResourceLocation snowball=
+            new net.minecraft.client.resources.model.ModelResourceLocation("minecraft:snowball","inventory");
+        net.minecraft.client.resources.model.IBakedModel base=event.modelRegistry.getObject(snowball);
+        if(base!=null&&!(base instanceof FootballItemModel))
+            event.modelRegistry.putObject(snowball,new FootballItemModel(base));
+    }
+    @SuppressWarnings("unchecked")
+    private static void installTouchdown(){
+        Minecraft mc=MinecraftAccess.get();
+        net.minecraft.client.renderer.tileentity.TileEntityItemStackRenderer items=
+            net.minecraft.client.renderer.tileentity.TileEntityItemStackRenderer.instance;
+        if(!(items instanceof FootballItemRenderer))
+            net.minecraft.client.renderer.tileentity.TileEntityItemStackRenderer.instance=new FootballItemRenderer(items);
+        net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher tiles=
+            net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher.instance;
+        net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer<net.minecraft.tileentity.TileEntityBanner> banner=
+            (net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer<net.minecraft.tileentity.TileEntityBanner>)
+                tiles.mapSpecialRenderers.get(net.minecraft.tileentity.TileEntityBanner.class);
+        if(!(banner instanceof FootballBannerRenderer))
+            tiles.mapSpecialRenderers.put(net.minecraft.tileentity.TileEntityBanner.class,
+                new FootballBannerRenderer(banner==null?new net.minecraft.client.renderer.tileentity.TileEntityBannerRenderer():banner));
+        net.minecraft.client.renderer.entity.RenderManager manager=mc.getRenderManager();
+        if(manager!=null)manager.entityRenderMap.put(net.minecraft.entity.projectile.EntitySnowball.class,
+            new RenderFootballSnowball(manager,net.minecraft.init.Items.snowball,mc.getRenderItem()));
     }
 }
