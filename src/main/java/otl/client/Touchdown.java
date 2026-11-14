@@ -9,23 +9,23 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 
 /**
- * Whether the map being played is a Touchdown map. Two signals: the map index, which is
- * authoritative but only knows Overcast's maps, and the Football in the inventory, which
- * works on any PGM server but only while one is carried.
+ * Whether the map being played is a Touchdown map. Three signals: the map index, which is
+ * authoritative but only knows Overcast's maps; the Football in the inventory; and PGM's own
+ * Touchdown messages, which work on any server but need someone to have thrown the ball.
  */
 final class Touchdown {
     static final Touchdown INSTANCE=new Touchdown();
     /** The Playing line named a map we could resolve, so its gamemode decides. */
     private static volatile boolean mapKnown;
     private static volatile boolean mapTouchdown;
-    /** A Football was carried on this map. Latched so a thrown one does not blink the flag ball. */
-    private static volatile boolean itemFootball;
+    /** This match showed a Football, by inventory or by PGM's own broadcast. */
+    private static volatile boolean ballSeen;
     private static String gamemode="";
     private static int lookup;
     private static Object world;
     private Touchdown(){}
 
-    static boolean active(){return UtilitySettings.touchdown&&(mapKnown?mapTouchdown:itemFootball);}
+    static boolean active(){return UtilitySettings.touchdown&&(mapKnown?mapTouchdown:ballSeen);}
 
     @SubscribeEvent(priority=EventPriority.LOWEST,receiveCanceled=true)
     public void chat(ClientChatReceivedEvent event){
@@ -39,10 +39,12 @@ final class Touchdown {
             String query=MapPreview.serverQuery(raw.substring(at).trim());
             if(query==null)continue;
             // A new match: the previous map's Football says nothing about this one.
-            itemFootball=false;mapKnown=false;mapTouchdown=false;
+            reset();
             resolve(query);
             return;
         }
+        // Touchdown's own lines ("... threw the Football!") identify the ball without the map index.
+        if(!mapKnown&&text.contains("the Football"))ballSeen=true;
     }
 
     private static void resolve(String query){
@@ -62,14 +64,16 @@ final class Touchdown {
         mapTouchdown=mapKnown&&MapInfo.norm(resolved).equals("touchdown");
     }
 
+    private static void reset(){mapKnown=false;mapTouchdown=false;ballSeen=false;}
+
     @SubscribeEvent public void tick(TickEvent.ClientTickEvent event){
         if(event.phase!=TickEvent.Phase.END)return;
         Minecraft mc=MinecraftAccess.get();
         if(mc.theWorld!=world){
             world=mc.theWorld;
-            if(mc.theWorld==null){mapKnown=false;mapTouchdown=false;itemFootball=false;gamemode="";lookup++;}
+            if(mc.theWorld==null){reset();gamemode="";lookup++;}
         }
-        if(!mapKnown&&!itemFootball&&UtilitySettings.touchdown&&hasFootball(mc))itemFootball=true;
+        if(!mapKnown&&!ballSeen&&UtilitySettings.touchdown&&hasFootball(mc))ballSeen=true;
     }
 
     private static boolean hasFootball(Minecraft mc){
@@ -82,9 +86,6 @@ final class Touchdown {
     }
 
     /** Smoke hook: the map the server just announced, or "" for a map we cannot resolve. */
-    static void announce(String gamemode){
-        itemFootball=false;mapKnown=false;mapTouchdown=false;
-        apply(gamemode);
-    }
+    static void announce(String gamemode){reset();apply(gamemode);}
     static String gamemode(){return gamemode;}
 }

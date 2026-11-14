@@ -2187,6 +2187,11 @@ public final class OtlSmoke {
                 football.setStackDisplayName("\u00a74\u00a7lFootball");
                 net.minecraft.client.renderer.tileentity.TileEntityItemStackRenderer.instance.renderByItem(football);
                 require(org.lwjgl.opengl.GL11.glGetError()==0,"Football item rendering left a GL error");
+                // The crash: a banner ITEM has no world, and getBlockType() NPEs on it. Taking the
+                // flag puts a banner on the carrier's head, so this path runs in a real match.
+                net.minecraft.item.ItemStack bannerItem=new ItemStack(net.minecraft.init.Items.banner);
+                net.minecraft.client.renderer.tileentity.TileEntityItemStackRenderer.instance.renderByItem(bannerItem);
+                require(org.lwjgl.opengl.GL11.glGetError()==0,"Banner item rendering left a GL error");
             }else if(state==112){
                 mc.displayGuiScreen(null);
                 // The map from the screenshot: a real non-Touchdown PGM map, same decorated line.
@@ -2223,7 +2228,14 @@ public final class OtlSmoke {
                 mc.thePlayer.inventory.mainInventory[0].setStackDisplayName("\u00a74\u00a7lFootball");
                 line("Playing Rind Rushers by MapMaker");
                 require(!Touchdown.active(),"A leftover Football overrode a known non-Touchdown map");
+                line("\u00a7e\u00a7l\u25cf\u00a7r Player343\u00a76 threw the \u00a7cFootball\u00a76!");
+                require(!Touchdown.active(),"A known non-Touchdown map accepted the Football broadcast");
                 mc.thePlayer.inventory.mainInventory[0]=null;
+                // A map we have no metadata for: PGM's own broadcast is the only thing left.
+                Touchdown.announce("");
+                require(!Touchdown.active(),"An unknown map claimed Touchdown with no ball seen");
+                line("\u00a7e\u00a7l\u25cf\u00a7r Player343\u00a76 threw the \u00a7cFootball\u00a76!");
+                require(Touchdown.active(),"The Football broadcast did not enable Touchdown on an unknown map");
                 line("Playing Blue Lock by MapMaker");
                 require(Touchdown.active(),"Touchdown map not restored");
                 mc.thePlayer.rotationPitch=0;
@@ -2240,6 +2252,14 @@ public final class OtlSmoke {
                 net.minecraft.client.renderer.entity.RenderManager view=mc.getRenderManager();
                 renderer.renderTileEntityAt(banner,pos.getX()-view.viewerPosX,pos.getY()-view.viewerPosY,pos.getZ()-view.viewerPosZ,0,-1);
                 require(org.lwjgl.opengl.GL11.glGetError()==0,"Football banner rendering left a GL error");
+                // PGM places a flag from a block face, so the flag is a wall banner on some posts.
+                net.minecraft.util.BlockPos wall=pos.offset(net.minecraft.util.EnumFacing.EAST);
+                mc.theWorld.setBlockState(wall,net.minecraft.init.Blocks.wall_banner.getDefaultState()
+                    .withProperty(net.minecraft.block.BlockBanner.FACING,net.minecraft.util.EnumFacing.WEST),3);
+                net.minecraft.tileentity.TileEntityBanner wallBanner=(net.minecraft.tileentity.TileEntityBanner)mc.theWorld.getTileEntity(wall);
+                require(wallBanner!=null,"Wall banner has no tile entity");
+                renderer.renderTileEntityAt(wallBanner,wall.getX()-view.viewerPosX,wall.getY()-view.viewerPosY,wall.getZ()-view.viewerPosZ,0,-1);
+                require(org.lwjgl.opengl.GL11.glGetError()==0,"Football wall banner rendering left a GL error");
                 net.minecraft.entity.projectile.EntitySnowball ball=new net.minecraft.entity.projectile.EntitySnowball(mc.theWorld,mc.thePlayer);
                 ball.setPosition(mc.thePlayer.posX+look.xCoord*5-look.zCoord*1.6,mc.thePlayer.posY+2.0,mc.thePlayer.posZ+look.zCoord*5+look.xCoord*1.6);
                 ball.motionX=look.xCoord;ball.motionY=0.25;ball.motionZ=look.zCoord;
