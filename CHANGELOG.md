@@ -20,6 +20,8 @@
 - **Team Bar clock counted the wrong way on a time-limit map**: Overcast sends the live clock as a bare `Time: 4:32` with no "remaining" in it, so the bar guessed and counted **up** from the map's limit. The direction now comes from the label or from watching the number move, so a time limit counts down and a no-limit match counts up.
 - **Team Bar clock kept running when its source went away**: PGM swapping the boss bar's text, or clearing the tab footer, used to leave the bar frozen or hand it to a line that never moves (the map's `Time Limit`). The clock now counts on from its last value and only switches to a source that is actually ticking.
 - **Server timer follows the observer option**: with **Show in observer** off, the boss-bar clock is hidden too, so the server's own timer is not left on screen as the only clock.
+### Added
+- **Auto GG options page**: **Say gg in observer** (on by default), a **Delay** slider from 0 to 5000 ms, and **Randomise delay**, which picks any wait up to that value so every client on the server does not say gg on the same tick. A new match cancels a gg that is still waiting.
 - **Your settings can no longer be lost on the first run after updating**: the old `config/overcast_util` folder was deleted before the copy was moved into place, so a failed move left no complete copy. The copy is moved first now, and only then is the old folder removed.
 - **Team Bar heads draw in one pass** instead of 64 rectangles per head, and the dead/grey state is cached for a quarter second. A full match no longer spends thousands of draw calls per frame on the bar.
 - **Map previews no longer keep every decoded image** for the session; the cache is capped and evicts the oldest.

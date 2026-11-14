@@ -1447,7 +1447,7 @@ public final class OtlSmoke {
                 int bx=ReflectionHelper.getPrivateValue(ModulesScreen.class,browser,"x"),by=ReflectionHelper.getPrivateValue(ModulesScreen.class,browser,"y");
                 browser.mouseClicked(bx+10,by+10,0);
                 require(mc.currentScreen instanceof HudEditor,"Top-left back arrow did not open HUD editor");
-                SettingsScreen[] screens={new KillFeedSettings(null),new KillConfirmSettings(null),new MinimapSettings(null),new HeightLimitSettings(null),new ServerNoticeSettings(null),new TeamBarSettings(null),new UtilityScreen(),new MapPreviewSettings(null),new PreferedHandSettings(null),new BowOptimizerSettings(null),new RegionSettings(null),new ColorSwatches(null,0)};
+                SettingsScreen[] screens={new KillFeedSettings(null),new KillConfirmSettings(null),new MinimapSettings(null),new HeightLimitSettings(null),new ServerNoticeSettings(null),new TeamBarSettings(null),new UtilityScreen(),new MapPreviewSettings(null),new PreferedHandSettings(null),new BowOptimizerSettings(null),new RegionSettings(null),new ColorSwatches(null,0),new AutoGgSettings(null)};
                 int scrollable=0;
                 for(SettingsScreen screen:screens){
                     screen.setWorldAndResolution(mc,427,240);
@@ -1655,6 +1655,18 @@ public final class OtlSmoke {
                 // Auto GG: one gg per match, re-armed only by the next match starting.
                 UtilitySettings.autoGg=true;
                 AutoGg.INSTANCE.settle=0;
+                // The delay is read from the option each time, and randomising stays inside it.
+                UtilitySettings.autoGgDelay=0;UtilitySettings.autoGgRandom=false;
+                require(AutoGg.delayNanos()==0,"A zero delay still waited");
+                UtilitySettings.autoGgDelay=400;
+                require(AutoGg.delayNanos()==400_000_000L,"The delay was not read in milliseconds");
+                UtilitySettings.autoGgRandom=true;
+                for(int i=0;i<50;i++){
+                    long wait=AutoGg.delayNanos();
+                    require(wait>=0&&wait<=400_000_000L,"A random delay ran past the slider: "+wait/1_000_000L+" ms");
+                }
+                UtilitySettings.autoGgRandom=false;
+                // Real sending path: 400 ms must still arrive, but only after the wait.
                 line("The match has started!");
             }else if(state==76){
                 require(AutoGg.INSTANCE.sentCount==0,"Auto GG said gg before the match ended: "+AutoGg.INSTANCE.sentCount);
@@ -1662,9 +1674,27 @@ public final class OtlSmoke {
             }else if(state==77){
                 require(AutoGg.INSTANCE.sentCount==1,"Auto GG did not say gg on the first match end: "+AutoGg.INSTANCE.sentCount);
                 line("Game over!");
+                // A long delay must hold the gg back, and the next match must cancel it.
+                line("The match has started!");
+                UtilitySettings.autoGgDelay=60_000;
+                line("Game over!");
             }else if(state==78){
-                require(AutoGg.INSTANCE.sentCount==1,"Auto GG repeated itself within one match: "+AutoGg.INSTANCE.sentCount);
+                require(AutoGg.INSTANCE.sentCount==1,"The repeat guard failed, or a 60 s delay was ignored: "+AutoGg.INSTANCE.sentCount);
+                // Watching, with "Say gg in observer" off, keeps the client quiet.
+                net.minecraft.scoreboard.Scoreboard board=mc.theWorld.getScoreboard();
+                if(board.getTeam("observers")==null)board.createTeam("observers");
+                board.addPlayerToTeam(mc.thePlayer.getName(),"observers");
+                UtilitySettings.autoGgObserver=false;
+                require(!AutoGg.allowed(mc),"Auto GG spoke while observing with the observer option off");
+                UtilitySettings.autoGgObserver=true;
+                require(AutoGg.allowed(mc),"Auto GG stayed silent while observing with the observer option on");
+                board.removePlayerFromTeam(mc.thePlayer.getName(),board.getTeam("observers"));
+                // The new match start already cancelled the pending 60 s gg.
+                line("The match has started!");
+                require(ReflectionHelper.getPrivateValue(AutoGg.class,AutoGg.INSTANCE,"sendAt").equals(0L),
+                    "A new match did not cancel the pending gg");
                 UtilitySettings.autoGg=false;
+                UtilitySettings.autoGgDelay=0;UtilitySettings.autoGgRandom=false;
                 AutoGg.INSTANCE.settle=5_000_000_000L;
             }else if(state==79){
                 // Team Bar: own team, a much larger second team, a third team, and a six-player observer team.

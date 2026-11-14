@@ -84,6 +84,12 @@ public final class UtilitySettings {
     public static boolean rememberDrafts=false, unlimitedHistory=false, cycleTabs=true, bubbles=false, bubbleTeamAndChat=false, regionOverlay=false, customVotebook=true;
     /** Auto GG: say "gg" once when the match ends. Off by default: it speaks for the player. */
     public static boolean autoGg=false;
+    /** Auto GG while watching as an observer; off keeps a spectator quiet. */
+    static boolean autoGgObserver=true;
+    /** Milliseconds to wait before saying gg; 0 says it on the next tick. */
+    static int autoGgDelay=0;
+    /** Spread the wait anywhere up to the delay instead of always using exactly it. */
+    static boolean autoGgRandom=false;
     public static boolean regionHud=false;
     static boolean regionHudPrefix=true;
     static int regionHudBackground=25;
@@ -200,6 +206,9 @@ public final class UtilitySettings {
         read(j,"region_hud_background",e->regionHudBackground=Math.max(0,Math.min(100,e.getAsInt())));
         read(j,"custom_votebook",e->customVotebook=e.getAsBoolean());
         read(j,"auto_gg",e->autoGg=e.getAsBoolean());
+        read(j,"auto_gg_observer",e->autoGgObserver=e.getAsBoolean());
+        read(j,"auto_gg_delay",e->autoGgDelay=Math.max(0,Math.min(5000,e.getAsInt())));
+        read(j,"auto_gg_random",e->autoGgRandom=e.getAsBoolean());
         read(j,"bow_hit_sound",e->bowHitSound=e.getAsBoolean());
         read(j,"bow_kill_sound",e->bowKillSound=e.getAsBoolean());
         read(j,"bow_hit_marker",e->bowHitMarker=e.getAsBoolean());
@@ -306,6 +315,9 @@ public final class UtilitySettings {
             j.addProperty("region_hud_background",regionHudBackground);
             j.addProperty("custom_votebook",customVotebook);
             j.addProperty("auto_gg",autoGg);
+            j.addProperty("auto_gg_observer",autoGgObserver);
+            j.addProperty("auto_gg_delay",autoGgDelay);
+            j.addProperty("auto_gg_random",autoGgRandom);
             j.addProperty("bow_hit_sound",bowHitSound);
             j.addProperty("bow_kill_sound",bowKillSound);
             j.addProperty("bow_hit_marker",bowHitMarker);
