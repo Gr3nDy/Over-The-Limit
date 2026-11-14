@@ -278,6 +278,8 @@ final class TeamBar {
         int shown=Math.max(1,Math.min(75,UtilitySettings.teamBarPlayers));
         List<List<String>> left=new ArrayList<>(),right=new ArrayList<>();
         List<Side> sides=sides(mc);
+        // No team has more than one player: that is FFA, where the colour belongs to the player.
+        boolean ffa=isFfa(sides);
         Timer timer=timer(mc);
         // Heads are a match thing: the hub keeps scoreboard teams and runs its own countdown, so
         // only a match clock earns a bar. The pre-match count-in draws the clock alone, in red,
@@ -293,6 +295,19 @@ final class TeamBar {
             if(preview){
                 int fake=Math.max(1,Math.min(shown,8));
                 left.add(placeholders(fake));right.add(placeholders(fake));
+            }
+        }else if(ffa){
+            // FFA has no teams: PGM puts every player on their own one-member team so each name
+            // gets its own colour. Treat them as one pool of players - rows alternate between the
+            // columns just to keep the stack balanced - and draw no team-colour line, since a line
+            // per player would only repeat the heads' own colours.
+            List<String> pool=new ArrayList<>();
+            for(Side side:sides)pool.addAll(side.members);
+            if(mc.thePlayer!=null&&pool.remove(mc.thePlayer.getName()))pool.add(0,mc.thePlayer.getName());
+            int count=Math.min(shown,pool.size());
+            for(int from=0;from<count;from+=MAX_PER_ROW){
+                List<String> members=new ArrayList<>(pool.subList(from,Math.min(from+MAX_PER_ROW,count)));
+                (left.size()<=right.size()?left:right).add(members);
             }
         }else{
             // One block of rows per team, alternating columns. A team keeps the column its size
@@ -316,16 +331,26 @@ final class TeamBar {
         // Never spill off the screen, however many teams and players are shown: the rows stack
         // downward, so a big team count shrinks the heads until the whole stack fits the height.
         while(head>MIN_HEAD){
-            Bar fit=new Bar(left,right,head,textW,timer,label,line(head));
+            Bar fit=new Bar(left,right,head,textW,timer,label,line(head,ffa));
             if(fit.width<=screen-8&&fit.height<=screenH-8)break;
             head--;
         }
-        return new Bar(left,right,head,textW,timer,label,line(head));
+        return new Bar(left,right,head,textW,timer,label,line(head,ffa));
     }
 
-    /** Width of the team-colour bar plus the gap to the heads; 0 when the option is off. */
-    private static int line(int head){
-        return UtilitySettings.teamBarTeamColor?Math.max(2,head/5)+LINE_GAP:0;
+    /**
+     * FFA: no side has more than one player, because PGM gives every player their own team (and
+     * their own colour) when there is no team to play on. A team map always has real sides.
+     */
+    static boolean isFfa(List<Side> sides){
+        if(sides.isEmpty())return false;
+        for(Side side:sides)if(side.members.size()!=1)return false;
+        return true;
+    }
+
+    /** Width of the team-colour bar plus the gap to the heads; 0 when off or in FFA. */
+    private static int line(int head,boolean ffa){
+        return !ffa&&UtilitySettings.teamBarTeamColor?Math.max(2,head/5)+LINE_GAP:0;
     }
 
     private static int biggest(List<List<String>> left,List<List<String>> right){

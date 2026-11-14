@@ -1988,6 +1988,33 @@ public final class OtlSmoke {
                 HudLayout.Rect where=TeamBar.placed(alone);
                 require(Math.abs(where.x+alone.textX+alone.textW/2-sw/2)<=1,
                     "The clock is off centre while observing: "+(where.x+alone.textX+alone.textW/2)+" vs "+sw/2);
+                // FFA: PGM gives every player their own one-member team so each name gets its own
+                // colour. That is not a team: the bar must pool the heads and draw no colour line.
+                net.minecraft.scoreboard.ScorePlayerTeam watching=board.getPlayersTeam(mc.thePlayer.getName());
+                if(watching!=null)board.removePlayerFromTeam(mc.thePlayer.getName(),watching);
+                int shownBefore=UtilitySettings.teamBarPlayers;
+                UtilitySettings.teamBarPlayers=12;
+                for(int i=0;i<12;i++){
+                    String team="ffa"+i;
+                    if(board.getTeam(team)==null)board.createTeam(team);
+                    board.getTeam(team).setNamePrefix("\u00a7"+"0123456789abcdef".charAt(i));
+                    board.addPlayerToTeam(i==0?mc.thePlayer.getName():"FfaPlayer"+i,team);
+                }
+                java.util.List<TeamBar.Side> ffaSides=TeamBar.sides(mc);
+                require(TeamBar.isFfa(ffaSides),"FFA was not recognised from one-member teams: "+ffaSides.size());
+                TeamBar.Bar ffa=TeamBar.INSTANCE.bar(mc,false);
+                require(ffa!=null,"The FFA bar vanished");
+                require(ffa.line==0,"FFA still drew a team-colour line: "+ffa.line);
+                int heads=0;
+                for(java.util.List<String> members:ffa.left)heads+=members.size();
+                for(java.util.List<String> members:ffa.right)heads+=members.size();
+                require(heads==12,"FFA did not pool every player: "+heads+" in "+ffa.left+"/"+ffa.right);
+                require(!ffa.left.isEmpty()&&ffa.left.get(0).get(0).equals(mc.thePlayer.getName()),
+                    "The local head did not lead the FFA pool: "+ffa.left);
+                require(Math.abs(ffa.left.size()-ffa.right.size())<=1,
+                    "FFA rows are lopsided: "+ffa.left.size()+" vs "+ffa.right.size());
+                require(ffa.textX+ffa.textW/2==ffa.width/2,"The clock is not centred in the FFA bar");
+                UtilitySettings.teamBarPlayers=shownBefore;
             }else if(state==90){
                 // Real PGM match on the local server: dump what the scoreboard actually carries.
                 mc.theWorld.sendQuittingDisconnectingPacket();mc.loadWorld(null);

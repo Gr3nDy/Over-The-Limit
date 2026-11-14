@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- **Team Bar in FFA**: FFA gives every player their own one-member team (and their own colour), which the bar treated as a separate team per player. The bar now pools them into one set of rows and draws no team-colour line, since the colour belongs to the player, not a side. Left and right no longer mean anything in FFA.
+
 ## v0.3.9 - 2026-11-14
 
 ### Changed
