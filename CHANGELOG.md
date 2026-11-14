@@ -1,33 +1,43 @@
 # Changelog
 
+## v0.3.9 - 2026-11-14
+
+### Changed
+- **Team Bar layout**: teams are listed in a fixed order by team name, so a team keeps its column for the whole match and the bar never reshuffles when players join or leave. Left rows are flush against the clock and grow leftward, right rows are flush against the clock and grow rightward, so no empty space sits next to the clock. Ten heads fill a row and a bigger team wraps onto the rows below at full size instead of shrinking its heads.
+- **Team Bar clock** is locked to one source for the whole match, so the boss bar, sidebar and tab footer can no longer fight over the display and make the number jump.
+
+### Fixed
+- **Team Bar clock stays centred** when no teams exist yet or you are watching from the observer team. The bar was placed using the HUD editor's preview width (which invents placeholder heads), so a clock-only bar landed up to ~90px off centre. The clock also no longer disappears when no team is on the scoreboard.
+- **Team Bar clock colours**: a time limit turns **red** in its last 25 seconds as well as at the count-in, and stays **yellow** above that.
+- **Team Bar heads no longer flicker to Steve**: a head is only re-sampled when the player's skin actually changes, and the fallback skin is never cached.
+- **Votebook `(You: 12)`**: PGM's value inside the tag now moves to the `(You)` line instead of being glued onto the end of your name as `: 12)`.
+- **Votebook name colours**: a name that changes colour part-way (rank tag, then the name) now keeps every colour code instead of being drawn in one colour.
+- **Reliable Chat scrollbar** is a slim rounded pill instead of a boxed bar with `^`/`v` arrows, and can be turned off under Reliable Chat → Appearance.
+- Reliable Chat no longer leaves the history scrolled up: closing the chat returns it to the newest message, and the floating `New messages` indicator is gone.
+- **Settings-screen scrollbar** can now be clicked and dragged; before it was drawn but ignored the mouse, so long pages could only be scrolled with the wheel.
+
 ## v0.3.8 - 2026-11-14
 
 ### Added
 - **Team Bar** (ON by default): one row of player heads per team at the top centre, stacked, with the match clock locked to the exact middle.
-  - Teams are listed in a fixed order by team name, so a team keeps its column for the whole match and the bar never reshuffles when players join or leave. Left rows are flush against the clock and grow leftward, right rows are flush against the clock and grow rightward, so no empty space sits next to the clock.
-  - Ten heads fill a row; a bigger team wraps onto the rows below at full size instead of shrinking its heads.
-  - Your own head always leads its team, at the inner end of a left block and the outer end of a right block.
-  - The clock reads PGM's live time (boss bar, then sidebar, then tab footer), ticks locally between server updates, turns **yellow** for a time limit, **red** in its last 25 seconds and for the match-start countdown, and **white** for a count-up. It freezes at match end and holds that final time until the map changes, then resets to `0:00`.
-  - Dead players' heads fade to grey and clear on respawn; a head never disappears on death (a player who drops out of the team for the respawn delay is held for 10 seconds). The grey follows the server's grey tab name, so a player whose body is already back in the world stays grey until the respawn really finishes.
+  - Left-column teams read left-to-right, right-column teams right-to-left, so every row hugs the bar's outer edge; your own team always takes the left column and your own head always leads it.
+  - The clock reads PGM's live time (boss bar, then sidebar, then tab footer), ticks locally between server updates, turns **yellow** for a time limit and **white** for a count-up, shows the match-start countdown in **red**, freezes at match end and resumes next match. A map change resets it to `0:00`.
+  - Dead players' heads fade to grey and clear on respawn; a head never disappears on death (a player who drops out of the team for the respawn delay is held for 10 seconds).
   - Players who leave, move to the observers or change team are moved or removed instead of being left behind.
-  - Heads only appear in a real match, never in the hub. During the match-start count-in the clock shows alone.
+  - Heads only appear in a real match, never in the hub.
   - Options: **Hide bossbar**, **Show in observer**, **Team colour line**, **Players shown** (1–75, default 5) and **Size** (50–150%).
 - **Team colour line**: a thin vertical bar in the team's own PGM colour beside each team row, on the bar's outer edge, one per team. Toggle in Team Bar settings.
 - **Custom Votebook**: replaces the written book with a compact panel — map cards with previews and vote counts, Supervote, a Match Stats row of player heads, a match link and map favorites.
 - **spectrum.oc.tc** is recognised as an Overcast host.
 
 ### Changed
-- **Team Bar stacks any number of teams** instead of two: rows alternate left/right, grow downward, and ten heads fill a row before the rest wrap below. Stacked rows are separated by a small gap so two teams never read as one block.
+- **Team Bar stacks any number of teams** instead of two: rows alternate left/right, grow downward, and the heads shrink until the whole stack fits the screen. Stacked rows are separated by a small gap so two teams never read as one block.
 - **Settings screens**: the reset button now sits in the module body (top right) instead of the screen header, and every screen fits one compact 470×272 panel at every GUI scale.
 
 ### Fixed
-- **`(You)` in the votebook** now appears on its own last line under `Most X: N` / `and N more...`, and is drawn for your own row in every column. PGM's `(You: 12)` form keeps your value on that line instead of gluing `: 12)` to the end of your name.
-- Votebook stat rows keep your whole chat-styled name (rank symbol and its own colours) instead of flattening or clipping it, including names that change colour part-way.
+- **`(You)` in the votebook** now appears on its own last line under `Most X: N` / `and N more...`, and is drawn for your own row in every column.
+- Votebook stat rows keep your whole chat-styled name (rank symbol and its own colours) instead of flattening or clipping it.
 - PGM's own `(You)` tag inside a stats name is stripped instead of being cut mid-word, and no longer stops the row being recognised as yours.
-- **Reliable Chat scrollbar** is a slim rounded pill instead of a boxed bar with `^`/`v` arrows, and can be turned off under Reliable Chat → Appearance.
-- Reliable Chat no longer leaves the history scrolled up: closing the chat returns it to the newest message, and the floating `New messages` indicator is gone.
-- **Settings-screen scrollbar** can now be clicked and dragged; before it was drawn but ignored the mouse, so long pages could only be scrolled with the wheel.
-- **Team Bar clock stays centred** when no teams exist yet or you are watching from the observer team. The bar was placed using the HUD editor's preview width (which invents placeholder heads), so a clock-only bar landed up to ~90px off centre. The clock also no longer disappears when no team is on the scoreboard.
 - **Chat HUD crash on team join**: team data is snapshotted before use and the overlay draw is guarded, so a team packet arriving mid-frame can no longer take the game down.
 - Auto GG says `gg` once per match, at the end only, never on map start.
 

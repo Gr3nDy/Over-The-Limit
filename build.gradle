@@ -9,7 +9,7 @@ buildscript {
     configurations.all { resolutionStrategy.cacheChangingModulesFor 365, 'days' }
 }
 apply plugin: 'net.minecraftforge.gradle.forge'
-version = '0.3.8'
+version = '0.3.9'
 group = 'otl'
 archivesBaseName = 'OTL'
 sourceCompatibility = targetCompatibility = '1.8'

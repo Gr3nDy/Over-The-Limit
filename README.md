@@ -2,9 +2,9 @@
 
 ![OVER THE LIMIT](docs/assets/otl-banner.svg)
 
-![beta](https://img.shields.io/badge/branch-beta-orange) ![release](https://img.shields.io/badge/release-v0.3.8-blue) ![Minecraft](https://img.shields.io/badge/Minecraft-1.8.9-green)
+![beta](https://img.shields.io/badge/branch-beta-orange) ![release](https://img.shields.io/badge/release-v0.3.9-blue) ![Minecraft](https://img.shields.io/badge/Minecraft-1.8.9-green)
 
-**Over The Limit (OTL)** is a client-side Forge 1.8.9 mod for the Overcast Community server. Press **P** for the HUD editor and modules (rebind or unbind Mod Menu in Controls); Face Rig is available from Mods. [Download the release](https://github.com/Gr3nDy/Over-The-Limit/releases/tag/v0.3.8) · [Wiki](docs/WIKI.md) · [What's new](CHANGELOG.md)
+**Over The Limit (OTL)** is a client-side Forge 1.8.9 mod for the Overcast Community server. Press **P** for the HUD editor and modules (rebind or unbind Mod Menu in Controls); Face Rig is available from Mods. [Download the release](https://github.com/Gr3nDy/Over-The-Limit/releases/tag/v0.3.9) · [Wiki](docs/WIKI.md) · [What's new](CHANGELOG.md)
 
 ## Modules
 
@@ -27,7 +27,7 @@
 
 ## Download
 
-Download `OTL.jar` from the [v0.3.8 release](https://github.com/Gr3nDy/Over-The-Limit/releases/tag/v0.3.8) or [browse all releases](https://github.com/Gr3nDy/Over-The-Limit/releases).
+Download `OTL.jar` from the [v0.3.9 release](https://github.com/Gr3nDy/Over-The-Limit/releases/tag/v0.3.9) or [browse all releases](https://github.com/Gr3nDy/Over-The-Limit/releases).
 
 Place `OTL.jar` in your Forge 1.8.9 client's `mods` folder manually.
 
