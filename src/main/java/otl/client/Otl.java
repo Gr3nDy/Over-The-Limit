@@ -54,8 +54,6 @@ public final class Otl {
         FMLCommonHandler.instance().bus().register(TeamBubbles.INSTANCE);
         MinecraftForge.EVENT_BUS.register(Touchdown.INSTANCE);
         FMLCommonHandler.instance().bus().register(Touchdown.INSTANCE);
-        MinecraftForge.EVENT_BUS.register(Replay.INSTANCE);
-        FMLCommonHandler.instance().bus().register(Replay.INSTANCE);
         installTouchdown();
         FMLCommonHandler.instance().bus().register(this);MinecraftForge.EVENT_BUS.register(this);
         net.minecraft.client.renderer.entity.RenderManager rm=MinecraftAccess.get().getRenderManager();
