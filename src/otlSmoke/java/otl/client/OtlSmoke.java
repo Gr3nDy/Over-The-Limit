@@ -488,7 +488,7 @@ public final class OtlSmoke {
             case "vote":state=69;scopeEnd=78;return;
             case "teambar":state=79;scopeEnd=89;UtilitySettings.teamBar=true;return;
             case "live":state=90;scopeEnd=110;UtilitySettings.teamBar=true;UtilitySettings.devHosts.add("localhost");return;
-            case "touchdown":state=111;scopeEnd=115;UtilitySettings.touchdown=true;mc.gameSettings.thirdPersonView=0;return;
+            case "touchdown":state=111;scopeEnd=116;UtilitySettings.touchdown=true;mc.gameSettings.thirdPersonView=0;return;
             default:throw new IllegalArgumentException("Unknown smoke scope: "+scope);
         }
     }
@@ -2371,6 +2371,22 @@ public final class OtlSmoke {
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-touchdown.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
                 require(org.lwjgl.opengl.GL11.glGetError()==0,"Football world rendering left a GL error");
                 System.out.println("OTL_SMOKE: Touchdown map index, Football fallback, flag banner and thrown ball PASS");
+            }else if(state==116){
+                // Ball trail: two recorded flight points must draw a contrail by hand - a line
+                // strip, not particles - and leave no GL error.
+                Touchdown.announce("Touchdown");
+                require(Touchdown.active(),"Touchdown did not reactivate for the trail test");
+                net.minecraft.entity.projectile.EntitySnowball trailBall=
+                    new net.minecraft.entity.projectile.EntitySnowball(mc.theWorld,mc.thePlayer);
+                trailBall.setPosition(mc.thePlayer.posX,mc.thePlayer.posY+2,mc.thePlayer.posZ);
+                mc.theWorld.spawnEntityInWorld(trailBall);
+                BallTrail.INSTANCE.tick(new TickEvent.ClientTickEvent(TickEvent.Phase.END));
+                trailBall.setPosition(mc.thePlayer.posX+4,mc.thePlayer.posY+3,mc.thePlayer.posZ+2);
+                BallTrail.INSTANCE.tick(new TickEvent.ClientTickEvent(TickEvent.Phase.END));
+                require(BallTrail.points(trailBall.getEntityId())>=2,"The trail did not record the flight");
+                BallTrail.render(mc.getRenderManager(),0);
+                require(org.lwjgl.opengl.GL11.glGetError()==0,"Ball trail rendering left a GL error");
+                System.out.println("OTL_SMOKE: Ball trail contrail PASS");
             }
             if(state==scopeEnd){
                 if(!scope.equals("all"))System.out.println("OTL_SMOKE: PASS - "+scope);

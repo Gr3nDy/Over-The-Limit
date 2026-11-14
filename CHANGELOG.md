@@ -2,6 +2,9 @@
 
 ## v0.3.9 - 2026-11-14
 
+### Added
+- **Ball trail**: the thrown Football draws a fading white contrail behind it - one thin line, its newest end brightest, about a second and a half of flight - so a long pass is easy to follow across the map. A line strip drawn straight in the world, not particles. Toggle it under Touchdown → Ball trail.
+
 ### Fixed
 - **The flag mostly stayed a banner**: PGM's touchdown flag is not a banner block - it is a floating banner **item** spinning at the post. Only banner blocks were converted, so on most maps the flag never turned into the football. The floating flag entity now becomes the ball, keeping the flag's own hover and spin, while a banner worn on the carrier's head stays a flag so you can always see who has it. No refresh is needed - the swap is live, per frame, and switches the moment PGM announces the map.
 

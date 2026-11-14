@@ -82,8 +82,10 @@ public final class UtilitySettings {
         return path;
     }
     public static boolean rememberDrafts=false, unlimitedHistory=false, cycleTabs=true, bubbles=false, bubbleTeamAndChat=false, regionOverlay=false, customVotebook=true;
-    /** Touchdown maps: a 3D football item and floating footballs instead of the flag banners, plus the replay. */
+    /** Touchdown maps: a 3D football item and floating footballs instead of the flag banners. */
     public static boolean touchdown=true;
+    /** A contrail behind the thrown ball, drawn as a line strip instead of particles. */
+    public static boolean touchdownTrail=true;
     /** Auto GG: say "gg" once when the match ends. Off by default: it speaks for the player. */
     public static boolean autoGg=false;
     /** Auto GG while watching as an observer; off keeps a spectator quiet. */
@@ -208,6 +210,7 @@ public final class UtilitySettings {
         read(j,"region_hud_background",e->regionHudBackground=Math.max(0,Math.min(100,e.getAsInt())));
         read(j,"custom_votebook",e->customVotebook=e.getAsBoolean());
         read(j,"touchdown",e->touchdown=e.getAsBoolean());
+        read(j,"touchdown_trail",e->touchdownTrail=e.getAsBoolean());
         read(j,"auto_gg",e->autoGg=e.getAsBoolean());
         read(j,"auto_gg_observer",e->autoGgObserver=e.getAsBoolean());
         read(j,"auto_gg_delay",e->autoGgDelay=Math.max(0,Math.min(5000,e.getAsInt())));
@@ -318,6 +321,7 @@ public final class UtilitySettings {
             j.addProperty("region_hud_background",regionHudBackground);
             j.addProperty("custom_votebook",customVotebook);
             j.addProperty("touchdown",touchdown);
+            j.addProperty("touchdown_trail",touchdownTrail);
             j.addProperty("auto_gg",autoGg);
             j.addProperty("auto_gg_observer",autoGgObserver);
             j.addProperty("auto_gg_delay",autoGgDelay);
