@@ -73,6 +73,21 @@ final class TeamBar {
      * and switching between them made the clock jump for no reason.
      */
     private int clockSource;
+    /** Last line each source reported, when it last changed and how often, so a static line is
+     *  not mistaken for a clock. */
+    private final String[] lastLine=new String[5];
+    private final long[] changedAt=new long[5];
+    private final int[] changes=new int[5];
+    /** The m:ss each source last reported, and which way that source's number is going. */
+    private final int[] lastSeconds=new int[5];
+    private final int[] hint=new int[5];
+    /** Direction inferred from the chosen source's own change; 0 when it cannot be told. */
+    private int directionHint;
+    /**
+     * How long a source may report the same value before it is treated as not counting. PGM
+     * updates its clock about once a second, so a live source changes well inside this window.
+     */
+    static final long STALE=2_000_000_000L;
     private static Field footerField;
     private static boolean footerBroken;
     /** Last complete read of the teams, used when a team packet lands mid-frame. */
@@ -161,11 +176,13 @@ final class TeamBar {
     /** A new map has loaded: nothing has carried a clock yet, so the middle starts again at 0:00. */
     private void reset(long now){
         ended=false;frozenSeconds=-1;local=false;preMatch=true;baseSeconds=0;baseNanos=now;direction=0;clockSource=0;
+        // The old map's clock lines must not make a source look like it is still counting.
+        java.util.Arrays.fill(lastLine,null);java.util.Arrays.fill(changedAt,0L);java.util.Arrays.fill(changes,0);java.util.Arrays.fill(lastSeconds,-1);java.util.Arrays.fill(hint,0);directionHint=0;
     }
 
     @SubscribeEvent public void unload(WorldEvent.Unload event){if(event.world.isRemote)clear();}
 
-    private void clear(){actionBar=null;baseSeconds=-1;direction=0;ended=false;frozenSeconds=-1;world=null;preMatch=false;local=false;clockSource=0;lastMembers.clear();goneAt.clear();tabSeen.clear();lastSides=new ArrayList<>();}
+    private void clear(){actionBar=null;baseSeconds=-1;direction=0;ended=false;frozenSeconds=-1;world=null;preMatch=false;local=false;clockSource=0;java.util.Arrays.fill(lastLine,null);java.util.Arrays.fill(changedAt,0L);java.util.Arrays.fill(changes,0);java.util.Arrays.fill(lastSeconds,-1);java.util.Arrays.fill(hint,0);directionHint=0;lastMembers.clear();goneAt.clear();tabSeen.clear();lastSides=new ArrayList<>();}
 
     private void syncWorld(Minecraft mc){
         if(world!=mc.theWorld)clear();
@@ -388,7 +405,7 @@ final class TeamBar {
         syncWorld(mc);
         // Once the match has ended the clock stands still until the map changes: the next map's
         // count-in must not overwrite the final time. "Playing <map>" resets it.
-        String line=clockLine(mc);
+        String line=clockLine(mc,now);
         if(line!=null&&!ended)ingest(line,now);
         if(baseSeconds<0)return null;
         // A fresh map with no clock yet (direction 0 and pre-match only comes from reset()): hold
@@ -446,8 +463,9 @@ final class TeamBar {
         if(baseSeconds<0&&raw==0&&!countdown)return;
         boolean wasLocal=local;local=false;
         if(baseSeconds<0||Math.abs(raw-baseSeconds)>5){
-            // A new clock: the label decides, but a confirmed local count-up keeps counting up.
-            baseSeconds=raw;baseNanos=now;direction=countdown?-1:wasLocal?1:0;
+            // A new clock: the label decides, but a source seen ticking keeps its own direction,
+            // and a confirmed local count-up keeps counting up.
+            baseSeconds=raw;baseNanos=now;direction=countdown?-1:directionHint!=0?directionHint:wasLocal?1:0;
         }else if(raw!=baseSeconds){
             // An observed drop is a countdown even when the label does not say so.
             direction=raw<baseSeconds||countdown?-1:1;
@@ -466,21 +484,65 @@ final class TeamBar {
     }
 
     /**
-     * The clock line, always from the same source for as long as that source keeps reporting one.
-     * A source that disappears (the boss bar closing, the tab footer cleared) unlocks the choice,
-     * so the clock carries on from the next source instead of stopping.
+     * The clock line, always from the same source while that source keeps ticking. A source that
+     * disappears (the boss bar closing, the tab footer cleared) unlocks the choice, so the clock
+     * carries on from the next source instead of stopping.
+     *
+     * A source that never ticks also loses it. PGM's sidebar carries the map's configured limit
+     * ("Time Limit: 10:00") which never moves, while the live time is elsewhere ("Time: 4:32").
+     * Trusting whichever line appeared first pinned the bar to the static one, so it showed a
+     * number that was simply not the match time. Only a source whose value has moved can hold the
+     * lock, and the freshest one wins, so joining a match in progress re-syncs within a second.
      */
-    private String clockLine(Minecraft mc){
-        if(clockSource!=0){
-            String locked=sourceLine(mc,clockSource);
-            if(locked!=null)return locked;
-            clockSource=0;
-        }
+    private String clockLine(Minecraft mc,long now){
+        String[] lines=new String[5];
+        directionHint=0;
         for(int source=1;source<=4;source++){
-            String line=sourceLine(mc,source);
-            if(line!=null){clockSource=source;return line;}
+            lines[source]=sourceLine(mc,source);
+            if(lines[source]==null){lastLine[source]=null;lastSeconds[source]=-1;continue;}
+            // Whether this source's own number is going up or down, even when its label does not
+            // say "remaining": PGM's tab footer is just "Time: 4:31". Only a one-second step counts
+            // as ticking; a big jump is a new clock, not a direction.
+            int value=seconds(lines[source]);
+            if(value>=0&&lastSeconds[source]>=0&&value!=lastSeconds[source]
+                &&Math.abs(value-lastSeconds[source])<=2)
+                hint[source]=value<lastSeconds[source]?-1:1;
+            lastSeconds[source]=value;
+            if(!lines[source].equals(lastLine[source])){
+                // The first sight is only a baseline: it says a clock exists, not that it counts.
+                if(lastLine[source]!=null)changes[source]++;
+                lastLine[source]=lines[source];
+                changedAt[source]=now;
+            }
         }
-        return null;
+        int chosen=0;
+        // Hold the lock while its source is still ticking, so two live sources cannot fight.
+        if(clockSource!=0&&lines[clockSource]!=null&&changes[clockSource]>0&&now-changedAt[clockSource]<STALE)
+            chosen=clockSource;
+        // Otherwise follow the freshest source that has actually ticked.
+        if(chosen==0){
+            long freshest=Long.MIN_VALUE;
+            for(int source=1;source<=4;source++){
+                if(lines[source]==null||changes[source]==0||now-changedAt[source]>=STALE)continue;
+                if(changedAt[source]>freshest){freshest=changedAt[source];chosen=source;}
+            }
+        }
+        // Nothing ticked recently: a paused clock keeps its own number, and a line that never
+        // ticked is still shown when it is all there is, so the bar is never empty on a join.
+        if(chosen==0&&clockSource!=0&&lines[clockSource]!=null)chosen=clockSource;
+        if(chosen==0)for(int source=1;source<=4;source++)if(lines[source]!=null){chosen=source;break;}
+        clockSource=chosen;
+        if(chosen==0)return null;
+        // Only a source that is ticking right now may set the direction; a hint left over from
+        // an earlier clock must not turn this match's count-up into a countdown.
+        directionHint=now-changedAt[chosen]<STALE?hint[chosen]:0;
+        return lines[chosen];
+    }
+
+    /** The m:ss value of a line, or -1 when it carries none. */
+    private static int seconds(String line){
+        Matcher m=TIME.matcher(line);
+        return m.find()?Integer.parseInt(m.group(1))*60+Integer.parseInt(m.group(2)):-1;
     }
 
     /** One clock source on its own: 1 boss bar, 2 sidebar, 3 tab footer, 4 action bar. */

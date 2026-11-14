@@ -15,6 +15,7 @@
 - **Reliable Chat scrollbar** is a slim rounded pill instead of a boxed bar with `^`/`v` arrows, and can be turned off under Reliable Chat → Appearance.
 - Reliable Chat no longer leaves the history scrolled up: closing the chat returns it to the newest message, and the floating `New messages` indicator is gone.
 - **Settings-screen scrollbar** can now be clicked and dragged; before it was drawn but ignored the mouse, so long pages could only be scrolled with the wheel.
+- **Team Bar clock showed the wrong time**: the source lock trusted whichever clock line it saw first, even one that never counts. PGM's sidebar can carry the map's configured limit while the live time sits elsewhere, so the bar sat on a number that was simply not the match time. It now follows the source whose value actually moves, re-syncs within a couple of seconds of joining a match in progress, and keeps its lock while that source is still counting so two live sources cannot make the number jump.
 - **Team Bar in FFA**: FFA gives every player their own one-member team (and their own colour), which the bar treated as a team per player — a row block and a colour line each. One-member sides are now recognised as FFA: the players are pooled into shared rows and no team-colour line is drawn, since the colour belongs to the player, not a side.
 
 ## v0.3.8 - 2026-11-14

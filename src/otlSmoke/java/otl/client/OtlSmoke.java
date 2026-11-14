@@ -93,6 +93,14 @@ public final class OtlSmoke {
         for(net.minecraft.scoreboard.Score score:new ArrayList<>(board.getSortedScores(objective)))board.removeObjectiveFromEntity(score.getPlayerName(),objective);
         board.getValueFromObjective(text,objective).setScorePoints(1);
     }
+    /** Writes the tab-list footer the way PGM's scoreboard mode does. */
+    void tabFooter(Minecraft mc,String text){
+        try{
+            Object tab=mc.ingameGUI.getTabList();
+            java.lang.reflect.Field footer=ReflectionHelper.findField(tab.getClass(),"footer","field_175255_h");
+            footer.set(tab,text==null||text.isEmpty()?null:new net.minecraft.util.ChatComponentText(text));
+        }catch(Exception broken){throw new AssertionError("Cannot write the tab footer: "+broken);}
+    }
     /** Adds a tab-list entry the way the server does; a grey name is how PGM marks a dead player. */
     void tabEntry(Minecraft mc,String name,String formatted){
         com.mojang.authlib.GameProfile profile=new com.mojang.authlib.GameProfile(
@@ -1847,7 +1855,33 @@ public final class OtlSmoke {
                 require(TeamBar.hidesBossBar(mc),"Hide bossbar did not hide a PGM clock");
                 UtilitySettings.teamBarHideBoss=false;
                 require(!TeamBar.hidesBossBar(mc),"Hide bossbar stayed on after being turned off");
+                // A line that never moves is not the clock. PGM's sidebar carries the map's
+                // configured limit ("Time Limit: 10:00") while the live time is elsewhere; locking
+                // onto whichever appeared first pinned the bar to the static one.
+                net.minecraft.scoreboard.Scoreboard board=mc.theWorld.getScoreboard();
+                net.minecraft.scoreboard.ScoreObjective sidebar=board.getObjective("otl_teambar");
+                if(sidebar==null)sidebar=board.addScoreObjective("otl_teambar",net.minecraft.scoreboard.IScoreObjectiveCriteria.DUMMY);
+                board.setObjectiveInDisplaySlot(1,sidebar);
+                line("Playing Allure");
+                sidebar(board,sidebar,"Time Limit: 10:00");
                 net.minecraft.entity.boss.BossStatus.bossName=null;
+                long now=System.nanoTime();
+                TeamBar.Timer first=TeamBar.INSTANCE.timer(mc,now);
+                require(first!=null&&"10:00".equals(first.label),"The only clock line was not shown: "+(first==null?"none":first.label));
+                // The static limit never ticks, so a live clock takes the bar off it.
+                tabFooter(mc,"Time: 4:32");
+                TeamBar.INSTANCE.timer(mc,now+500_000_000L);
+                tabFooter(mc,"Time: 4:31");
+                TeamBar.Timer live=TeamBar.INSTANCE.timer(mc,now+1_500_000_000L);
+                require(live!=null&&"4:31".equals(live.label),"The ticking clock did not take over from the static limit: "+(live==null?"none":live.label));
+                require(live.countdown,"A live clock was not read as a countdown: "+live.label);
+                // Once on the live clock, the static line must not win it back: the bar keeps
+                // ticking locally from the last live value instead of jumping to 10:00.
+                TeamBar.Timer stayed=TeamBar.INSTANCE.timer(mc,now+TeamBar.STALE+2_000_000_000L);
+                require(stayed!=null&&stayed.label.startsWith("4:")&&stayed.countdown,
+                    "The static limit took the clock back: "+(stayed==null?"none":stayed.label));
+                tabFooter(mc,"");
+                sidebar(board,sidebar,"Players: 24");
                 OtlModule module=OtlModule.byId("team_bar");
                 require(module!=null&&module.enabled(),"Team Bar module is missing from the module list");
                 require(module.settings(new HudEditor()) instanceof TeamBarSettings,"Team Bar has no options page");
