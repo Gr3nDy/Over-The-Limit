@@ -2,7 +2,7 @@
 
 **Over The Limit (OTL)** is a client-side Forge 1.8.9 mod for the [Overcast Community](https://overcastcommunity.com/) PGM-style server family (`play.oc.tc`, `vanish.oc.tc`, `spectrum.oc.tc`).
 
-**Current release:** [v0.3.9](https://github.com/Gr3nDy/Over-The-Limit/releases/tag/v0.3.9) · **Source:** [github.com/Gr3nDy/Over-The-Limit](https://github.com/Gr3nDy/Over-The-Limit) (branch `beta`)
+**Current release:** [v0.4.0](https://github.com/Gr3nDy/Over-The-Limit/releases/tag/v0.4.0) · **Source:** [github.com/Gr3nDy/Over-The-Limit](https://github.com/Gr3nDy/Over-The-Limit) (branch `beta`)
 
 **New in v0.3.9:** Team Bar layout and clock fixes (fixed team order, ten heads per row then wrap, a centred clock that no longer vanishes while observing, no skin flicker, FFA pooled with no colour line), votebook `(You: 12)` and multi-colour names, and a slimmer toggleable chat scrollbar plus a draggable settings scrollbar. Full list in the [changelog](../CHANGELOG.md).
 

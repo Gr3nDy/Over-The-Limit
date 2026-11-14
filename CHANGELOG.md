@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.3.9 - 2026-11-14
+## v0.4.0 - 2026-11-15
 
 ### Added
 - **Ball trail**: the thrown Football draws a fading white contrail behind it - one thin line, its newest end brightest, about a second and a half of flight - so a long pass is easy to follow across the map. A line strip drawn straight in the world, not particles. Toggle it under Touchdown → Ball trail.
@@ -11,6 +11,10 @@
 ### Changed
 - **Works on any PGM server**: the mod only switched on for a handful of known addresses (`play.oc.tc` and friends), so on any other server - a private test server included - every module stayed inert even though the server was running PGM. The mod now recognises PGM from its own chat lines (`The match has started!`, `Time Remaining: 5:00`, `Playing <map> by <author>`, `has ended the match.`) and switches on for that server, then forgets it again when you leave or join somewhere else. A server that is not PGM is still left alone.
 - **Football looks like a football**: the ball is dark maroon leather instead of flat brown, with a white stripe near each tip and seven laces down the middle, and it is drawn at 0.7 of the item space instead of 1.25 - it was bigger than the block-sized slot it sat in, so it filled your hand and your inventory slot.
+
+## v0.3.9 - 2026-11-14
+
+### Changed
 - **Team Bar layout**: teams are listed in a fixed order by team name, so a team keeps its column for the whole match and the bar never reshuffles when players join or leave. Left rows are flush against the clock and grow leftward, right rows are flush against the clock and grow rightward, so no empty space sits next to the clock. Ten heads fill a row and a bigger team wraps onto the rows below at full size instead of shrinking its heads.
 - **Team Bar clock** is locked to one source for the whole match, so the boss bar, sidebar and tab footer can no longer fight over the display and make the number jump.
 
