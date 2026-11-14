@@ -30,13 +30,19 @@ final class Touchdown {
     @SubscribeEvent(priority=EventPriority.LOWEST,receiveCanceled=true)
     public void chat(ClientChatReceivedEvent event){
         if(event.type==2)return;
-        String text=ChatRules.plain(event.message.getFormattedText()).trim();
-        if(!text.startsWith("Playing "))return;
-        String query=MapPreview.serverQuery(text);
-        if(query==null)return;
-        // A new match: the previous map's Football says nothing about this one.
-        itemFootball=false;mapKnown=false;mapTouchdown=false;
-        resolve(query);
+        String text=ChatRules.plain(event.message.getFormattedText());
+        // PGM decorates the line with a strikethrough rule and may send it inside the welcome
+        // block, so look for it anywhere rather than only at the start of the first line.
+        for(String raw:text.split("[\\r\\n]+")){
+            int at=raw.indexOf("Playing ");
+            if(at<0)continue;
+            String query=MapPreview.serverQuery(raw.substring(at).trim());
+            if(query==null)continue;
+            // A new match: the previous map's Football says nothing about this one.
+            itemFootball=false;mapKnown=false;mapTouchdown=false;
+            resolve(query);
+            return;
+        }
     }
 
     private static void resolve(String query){

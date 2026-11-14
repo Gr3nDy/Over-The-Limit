@@ -2170,8 +2170,13 @@ public final class OtlSmoke {
                 System.out.println("OTL_LIVE: boss-bar clock check PASS ("+plain.trim()+")");
                 mc.thePlayer.sendChatMessage("/leave");
             }else if(state==111){
-                line("Playing Blue Lock by MapMaker");
-                require(Touchdown.active(),"Touchdown map not detected: "+Touchdown.gamemode());
+                // Exactly what PGM sends: the map name wrapped in a strikethrough rule, inside the welcome block.
+                line("\u00a78\u00a7m---------------- \u00a7b\u00a7lShingeki no Brady\u00a78\u00a7m ----------------\n"
+                    +"\u00a77Control the flag and score goals to reach 360 points and win!\n"
+                    +"\u00a77Created by \u00a7fKazoha \u00a77and \u00a7fShuliett\n"
+                    +"\u00a78\u00a7m------------------------------------------------\n"
+                    +"\u00a7dPlaying \u00a7bShingeki no Brady \u00a77by \u00a7fKazoha \u00a77and \u00a7fShuliett");
+                require(Touchdown.active(),"Touchdown map not detected from the real PGM line: "+Touchdown.gamemode());
                 net.minecraft.client.resources.model.IBakedModel model=mc.getRenderItem().getItemModelMesher().getItemModel(new ItemStack(net.minecraft.init.Items.snowball));
                 require(model instanceof FootballItemModel,"Football item model missing: "+model);
                 require(model.isBuiltInRenderer(),"Snowball did not switch to the football renderer");
@@ -2184,7 +2189,8 @@ public final class OtlSmoke {
                 require(org.lwjgl.opengl.GL11.glGetError()==0,"Football item rendering left a GL error");
             }else if(state==112){
                 mc.displayGuiScreen(null);
-                line("Playing Rind Rushers by MapMaker");
+                // The map from the screenshot: a real non-Touchdown PGM map, same decorated line.
+                line("\u00a7dPlaying \u00a7bFind the Button! \u00a77by \u00a7fPalmenikoo, ttAm, and MrTinyPig");
                 require(!Touchdown.active(),"Non-Touchdown map kept the football: "+Touchdown.gamemode());
                 net.minecraft.client.resources.model.IBakedModel model=mc.getRenderItem().getItemModelMesher().getItemModel(new ItemStack(net.minecraft.init.Items.snowball));
                 require(!model.isBuiltInRenderer(),"Snowball stayed a football off a Touchdown map");

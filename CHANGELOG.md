@@ -8,6 +8,7 @@
 
 ### Fixed
 - **Touchdown stayed on after its map ended**: once a Football had been seen, every later map kept drawing footballs, because nothing but a world reload cleared the flag. The Football signal is now re-read per match and a map we can name always overrides it, so a leftover Football in the inventory cannot make the next map a Touchdown map.
+- **Touchdown only worked on some maps**: the map name was read only when the server's message began with `Playing`, but PGM wraps that line in a strikethrough rule and sends it inside the join welcome block, so on a real server it was never recognised and the flags stayed flags. The line is now found anywhere in the message, so every PGM server is detected.
 - **Team Bar clock stays centred** when no teams exist yet or you are watching from the observer team. The bar was placed using the HUD editor's preview width (which invents placeholder heads), so a clock-only bar landed up to ~90px off centre. The clock also no longer disappears when no team is on the scoreboard.
 - **Team Bar clock colours**: a time limit turns **red** in its last 25 seconds as well as at the count-in, and stays **yellow** above that.
 - **Team Bar heads no longer flicker to Steve**: a head is only re-sampled when the player's skin actually changes, and the fallback skin is never cached.
