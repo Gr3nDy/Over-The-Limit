@@ -104,6 +104,10 @@ final class TeamBar {
     private static boolean footerBroken;
     /** Last complete read of the teams, used when a team packet lands mid-frame. */
     private static List<Side> lastSides=new ArrayList<>();
+    /** A map has been announced and its match has not ended: outside that, the hub's teams mean nothing. */
+    private boolean announced;
+    /** The last match line was an end, so the next world unload is the way back to the hub. */
+    private boolean matchOver;
     /** A dead player can drop out of the team for the respawn delay; keep the head that long. */
     static final long KEEP_DEAD=10_000_000_000L,LEFT_GRACE=3_000_000_000L;
     private static final java.util.Map<String,List<String>> lastMembers=new java.util.HashMap<>();
@@ -177,10 +181,10 @@ final class TeamBar {
         }
         for(String line:ChatRules.plain(event.message.getUnformattedText()).split("[\\r\\n]+")){
             String text=line.trim();
-            if(MatchEnd.is(text)){ended=true;frozenSeconds=-1;return;}
+            if(MatchEnd.is(text)){ended=true;frozenSeconds=-1;matchOver=true;return;}
             // "Playing <map>" is the map change itself: the last match's clock must not linger.
             // shortcut: a player typing "Playing x" in chat also resets it; the next server clock line repairs it
-            if(text.startsWith("Playing ")){reset(System.nanoTime());return;}
+            if(text.startsWith("Playing ")){announced=true;matchOver=false;reset(System.nanoTime());return;}
             if(MatchEnd.kickoff(text)){begin(System.nanoTime());return;}
         }
     }
@@ -203,11 +207,16 @@ final class TeamBar {
 
     @SubscribeEvent public void unload(WorldEvent.Unload event){if(event.world.isRemote)clear();}
 
-    private void clear(){actionBar=null;baseSeconds=-1;direction=0;ended=false;frozenSeconds=-1;world=null;preMatch=false;clockSource=0;forgetSources();lastMembers.clear();goneAt.clear();tabSeen.clear();lastSides=new ArrayList<>();}
+    private void clear(){actionBar=null;baseSeconds=-1;direction=0;ended=false;frozenSeconds=-1;world=null;preMatch=false;clockSource=0;forgetSources();lastMembers.clear();goneAt.clear();tabSeen.clear();lastSides=new ArrayList<>();
+        // Hub and match are separate worlds, so this also runs on the teleport INTO a match, where
+        // the "Playing" line has already arrived. Only a match end means we are going back out.
+        if(matchOver)announced=false;matchOver=false;}
 
     private void syncWorld(Minecraft mc){
         if(world!=mc.theWorld)clear();
         world=mc.theWorld;
+        // Leaving the server: nothing is announced any more.
+        if(mc.theWorld==null){announced=false;matchOver=false;}
     }
 
     /** Every real team, most members first; the local head leads its own team. Observers, tab sorting and leavers are dropped. */
@@ -225,6 +234,10 @@ final class TeamBar {
         }catch(RuntimeException racing){
             return lastSides;
         }
+        // One head, one row. A team packet that removes a player and re-adds them elsewhere leaves
+        // a moment where they are in no team at all, and the dead-player memory below would put a
+        // second head for them on the old row - the same face on both sides of the bar.
+        java.util.Set<String> claimed=new java.util.HashSet<>();
         for(ScorePlayerTeam team:teams){
             // PGM sorts the tab list with "\u0001TabViewNNN" teams whose members are fake "|xx-uuid" keys.
             if(team.getTeamName().contains("TabView")||OBSERVERS.matcher(ChatRules.plain(team.getTeamName())).matches())continue;
@@ -238,7 +251,9 @@ final class TeamBar {
             for(String name:names)if(realPlayer(name))members.add(name);
             members=remembered(mc,team.getTeamName(),members,now);
             members=online(mc,members,now);
-            if(!members.isEmpty())found.add(new Side(team.getTeamName(),members));
+            List<String> unique=new ArrayList<>();
+            for(String name:members)if(claimed.add(name.toLowerCase(Locale.ROOT)))unique.add(name);
+            if(!unique.isEmpty())found.add(new Side(team.getTeamName(),unique));
         }
         // Fixed order by team name, never by player count: a team keeps its column for the whole
         // match, so the bar cannot reshuffle itself when somebody joins or leaves. Observers and
@@ -325,6 +340,9 @@ final class TeamBar {
         // No team has more than one player: that is FFA, where the colour belongs to the player.
         boolean ffa=isFfa(sides);
         Timer timer=timer(mc);
+        // The hub runs a clock and keeps scoreboard teams of its own, so neither one means a match.
+        // Only PGM's "Playing <map>" line does, and it survives the teleport into the map.
+        if(!preview&&!announced)return null;
         // Heads are a match thing: the hub keeps scoreboard teams and runs its own countdown, so
         // only a match clock earns a bar. The pre-match count-in draws the clock alone, in red,
         // and the heads come back when the match really starts.
@@ -357,10 +375,15 @@ final class TeamBar {
             for(Side side:sides)pool.addAll(side.members);
             if(mc.thePlayer!=null&&pool.remove(mc.thePlayer.getName()))pool.add(0,mc.thePlayer.getName());
             int count=Math.min(shown,pool.size());
-            for(int from=0;from<count;from+=perRow){
-                List<String> members=new ArrayList<>(pool.subList(from,Math.min(from+perRow,count)));
-                (left.size()<=right.size()?left:right).add(members);
-            }
+            // Deal the pool out alternately - left, right, left - so both columns stay the same
+            // length. Filling one column to ten first left a lopsided block with two heads stranded
+            // on the other side.
+            List<String> odd=new ArrayList<>(),even=new ArrayList<>();
+            for(int i=0;i<count;i++)(i%2==0?odd:even).add(pool.get(i));
+            for(int from=0;from<odd.size();from+=perRow)
+                left.add(new ArrayList<>(odd.subList(from,Math.min(from+perRow,odd.size()))));
+            for(int from=0;from<even.size();from+=perRow)
+                right.add(new ArrayList<>(even.subList(from,Math.min(from+perRow,even.size()))));
         }else{
             // One block of rows per team, alternating columns. A team keeps the column its size
             // gives it, so joining a team never drags the block across the bar. A row holds up to
@@ -392,13 +415,17 @@ final class TeamBar {
     }
 
     /**
-     * FFA: no side has more than one player, because PGM gives every player their own team (and
-     * their own colour) when there is no team to play on. A team map always has real sides.
+     * FFA: PGM gives every player their own team (and their own colour) when there is no team to
+     * play on. A party keeps a few of those players on one team, so not every side is a single -
+     * but on a team map most sides are real teams, never one player each.
+     * shortcut: a badly uneven team map (three teams of one) reads as FFA, which only costs the
+     * colour line and the row split.
      */
     static boolean isFfa(List<Side> sides){
         if(sides.isEmpty())return false;
-        for(Side side:sides)if(side.members.size()!=1)return false;
-        return true;
+        int singles=0;
+        for(Side side:sides)if(side.members.size()==1)singles++;
+        return sides.size()>2&&singles*2>sides.size();
     }
 
     /** Width of the team-colour bar plus the gap to the heads; 0 when off or in FFA. */

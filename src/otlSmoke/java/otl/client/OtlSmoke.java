@@ -1724,6 +1724,11 @@ public final class OtlSmoke {
                 sidebar(board,objective,"Time Limit: 10:00");
                 // RedPlayer0 is dead: PGM greys their tab-list name until they respawn.
                 for(int i=0;i<5;i++)tabEntry(mc,"RedPlayer"+i,i==0?"\u00a77RedPlayer0":"\u00a7cRedPlayer"+i);
+                // The hub has a clock and scoreboard teams of its own but no map, so the bar must stay away.
+                require(TeamBar.INSTANCE.bar(mc,false)==null,"The Team Bar was drawn in the lobby");
+                line("Playing Allure");
+                require(TeamBar.INSTANCE.bar(mc,false)!=null,"The Team Bar did not come back for an announced map");
+                line("The match has started!");
                 UtilitySettings.teamBarPlayers=5;
             }else if(state==80){
                 java.util.List<TeamBar.Side> sides=TeamBar.sides(mc);
@@ -2142,9 +2147,46 @@ public final class OtlSmoke {
                 require(heads==12,"FFA did not pool every player: "+heads+" in "+ffa.left+"/"+ffa.right);
                 require(!ffa.left.isEmpty()&&ffa.left.get(0).get(0).equals(mc.thePlayer.getName()),
                     "The local head did not lead the FFA pool: "+ffa.left);
+                // One head, one side: a team packet that re-adds a player must never draw them twice.
+                java.util.Set<String> seenNames=new java.util.HashSet<>();
+                for(java.util.List<java.util.List<String>> column:java.util.Arrays.asList(ffa.left,ffa.right))
+                    for(java.util.List<String> members:column)
+                        for(String name:members)require(seenNames.add(name.toLowerCase(java.util.Locale.ROOT)),
+                            "A head was drawn on both sides of the FFA bar: "+name);
+                // Alternating sides: the two columns hold the same number of heads, not ten and two.
+                int leftHeads=0,rightHeads=0;
+                for(java.util.List<String> members:ffa.left)leftHeads+=members.size();
+                for(java.util.List<String> members:ffa.right)rightHeads+=members.size();
+                require(Math.abs(leftHeads-rightHeads)<=1,
+                    "FFA heads were not dealt left and right: "+leftHeads+" vs "+rightHeads);
                 require(Math.abs(ffa.left.size()-ffa.right.size())<=1,
                     "FFA rows are lopsided: "+ffa.left.size()+" vs "+ffa.right.size());
                 require(ffa.textX+ffa.textW/2==ffa.width/2,"The clock is not centred in the FFA bar");
+                // A party in FFA keeps its players on one team, so not every side is a single.
+                // That must not turn the bar back into a team map with a colour line.
+                UtilitySettings.teamBarPlayers=20; // the pool must not be cut, or the count below proves nothing
+                String party="ffaParty";
+                if(board.getTeam(party)==null)board.createTeam(party);
+                board.addPlayerToTeam("PartyMate0",party);
+                board.addPlayerToTeam("PartyMate1",party);
+                java.util.List<TeamBar.Side> withParty=TeamBar.sides(mc);
+                require(TeamBar.isFfa(withParty),"A party stopped the bar reading FFA as FFA");
+                TeamBar.Bar partyBar=TeamBar.INSTANCE.bar(mc,false);
+                require(partyBar!=null&&partyBar.line==0,"A party brought the team-colour line back to FFA");
+                int partyHeads=0;
+                for(java.util.List<String> members:partyBar.left)partyHeads+=members.size();
+                for(java.util.List<String> members:partyBar.right)partyHeads+=members.size();
+                require(partyHeads==14,"A party in FFA lost or doubled heads: "+partyHeads);
+                if(board.getTeam(party)!=null)board.removeTeam(board.getTeam(party));
+                // A team packet that removes a player and re-adds them elsewhere leaves a moment
+                // where two teams list them. The bar must still draw one head, not the same face
+                // on both sides. The membership set is the live one, so this is the real shape.
+                board.getTeam("ffa1").getMembershipCollection().add("FfaPlayer2");
+                int dupHeads=0;
+                for(java.util.List<String> members:TeamBar.INSTANCE.bar(mc,false).left)dupHeads+=members.size();
+                for(java.util.List<String> members:TeamBar.INSTANCE.bar(mc,false).right)dupHeads+=members.size();
+                require(dupHeads==12,"A player listed on two teams was drawn twice: "+dupHeads);
+                board.getTeam("ffa1").getMembershipCollection().remove("FfaPlayer2");
                 UtilitySettings.teamBarPlayers=shownBefore;
             }else if(state==90){
                 // Real PGM match on the local server: dump what the scoreboard actually carries.
