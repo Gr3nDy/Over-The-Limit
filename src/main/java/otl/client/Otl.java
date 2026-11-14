@@ -60,6 +60,11 @@ public final class Otl {
         if(rm!=null)for(RenderPlayer renderer:rm.getSkinMap().values())renderer.addLayer(new FaceOverlay(renderer));
         ((IReloadableResourceManager)MinecraftAccess.get().getResourceManager()).registerReloadListener(resources->{SkinFace.clear();FaceMarks.clearCache();KillFeed.clearHeads();});
     }
+    /** Reliable Chat cancels the lines it absorbs, so this must still see them. */
+    @SubscribeEvent(priority=net.minecraftforge.fml.common.eventhandler.EventPriority.LOWEST,receiveCanceled=true)
+    public void chat(net.minecraftforge.client.event.ClientChatReceivedEvent event){
+        if(event.type!=2)ServerScope.observe(ChatRules.plain(event.message.getFormattedText()));
+    }
     @SubscribeEvent public void key(InputEvent.KeyInputEvent event){
         if(minimap.isPressed()){Minimap.INSTANCE.cycleView();return;}
         if(minimapZoom.isPressed()){Minimap.INSTANCE.cycleZoom();return;}

@@ -925,6 +925,13 @@ public final class OtlSmoke {
                 mc.setServerData(new net.minecraft.client.multiplayer.ServerData("Other","example.com",false));
             }else if(state==28){
                 require(!ServerScope.active(),"Left Hand off-server fixture still approved");
+                // The mod is not limited to the servers it knows by name: PGM announces itself in
+                // chat, and that is enough to unlock it on a server nobody listed. Without this the
+                // whole mod stayed inert on any other PGM server, including a private test server.
+                line("Welcome to the server!");
+                require(!ServerScope.active(),"A plain server was mistaken for PGM");
+                line("The match has started!");
+                require(ServerScope.active(),"A PGM server was not recognised from its own chat line");
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-hand-off-server.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
                 mc.setServerData(new net.minecraft.client.multiplayer.ServerData("Fixture","play.oc.tc",false));UtilitySettings.leftHand=false;
             }else if(state==29){
@@ -2249,6 +2256,12 @@ public final class OtlSmoke {
                 require(model instanceof FootballItemModel,"Football item model missing: "+model);
                 require(model.isBuiltInRenderer(),"Snowball did not switch to the football renderer");
                 require(FootballMesh.quads()>=192,"Football mesh is too small: "+FootballMesh.quads());
+                // The look the user asked for: dark leather with a white stripe near each tip, so
+                // exactly two bands wrap the ball - no stripe, or a third, is a different ball.
+                require(FootballMesh.STRIPES==2,"The ball does not have exactly two white stripes: "+FootballMesh.STRIPES);
+                // The mesh is one block tall, so anything at or above 1.0 overflows the space the
+                // item is drawn in - that was the ball filling your hand and your inventory slot.
+                require(FootballItemRenderer.SCALE<1.0F,"The held football is bigger than the item space: "+FootballItemRenderer.SCALE);
                 require(net.minecraft.client.renderer.tileentity.TileEntityItemStackRenderer.instance instanceof FootballItemRenderer,
                     "Item stack renderer was not replaced");
                 net.minecraft.item.ItemStack football=new ItemStack(net.minecraft.init.Items.snowball);
