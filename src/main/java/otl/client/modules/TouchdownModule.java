@@ -10,6 +10,6 @@ public final class TouchdownModule extends OtlModule {
     public TouchdownModule(){super("touchdown","Touchdown","VISUAL",15);}
     public boolean enabled(){return UtilitySettings.touchdown;}
     public void setEnabled(boolean on){UtilitySettings.touchdown=on;}
-    public void reset(){UtilitySettings.restore("touchdown","touchdown_replay");}
+    public void reset(){UtilitySettings.restore("touchdown");}
     public GuiScreen settings(GuiScreen back){return new TouchdownSettings(back);}
 }

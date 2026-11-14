@@ -16,7 +16,9 @@ final class FootballItemRenderer extends TileEntityItemStackRenderer {
     private final TileEntityItemStackRenderer delegate;
     FootballItemRenderer(TileEntityItemStackRenderer delegate){this.delegate=delegate;}
     @Override public void renderByItem(ItemStack stack){
-        if(Touchdown.active()&&stack!=null&&stack.getItem()==Items.snowball){
+        // The PGM touchdown flag is a floating banner ITEM at the post (and on the carrier's head),
+        // not a banner block - so banner items become the ball wherever they render as items.
+        if(Touchdown.active()&&stack!=null&&(stack.getItem()==Items.snowball||stack.getItem()==Items.banner)){
             GlStateManager.pushMatrix();
             GlStateManager.translate(0.5F,0.5F,0.5F);
             GlStateManager.scale(SCALE,SCALE,SCALE);

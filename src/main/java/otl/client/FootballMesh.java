@@ -94,6 +94,7 @@ final class FootballMesh {
     }
     /** Draws the ball at the current matrix, one unit tall. Leaves every GL switch as it found it. */
     static void draw(){
+        draws++;
         boolean texture=GL11.glIsEnabled(GL11.GL_TEXTURE_2D),lighting=GL11.glIsEnabled(GL11.GL_LIGHTING);
         boolean cull=GL11.glIsEnabled(GL11.GL_CULL_FACE),blend=GL11.glIsEnabled(GL11.GL_BLEND);
         boolean alpha=GL11.glIsEnabled(GL11.GL_ALPHA_TEST);
@@ -114,4 +115,6 @@ final class FootballMesh {
     }
     /** Quads in the mesh, used by the smoke test to prove the mesh was built. */
     static int quads(){return VERTICES.length/12;}
+    /** Times FootballMesh.draw() has run, used by the smoke test to prove a render drew the mesh. */
+    static int draws;
 }

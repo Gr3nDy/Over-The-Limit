@@ -70,7 +70,7 @@ final class Replay {
     private static boolean connectionDirty;
     private Replay(){}
 
-    private static boolean feature(){return UtilitySettings.touchdown&&UtilitySettings.touchdownReplay&&Touchdown.active();}
+    private static boolean feature(){return UtilitySettings.touchdown&&Touchdown.active();}
     static boolean playing(){return play!=null;}
 
     @SubscribeEvent(priority=EventPriority.LOWEST,receiveCanceled=true)

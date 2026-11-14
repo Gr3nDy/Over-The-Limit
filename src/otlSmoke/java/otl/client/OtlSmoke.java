@@ -488,7 +488,7 @@ public final class OtlSmoke {
             case "vote":state=69;scopeEnd=78;return;
             case "teambar":state=79;scopeEnd=89;UtilitySettings.teamBar=true;return;
             case "live":state=90;scopeEnd=110;UtilitySettings.teamBar=true;UtilitySettings.devHosts.add("localhost");return;
-            case "touchdown":state=111;scopeEnd=119;UtilitySettings.touchdown=true;UtilitySettings.touchdownReplay=true;mc.gameSettings.thirdPersonView=0;return;
+            case "touchdown":state=111;scopeEnd=119;UtilitySettings.touchdown=true;mc.gameSettings.thirdPersonView=0;return;
             default:throw new IllegalArgumentException("Unknown smoke scope: "+scope);
         }
     }
@@ -2372,9 +2372,26 @@ public final class OtlSmoke {
                 require(org.lwjgl.opengl.GL11.glGetError()==0,"Football world rendering left a GL error");
                 System.out.println("OTL_SMOKE: Touchdown map index, Football fallback, flag banner and thrown ball PASS");
             }else if(state==116){
-                // Touchdown replay: switch the map back on and let the recorder capture the ball
-                // the scope spawned at state 115. The replay must stay off until it has been
-                // proven on a live server, so the toggle is only forced here, in the smoke scope.
+                // The five touchdown maps the server cycles: PGM's real map line for each must
+                // switch the football on without any refresh - the swap is live, per frame.
+                line("\u00a7dPlaying \u00a7bShingeki no Brady \u00a77by \u00a7fKazoha \u00a77and \u00a7fShuliett");
+                require(Touchdown.active(),"Shingeki no Brady did not switch the football on");
+                line("\u00a7dPlaying \u00a7bBlue Lock \u00a77by \u00a7fMapMaker");
+                require(Touchdown.active(),"Blue Lock did not switch the football on");
+                line("\u00a7dPlaying \u00a7bTom Brady \u00a77by \u00a7fOvercast Community");
+                require(Touchdown.active(),"Tom Brady did not switch the football on");
+                line("\u00a7dPlaying \u00a7bPigskin Punchout \u00a77by \u00a7fMapMaker");
+                require(Touchdown.active(),"Pigskin Punchout did not switch the football on");
+                line("\u00a7dPlaying \u00a7bThe Souper Bowl \u00a77by \u00a7fMapMaker");
+                require(Touchdown.active(),"The Souper Bowl did not switch the football on");
+                // The flag on these maps is a floating banner ITEM, not a banner block: prove it
+                // renders as the ball now, through the real item renderer, with no GL error.
+                int before=FootballMesh.draws;
+                net.minecraft.item.ItemStack flag=new net.minecraft.item.ItemStack(net.minecraft.init.Items.banner);
+                net.minecraft.client.renderer.tileentity.TileEntityItemStackRenderer.instance.renderByItem(flag);
+                require(FootballMesh.draws>before,"A floating banner flag did not render as the football");
+                require(org.lwjgl.opengl.GL11.glGetError()==0,"Flag item rendering left a GL error");
+                // Back to one known Touchdown map so the replay test below records a real play.
                 Touchdown.announce("Touchdown");
                 require(Touchdown.active(),"Touchdown did not reactivate for the replay");
                 require(!Replay.playing(),"A replay started without a touchdown");
