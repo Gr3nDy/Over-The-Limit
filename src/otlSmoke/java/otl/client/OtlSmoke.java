@@ -488,7 +488,7 @@ public final class OtlSmoke {
             case "vote":state=69;scopeEnd=78;return;
             case "teambar":state=79;scopeEnd=89;UtilitySettings.teamBar=true;return;
             case "live":state=90;scopeEnd=110;UtilitySettings.teamBar=true;UtilitySettings.devHosts.add("localhost");return;
-            case "touchdown":state=111;scopeEnd=114;UtilitySettings.touchdown=true;mc.gameSettings.thirdPersonView=0;return;
+            case "touchdown":state=111;scopeEnd=115;UtilitySettings.touchdown=true;mc.gameSettings.thirdPersonView=0;return;
             default:throw new IllegalArgumentException("Unknown smoke scope: "+scope);
         }
     }
@@ -2201,7 +2201,23 @@ public final class OtlSmoke {
                 vanilla.doRender(plain,plain.posX-view.viewerPosX,plain.posY-view.viewerPosY,plain.posZ-view.viewerPosZ,0,0);
                 require(org.lwjgl.opengl.GL11.glGetError()==0,"Plain snowball rendering left a GL error");
                 mc.theWorld.removeEntity(plain);
+                // A server whose map we cannot resolve: only the Football can tell us this is Touchdown.
+                mc.thePlayer.inventory.mainInventory[0]=new ItemStack(net.minecraft.init.Items.snowball);
+                mc.thePlayer.inventory.mainInventory[0].setStackDisplayName("\u00a74\u00a7lFootball");
+                Touchdown.announce("");
+                require(!Touchdown.active(),"An unknown map with no tick yet claimed Touchdown");
             }else if(state==113){
+                require(Touchdown.active(),"The Football in the inventory did not enable Touchdown");
+                mc.thePlayer.inventory.mainInventory[0]=null;
+                Touchdown.announce("");
+            }else if(state==114){
+                require(!Touchdown.active(),"Touchdown stayed on after the Football was gone");
+                // The bug this guards: a Football left in the inventory used to keep every later map a Touchdown map.
+                mc.thePlayer.inventory.mainInventory[0]=new ItemStack(net.minecraft.init.Items.snowball);
+                mc.thePlayer.inventory.mainInventory[0].setStackDisplayName("\u00a74\u00a7lFootball");
+                line("Playing Rind Rushers by MapMaker");
+                require(!Touchdown.active(),"A leftover Football overrode a known non-Touchdown map");
+                mc.thePlayer.inventory.mainInventory[0]=null;
                 line("Playing Blue Lock by MapMaker");
                 require(Touchdown.active(),"Touchdown map not restored");
                 mc.thePlayer.rotationPitch=0;
@@ -2229,11 +2245,11 @@ public final class OtlSmoke {
                 projectile.doRender(ball,ball.posX-view.viewerPosX,ball.posY-view.viewerPosY,ball.posZ-view.viewerPosZ,0,0);
                 require(org.lwjgl.opengl.GL11.glGetError()==0,"Football projectile rendering left a GL error");
                 ball.motionY=0;ball.noClip=true;
-            }else if(state==114){
+            }else if(state==115){
                 // The world renderer draws both, so the screenshot proves the real pipeline, not our manual calls.
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-touchdown.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
                 require(org.lwjgl.opengl.GL11.glGetError()==0,"Football world rendering left a GL error");
-                System.out.println("OTL_SMOKE: Touchdown map detection, football item, flag banner and thrown ball PASS");
+                System.out.println("OTL_SMOKE: Touchdown map index, Football fallback, flag banner and thrown ball PASS");
             }
             if(state==scopeEnd){
                 if(!scope.equals("all"))System.out.println("OTL_SMOKE: PASS - "+scope);

@@ -8,16 +8,24 @@ import net.minecraftforge.fml.common.eventhandler.EventPriority;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 
-/** Keeps track of whether the map being played is a Touchdown map; every football visual reads this. */
+/**
+ * Whether the map being played is a Touchdown map. Two signals: the map index, which is
+ * authoritative but only knows Overcast's maps, and the Football in the inventory, which
+ * works on any PGM server but only while one is carried.
+ */
 final class Touchdown {
     static final Touchdown INSTANCE=new Touchdown();
+    /** The Playing line named a map we could resolve, so its gamemode decides. */
+    private static volatile boolean mapKnown;
     private static volatile boolean mapTouchdown;
+    /** A Football was carried on this map. Latched so a thrown one does not blink the flag ball. */
+    private static volatile boolean itemFootball;
     private static String gamemode="";
     private static int lookup;
     private static Object world;
     private Touchdown(){}
 
-    static boolean active(){return UtilitySettings.touchdown&&mapTouchdown;}
+    static boolean active(){return UtilitySettings.touchdown&&(mapKnown?mapTouchdown:itemFootball);}
 
     @SubscribeEvent(priority=EventPriority.LOWEST,receiveCanceled=true)
     public void chat(ClientChatReceivedEvent event){
@@ -25,7 +33,10 @@ final class Touchdown {
         String text=ChatRules.plain(event.message.getFormattedText()).trim();
         if(!text.startsWith("Playing "))return;
         String query=MapPreview.serverQuery(text);
-        if(query!=null)resolve(query);
+        if(query==null)return;
+        // A new match: the previous map's Football says nothing about this one.
+        itemFootball=false;mapKnown=false;mapTouchdown=false;
+        resolve(query);
     }
 
     private static void resolve(String query){
@@ -38,8 +49,11 @@ final class Touchdown {
     }
 
     private static void apply(String gamemode){
-        Touchdown.gamemode=gamemode==null?"":gamemode;
-        mapTouchdown=MapInfo.norm(gamemode).equals("touchdown");
+        String resolved=gamemode==null?"":gamemode.trim();
+        Touchdown.gamemode=resolved;
+        // An unknown map must not lock the Football out, or servers without our map index stay dark.
+        mapKnown=!resolved.isEmpty();
+        mapTouchdown=mapKnown&&MapInfo.norm(resolved).equals("touchdown");
     }
 
     @SubscribeEvent public void tick(TickEvent.ClientTickEvent event){
@@ -47,10 +61,9 @@ final class Touchdown {
         Minecraft mc=MinecraftAccess.get();
         if(mc.theWorld!=world){
             world=mc.theWorld;
-            if(mc.theWorld==null){mapTouchdown=false;gamemode="";lookup++;}
+            if(mc.theWorld==null){mapKnown=false;mapTouchdown=false;itemFootball=false;gamemode="";lookup++;}
         }
-        // Joining mid-match never shows the "Playing" line, but the kit's Football is in the inventory.
-        if(!mapTouchdown&&UtilitySettings.touchdown&&hasFootball(mc))mapTouchdown=true;
+        if(!mapKnown&&!itemFootball&&UtilitySettings.touchdown&&hasFootball(mc))itemFootball=true;
     }
 
     private static boolean hasFootball(Minecraft mc){
@@ -62,7 +75,10 @@ final class Touchdown {
         return false;
     }
 
-    /** Smoke hook: the map the server just announced. */
-    static void announce(String gamemode){apply(gamemode);}
+    /** Smoke hook: the map the server just announced, or "" for a map we cannot resolve. */
+    static void announce(String gamemode){
+        itemFootball=false;mapKnown=false;mapTouchdown=false;
+        apply(gamemode);
+    }
     static String gamemode(){return gamemode;}
 }
