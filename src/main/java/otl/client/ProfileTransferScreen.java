@@ -12,7 +12,7 @@ final class ProfileTransferScreen extends GuiScreen {
     private List<String> lines=Collections.emptyList();
     private String status="";
     ProfileTransferScreen(GuiScreen parent,String name){
-        this.parent=parent;this.name=name;this.json=name==null?null:UtilitySettings.profileExport(name);
+        this.parent=parent;this.name=name;this.json=name==null?null:Profiles.profileExport(name);
     }
     public boolean doesGuiPauseGame(){return false;}
     public void initGui(){
@@ -27,7 +27,7 @@ final class ProfileTransferScreen extends GuiScreen {
         else{setClipboardString(json);status="Copied to clipboard.";}
     }
     private void importJson(String text){
-        String imported=UtilitySettings.importProfile(text);
+        String imported=Profiles.importProfile(text);
         if(imported==null)status="Invalid profile JSON (maximum 64 KiB).";
         else{mc.displayGuiScreen(parent);}
     }

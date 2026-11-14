@@ -55,7 +55,7 @@ public final class Otl {
         FMLCommonHandler.instance().bus().register(this);MinecraftForge.EVENT_BUS.register(this);
         net.minecraft.client.renderer.entity.RenderManager rm=MinecraftAccess.get().getRenderManager();
         if(rm!=null)for(RenderPlayer renderer:rm.getSkinMap().values())renderer.addLayer(new FaceOverlay(renderer));
-        ((IReloadableResourceManager)MinecraftAccess.get().getResourceManager()).registerReloadListener(resources->{SkinFace.clear();FaceMarks.clearCache();});
+        ((IReloadableResourceManager)MinecraftAccess.get().getResourceManager()).registerReloadListener(resources->{SkinFace.clear();FaceMarks.clearCache();KillFeed.clearHeads();});
     }
     @SubscribeEvent public void key(InputEvent.KeyInputEvent event){
         if(minimap.isPressed()){Minimap.INSTANCE.cycleView();return;}

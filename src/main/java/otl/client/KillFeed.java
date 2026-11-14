@@ -46,7 +46,9 @@ final class KillFeed {
         history.add(death);if(scroll>0&&visible(death))scroll=Math.min(scroll+1,Math.max(0,visibleEntries().size()-rows()));
         if(UtilitySettings.hideKillChat)event.setCanceled(true);
     }
-    @SubscribeEvent public void unload(WorldEvent.Unload event){if(event.world.isRemote){history.clear();heads.clear();headSkins.clear();rowCache.clear();scroll=0;dragging=false;}}
+    @SubscribeEvent public void unload(WorldEvent.Unload event){if(event.world.isRemote){history.clear();clearHeads();rowCache.clear();scroll=0;dragging=false;}}
+    /** A resource reload re-samples every skin, so the remembered pixels belong to the old pack. */
+    static void clearHeads(){heads.clear();headSkins.clear();}
     @SubscribeEvent public void overlay(RenderGameOverlayEvent.Post event){
         if(event.type==RenderGameOverlayEvent.ElementType.CHAT&&!(MinecraftAccess.get().currentScreen instanceof GuiChat)&&!(MinecraftAccess.get().currentScreen instanceof HudEditor))draw(-1,-1,false);
     }
@@ -88,7 +90,7 @@ final class KillFeed {
     private static Row row(KillFeedRules.Death death){
         Row cached=rowCache.get(death);
         if(cached!=null&&cached.valid(death))return cached;
-        if(rowCache.size()>1200)rowCache.clear();
+        if(rowCache.size()>1200)rowCache.keySet().iterator().remove();
         Row made=new Row(death);rowCache.put(death,made);return made;
     }
     private static final class Row {

@@ -14,7 +14,6 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
 import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -25,8 +24,8 @@ import java.util.function.Consumer;
 final class MapRemote {
     static final String[] SOURCES = {"PublicMaps/main", "CommunityMaps/master"};
     private static final long TTL = 6L * 60 * 60 * 1000;
-    private static final Map<String,List<String>> dirs = new HashMap<>();
-    private static final Map<String,Long> dirsAt = new HashMap<>();
+    private static final Map<String,List<String>> dirs = new ConcurrentHashMap<>();
+    private static final Map<String,Long> dirsAt = new ConcurrentHashMap<>();
     private static final Map<String,String> includes=new ConcurrentHashMap<>();
     private static final Set<String> previews=Collections.newSetFromMap(new ConcurrentHashMap<String,Boolean>());
     private static final Map<String,Long> previewRetry=new ConcurrentHashMap<>();
@@ -157,10 +156,15 @@ final class MapRemote {
         return false;
     }
 
-    private static synchronized List<String> directories(String source, File root) throws Exception {
+    /**
+     * No lock: a catalog refresh must never block a map lookup for the length of two downloads.
+     * Two threads can fetch the same tree, which costs one request and writes the same file twice.
+     */
+    private static List<String> directories(String source, File root) throws Exception {
         long now = System.currentTimeMillis();
         String key = root.getAbsolutePath() + "|" + source;
-        if (dirs.containsKey(key) && now - dirsAt.get(key) < TTL) return dirs.get(key);
+        List<String> ready = dirs.get(key);
+        if (ready != null && now - dirsAt.getOrDefault(key, 0L) < TTL) return ready;
         File cache = new File(root, source.substring(0,source.indexOf('/')) + "-tree.txt");
         List<String> parsed = null;
         if (cache.isFile() && now - cache.lastModified() < TTL) parsed = readLines(cache);

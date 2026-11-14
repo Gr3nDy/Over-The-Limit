@@ -56,6 +56,8 @@ final class VoteBook {
     private static final Pattern STAT=Pattern.compile("^\\s*(?:Most\\s+)?(Kills?|Deaths?|Assists?|Damage(?:\\s+dealt)?|Killstreak|Longest\\s+shot(?:\\s+distance)?)\\s*[:=-]\\s*([0-9]+(?:\\.[0-9]+)?)\\s*(?:blocks?|hearts?|hp)?\\s*[^\\w\\s]*\\s*(?:by\\s+)?(.+?)\\s*$",Pattern.CASE_INSENSITIVE);
     /** PGM's own tag inside a stats name: "(You)", or "(You: 12)" carrying your own value. */
     private static final Pattern YOU=Pattern.compile("(?i)\\(\\s*you\\b([^)]*)\\)?");
+    /** PGM's "(You)" / "(You: 12)" marker, with its own colour codes. Compiled once: it runs per name per frame. */
+    private static final Pattern YOU_TAG=Pattern.compile("(?i)(?:\u00a7.)*\\s*\\(\\s*you\\b[^)]*\\)?");
     private static final Pattern LINK=Pattern.compile("Match link\\s*:\\s*(https?://\\S+)");
     private static final Pattern SUPERVOTES=Pattern.compile("(?i)(?:super\\s*votes?|votes?\\s*left)\\s*[:x-]?\\s*(\\d+)|(?:\\b(\\d+)\\s+super\\s*votes?)");
     private VoteBook(){}
@@ -238,7 +240,7 @@ final class VoteBook {
      * name as ": 12)", which is what showed up as "Name: 12" in the vote screen.
      */
     static String withoutYouTag(String text){
-        return text==null?null:text.replaceAll("(?i)(?:\u00a7.)*\\s*\\(\\s*you\\b[^)]*\\)?","");
+        return text==null?null:YOU_TAG.matcher(text).replaceAll("");
     }
 
     /**

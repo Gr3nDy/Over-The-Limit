@@ -26,7 +26,7 @@ final class ModulesScreen extends GuiScreen {
     public void initGui(){
         UtilitySettings.load();
         w=Math.min(470,width-16);h=Math.min(272,height-16);x=(width-w)/2;y=(height-h)/2;
-        profiles=UtilitySettings.profileNames();
+        profiles=Profiles.profileNames();
         scrollRow=Math.max(0,Math.min(scrollRow,rows()-VISIBLE_ROWS));
         railScroll=Math.max(0,Math.min(railScroll,Math.max(0,profiles.size()-railRows())));
         status="";
@@ -100,7 +100,7 @@ final class ModulesScreen extends GuiScreen {
         if(!b.enabled)return;
         if(b.id==0){mc.displayGuiScreen(parent instanceof HudEditor?parent:new HudEditor());return;}
         if(b.id==3){close();return;}
-        if(b.id==4){UtilitySettings.newProfile();initGui();return;}
+        if(b.id==4){Profiles.newProfile();initGui();return;}
         if(b.id==5){importProfile();return;}
     }
 
@@ -110,7 +110,7 @@ final class ModulesScreen extends GuiScreen {
         renameField=null;
         if(source==null)return;
         if(text!=null){
-            String result=UtilitySettings.renameProfile(source,text);
+            String result=Profiles.renameProfile(source,text);
             initGui();
             status=result.equals(source)?"Name unchanged":"";
             return;
@@ -172,14 +172,14 @@ final class ModulesScreen extends GuiScreen {
                 if(mx>=actionX()+32){
                     if(name.equals(UtilitySettings.profile)||name.equals("Default"))return;
                     mc.displayGuiScreen(new GuiYesNo((yes,id)->{
-                        if(yes&&UtilitySettings.deleteProfile(name))initGui();
+                        if(yes&&Profiles.deleteProfile(name))initGui();
                         else mc.displayGuiScreen(this);
                     },"Delete profile \""+name+"\"?","This cannot be undone.",0));
                     return;
                 }
                 if(mx>=actionX()+16){copyProfile(name);return;}
                 if(mx>=actionX()){editing=name;initGui();return;}
-                UtilitySettings.switchProfile(name);initGui();return;
+                Profiles.switchProfile(name);initGui();return;
             }
             return;
         }
@@ -209,7 +209,7 @@ final class ModulesScreen extends GuiScreen {
         if(railDrag)scrollRailTo(my);
         if(railDragName!=null&&button==0&&mx>=railLeft()&&mx<railLeft()+railWidth()&&my>=y+30&&my<y+30+railRows()*ROW_H){
             int from=profiles.indexOf(railDragName),to=Math.max(0,Math.min(profiles.size()-1,railScroll+(my-y-30)/ROW_H));
-            if(from>=0&&to!=from){profiles.add(to,profiles.remove(from));UtilitySettings.saveProfileOrder(profiles);}
+            if(from>=0&&to!=from){profiles.add(to,profiles.remove(from));Profiles.saveProfileOrder(profiles);}
         }
         super.mouseClickMove(mx,my,button,elapsed);
     }

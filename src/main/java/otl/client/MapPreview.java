@@ -284,7 +284,11 @@ final class MapPreview {
         return file==null?null:fileTexture(remote,file);
     }
 
-    private static final Map<String,BufferedImage> decoded=new ConcurrentHashMap<>();
+    /** Decoded images waiting for their upload; a gallery scroll can outrun the render thread. */
+    private static final int DECODE_LIMIT=48;
+    private static final Map<String,BufferedImage> decoded=new java.util.LinkedHashMap<String,BufferedImage>(16,.75F,true){
+        @Override protected boolean removeEldestEntry(Map.Entry<String,BufferedImage> eldest){return size()>DECODE_LIMIT;}
+    };
     private static final Set<String> decoding=ConcurrentHashMap.newKeySet();
     /** Decode failures are permanent for the session: retrying a broken PNG every frame is worse. */
     private static final Set<String> decodeFailed=ConcurrentHashMap.newKeySet();
@@ -296,7 +300,8 @@ final class MapPreview {
             if(ready!=null)return ready;
         }
         if(decodeFailed.contains(cacheKey))return null;
-        BufferedImage image=decoded.remove(cacheKey);
+        BufferedImage image;
+        synchronized(decoded){image=decoded.remove(cacheKey);}
         if(image!=null){
             ResourceLocation r=MinecraftAccess.get().getTextureManager().getDynamicTextureLocation(name,new DynamicTexture(image));
             synchronized(textures){textures.put(cacheKey,r);}
@@ -305,7 +310,7 @@ final class MapPreview {
         if(decoding.add(cacheKey))INSTANCE.worker.execute(()->{
             try{
                 BufferedImage read=source.call();
-                if(read==null)decodeFailed.add(cacheKey);else decoded.put(cacheKey,read);
+                if(read==null)decodeFailed.add(cacheKey);else synchronized(decoded){decoded.put(cacheKey,read);}
             }catch(Exception e){decodeFailed.add(cacheKey);}
             finally{decoding.remove(cacheKey);}
         });

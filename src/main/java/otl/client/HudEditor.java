@@ -6,7 +6,7 @@ import net.minecraft.client.gui.*;
 
 /** Gameplay HUD positions and editor hit boxes share bounds. */
 final class HudEditor extends GuiScreen {
-    private static final String[] IDS={HudLayout.NOTICES,HudLayout.TEAM_BAR,HudLayout.TABS,HudLayout.CONFIRM,HudLayout.KILLS,HudLayout.REGION,HudLayout.BOW,HudLayout.MINIMAP};
+    private static final String[] IDS={HudLayout.TEAM_BAR,HudLayout.TABS,HudLayout.CONFIRM,HudLayout.KILLS,HudLayout.REGION,HudLayout.BOW,HudLayout.MINIMAP};
     private String selected=HudLayout.KILLS,dragging;
     private int dx,dy,corner=-1,startScale,guideX=-1,guideY=-1;
     private HudLayout.Rect start;

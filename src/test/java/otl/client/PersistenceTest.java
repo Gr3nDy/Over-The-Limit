@@ -31,6 +31,26 @@ public class PersistenceTest {
         }finally{UtilitySettings.heightLimitOverlay=previous;}
     }
 
+    @Test public void everySettingSurvivesASaveAndReload() throws Exception {
+        // A key written by snapshot() but never read by read() silently stops persisting.
+        UtilitySettings.heightLimitOverlay=false;UtilitySettings.nonPlayerChat=false;
+        java.lang.reflect.Method snapshot=UtilitySettings.class.getDeclaredMethod("snapshot");
+        snapshot.setAccessible(true);
+        com.google.gson.JsonObject saved=(com.google.gson.JsonObject)snapshot.invoke(null);
+        for(java.lang.reflect.Field f:UtilitySettings.class.getDeclaredFields()){
+            int mod=f.getModifiers();
+            if(!java.lang.reflect.Modifier.isStatic(mod)||java.lang.reflect.Modifier.isFinal(mod))continue;
+            if(f.getName().equals("loaded")||f.getName().equals("corrupt"))continue;
+            f.setAccessible(true);
+            if(f.getType()==boolean.class)f.setBoolean(null,!f.getBoolean(null));
+            else if(f.getType()==int.class)f.setInt(null,f.getInt(null)+1);
+            else if(f.getType()==String.class)f.set(null,"x"+f.get(null));
+        }
+        java.lang.reflect.Method read=UtilitySettings.class.getDeclaredMethod("read",com.google.gson.JsonObject.class);
+        read.setAccessible(true);
+        read.invoke(null,saved);
+        assertEquals(saved.toString(),snapshot.invoke(null).toString());
+    }
     @Test public void replacesCompleteFileAndCleansTemporaryFiles() throws Exception {
         Path p=temp.getRoot().toPath().resolve("nested/settings.json");
         AtomicFiles.write(p,"old".getBytes(StandardCharsets.UTF_8));

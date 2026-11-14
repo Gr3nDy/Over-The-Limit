@@ -38,11 +38,14 @@ final class ConfigDir {
             Path staging=Files.createTempDirectory(legacy.getParent(),".otl-migrate-");
             try{
                 copyRecursively(legacy,staging);
-                deleteRecursively(legacy);
+                // Move the copy into place before touching the original: a failed move must never
+                // leave the staging folder as the only complete copy.
                 Files.move(staging,root());
+                deleteRecursively(legacy);
                 System.out.println("Overcast Utilities: migrated config/overcast_util to config/Over The Limit");
             }catch(Exception migrationFailed){
-                try{deleteRecursively(staging);}catch(Exception ignored){}
+                // The original is still there unless the delete above ran, so only clean up then.
+                if(Files.isDirectory(legacy))try{deleteRecursively(staging);}catch(Exception ignored){}
                 throw migrationFailed;
             }
         }catch(Exception e){System.err.println("Overcast Utilities: config migration failed: "+e.getMessage());}

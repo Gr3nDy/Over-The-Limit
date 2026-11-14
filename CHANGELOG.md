@@ -16,7 +16,13 @@
 - Reliable Chat no longer leaves the history scrolled up: closing the chat returns it to the newest message, and the floating `New messages` indicator is gone.
 - **Settings-screen scrollbar** can now be clicked and dragged; before it was drawn but ignored the mouse, so long pages could only be scrolled with the wheel.
 - **Team Bar clock showed the wrong time**: the source lock trusted whichever clock line it saw first, even one that never counts. PGM's sidebar can carry the map's configured limit while the live time sits elsewhere, so the bar sat on a number that was simply not the match time. It now follows the source whose value actually moves, re-syncs within a couple of seconds of joining a match in progress, and keeps its lock while that source is still counting so two live sources cannot make the number jump.
-- **Team Bar in FFA**: FFA gives every player their own one-member team (and their own colour), which the bar treated as a team per player — a row block and a colour line each. One-member sides are now recognised as FFA: the players are pooled into shared rows and no team-colour line is drawn, since the colour belongs to the player, not a side.
+- **Team Bar in FFA**: FFA gives every player their own one-member team (and their own colour), which the bar treated as a team per player - a row block and a colour line each. One-member sides are now recognised as FFA: the players are pooled into shared rows and no team-colour line is drawn, since the colour belongs to the player, not a side.
+- **Your settings can no longer be lost on the first run after updating**: the old `config/overcast_util` folder was deleted before the copy was moved into place, so a failed move left no complete copy. The copy is moved first now, and only then is the old folder removed.
+- **Team Bar heads draw in one pass** instead of 64 rectangles per head, and the dead/grey state is cached for a quarter second. A full match no longer spends thousands of draw calls per frame on the bar.
+- **Map previews no longer keep every decoded image** for the session; the cache is capped and evicts the oldest.
+- **Map lookups no longer wait for the gallery**: a catalog refresh used to hold a lock across two GitHub downloads, so `/map` and the minimap could freeze for up to half a minute behind it.
+- **Heads refresh after a resource-pack change** (`F3+T`), instead of keeping the old pack's faces until you rejoin.
+- The HUD editor no longer lists the disabled Server Notices element.
 
 ## v0.3.8 - 2026-11-14
 

@@ -16,12 +16,16 @@ import org.lwjgl.opengl.GL11;
  * BufferedImage the skin manager keeps, so the editor and preview never blank out.
  */
 final class SkinFace {
-    private static final Map<String,int[]> CACHE=new HashMap<>();
+    private static final int MAX_RETRIES=3,MAX_CACHE=512;
+    /** Evicts the least recently used skin instead of emptying the cache, which forced a full re-read. */
+    private static final Map<String,int[]> CACHE=new java.util.LinkedHashMap<String,int[]>(64,.75F,true){
+        private static final long serialVersionUID=1L;
+        @Override protected boolean removeEldestEntry(Map.Entry<String,int[]> eldest){return size()>MAX_CACHE;}
+    };
     private static final Map<String,Long> RETRY_AT=new HashMap<>();
     /** Failed readbacks are retried at most twice a second instead of every frame. */
     private static final long RETRY_NANOS=500000000L;
     private static final Map<String,Integer> RETRY_COUNT=new HashMap<>();
-    private static final int MAX_RETRIES=3,MAX_CACHE=512;
     private SkinFace(){}
 
     static int[] facePixels(ResourceLocation texture){return read(texture,true);}
@@ -50,16 +54,13 @@ final class SkinFace {
         int[] sampled=readGl(texture,facePlane);
         if(!valid(sampled))sampled=readImage(texture,facePlane);
         if(valid(sampled)){
-            if(CACHE.size()>=MAX_CACHE)CACHE.clear();
             CACHE.put(key,sampled);RETRY_COUNT.remove(key);RETRY_AT.remove(key);return sampled;
         }
         int attempts=RETRY_COUNT.merge(key,1,Integer::sum);
         if(attempts>=MAX_RETRIES){
             System.err.println("OTL: skin readback for "+key+" failed "+attempts+" times; not retrying again this session");
-            if(CACHE.size()>=MAX_CACHE)CACHE.clear();
             CACHE.put(key,new int[0]);RETRY_COUNT.remove(key);RETRY_AT.remove(key);return new int[0];
         }
-        if(CACHE.size()>=MAX_CACHE)CACHE.clear();
         RETRY_AT.put(key,System.nanoTime()+RETRY_NANOS);
         return new int[0];
     }

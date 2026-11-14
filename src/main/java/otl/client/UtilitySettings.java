@@ -97,7 +97,7 @@ public final class UtilitySettings {
     static final Set<String> devHosts=new LinkedHashSet<>();
     /** Set when an unreadable settings file could not be backed up, so saving cannot overwrite it. */
     private static boolean corrupt;
-    private static Path path(){return ConfigDir.parts("settings.json").toPath();}
+    static Path path(){return ConfigDir.parts("settings.json").toPath();}
     static void load(){
         if(loaded)return;loaded=true;
         JsonObject j=null;
@@ -116,20 +116,11 @@ public final class UtilitySettings {
             }
         }
         if(j!=null)read(j);
-        ensureDefault();
+        Profiles.ensureDefault();
     }
-    /** The Default profile always exists: recreates it with factory settings if deleted. */
-    private static void ensureDefault(){
-        if(Files.exists(profilePath("Default")))return;
-        try{
-            JsonObject fresh=new JsonParser().parse(DEFAULTS.toString()).getAsJsonObject();
-            fresh.addProperty("profile","Default");
-            write(profilePath("Default"),fresh);
-        }catch(Exception e){System.err.println("Overcast Utilities: could not recreate Default profile: "+e.getMessage());}
-    }
-    private static void read(JsonObject j){
-        read(j,"profile",e->profile=safeName(e.getAsString()));
-        read(j,"profile_order",e->{profileOrder.clear();for(JsonElement el:e.getAsJsonArray())profileOrder.add(safeName(el.getAsString()));});
+    static void read(JsonObject j){
+        read(j,"profile",e->profile=Profiles.safeName(e.getAsString()));
+        read(j,"profile_order",e->{Profiles.profileOrder.clear();for(JsonElement el:e.getAsJsonArray())Profiles.profileOrder.add(Profiles.safeName(el.getAsString()));});
         read(j,"reliable_chat",e->chat=e.getAsBoolean());
         read(j,"face_rig",e->faceRig=e.getAsBoolean());
         // Temporarily unavailable; ignore saved ON preferences.
@@ -249,10 +240,10 @@ public final class UtilitySettings {
         load();if(corrupt)return;
         try{
             write(path(),snapshot());
-            write(profilePath(profile),profileSnapshot());
+            write(Profiles.file(profile),profileSnapshot());
         }catch(Exception e){System.err.println("Overcast Utilities: could not save settings: "+e.getMessage());}
     }
-    private static JsonObject snapshot(){
+    static JsonObject snapshot(){
             JsonObject j=new JsonObject();j.addProperty("schema_version",1);j.addProperty("profile",profile);j.addProperty("reliable_chat",chat);j.addProperty("unread_counts",counts);j.addProperty("other_faces",otherFaces);j.addProperty("show_tab_chat",showTabChat);j.addProperty("map_preview",mapPreview);j.addProperty("tab_chat_position",tabChatPosition);
             j.addProperty("face_rig",faceRig);
             j.addProperty("height_limit_overlay",heightLimitOverlay);
@@ -328,106 +319,10 @@ public final class UtilitySettings {
             j.addProperty("notice_opacity",noticeOpacity);j.addProperty("notice_mode",noticeMode.name());
             j.addProperty("notice_size",noticeSize);
             JsonArray favorites=new JsonArray();for(String key:mapFavorites)favorites.add(new JsonPrimitive(key));j.add("map_favorites",favorites);
-            JsonArray order=new JsonArray();for(String n:profileOrder)order.add(new JsonPrimitive(n));j.add("profile_order",order);
+            JsonArray order=new JsonArray();for(String n:Profiles.profileOrder)order.add(new JsonPrimitive(n));j.add("profile_order",order);
             JsonObject channels=new JsonObject();selected.forEach(channels::addProperty);j.add("selected_channels",channels);
             JsonArray hosts=new JsonArray();for(String h:devHosts)hosts.add(new JsonPrimitive(h));j.add("dev_hosts",hosts);
             return j;
-    }
-    private static Path profiles(){return path().getParent().resolve("profiles");}
-    private static Path profilePath(String name){return profiles().resolve(safeName(name)+".json");}
-    static String safeName(String name){
-        String value=name==null?"":name.replaceAll("[^A-Za-z0-9 _()-]","").trim();
-        if(value.isEmpty())value="Profile";
-        return value.length()>24?value.substring(0,24):value;
-    }
-    /** Saved rail ordering; profile files missing from it are appended in directory order. */
-    static List<String> profileOrder=new ArrayList<>();
-    static List<String> profileNames(){
-        List<String> names=new ArrayList<>();
-        try{if(Files.isDirectory(profiles()))try(DirectoryStream<Path> list=Files.newDirectoryStream(profiles(),"*.json")){
-            for(Path file:list){String name=file.getFileName().toString();names.add(name.substring(0,name.length()-5));}
-        }}catch(Exception e){System.err.println("Overcast Utilities: could not list profiles: "+e.getMessage());}
-        if(!names.contains(profile))names.add(profile);
-        List<String> out=new ArrayList<>();
-        for(String n:profileOrder)if(names.remove(n))out.add(n);
-        out.addAll(names);
-        return out;
-    }
-    /** Saves the current profile, then loads another one; a missing or invalid file changes nothing. */
-    static void switchProfile(String name){
-        load();String target=safeName(name);
-        if(target.equals(profile))return;
-        JsonObject next=readProfile(profilePath(target));
-        if(next==null)return;
-        save();
-        // Speech-bubble prefs are global: preserve them across profile switches.
-        boolean keepBubbles=bubbles,keepBubbleChat=bubbleTeamAndChat;
-        int keepChars=bubbleCharacters,keepSeconds=bubbleSeconds;
-        resetDefaults();
-        read(next);
-        bubbles=keepBubbles;bubbleTeamAndChat=keepBubbleChat;bubbleCharacters=keepChars;bubbleSeconds=keepSeconds;
-        profile=target;
-        save();
-        ReliableChat.applyPreferences();
-    }
-    static String newProfile(){
-        load();
-        for(int i=1;i<=999;i++){
-            String name="Profile "+i;
-            if(Files.exists(profilePath(name)))continue;
-            JsonObject fresh=new JsonParser().parse(DEFAULTS.toString()).getAsJsonObject();
-            fresh.addProperty("profile",name);
-            try{write(profilePath(name),fresh);}catch(Exception e){System.err.println("Overcast Utilities: could not create profile: "+e.getMessage());return null;}
-            switchProfile(name);
-            return name;
-        }
-        return null;
-    }
-    static boolean deleteProfile(String name){
-        String target=safeName(name);
-        if(target.equals(profile)||target.equals("Default"))return false;
-        try{Files.deleteIfExists(profilePath(target));return true;}catch(Exception e){System.err.println("Overcast Utilities: could not delete profile: "+e.getMessage());return false;}
-    }
-    /** Persists the rail order; names are sanitized and duplicates dropped. */
-    static void saveProfileOrder(List<String> names){
-        profileOrder.clear();
-        for(String n:names){String s=safeName(n);if(!profileOrder.contains(s))profileOrder.add(s);}
-        save();
-    }
-    /** Renames a profile file; a taken name gets a number. Returns the resulting name. */
-    static String renameProfile(String from,String to){
-        load();
-        String source=safeName(from),target=safeName(to);
-        if(target.equals(source))return source;
-        target=uniqueName(target);
-        final String dest=target;
-        profileOrder.replaceAll(n->n.equals(source)?dest:n);
-        try{
-            Files.move(profilePath(source),profilePath(target));
-            if(profile.equals(source)){profile=target;save();}
-            return target;
-        }catch(Exception e){System.err.println("Overcast Utilities: could not rename profile: "+e.getMessage());return source;}
-    }
-    /** Pretty JSON for the clipboard; the active profile is saved first so the copy is current. */
-    static String profileExport(String name){
-        load();
-        String target=safeName(name);
-        if(target.equals(profile))save();
-        JsonObject j=readProfile(profilePath(target));
-        return j==null?null:new GsonBuilder().setPrettyPrinting().create().toJson(j);
-    }
-    /** Creates and activates a profile from clipboard JSON. Returns its name, or null. */
-    static String importProfile(String json){
-        load();
-        if(json==null||json.length()>65536)return null;
-        try{
-            JsonObject j=new JsonParser().parse(json).getAsJsonObject();
-            String name=uniqueName(j.has("profile")?j.get("profile").getAsString():"Imported");
-            j.addProperty("profile",name);
-            write(profilePath(name),j);
-            switchProfile(name);
-            return name;
-        }catch(Exception e){System.err.println("Overcast Utilities: could not import profile: "+e.getMessage());return null;}
     }
     /** Restores only the given keys from the factory snapshot, leaving other modules alone. */
     public static void restore(String... keys){
@@ -435,32 +330,19 @@ public final class UtilitySettings {
         for(String key:keys)if(DEFAULTS.has(key))j.add(key,DEFAULTS.get(key));
         read(j);
     }
-    private static String uniqueName(String name){
-        String base=safeName(name),candidate=base;
-        if(!Files.exists(profilePath(candidate)))return candidate;
-        String stem=base.length()>18?base.substring(0,18):base;
-        for(int i=2;i<1000;i++){candidate=stem+" ("+i+")";if(!Files.exists(profilePath(candidate)))break;}
-        return candidate;
-    }
     /** HUD positions and settings return to defaults; favorites, channels and dev hosts are shared. */
     static void resetDefaults(){hudPositions.clear();read(DEFAULTS);}
-    private static JsonObject profileSnapshot(){
+    static JsonObject profileSnapshot(){
         JsonObject j=snapshot();
         j.remove("map_favorites");j.remove("selected_channels");j.remove("dev_hosts");
         j.addProperty("profile",profile);
         return j;
     }
-    private static JsonObject readProfile(Path file){
-        try{
-            if(!Files.exists(file))return null;
-            return new JsonParser().parse(new String(Files.readAllBytes(file),StandardCharsets.UTF_8)).getAsJsonObject();
-        }catch(Exception e){System.err.println("Overcast Utilities: could not read profile "+file.getFileName()+": "+e.getMessage());return null;}
-    }
-    private static void write(Path file,JsonObject j)throws Exception{
+    static void write(Path file,JsonObject j)throws Exception{
         byte[] data=new GsonBuilder().setPrettyPrinting().create().toJson(j).getBytes(StandardCharsets.UTF_8);
         if(Files.isRegularFile(file)&&Arrays.equals(Files.readAllBytes(file),data))return;
         AtomicFiles.write(file,data);
     }
     /** Captured before any load, so a new profile always starts from factory settings. */
-    private static final JsonObject DEFAULTS=profileSnapshot();
+    static final JsonObject DEFAULTS=profileSnapshot();
 }

@@ -8,8 +8,11 @@ import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.ScaledResolution;
+import net.minecraft.client.renderer.GlStateManager;
+import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.client.renderer.WorldRenderer;
+import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.client.network.NetworkPlayerInfo;
 import net.minecraft.entity.boss.BossStatus;
 import net.minecraft.scoreboard.Score;
@@ -53,6 +56,13 @@ final class TeamBar {
     private static final Pattern COLOUR=Pattern.compile("\u00a7([0-9a-fA-F])");
     /** PGM puts observers in their own team; it must never become one of the two sides. */
     private static final Pattern OBSERVERS=Pattern.compile("(?i).*\\b(observers?|spectators?|spec)\\b.*");
+    /**
+     * Dead state for drawing only. It changes on a death or respawn, not between frames, and each
+     * lookup is a tab-list read plus a regex, so it is refreshed a few times a second.
+     */
+    private static final java.util.Map<String,Boolean> deadCache=new java.util.HashMap<>();
+    private static long deadAt;
+    private static final long DEAD_TTL=250_000_000L;
     private String actionBar;
     private long actionBarAt;
     private Object world;
@@ -692,26 +702,47 @@ final class TeamBar {
     private static void draw(Minecraft mc,Bar bar,int x,int y){
         int band=bar.band;
         int lineW=bar.line>0?bar.line-LINE_GAP:0;
+        // One tessellator pass for the whole bar: a head is up to 64 quads, and drawing each one
+        // as its own rect was thousands of draw calls per frame in a full match.
+        Tessellator tessellator=Tessellator.getInstance();
+        WorldRenderer world=tessellator.getWorldRenderer();
+        GlStateManager.enableBlend();
+        GlStateManager.disableTexture2D();
+        GlStateManager.tryBlendFuncSeparate(770,771,1,0);
+        GlStateManager.color(1F,1F,1F,1F);
+        world.begin(7,DefaultVertexFormats.POSITION_COLOR);
         for(int r=0;r<bar.left.size();r++){
             List<String> members=bar.left.get(r);
             int top=y+r*(band+ROW_GAP)+(band-bar.head)/2;
             // The line sits at the row's own outer end, so it stays attached to its heads.
-            if(lineW>0)Gui.drawRect(x+bar.leftLine(members),top,x+bar.leftLine(members)+lineW,top+bar.head,teamColour(mc,members));
+            if(lineW>0)quad(world,x+bar.leftLine(members),top,x+bar.leftLine(members)+lineW,top+bar.head,teamColour(mc,members));
             int start=x+bar.leftStart(members);
-            for(int i=0;i<members.size();i++)head(members.get(i),start+i*bar.advance,top,bar.head);
+            for(int i=0;i<members.size();i++)head(world,members.get(i),start+i*bar.advance,top,bar.head);
         }
         for(int r=0;r<bar.right.size();r++){
             List<String> members=bar.right.get(r);
             int top=y+r*(band+ROW_GAP)+(band-bar.head)/2;
             // Rows are flush with the clock and grow outward, so both columns read from the middle.
             int start=x+bar.rightStart(members);
-            if(lineW>0)Gui.drawRect(x+bar.rightLine(members),top,x+bar.rightLine(members)+lineW,top+bar.head,teamColour(mc,members));
-            for(int i=0;i<members.size();i++)head(members.get(i),start+i*bar.advance,top,bar.head);
+            if(lineW>0)quad(world,x+bar.rightLine(members),top,x+bar.rightLine(members)+lineW,top+bar.head,teamColour(mc,members));
+            for(int i=0;i<members.size();i++)head(world,members.get(i),start+i*bar.advance,top,bar.head);
         }
+        tessellator.draw();
+        GlStateManager.enableTexture2D();
+        GlStateManager.disableBlend();
         if(bar.textW>0){
             // Sits on the first head row, not the middle of the stack, so extra teams stack below it.
             mc.fontRendererObj.drawStringWithShadow(bar.label,x+bar.textX,y+(band-8)/2,colour(bar.timer));
         }
+    }
+
+    /** One flat quad into the shared buffer, coloured per vertex. */
+    private static void quad(WorldRenderer world,int x1,int y1,int x2,int y2,int argb){
+        float a=(argb>>>24&255)/255F,r=(argb>>16&255)/255F,g=(argb>>8&255)/255F,b=(argb&255)/255F;
+        world.pos(x1,y2,0).color(r,g,b,a).endVertex();
+        world.pos(x2,y2,0).color(r,g,b,a).endVertex();
+        world.pos(x2,y1,0).color(r,g,b,a).endVertex();
+        world.pos(x1,y1,0).color(r,g,b,a).endVertex();
     }
 
     /**
@@ -740,14 +771,14 @@ final class TeamBar {
      * Dead players lose their colours, exactly like the grey tab-list name, so the head is
      * visibly faded and comes back on respawn. The texels stay, so the skin is still readable.
      */
-    private static void head(String name,int x,int y,int size){
+    private static void head(WorldRenderer world,String name,int x,int y,int size){
         int[] pixels=KillFeed.face(name);
-        boolean dead=dead(name);
-        if(pixels.length!=64){Gui.drawRect(x,y,x+size,y+size,dead?DEAD_FALLBACK:FALLBACK);return;}
+        boolean dead=deadNow(name);
+        if(pixels.length!=64){quad(world,x,y,x+size,y+size,dead?DEAD_FALLBACK:FALLBACK);return;}
         if(size>=8){
             for(int row=0;row<8;row++)for(int col=0;col<8;col++){
                 int pixel=pixels[row*8+col];if((pixel>>>24)<16)continue;
-                Gui.drawRect(x+col*size/8,y+row*size/8,x+(col+1)*size/8,y+(row+1)*size/8,dead?greyed(pixel):pixel);
+                quad(world,x+col*size/8,y+row*size/8,x+(col+1)*size/8,y+(row+1)*size/8,dead?greyed(pixel):pixel);
             }
         }else{
             // Below eight pixels the texels are invisible, so average the face into one readable swatch.
@@ -756,12 +787,21 @@ final class TeamBar {
                 if((pixel>>>24)<16)continue;
                 red+=pixel>>16&255;green+=pixel>>8&255;blue+=pixel&255;seen++;
             }
-            if(seen==0)Gui.drawRect(x,y,x+size,y+size,dead?DEAD_FALLBACK:FALLBACK);
+            if(seen==0)quad(world,x,y,x+size,y+size,dead?DEAD_FALLBACK:FALLBACK);
             else{
                 int average=0xFF000000|(int)(red/seen)<<16|(int)(green/seen)<<8|(int)(blue/seen);
-                Gui.drawRect(x,y,x+size,y+size,dead?greyed(average):average);
+                quad(world,x,y,x+size,y+size,dead?greyed(average):average);
             }
         }
+    }
+
+    /** The draw-time dead flag: cached for a quarter second so a frame does not re-read the tab list. */
+    private static boolean deadNow(String name){
+        long now=System.nanoTime();
+        if(now-deadAt>DEAD_TTL){deadCache.clear();deadAt=now;}
+        Boolean known=deadCache.get(name);
+        if(known==null){known=dead(name);deadCache.put(name,known);}
+        return known;
     }
 
     /** Colour removed and dimmed: what a greyed tab-list name does to a skin. */
