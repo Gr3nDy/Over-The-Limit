@@ -488,7 +488,7 @@ public final class OtlSmoke {
             case "vote":state=69;scopeEnd=78;return;
             case "teambar":state=79;scopeEnd=89;UtilitySettings.teamBar=true;return;
             case "live":state=90;scopeEnd=110;UtilitySettings.teamBar=true;UtilitySettings.devHosts.add("localhost");return;
-            case "touchdown":state=111;scopeEnd=115;UtilitySettings.touchdown=true;mc.gameSettings.thirdPersonView=0;return;
+            case "touchdown":state=111;scopeEnd=119;UtilitySettings.touchdown=true;UtilitySettings.touchdownReplay=true;mc.gameSettings.thirdPersonView=0;return;
             default:throw new IllegalArgumentException("Unknown smoke scope: "+scope);
         }
     }
@@ -2371,6 +2371,35 @@ public final class OtlSmoke {
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-touchdown.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
                 require(org.lwjgl.opengl.GL11.glGetError()==0,"Football world rendering left a GL error");
                 System.out.println("OTL_SMOKE: Touchdown map index, Football fallback, flag banner and thrown ball PASS");
+            }else if(state==116){
+                // Touchdown replay: switch the map back on and let the recorder capture the ball
+                // the scope spawned at state 115. The replay must stay off until it has been
+                // proven on a live server, so the toggle is only forced here, in the smoke scope.
+                Touchdown.announce("Touchdown");
+                require(Touchdown.active(),"Touchdown did not reactivate for the replay");
+                require(!Replay.playing(),"A replay started without a touchdown");
+            }else if(state==117){
+                // Exactly what PGM sends: the end zone names the scorer, then the banner lands.
+                // The end-zone name does not match any known player, so the scorer falls back to
+                // whoever the ball was closest to - the smoke player itself.
+                line(" \u00a7e\u00a7l\u00bb\u00a7r Smoke\u00a77 takes it to the end zone!");
+                line("\u00a76         \u00a76\u00a7lTOUCHDOWN! \u00a76\u00ab");
+                require(Replay.playing(),"The touchdown banner did not start the replay");
+                require(mc.getRenderViewEntity()!=mc.thePlayer,"The replay did not take over the camera");
+                require(mc.currentScreen!=null,"The replay overlay is missing");
+            }else if(state==118){
+                require(Replay.playing(),"The replay ended before the skip");
+                Replay.skip();
+                require(!Replay.playing(),"Skip did not stop the replay");
+                require(mc.getRenderViewEntity()==mc.thePlayer,"Skip did not restore the camera");
+                require(mc.currentScreen==null,"Skip left the replay overlay up");
+            }else if(state==119){
+                // Ghosts and the ball were rendered every frame between 117 and 118; if that left
+                // a GL error or the camera stuck, this catches it.
+                require(!Replay.playing(),"The replay came back after skip");
+                require(mc.getRenderViewEntity()==mc.thePlayer,"The camera is still captured");
+                require(org.lwjgl.opengl.GL11.glGetError()==0,"Replay rendering left a GL error");
+                System.out.println("OTL_SMOKE: Touchdown replay recording, camera takeover, skip and restore PASS");
             }
             if(state==scopeEnd){
                 if(!scope.equals("all"))System.out.println("OTL_SMOKE: PASS - "+scope);

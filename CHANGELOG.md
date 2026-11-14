@@ -2,6 +2,9 @@
 
 ## v0.3.9 - 2026-11-14
 
+### Added
+- **Touchdown replay** (off by default, under Touchdown → Touchdown replay): after PGM announces a touchdown, the last few seconds are replayed in slow motion over the map - the throw, the catch and the run into the end zone, from a camera that follows the ball and then the carrier. Solo scores (the carrier never threw) replay the carrier's own run. The mod records its own replay data: every tick, the position of nearby players and Footballs, ten seconds deep. The round keeps running underneath - the replay is drawn over it and ends the instant PGM announces the next round (the "Go!" that starts a round is a title packet, so a netty tap watches for it, the same pattern Bow Accuracy proved), on any key, or at the end of the play. The camera, screen and players are always restored; if nothing of the play was in render distance, it skips silently. Ghost players wear the real skins; the Football is the striped mesh.
+
 ### Changed
 - **Works on any PGM server**: the mod only switched on for a handful of known addresses (`play.oc.tc` and friends), so on any other server - a private test server included - every module stayed inert even though the server was running PGM. The mod now recognises PGM from its own chat lines (`The match has started!`, `Time Remaining: 5:00`, `Playing <map> by <author>`, `has ended the match.`) and switches on for that server, then forgets it again when you leave or join somewhere else. A server that is not PGM is still left alone.
 - **Football looks like a football**: the ball is dark maroon leather instead of flat brown, with a white stripe near each tip and seven laces down the middle, and it is drawn at 0.7 of the item space instead of 1.25 - it was bigger than the block-sized slot it sat in, so it filled your hand and your inventory slot.
