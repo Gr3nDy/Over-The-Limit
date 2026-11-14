@@ -113,7 +113,16 @@ public final class Otl {
             tiles.mapSpecialRenderers.put(net.minecraft.tileentity.TileEntityBanner.class,
                 new FootballBannerRenderer(banner==null?new net.minecraft.client.renderer.tileentity.TileEntityBannerRenderer():banner));
         net.minecraft.client.renderer.entity.RenderManager manager=mc.getRenderManager();
-        if(manager!=null)manager.entityRenderMap.put(net.minecraft.entity.projectile.EntitySnowball.class,
-            new RenderFootballSnowball(manager,net.minecraft.init.Items.snowball,mc.getRenderItem()));
+        if(manager!=null){
+            manager.entityRenderMap.put(net.minecraft.entity.projectile.EntitySnowball.class,
+                new RenderFootballSnowball(manager,net.minecraft.init.Items.snowball,mc.getRenderItem()));
+            net.minecraft.client.renderer.entity.RenderEntityItem dropped=
+                (net.minecraft.client.renderer.entity.RenderEntityItem)
+                    manager.entityRenderMap.get(net.minecraft.entity.item.EntityItem.class);
+            // The touchdown flag floats at the post as a dropped banner item; keep everything else vanilla.
+            if(dropped!=null&&!(dropped instanceof RenderFootballFlag))
+                manager.entityRenderMap.put(net.minecraft.entity.item.EntityItem.class,
+                    new RenderFootballFlag(manager,mc.getRenderItem()));
+        }
     }
 }

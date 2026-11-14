@@ -2384,13 +2384,23 @@ public final class OtlSmoke {
                 require(Touchdown.active(),"Pigskin Punchout did not switch the football on");
                 line("\u00a7dPlaying \u00a7bThe Souper Bowl \u00a77by \u00a7fMapMaker");
                 require(Touchdown.active(),"The Souper Bowl did not switch the football on");
-                // The flag on these maps is a floating banner ITEM, not a banner block: prove it
-                // renders as the ball now, through the real item renderer, with no GL error.
+                // The flag on these maps is a floating banner ITEM, not a banner block: the dropped
+                // flag entity renders as the ball, while the same banner on a head or in a slot
+                // stays a flag - a carrier must be readable as the one holding the flag.
+                net.minecraft.entity.item.EntityItem flag=
+                    new net.minecraft.entity.item.EntityItem(mc.theWorld,mc.thePlayer.posX+3,mc.thePlayer.posY+2,mc.thePlayer.posZ);
+                flag.setEntityItemStack(new net.minecraft.item.ItemStack(net.minecraft.init.Items.banner));
+                net.minecraft.client.renderer.entity.RenderEntityItem dropped=
+                    (net.minecraft.client.renderer.entity.RenderEntityItem)mc.getRenderManager().entityRenderMap.get(net.minecraft.entity.item.EntityItem.class);
+                require(dropped instanceof RenderFootballFlag,"The floating flag entity renderer was not replaced");
+                net.minecraft.client.renderer.entity.RenderManager view=mc.getRenderManager();
                 int before=FootballMesh.draws;
-                net.minecraft.item.ItemStack flag=new net.minecraft.item.ItemStack(net.minecraft.init.Items.banner);
-                net.minecraft.client.renderer.tileentity.TileEntityItemStackRenderer.instance.renderByItem(flag);
-                require(FootballMesh.draws>before,"A floating banner flag did not render as the football");
+                dropped.doRender(flag,flag.posX-view.viewerPosX,flag.posY-view.viewerPosY,flag.posZ-view.viewerPosZ,0,0);
+                require(FootballMesh.draws>before,"The floating flag did not render as the football");
                 require(org.lwjgl.opengl.GL11.glGetError()==0,"Flag item rendering left a GL error");
+                int wornBefore=FootballMesh.draws;
+                net.minecraft.client.renderer.tileentity.TileEntityItemStackRenderer.instance.renderByItem(new net.minecraft.item.ItemStack(net.minecraft.init.Items.banner));
+                require(FootballMesh.draws==wornBefore,"A banner worn on the head or held became a football");
                 // Back to one known Touchdown map so the replay test below records a real play.
                 Touchdown.announce("Touchdown");
                 require(Touchdown.active(),"Touchdown did not reactivate for the replay");

@@ -11,7 +11,7 @@ public final class TouchdownSettings extends SettingsScreen {
     protected void buildPanel(){
         resetButton("touchdown");
         panel.section("TOUCHDOWN");
-        panel.note("On Touchdown maps the flag becomes a floating football: on the post, in the hand, in inventory slots and on the carrier's head.");
+        panel.note("On Touchdown maps the flag on the post becomes a floating football. The flag a carrier wears stays a flag, so you can always see who has it.");
         panel.section("REPLAY");
         panel.note("After a touchdown, the last few seconds replay in slow motion: the throw, the catch and the run into the end zone, from a camera that follows the ball and then the carrier. Solo scores replay the carrier's run. Press any key to skip.");
         panel.section("SAFETY");
