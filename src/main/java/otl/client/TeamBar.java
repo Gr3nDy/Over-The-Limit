@@ -303,18 +303,24 @@ final class TeamBar {
         return current;
     }
 
-    /** Ten heads is one row; a bigger team wraps onto the rows below instead of shrinking its heads. */
+    /** A row holds up to ten heads; a bigger team wraps onto the rows below instead of shrinking. */
     static final int MAX_PER_ROW=10;
     /** Head size: full size, since a row never holds more than MAX_PER_ROW heads. */
     static int headSize(int shown){return BASE_HEAD;}
     private static int advance(int head){return head+(head>=8?2:0);}
     private static int row(List<String> members,int head,int advance){return members.isEmpty()?0:(members.size()-1)*advance+head;}
 
-    /** Sizes the bar for the current teams and options; null in game while nothing carries a clock. */
+    /**
+     * Sizes the bar for the current teams and options; null in game while nothing carries a clock.
+     *
+     * The Size option alone decides head size. It used to be shrunk back down whenever the bar came
+     * out wider than the screen, so with a full row of ten a bigger Size drew smaller heads than a
+     * smaller one - the slider looked dead. A bar that is too wide now wraps onto more rows instead,
+     * so one to ten players a row always get exactly the size that was asked for.
+     */
     Bar bar(Minecraft mc,boolean preview){
         if(!preview&&!UtilitySettings.teamBarObserver&&observing(mc))return null;
         int shown=Math.max(1,Math.min(75,UtilitySettings.teamBarPlayers));
-        List<List<String>> left=new ArrayList<>(),right=new ArrayList<>();
         List<Side> sides=sides(mc);
         // No team has more than one player: that is FFA, where the colour belongs to the player.
         boolean ffa=isFfa(sides);
@@ -325,13 +331,21 @@ final class TeamBar {
         // shortcut: a no-limit map joined mid-match shows no heads until the kickoff line
         if(timer==null&&!preview)return null;
         boolean counting=timer!=null&&timer.starting;
+        String label=timer!=null?timer.label:preview?"10:00":"";
+        int textW=label.isEmpty()?0:mc.fontRendererObj.getStringWidth(label);
+        int scale=Math.max(50,Math.min(150,UtilitySettings.teamBarSize));
+        int head=Math.max(MIN_HEAD,headSize(shown)*scale/100);
+        ScaledResolution scaled=new ScaledResolution(mc);
+        int screen=scaled.getScaledWidth(),screenH=scaled.getScaledHeight();
+        int perRow=perRow(head,line(head,ffa),textW,screen);
+        List<List<String>> left=new ArrayList<>(),right=new ArrayList<>();
         if(counting&&!preview){
             // Counting in: the middle only, so nothing suggests the teams are set yet.
         }else if(sides.isEmpty()){
             // No teams yet (or you are watching from the observer team): keep the clock alone and
             // centred instead of dropping the bar, so it never sits off centre or disappears.
             if(preview){
-                int fake=Math.max(1,Math.min(shown,8));
+                int fake=Math.max(1,Math.min(Math.min(shown,8),perRow));
                 left.add(placeholders(fake));right.add(placeholders(fake));
             }
         }else if(ffa){
@@ -343,37 +357,38 @@ final class TeamBar {
             for(Side side:sides)pool.addAll(side.members);
             if(mc.thePlayer!=null&&pool.remove(mc.thePlayer.getName()))pool.add(0,mc.thePlayer.getName());
             int count=Math.min(shown,pool.size());
-            for(int from=0;from<count;from+=MAX_PER_ROW){
-                List<String> members=new ArrayList<>(pool.subList(from,Math.min(from+MAX_PER_ROW,count)));
+            for(int from=0;from<count;from+=perRow){
+                List<String> members=new ArrayList<>(pool.subList(from,Math.min(from+perRow,count)));
                 (left.size()<=right.size()?left:right).add(members);
             }
         }else{
             // One block of rows per team, alternating columns. A team keeps the column its size
-            // gives it, so joining a team never drags the block across the bar. Ten heads fill a
-            // row; the rest wrap onto the rows below rather than shrinking. A right-column block
-            // hugs the clock, so the local head moves to the outer end of its last row.
+            // gives it, so joining a team never drags the block across the bar. A row holds up to
+            // ten heads; the rest wrap onto the rows below rather than shrinking. A right-column
+            // block hugs the clock, so the local head moves to the outer end of its last row.
             for(int i=0;i<sides.size();i++){
                 List<String> members=new ArrayList<>(sides.get(i).members.subList(0,Math.min(shown,sides.get(i).members.size())));
                 if(i%2==1&&mc.thePlayer!=null&&members.remove(mc.thePlayer.getName()))members.add(mc.thePlayer.getName());
                 List<List<String>> column=i%2==0?left:right;
-                for(int from=0;from<members.size();from+=MAX_PER_ROW)
-                    column.add(new ArrayList<>(members.subList(from,Math.min(from+MAX_PER_ROW,members.size()))));
+                for(int from=0;from<members.size();from+=perRow)
+                    column.add(new ArrayList<>(members.subList(from,Math.min(from+perRow,members.size()))));
             }
         }
-        String label=timer!=null?timer.label:preview?"10:00":"";
-        int textW=label.isEmpty()?0:mc.fontRendererObj.getStringWidth(label);
-        int scale=Math.max(50,Math.min(150,UtilitySettings.teamBarSize));
-        int head=Math.max(MIN_HEAD,headSize(biggest(left,right))*scale/100);
-        ScaledResolution scaled=new ScaledResolution(mc);
-        int screen=scaled.getScaledWidth(),screenH=scaled.getScaledHeight();
-        // Never spill off the screen, however many teams and players are shown: the rows stack
-        // downward, so a big team count shrinks the heads until the whole stack fits the height.
+        // Last resort, height only: a stack of many teams can still be taller than the screen.
         while(head>MIN_HEAD){
-            Bar fit=new Bar(left,right,head,textW,timer,label,line(head,ffa));
-            if(fit.width<=screen-8&&fit.height<=screenH-8)break;
+            if(new Bar(left,right,head,textW,timer,label,line(head,ffa)).height<=screenH-8)break;
             head--;
         }
         return new Bar(left,right,head,textW,timer,label,line(head,ffa));
+    }
+
+    /**
+     * How many heads one row may hold at this size: ten at most, fewer when ten would make the bar
+     * wider than the screen. Wrapping early keeps the head size the user asked for.
+     */
+    static int perRow(int head,int lineW,int textW,int screen){
+        int column=(screen-8-textW-2*GAP)/2-lineW;
+        return Math.max(1,Math.min(MAX_PER_ROW,(column-head)/advance(head)+1));
     }
 
     /**
@@ -389,13 +404,6 @@ final class TeamBar {
     /** Width of the team-colour bar plus the gap to the heads; 0 when off or in FFA. */
     private static int line(int head,boolean ffa){
         return !ffa&&UtilitySettings.teamBarTeamColor?Math.max(2,head/5)+LINE_GAP:0;
-    }
-
-    private static int biggest(List<List<String>> left,List<List<String>> right){
-        int most=1;
-        for(List<String> members:left)most=Math.max(most,members.size());
-        for(List<String> members:right)most=Math.max(most,members.size());
-        return most;
     }
 
     private static List<String> placeholders(int count){

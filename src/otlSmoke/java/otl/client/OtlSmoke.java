@@ -1741,6 +1741,8 @@ public final class OtlSmoke {
                 require(limit!=null&&limit.seconds>=597&&limit.seconds<=600,"Team Bar did not read the sidebar timer: "+(limit==null?"none":limit.label));
                 require(limit.countdown,"Time-limit timer was not marked as a countdown");
                 require(TeamBar.headSize(1)==16&&TeamBar.headSize(75)==16,"Heads shrank instead of wrapping to another row");
+                // Pin the size: a previous smoke run can leave a different value in settings.json.
+                UtilitySettings.teamBarSize=100;
                 TeamBar.Bar bar=TeamBar.INSTANCE.bar(mc,false);
                 require(bar.left.size()==2&&bar.right.size()==1,"Three teams were not stacked one block each: "+bar.left.size()+"/"+bar.right.size());
                 require(bar.left.get(0).size()==5&&bar.right.get(0).size()==2,"Players shown was not applied: "+bar.left.get(0).size()+"/"+bar.right.get(0).size());
@@ -1781,6 +1783,32 @@ public final class OtlSmoke {
                 require(TeamBar.teamColour(mc,sides.get(0).members)==0xFF5555FF,"The second team got the wrong colour");
                 UtilitySettings.teamBarTeamColor=lineSetting;
                 require(bar.head==16,"Five heads per side were not kept at full size");
+                // The Size option is the only thing that may change head size for a row of ten
+                // or fewer: the count itself must never shrink them.
+                int wasSize=UtilitySettings.teamBarSize;
+                UtilitySettings.teamBarSize=50;
+                require(TeamBar.INSTANCE.bar(mc,false).head==8,"Size 50% did not halve the heads: "+TeamBar.INSTANCE.bar(mc,false).head);
+                UtilitySettings.teamBarSize=150;
+                require(TeamBar.INSTANCE.bar(mc,false).head==24,"Size 150% did not enlarge the heads: "+TeamBar.INSTANCE.bar(mc,false).head);
+                UtilitySettings.teamBarSize=wasSize;
+                // The Size slider itself must reach the setting and the drawn heads, not just
+                // repaint its own label: that is what "the size slider does nothing" looks like.
+                TeamBarSettings options=new TeamBarSettings(null);
+                options.setWorldAndResolution(mc,854,480);
+                GuiButton sizeRow=find(options,"Size: "+UtilitySettings.teamBarSize+"%");
+                sizeRow.mousePressed(mc,sizeRow.xPosition+4,sizeRow.yPosition+10);
+                options.mouseReleased(sizeRow.xPosition+4,sizeRow.yPosition+10,0);
+                require(UtilitySettings.teamBarSize==50,"The Size slider did not reach the setting: "+UtilitySettings.teamBarSize);
+                require(TeamBar.INSTANCE.bar(mc,false).head==8,"The Size slider did not reach the heads: "+TeamBar.INSTANCE.bar(mc,false).head);
+                UtilitySettings.teamBarSize=wasSize;
+                // A row of ten at a larger Size must really be bigger, not squeezed back by the
+                // fit-to-screen pass: that pass turned "150%" into heads smaller than 100%.
+                UtilitySettings.teamBarPlayers=10;UtilitySettings.teamBarSize=150;
+                TeamBar.Bar big=TeamBar.INSTANCE.bar(mc,false);
+                require(big.head==24,"A ten-head row was shrunk instead of wrapping: "+big.head);
+                require(big.width<=new ScaledResolution(mc).getScaledWidth()-8,"The bigger bar spills off the screen");
+                require(big.left.get(0).size()<=TeamBar.MAX_PER_ROW,"A row held more than ten heads");
+                UtilitySettings.teamBarPlayers=5;UtilitySettings.teamBarSize=wasSize;
                 UtilitySettings.teamBarPlayers=75;
                 TeamBar.Bar wide=TeamBar.INSTANCE.bar(mc,false);
                 // Ten heads fill a row; a bigger team wraps onto the rows below at full size.
@@ -1821,7 +1849,12 @@ public final class OtlSmoke {
                 for(TeamBar.Side side:TeamBar.sides(mc))require(!side.members.contains("AAAPlayer"),"An observer was left on a team row");
                 // Same bar during a count-up match: no limit label, so the timer stays white.
                 sidebar(mc.theWorld.getScoreboard(),mc.theWorld.getScoreboard().getObjective("otl_teambar"),"Time: 0:42");
+                // Ten a row at 150%: the heads must be bigger, not shrunk back to fit the width.
+                UtilitySettings.teamBarPlayers=10;UtilitySettings.teamBarSize=150;
             }else if(state==81){
+                // The frame drawn during the wait above used the 150% bar; keep it as evidence.
+                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-team-bar-large.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+                UtilitySettings.teamBarPlayers=5;UtilitySettings.teamBarSize=100;
                 require(!TeamBar.dead("RedPlayer0"),"A respawned player stayed greyed out");
                 TeamBar.Timer up=TeamBar.INSTANCE.timer(mc);
                 require(up!=null&&"0:42".equals(up.label)&&!up.countdown,"Count-up timer was not left white: "+(up==null?"none":up.label));

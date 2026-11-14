@@ -19,7 +19,7 @@ public final class TeamBarSettings extends SettingsScreen {
         buttonList.add(new NeutralButton(6,panel.left(),panel.row(),panel.width(),20,"Team colour line: "+(UtilitySettings.teamBarTeamColor?"ON":"OFF"),false));
         buttonList.add(new PresetSlider(2,panel.left(),panel.row(),panel.width(),"Players shown: ","",PresetSlider.PLAYERS,UtilitySettings.teamBarPlayers,5,s->UtilitySettings.teamBarPlayers=s.getValueInt()));
         buttonList.add(new PresetSlider(3,panel.left(),panel.row(),panel.width(),"Size: ","%",PresetSlider.SIZE,UtilitySettings.teamBarSize,100,s->UtilitySettings.teamBarSize=s.getValueInt()));
-        panel.note("Heads shrink above ten players. Dead players grey out.");
+        panel.note("Ten heads per row; extra players wrap below. Dead players grey out.");
         back(4);
     }
     protected void actionPerformed(GuiButton b){
