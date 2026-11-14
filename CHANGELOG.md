@@ -1,10 +1,5 @@
 # Changelog
 
-## Unreleased
-
-### Fixed
-- **Team Bar in FFA**: FFA gives every player their own one-member team (and their own colour), which the bar treated as a separate team per player. The bar now pools them into one set of rows and draws no team-colour line, since the colour belongs to the player, not a side. Left and right no longer mean anything in FFA.
-
 ## v0.3.9 - 2026-11-14
 
 ### Changed
@@ -20,6 +15,7 @@
 - **Reliable Chat scrollbar** is a slim rounded pill instead of a boxed bar with `^`/`v` arrows, and can be turned off under Reliable Chat → Appearance.
 - Reliable Chat no longer leaves the history scrolled up: closing the chat returns it to the newest message, and the floating `New messages` indicator is gone.
 - **Settings-screen scrollbar** can now be clicked and dragged; before it was drawn but ignored the mouse, so long pages could only be scrolled with the wheel.
+- **Team Bar in FFA**: FFA gives every player their own one-member team (and their own colour), which the bar treated as a team per player — a row block and a colour line each. One-member sides are now recognised as FFA: the players are pooled into shared rows and no team-colour line is drawn, since the colour belongs to the player, not a side.
 
 ## v0.3.8 - 2026-11-14
 

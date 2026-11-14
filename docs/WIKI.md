@@ -4,7 +4,7 @@
 
 **Current release:** [v0.3.9](https://github.com/Gr3nDy/Over-The-Limit/releases/tag/v0.3.9) · **Source:** [github.com/Gr3nDy/Over-The-Limit](https://github.com/Gr3nDy/Over-The-Limit) (branch `beta`)
 
-**New in v0.3.9:** Team Bar layout and clock fixes (fixed team order, ten heads per row then wrap, a centred clock that no longer vanishes while observing, no skin flicker), votebook `(You: 12)` and multi-colour names, and a slimmer toggleable chat scrollbar plus a draggable settings scrollbar. Full list in the [changelog](../CHANGELOG.md).
+**New in v0.3.9:** Team Bar layout and clock fixes (fixed team order, ten heads per row then wrap, a centred clock that no longer vanishes while observing, no skin flicker, FFA pooled with no colour line), votebook `(You: 12)` and multi-colour names, and a slimmer toggleable chat scrollbar plus a draggable settings scrollbar. Full list in the [changelog](../CHANGELOG.md).
 
 ## Installing
 
