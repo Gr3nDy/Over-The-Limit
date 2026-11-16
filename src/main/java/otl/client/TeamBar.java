@@ -154,12 +154,16 @@ final class TeamBar {
         /** Space reserved on the outer edge of each column for the team-colour line; 0 when off. */
         final int line;
         final int head,advance,column,rightX,textX,textW,width,height,band;
+        /** The objective strip under the clock, or null when this sidebar has none. */
+        final Objectives.Strip strip;
+        final int stripX;
         final Timer timer;
         final String label;
-        Bar(List<List<String>> left,List<List<String>> right,int head,int textW,Timer timer,String label){this(left,right,head,textW,timer,label,0);}
-        Bar(List<List<String>> left,List<List<String>> right,int head,int textW,Timer timer,String label,int line){
+        Bar(List<List<String>> left,List<List<String>> right,int head,int textW,Timer timer,String label){this(left,right,head,textW,timer,label,0,null);}
+        Bar(List<List<String>> left,List<List<String>> right,int head,int textW,Timer timer,String label,int line){this(left,right,head,textW,timer,label,line,null);}
+        Bar(List<List<String>> left,List<List<String>> right,int head,int textW,Timer timer,String label,int line,Objectives.Strip strip){
             this.left=left;this.right=right;this.head=head;this.advance=advance(head);this.timer=timer;
-            this.line=line;
+            this.line=line;this.strip=strip;
             // Both columns take the widest row, so the clock keeps the exact centre of the bar
             // and does not shift when players join or leave one side.
             int w=0;
@@ -168,13 +172,19 @@ final class TeamBar {
             // The colour line sits on the outer edge, so the widest row plus the line is the column.
             this.column=w+line;
             this.textW=textW;
-            this.textX=column+(textW>0?GAP:0);
-            this.rightX=textX+textW+(textW>0?GAP:0);
+            // The middle is as wide as its widest content: the clock, or the objectives under it.
+            int mid=Math.max(textW,strip==null?0:strip.width);
+            int midX=column+(mid>0?GAP:0);
+            this.rightX=midX+mid+(mid>0?GAP:0);
             this.width=rightX+column;
+            // Both are centred on the bar's own centre, so the clock never drifts sideways.
+            this.textX=width/2-textW/2;
+            this.stripX=width/2-(strip==null?0:strip.width)/2;
             // Each row is drawn in a band at least nine pixels tall so the clock still fits.
             this.band=Math.max(head,9);
             int rows=Math.max(left.size(),right.size());
-            this.height=Math.max(band,rows*band+(rows-1)*ROW_GAP);
+            int middle=band+(strip==null?0:Objectives.HEIGHT);
+            this.height=Math.max(middle,rows*band+(rows-1)*ROW_GAP);
             this.label=label;
         }
         /**
@@ -417,7 +427,9 @@ final class TeamBar {
         int head=Math.max(MIN_HEAD,headSize(shown)*scale/100);
         ScaledResolution scaled=new ScaledResolution(mc);
         int screen=scaled.getScaledWidth(),screenH=scaled.getScaledHeight();
-        int perRow=perRow(head,line(head,ffa),textW,screen);
+        Objectives.Strip strip=UtilitySettings.teamBarObjectives?Objectives.strip(mc,sides):null;
+        int mid=Math.max(textW,strip==null?0:strip.width);
+        int perRow=perRow(head,line(head,ffa),mid,screen);
         List<List<String>> left=new ArrayList<>(),right=new ArrayList<>();
         if(counting&&!preview){
             // Counting in: the middle only, so nothing suggests the teams are set yet.
@@ -462,10 +474,10 @@ final class TeamBar {
         }
         // Last resort, height only: a stack of many teams can still be taller than the screen.
         while(head>MIN_HEAD){
-            if(new Bar(left,right,head,textW,timer,label,line(head,ffa)).height<=screenH-8)break;
+            if(new Bar(left,right,head,textW,timer,label,line(head,ffa),strip).height<=screenH-8)break;
             head--;
         }
-        return new Bar(left,right,head,textW,timer,label,line(head,ffa));
+        return new Bar(left,right,head,textW,timer,label,line(head,ffa),strip);
     }
 
     /**
@@ -630,7 +642,7 @@ final class TeamBar {
     }
 
     /** A line that carries a clock: either m:ss or the pre-match "starting in N seconds". */
-    private static boolean clock(String text){
+    static boolean clock(String text){
         return text!=null&&(TIME.matcher(text).find()||STARTING.matcher(text).find());
     }
 
@@ -727,17 +739,25 @@ final class TeamBar {
     }
 
     private static String sidebarTime(Minecraft mc){
-        if(mc.theWorld==null)return null;
+        for(String line:sidebarRows(mc))if(clock(ChatRules.plain(line).trim()))return ChatRules.plain(line).trim();
+        return null;
+    }
+
+    /** Every sidebar row as the tab-style formatted text PGM wrote, top to bottom. */
+    static List<String> sidebarRows(Minecraft mc){
+        List<String> rows=new ArrayList<>();
+        if(mc.theWorld==null)return rows;
         Scoreboard board=mc.theWorld.getScoreboard();
         ScoreObjective objective=board.getObjectiveInDisplaySlot(1);
-        if(objective==null)return null;
-        for(Score score:board.getSortedScores(objective)){
+        if(objective==null)return rows;
+        // getSortedScores is ascending; the sidebar draws it backwards, so reverse to read top down.
+        List<Score> scores=new ArrayList<>(board.getSortedScores(objective));
+        Collections.reverse(scores);
+        for(Score score:scores){
             ScorePlayerTeam team=board.getPlayersTeam(score.getPlayerName());
-            String line=(team==null?"":team.getColorPrefix())+score.getPlayerName()+(team==null?"":team.getColorSuffix());
-            String plain=ChatRules.plain(line).trim();
-            if(clock(plain))return plain;
+            rows.add((team==null?"":team.getColorPrefix())+score.getPlayerName()+(team==null?"":team.getColorSuffix()));
         }
-        return null;
+        return rows;
     }
 
     /** PGM's tab-list scoreboard mode writes the clock into the tab header/footer, not the sidebar. */
@@ -975,6 +995,16 @@ final class TeamBar {
             int extra=Math.round(Math.max(2,bar.head*.25F)*Math.min(1F,Math.max(0F,(System.nanoTime()-since)/150_000_000F)));
             head(world,hover,hx-extra/2,hy-extra/2,bar.head+extra);
         }
+        // The objective squares share the bar's quad pass; the text parts follow once the
+        // tessellator is done with the texture unit.
+        if(bar.strip!=null){
+            int px=x+bar.stripX,py=y+band;
+            for(Objectives.Part part:bar.strip.parts){
+                px+=part.space;
+                if(part.text==null)wool(world,px,py,part.colour,part.state);
+                px+=part.width(mc.fontRendererObj);
+            }
+        }
         tessellator.draw();
         GlStateManager.enableTexture2D();
         GlStateManager.disableBlend();
@@ -982,6 +1012,27 @@ final class TeamBar {
             // Sits on the first head row, not the middle of the stack, so extra teams stack below it.
             mc.fontRendererObj.drawStringWithShadow(bar.label,x+bar.textX,y+(band-8)/2,colour(bar.timer));
         }
+        if(bar.strip!=null){
+            int px=x+bar.stripX,py=y+band;
+            for(Objectives.Part part:bar.strip.parts){
+                px+=part.space;
+                if(part.text!=null)mc.fontRendererObj.drawStringWithShadow(part.text,px,py,part.colour);
+                px+=part.width(mc.fontRendererObj);
+            }
+        }
+    }
+
+    /** A wool state square: hollow untouched, checkerboard picked up, solid placed. */
+    private static void wool(WorldRenderer world,int x,int y,int argb,int state){
+        int size=Objectives.ICON;
+        if(state==2){quad(world,x,y,x+size,y+size,argb);return;}
+        if(state==1){
+            for(int row=0;row<size;row++)for(int col=0;col<size;col++)
+                if(((row+col)&1)==0)quad(world,x+col,y+row,x+col+1,y+row+1,argb);
+            return;
+        }
+        quad(world,x,y,x+size,y+1,argb);quad(world,x,y+size-1,x+size,y+size,argb);
+        quad(world,x,y,x+1,y+size,argb);quad(world,x+size-1,y,x+size,y+size,argb);
     }
 
     /** One flat quad into the shared buffer, coloured per vertex. */
@@ -1013,6 +1064,12 @@ final class TeamBar {
         String last=null;
         while(m.find())last=m.group(1);
         return last==null?FALLBACK:COLOURS[Character.digit(last.charAt(0),16)];
+    }
+
+    /** The ARGB of a chat colour code; white when the code is not a colour. */
+    static int chatColour(char code){
+        int digit=Character.digit(Character.toLowerCase(code),16);
+        return digit>=0&&digit<COLOURS.length?COLOURS[digit]:WHITE;
     }
 
     /**

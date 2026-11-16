@@ -40,6 +40,7 @@ public class UtilitySettingsProfileTest {
         assertEquals(10,defaults.get("team_bar_players").getAsInt());
         assertEquals(150,defaults.get("team_bar_size").getAsInt());
         assertEquals(50,defaults.get("team_bar_dead_opacity").getAsInt());
+        assertTrue(defaults.get("team_bar_objectives").getAsBoolean());
         assertEquals("Default",defaults.get("profile").getAsString());
     }
 }

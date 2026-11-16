@@ -110,6 +110,15 @@ public final class OtlSmoke {
         for(net.minecraft.scoreboard.Score score:new ArrayList<>(board.getSortedScores(objective)))board.removeObjectiveFromEntity(score.getPlayerName(),objective);
         board.getValueFromObjective(text,objective).setScorePoints(1);
     }
+    /** One PGM-style sidebar row: the line lives in a team prefix, so it can carry colour codes. */
+    void sidebarRow(net.minecraft.scoreboard.Scoreboard board,net.minecraft.scoreboard.ScoreObjective objective,String team,String text,int score){
+        if(board.getTeam(team)==null)board.createTeam(team);
+        board.getTeam(team).setNamePrefix(text);
+        // Invisible score holder, the way PGM/FastBoard keeps the row's own name off the line.
+        String holder="\u00a70\u00a7"+Integer.toHexString(score);
+        board.addPlayerToTeam(holder,team);
+        board.getValueFromObjective(holder,objective).setScorePoints(score);
+    }
     /** Writes the tab-list footer the way PGM's scoreboard mode does. */
     void tabFooter(Minecraft mc,String text){
         try{
@@ -1706,6 +1715,12 @@ public final class OtlSmoke {
                 line("The match has started!");
                 require(TeamBar.INSTANCE.bar(mc,false)!=null,"The Team Bar did not return after leaving the lobby");
                 UtilitySettings.teamBarPlayers=5;
+                // PGM's own sidebar rows, so the next frame draws them in the strip: a team header
+                // over its compact wools, then a score and a goal, as a real Capture the Wool map does.
+                sidebarRow(board,objective,"otl_obj1","\u00a7cRed",6);
+                sidebarRow(board,objective,"otl_obj2"," \u00a7c\u2B1C \u00a79\u2592 \u00a7e\u2B1B",5);
+                sidebarRow(board,objective,"otl_obj3","\u00a7f12 \u00a7cRed",4);
+                sidebarRow(board,objective,"otl_obj4","\u00a7a\u2714 \u00a7fNorth Monument",3);
             }else if(state==80){
                 java.util.List<TeamBar.Side> sides=TeamBar.sides(mc);
                 require(sides.size()==3,"Team Bar did not find all three teams: "+sides.size());
@@ -1804,6 +1819,33 @@ public final class OtlSmoke {
                 require(box.y>=4&&box.x>=4&&box.x+box.w<=teambarScreen.getScaledWidth()-4&&box.y+box.h<=teambarScreen.getScaledHeight()-4,"Team Bar HUD bounds are off screen");
                 require(Math.abs(box.x+box.w/2-teambarScreen.getScaledWidth()/2)<=8,"Team Bar does not default near top centre");
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-team-bar.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+                // Objectives: PGM's own sidebar rows become squares, statuses and scores under the clock.
+                net.minecraft.scoreboard.Scoreboard objBoard=mc.theWorld.getScoreboard();
+                net.minecraft.scoreboard.ScoreObjective objSidebar=objBoard.getObjective("otl_teambar");
+                if(objSidebar==null)objSidebar=objBoard.addScoreObjective("otl_teambar",net.minecraft.scoreboard.IScoreObjectiveCriteria.DUMMY);
+                objBoard.setObjectiveInDisplaySlot(1,objSidebar);
+                TeamBar.Bar withObjectives=TeamBar.INSTANCE.bar(mc,false);
+                require(withObjectives.strip!=null,"The sidebar objectives did not reach the bar");
+                require(withObjectives.strip.parts.size()==8,"The objective strip lost or invented rows: "+withObjectives.strip.parts.size());
+                require("Red".equals(withObjectives.strip.parts.get(0).text)&&TeamBar.chatColour('c')==withObjectives.strip.parts.get(0).colour,
+                    "The team header above the wools was dropped: "+(withObjectives.strip.parts.get(0).text==null?"square":withObjectives.strip.parts.get(0).text));
+                require(withObjectives.strip.parts.get(1).text==null&&withObjectives.strip.parts.get(1).state==0,"A wool row did not start as an untouched square");
+                require(withObjectives.strip.parts.get(3).state==2,"A placed wool was not read as placed");
+                require("North Monument".equals(withObjectives.strip.parts.get(7).text),"A goal row lost its name: "+withObjectives.strip.parts.get(7).text);
+                require(withObjectives.textX+withObjectives.textW/2==withObjectives.width/2,"The objectives pushed the clock off centre");
+                require(withObjectives.height>=withObjectives.band+Objectives.HEIGHT,"The bar left no room for the objectives");
+                require(withObjectives.width<=new ScaledResolution(mc).getScaledWidth()-8,"The objectives pushed the bar off the screen");
+                UtilitySettings.teamBarObjectives=false;
+                require(TeamBar.INSTANCE.bar(mc,false).strip==null,"The Objectives option did not hide the strip");
+                UtilitySettings.teamBarObjectives=true;
+                for(net.minecraft.scoreboard.Score score:new ArrayList<>(objBoard.getSortedScores(objSidebar))){
+                    net.minecraft.scoreboard.ScorePlayerTeam holder=objBoard.getPlayersTeam(score.getPlayerName());
+                    if(holder==null||!holder.getRegisteredName().startsWith("otl_obj"))continue;
+                    objBoard.removeObjectiveFromEntity(score.getPlayerName(),objSidebar);
+                    objBoard.removePlayerFromTeam(score.getPlayerName(),holder);
+                }
+                for(String row:new String[]{"otl_obj1","otl_obj2","otl_obj3","otl_obj4"})if(objBoard.getTeam(row)!=null)objBoard.removeTeam(objBoard.getTeam(row));
+                require(TeamBar.INSTANCE.bar(mc,false).strip==null,"The objective rows outlived their sidebar lines");
                 // Many teams keep stacking downward; a stack taller than the screen shrinks to fit.
                 net.minecraft.scoreboard.Scoreboard many=mc.theWorld.getScoreboard();
                 for(int i=0;i<24;i++){

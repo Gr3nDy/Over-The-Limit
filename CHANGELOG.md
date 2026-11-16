@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.6.0 - 2026-11-16
+
+### Added
+- **Team Bar objectives** (ON by default) - PGM's own sidebar objectives sit in a strip under the clock: Capture the Wool wools as coloured squares that change with their state (hollow untouched, half picked up, filled placed, each in the wool's colour), destroyables and other goals as their status glyph and name, and team scores as `12 Red` / `3/10 Blue`. A team's name is kept above its wools so you can tell whose they are. Everything is read from the sidebar PGM already draws, so a mode with no goals simply has no strip, and the strip is capped at half the screen width so it can never push the bar off screen.
+
 ## v0.5.0 - 2026-11-16
 
 ### Added
