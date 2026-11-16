@@ -22,6 +22,8 @@ public final class MinimapSettings extends SettingsScreen {
             buttonList.add(new PresetSlider(23,panel.left(),panel.row(),panel.width(),"Alt Zoom level: ","",PresetSlider.ZOOM,UtilitySettings.minimapAltZoom,4,s->UtilitySettings.minimapAltZoom=s.getValueInt()));
             buttonList.add(new ChoiceButton(this,5,panel.left(),panel.choice(),panel.width(),"Mode",new String[]{"Follow Player","Static"},UtilitySettings.minimapStatic?1:0,v->UtilitySettings.minimapStatic=v==1));
             buttonList.add(new NeutralButton(7,panel.left(),panel.row(),panel.width(),20,"Rotate With Player: "+(UtilitySettings.minimapRotate?"ON":"OFF"),false));
+            buttonList.add(new NeutralButton(14,panel.left(),panel.row(),panel.width(),20,"Hide unavailable map: "+(UtilitySettings.minimapHideUnavailable?"ON":"OFF"),false));
+            panel.note("Fades out after 5 seconds unavailable; your selected view returns after the match.");
         }else{
             panel.section("MAP DISPLAY");
             buttonList.add(new NeutralButton(6,panel.left(),panel.row(),panel.width(),20,"Player Cutaway: "+(UtilitySettings.minimapCutaway?"ON":"OFF"),false));
@@ -45,6 +47,7 @@ public final class MinimapSettings extends SettingsScreen {
         if(button.id==8)UtilitySettings.minimapCardinals=!UtilitySettings.minimapCardinals;
         if(button.id==9)UtilitySettings.minimapCoordinates=!UtilitySettings.minimapCoordinates;
         if(button.id==11)UtilitySettings.minimapBorder=!UtilitySettings.minimapBorder;
+        if(button.id==14)UtilitySettings.minimapHideUnavailable=!UtilitySettings.minimapHideUnavailable;
         if(button.id==20||button.id==21){page=button.id-20;initGui();return;}
         if(button.id==4){mc.displayGuiScreen(parent);return;}
         if(button.id==1||button.id==2||button.id==10||button.id==12||button.id==13||button.id==22||button.id==23)return;

@@ -18,6 +18,9 @@ public final class BowOptimizerSettings extends SettingsScreen {
         if(page==0){
             panel.section("FEEDBACK");
             buttonList.add(new NeutralButton(1,panel.left(),panel.row(),panel.width(),20,"Optimization: "+(UtilitySettings.bowOptimization?"ON":"OFF"),false));
+            buttonList.add(new NeutralButton(17,panel.left(),panel.row(),panel.width(),20,"Arrow trail: "+(UtilitySettings.bowArrowTrail?"ON":"OFF"),false));
+            buttonList.add(new NeutralButton(18,panel.left(),panel.row(),panel.width(),20,"Hide arrow particles: "+(UtilitySettings.bowHideArrowParticles?"ON":"OFF"),false));
+            panel.note("Arrow trail draws a thin line behind a flying arrow. Hide arrow particles removes the vanilla critical sparkle close to an arrow; melee crits stay.");
             buttonList.add(new NeutralButton(8,panel.left(),panel.row(),panel.width(),20,"Bow Hit Sound: "+(UtilitySettings.bowHitSound?"ON":"OFF"),false));
             buttonList.add(new NeutralButton(14,panel.left(),panel.row(),panel.width(),20,"Bow-Kill Sound: "+(UtilitySettings.bowKillSound?"ON":"OFF"),false));
             buttonList.add(new NeutralButton(9,panel.left(),panel.row(),panel.width(),20,"Hit Marker: "+(UtilitySettings.bowHitMarker?"ON":"OFF"),false));
@@ -47,6 +50,8 @@ public final class BowOptimizerSettings extends SettingsScreen {
         if(button.id==7){mc.displayGuiScreen(parent);return;}
         if(button.id==0){UtilitySettings.bowOptimizer=!UtilitySettings.bowOptimizer;BowOptimizer.INSTANCE.echoes.clear();BowAccuracy.INSTANCE.reset();}
         if(button.id==1){UtilitySettings.bowOptimization=!UtilitySettings.bowOptimization;BowOptimizer.INSTANCE.echoes.clear();}
+        if(button.id==17)UtilitySettings.bowArrowTrail=!UtilitySettings.bowArrowTrail;
+        if(button.id==18)UtilitySettings.bowHideArrowParticles=!UtilitySettings.bowHideArrowParticles;
         if(button.id==2){UtilitySettings.bowAccuracy=!UtilitySettings.bowAccuracy;BowAccuracy.INSTANCE.reset();}
         if(button.id==4)UtilitySettings.bowAccuracyDecimals=(UtilitySettings.bowAccuracyDecimals+1)%3;
         if(button.id==11)UtilitySettings.bowAccuracyPrefix=!UtilitySettings.bowAccuracyPrefix;

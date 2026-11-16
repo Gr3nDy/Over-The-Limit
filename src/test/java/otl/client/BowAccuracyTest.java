@@ -127,7 +127,7 @@ public class BowAccuracyTest {
     }
     @Test public void settingsAreClampedAndBowHudPositionIsRecognized() throws Exception {
         boolean master=UtilitySettings.bowOptimizer,optimization=UtilitySettings.bowOptimization,accuracy=UtilitySettings.bowAccuracy;
-        boolean sound=UtilitySettings.bowHitSound,marker=UtilitySettings.bowHitMarker,overlay=UtilitySettings.heightLimitOverlay,prefix=UtilitySettings.bowAccuracyPrefix;
+        boolean sound=UtilitySettings.bowHitSound,marker=UtilitySettings.bowHitMarker,prefix=UtilitySettings.bowAccuracyPrefix;
         BowAccuracy.Mode mode=UtilitySettings.bowAccuracyMode;boolean animate=UtilitySettings.bowAccuracyAnimate,killSound=UtilitySettings.bowKillSound;
         int opacity=UtilitySettings.bowAccuracyOpacity,decimals=UtilitySettings.bowAccuracyDecimals,size=UtilitySettings.bowAccuracySize,markerSize=UtilitySettings.bowHitMarkerSize;
         int fadeIn=UtilitySettings.bowAccuracyFadeIn,fadeOut=UtilitySettings.bowAccuracyFadeOut;
@@ -152,7 +152,7 @@ public class BowAccuracyTest {
             assertTrue(HudLayout.valid("bow_accuracy"));
         }finally{
             UtilitySettings.bowOptimizer=master;UtilitySettings.bowOptimization=optimization;UtilitySettings.bowAccuracy=accuracy;
-            UtilitySettings.bowHitSound=sound;UtilitySettings.bowHitMarker=marker;UtilitySettings.heightLimitOverlay=overlay;
+            UtilitySettings.bowHitSound=sound;UtilitySettings.bowHitMarker=marker;
             UtilitySettings.bowAccuracyPrefix=prefix;
             UtilitySettings.bowAccuracyMode=mode;UtilitySettings.bowAccuracyAnimate=animate;UtilitySettings.bowKillSound=killSound;
             UtilitySettings.bowAccuracyOpacity=opacity;UtilitySettings.bowAccuracyDecimals=decimals;UtilitySettings.bowAccuracySize=size;UtilitySettings.bowHitMarkerSize=markerSize;

@@ -1,5 +1,27 @@
 # Changelog
 
+## v0.5.0 - 2026-11-16
+
+### Added
+- **Touchdown player card**: a short celebration card after each touchdown, with the scorer's and the confirmed passer's half-body portraits wearing their own armor, the team, the estimated pass distance and the score. Five animation styles, movable in the HUD editor. It only appears on confirmed PGM touchdown events and never invents a score or a pass distance.
+- **Team Bar head names**: open chat and move the pointer over a head - it grows slightly and the player's name appears, clamped to the screen.
+- **Team Bar: hide while the player list is open** (OFF by default) - the bar disappears only while you hold the player-list key, then returns.
+- **Team Bar dead-head opacity** - dead players fade instead of vanishing, and now stay through long respawns; 25-100%, default 50%.
+- **Minimap fades out unavailable maps** (OFF by default) - a map with no minimap no longer leaves an empty frame behind, and the minimap fades back in on the next map that has one.
+- **Arrow trails** - a flying arrow draws the same fading contrail as the football, so a shot is easier to follow.
+- **Arrow sparkles off** - the Bow Optimizer can hide the vanilla critical-hit sparkle an arrow leaves behind.
+- **Football trail off** - Touchdown can hide PGM's redstone particle trail around a football you can see.
+
+### Changed
+- **New factory defaults**: Team Bar 10 heads at 150%, Kill Feed 96% with deaths hidden from chat, Kill Confirm without its background panel, Bow Optimizer on with the hit marker and the accuracy HUD off, Face Rig on, team bubbles on, unlimited chat history, and Auto GG on with a 5-second random delay. HUD defaults moved: the touchdown card to the right edge, region text to the right, bow accuracy to the left, and the Team Bar slightly below the top edge. Existing settings are untouched.
+- **Bigger held football**: drawn at 0.85 of the item space instead of 0.7.
+- **Removed the Height Limit Overlay and Server Notices modules**, along with their settings.
+
+### Fixed
+- **Player card lost the passer's armor** when that player was not loaded at the instant of the throw; the card now uses equipment it saw in the last ten seconds and shows no armor rather than guessing.
+- **Winning touchdown showed no score**: PGM omits its usual score line on the winning point, so the card now reads the final score from PGM's symbolic sidebar, viewer's team first.
+- **Normal snowballs** are no longer drawn at the football's scale; only actual Touchdown footballs change.
+
 ## v0.4.0 - 2026-11-15
 
 ### Added

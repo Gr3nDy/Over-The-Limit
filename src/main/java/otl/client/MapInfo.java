@@ -22,6 +22,8 @@ final class MapInfo {
     final File cache;
     final boolean incomplete;
     final java.util.Set<String> kitBlocks;
+    /** Team names in the order declared by the map, without player limits. */
+    final List<String> teamOrder;
     /** Named and anonymous regions from the map's <regions> block, as bounding boxes. */
     final java.util.List<Region> regions;
 
@@ -37,7 +39,7 @@ final class MapInfo {
     }
 
     private MapInfo(String name, String version, String objective, String created, String gamemode,
-                     String authors, String contributors, String teams, String dir, int players, boolean bundled, File cache, String variants, boolean incomplete, int maxBuildHeight, java.util.Set<String> kitBlocks, java.util.List<Region> regions) {
+                     String authors, String contributors, String teams, String dir, int players, boolean bundled, File cache, String variants, boolean incomplete, int maxBuildHeight, java.util.Set<String> kitBlocks, java.util.List<Region> regions, List<String> teamOrder) {
         this.name = name;
         this.version = version;
         this.objective = objective;
@@ -54,6 +56,7 @@ final class MapInfo {
         this.maxBuildHeight=maxBuildHeight;
         this.kitBlocks=java.util.Collections.unmodifiableSet(new java.util.HashSet<>(kitBlocks));
         this.regions=java.util.Collections.unmodifiableList(regions);
+        this.teamOrder=java.util.Collections.unmodifiableList(new ArrayList<>(teamOrder));
     }
 
     private volatile File pngFile;
@@ -128,12 +131,13 @@ final class MapInfo {
         String gamemode = pretty(parent.isEmpty() ? "Other" : last(parent));
         if(xml!=null)try{
             MapXml metadata=new MapXml(xml,includes);
-            int players=0;List<String> labels=new ArrayList<>();
+            int players=0;List<String> labels=new ArrayList<>(),teamOrder=new ArrayList<>();
             Element teams=metadata.first("teams");
             if(teams!=null)for(Element team:MapXml.children(teams))if(team.getTagName().equals("team")){
                 String max=metadata.expand(team.getAttribute("max"));
                 if(max.matches("[0-9]{1,5}"))players+=Integer.parseInt(max);
-                labels.add(metadata.expand(team.getTextContent().trim())+(max.isEmpty()?"":" "+max));
+                String name=metadata.expand(team.getTextContent().trim());
+                labels.add(name+(max.isEmpty()?"":" "+max));teamOrder.add(name);
             }
             Element ffa=metadata.first("players");
             if(ffa!=null){String max=metadata.expand(ffa.getAttribute("max"));if(max.matches("[0-9]{1,5}"))players=Integer.parseInt(max);}
@@ -155,9 +159,9 @@ final class MapInfo {
             if(regionsEl!=null)collectRegions(regionsEl,metadata,regions,maxBuildHeight);
             return new MapInfo(nvl(metadata.value("name"),pretty(last(dir))),metadata.value("version"),objective,metadata.value("created"),
                     nvl(metadata.value("gamemode"),gamemode),metadata.people("authors","author"),metadata.people("contributors","contributor"),
-                    String.join(", ",labels),dir,players,bundled,cache,String.join(", ",variants),incomplete,maxBuildHeight,kitBlocks,regions);
+                    String.join(", ",labels),dir,players,bundled,cache,String.join(", ",variants),incomplete,maxBuildHeight,kitBlocks,regions,teamOrder);
         }catch(Exception e){System.err.println("OTL: could not read map metadata "+dir+": "+e.getMessage());}
-        return new MapInfo(pretty(last(dir)),"","","",gamemode,"","","",dir,0,bundled,cache,"default",true,-1,java.util.Collections.emptySet(),java.util.Collections.emptyList());
+        return new MapInfo(pretty(last(dir)),"","","",gamemode,"","","",dir,0,bundled,cache,"default",true,-1,java.util.Collections.emptySet(),java.util.Collections.emptyList(),java.util.Collections.emptyList());
     }
 
     /** Flattens shape children (through union/intersection) into bounding boxes; everything else is skipped. */

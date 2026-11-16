@@ -15,21 +15,25 @@ public final class TeamBarSettings extends SettingsScreen {
         panel.section("TEAM BAR");
         buttonList.add(new NeutralButton(0,panel.left(),panel.row(),panel.width(),20,"Team Bar: "+(UtilitySettings.teamBar?"ON":"OFF"),false));
         buttonList.add(new NeutralButton(1,panel.left(),panel.row(),panel.width(),20,"Hide bossbar: "+(UtilitySettings.teamBarHideBoss?"ON":"OFF"),false));
+        buttonList.add(new NeutralButton(8,panel.left(),panel.row(),panel.width(),20,"Hide while player list is open: "+(UtilitySettings.teamBarHideOnTab?"ON":"OFF"),false));
         buttonList.add(new NeutralButton(5,panel.left(),panel.row(),panel.width(),20,"Show in observer: "+(UtilitySettings.teamBarObserver?"ON":"OFF"),false));
         buttonList.add(new NeutralButton(6,panel.left(),panel.row(),panel.width(),20,"Team colour line: "+(UtilitySettings.teamBarTeamColor?"ON":"OFF"),false));
-        buttonList.add(new PresetSlider(2,panel.left(),panel.row(),panel.width(),"Players shown: ","",PresetSlider.PLAYERS,UtilitySettings.teamBarPlayers,5,s->UtilitySettings.teamBarPlayers=s.getValueInt()));
-        buttonList.add(new PresetSlider(3,panel.left(),panel.row(),panel.width(),"Size: ","%",PresetSlider.SIZE,UtilitySettings.teamBarSize,100,s->UtilitySettings.teamBarSize=s.getValueInt()));
-        panel.note("Ten heads per row; extra players wrap below. Dead players grey out.");
+        buttonList.add(new PresetSlider(2,panel.left(),panel.row(),panel.width(),"Players shown: ","",PresetSlider.PLAYERS,UtilitySettings.teamBarPlayers,10,s->UtilitySettings.teamBarPlayers=s.getValueInt()));
+        buttonList.add(new PresetSlider(3,panel.left(),panel.row(),panel.width(),"Size: ","%",PresetSlider.SIZE,UtilitySettings.teamBarSize,150,s->UtilitySettings.teamBarSize=s.getValueInt()));
+        buttonList.add(new PresetSlider(7,panel.left(),panel.row(),panel.width(),"Dead head opacity: ","%",new int[]{25,50,75,100},UtilitySettings.teamBarDeadOpacity,50,s->UtilitySettings.teamBarDeadOpacity=s.getValueInt()));
+        panel.note("Heads shrink for every five more players shown. Ten per row; extras wrap below. Dead players fade until respawn.");
+        panel.note("Open chat to move the pointer over a head and see the player's name.");
         back(4);
     }
     protected void actionPerformed(GuiButton b){
         if(b.id==90){((ModuleReset)b).reset();initGui();return;}
-        if(b.id==2||b.id==3)return; // sliders persist on mouse release
+        if(b.id==2||b.id==3||b.id==7)return; // sliders persist on mouse release
         if(b.id==4){mc.displayGuiScreen(parent);return;}
         if(b.id==0)UtilitySettings.teamBar=!UtilitySettings.teamBar;
         if(b.id==1)UtilitySettings.teamBarHideBoss=!UtilitySettings.teamBarHideBoss;
         if(b.id==5)UtilitySettings.teamBarObserver=!UtilitySettings.teamBarObserver;
         if(b.id==6)UtilitySettings.teamBarTeamColor=!UtilitySettings.teamBarTeamColor;
+        if(b.id==8)UtilitySettings.teamBarHideOnTab=!UtilitySettings.teamBarHideOnTab;
         UtilitySettings.save();initGui();
     }
     protected void mouseReleased(int mx,int my,int state){super.mouseReleased(mx,my,state);UtilitySettings.save();}

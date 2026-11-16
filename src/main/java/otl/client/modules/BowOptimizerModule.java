@@ -16,7 +16,7 @@ public final class BowOptimizerModule extends OtlModule {
     public void reset() {
         UtilitySettings.restore("bow_optimizer","bow_optimization","bow_accuracy","bow_accuracy_prefix","bow_accuracy_mode","bow_accuracy_animate",
                 "bow_accuracy_opacity","bow_accuracy_decimals","bow_accuracy_size","bow_accuracy_fade_in","bow_accuracy_fade_out",
-                "bow_hit_sound","bow_kill_sound","bow_hit_marker","bow_hit_marker_size");
+                "bow_hit_sound","bow_kill_sound","bow_hit_marker","bow_hit_marker_size","bow_arrow_trail","bow_hide_arrow_particles");
         UtilitySettings.hudPositions.remove(HudLayout.BOW);
         BowOptimizer.clearEchoes();
         BowAccuracy.clearFeedback();

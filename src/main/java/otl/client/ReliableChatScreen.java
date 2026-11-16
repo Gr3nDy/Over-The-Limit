@@ -99,7 +99,6 @@ final class ReliableChatScreen extends GuiChat {
         int moreW=Math.min(width-left-2,Math.max(26,fontRendererObj.getStringWidth(more)+8));
         tabs.add(new Tab("overflow",left,moreW));drawRect(left,top,left+moreW,top+17,ChatAppearance.tabColor(0xDD252525,UtilitySettings.typingTabBackgroundOpacity));drawString(fontRendererObj,more,left+4,top+5,FaceUi.TEXT);
         }
-        items.clear();if(overflow||context!=null)drawMenu(s);
         ChatScroll.Bar bar=UtilitySettings.chatScrollbar?scrollbar():null;
         if(bar!=null){
             // A slim pill instead of the old boxed bar with ^/v arrows: a barely-there track and
@@ -107,6 +106,7 @@ final class ReliableChatScreen extends GuiChat {
             pill(bar.x+3,bar.trackTop,3,bar.trackHeight,0x40000000);
             pill(bar.x+1,bar.thumbTop,7,bar.thumbHeight,draggingScroll!=null?0xF0FFFFFF:0xB0E8E8E8);
         }
+        items.clear();if(overflow||context!=null)drawMenu(s);
     }
     /**
      * A rounded-ended bar: the middle is full width, the first and last rows are inset by one

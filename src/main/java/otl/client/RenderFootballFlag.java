@@ -18,7 +18,7 @@ final class RenderFootballFlag extends RenderEntityItem {
     RenderFootballFlag(RenderManager manager,RenderItem item){super(manager,item);}
     @Override public void doRender(EntityItem entity,double x,double y,double z,float yaw,float partialTicks){
         ItemStack stack=entity==null?null:entity.getEntityItem();
-        if(!Touchdown.active()||stack==null||stack.getItem()!=Items.banner){
+        if(!Touchdown.modelActive()||stack==null||stack.getItem()!=Items.banner){
             super.doRender(entity,x,y,z,yaw,partialTicks);
             return;
         }

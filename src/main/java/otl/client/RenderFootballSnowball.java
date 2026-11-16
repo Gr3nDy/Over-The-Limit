@@ -12,7 +12,7 @@ final class RenderFootballSnowball extends RenderSnowball<EntitySnowball> {
     private static final float SCALE=0.62F;
     RenderFootballSnowball(RenderManager manager,Item item,RenderItem renderItem){super(manager,item,renderItem);}
     @Override public void doRender(EntitySnowball entity,double x,double y,double z,float yaw,float partialTicks){
-        if(!Touchdown.active()){
+        if(!Touchdown.modelActive()){
             super.doRender(entity,x,y,z,yaw,partialTicks);
             return;
         }

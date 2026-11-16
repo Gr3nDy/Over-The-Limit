@@ -45,7 +45,6 @@ public class BowOptimizerTest {
     }
     @Test public void moduleTogglesAndReadsItsSavedPreference() throws Exception {
         boolean previous=UtilitySettings.bowOptimizer;
-        boolean overlay=UtilitySettings.heightLimitOverlay;
         try{
             OtlModule module=OtlModule.ALL.stream().filter(m->m.id.equals("bow_optimizer")).findFirst().get();
             assertEquals("Bow Optimizer",module.name);
@@ -55,6 +54,6 @@ public class BowOptimizerTest {
             com.google.gson.JsonObject settings=new com.google.gson.JsonObject();settings.addProperty("bow_optimizer",true);
             java.lang.reflect.Method read=UtilitySettings.class.getDeclaredMethod("read",com.google.gson.JsonObject.class);
             read.setAccessible(true);read.invoke(null,settings);assertTrue(module.enabled());
-        }finally{UtilitySettings.bowOptimizer=previous;UtilitySettings.heightLimitOverlay=overlay;}
+        }finally{UtilitySettings.bowOptimizer=previous;}
     }
 }

@@ -19,7 +19,7 @@ Every module also has a **Reset** button in its settings screen — now inside t
 
 ## Modules
 
-### Face Rig — OFF by default
+### Face Rig — ON by default
 
 Animates skin-based faces for yourself and other players using server-confirmed overlay data.
 
@@ -40,7 +40,7 @@ A tabbed chat with channel history, drafts, and optional team speech bubbles.
 - **Show Tab Chat**, and **Tab position** (Bottom Left / Bottom Right / Top Left / Top Right) — where the channel strip renders.
 
 **Team bubbles:**
-- **Team speech bubbles** (OFF by default) — renders a floating speech bubble above a player's head in world when they send a team-chat message.
+- **Team speech bubbles** (ON by default) — renders a floating speech bubble above a player's head in world when they send a team-chat message.
 - **Mode** — *Team Chat only* (only explicit team-chat lines bubble) or *Team & Team Chat* (own-team global chat also bubbles when it matches your team color).
 - **Text limit** (20–200 characters) and **Duration** (1–15 seconds).
 - Bubbles are suppressed on announced FFA and other teamless maps, stay hidden while an announced map's metadata is unknown, team maps restore them automatically, and world changes clear old bubbles.
@@ -79,7 +79,9 @@ One row of player heads per team at the top centre, stacked, with the match cloc
 - **FFA** — FFA puts every player on their own one-member team, each with its own colour, so there are no sides: the bar pools all players into the same rows (your own head first) and left/right only split the stack to keep it balanced.
 - **Hide bossbar** — hides PGM's boss-bar clock while the Team Bar shows it.
 - **Show in observer** (ON by default) — keep the bar while watching.
-- **Players shown** (1–75, default 5) and **Size** (50–150%).
+- **Hover a head** — open chat and move the pointer over a head: it grows slightly and its player name appears in a tooltip.
+- **Hide while player list is open** (OFF by default) — the bar disappears while you hold the player-list key and returns when you let go.
+- **Players shown** (1–75, default 10) and **Size** (50–150%, default 150%).
 
 ### Custom Votebook — ON by default
 
@@ -105,12 +107,12 @@ A configurable death feed, independent of chat.
 
 - **Player heads**: *Only me / Off / All / Team* — whose head shows on kill rows.
 - **Show entries**: *All / Only Me / Only My Team*.
-- **Hide deaths in chat** — kill lines disappear from chat so they only appear in the feed.
+- **Hide deaths in chat** (ON by default) — kill lines disappear from chat so they only appear in the feed.
 - **Outline / Background opacity**, **Row size** 50–150%, **Outline** color, **visible rows** (1–5), **fade duration** (1–30 seconds), and an optional **slide-in animation** (default OFF).
 - **Kill history** — hover the feed to reveal the raw original chat line that produced it.
 - KillFeed never disappears at world changes; history is session-only.
 
-### Kill Confirm — OFF by default
+### Kill Confirm — ON by default
 
 Shows a focused, richer HUD for your own kills, streak milestones and chapterenders.
 
@@ -130,7 +132,7 @@ Shows a focused, richer HUD for your own kills, streak milestones and chapterend
 **Interactions:**
 - Kill Feed can stay on independently of Kill Confirmation.
 
-### Bow Optimizer — OFF by default
+### Bow Optimizer — ON by default
 
 Toned-down bow optimization: local feedback, none of the vanilla numeris.
 
@@ -138,23 +140,14 @@ Toned-down bow optimization: local feedback, none of the vanilla numeris.
 
 **Independent toggles under the module switch:**
 - **Optimization** — replaces the same-slot durability equip dip with a local continuous render.
-- **Live Bow Accuracy** — server-confirmed arrow hits divided by valid local shots.
+- **Live Bow Accuracy** (OFF by default) — server-confirmed arrow hits divided by valid local shots.
   - **Prefix** — shown as `Bow Accuracy: N%` (ON by default; OFF to show only `N%`).
   - **Mode** — *Always* (default), *On Hit* (two-second flash after a confirmed hit), *Holding Bow* (shown while a bow is equipped + one-second grace after switching).
   - **Fade In / Fade Out** sliders (0–100% means 0–1s), **Animate Percentage** (smooth count-up, default ON), **Background opacity** (0–100%, default 25%), **Accuracy size** (50–150%), **Decimal places** (0–2, default 2).
 - **Bow Hit Sound** (OFF) — replaces the vanilla hit sound with a quieter tick (COD-inspired).
 - **Bow-Kill Sound** (OFF) — low chime on your server-confirmed bow kills.
-- **Hit Marker** (OFF) — a white/red crosshair marker on confirmed hits/kills; size adjustable 50–200%.
+- **Hit Marker** (ON by default) — a white/red crosshair marker on confirmed hits/kills; size adjustable 50–200%.
 - Accuracy resets on map/world changes, reconnects, and recognized PGM match endings/starts.
-
-### Server Notices — OFF by default
-
-Separates server announcements from player chat into their own overlay.
-
-- **Server Notices** master switch (locked OFF in this release).
-- **Mode** — *All*, *Joins & leaves only*, *Non-joins only*.
-- **Panel/border opacity** slider, **Size** slider.
-- **10-second display window**; up to 100 buffered lines; player/team/observer chat never routed here.
 
 ### Region Borders — OFF by default
 
@@ -162,17 +155,10 @@ Wireframes of the current map's regions from its `map.xml`, plus the region name
 
 - **Region Borders** master switch, **Region text** toggle, **Prefix**, **Background** opacity.
 
-### Height Limit Overlay — OFF by default
-
-Overlay-only build-height marker for PGM maps where all build must stop at a fixed Y.
-
-- **Height Limit Overlay** master switch (locked OFF in this release).
-- Reads the build limit from the announced PGM map metadata (`<maxbuildheight>`).
-- **Opacity**, **Size**, **Indicator seconds** sliders, **Top-only** toggle.
-
-### Auto GG — OFF by default
+### Auto GG — ON by default
 
 - **Auto GG** master switch. Says `gg` once per match, when the server announces the end.
+- **Delay** (0–5 s, default 5 s) with **random spread** (ON by default), so the gg lands at a random point inside the delay instead of always at the same moment.
 - Never fires on map start: a result line left over from the previous match is ignored until this client sees the match begin.
 - The `gg` is sent once per match only, so a double "Game over!" cannot repeat it.
 

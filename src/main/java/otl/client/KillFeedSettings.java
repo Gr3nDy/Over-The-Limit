@@ -29,7 +29,7 @@ public final class KillFeedSettings extends SettingsScreen {
             pin(new NeutralButton(2,actionX(),footerY(),110,20,"Clear kill history",false));
         }else if(page==1){
             panel.section("APPEARANCE");
-            buttonList.add(new PresetSlider(4,panel.left(),panel.row(),panel.width(),"Size: ","%",PresetSlider.SIZE,UtilitySettings.killFeedSize,75,s->UtilitySettings.killFeedSize=s.getValueInt()));
+            buttonList.add(new PresetSlider(4,panel.left(),panel.row(),panel.width(),"Size: ","%",PresetSlider.SIZE,UtilitySettings.killFeedSize,96,s->UtilitySettings.killFeedSize=s.getValueInt()));
             buttonList.add(new PresetSlider(5,panel.left(),panel.row(),panel.width(),"Background opacity: ","%",PresetSlider.PERCENT,UtilitySettings.killBackgroundOpacity,25,s->UtilitySettings.killBackgroundOpacity=s.getValueInt()));
             buttonList.add(new PresetSlider(16,panel.left(),panel.row(),panel.width(),"Outline opacity: ","%",PresetSlider.PERCENT,UtilitySettings.killBorderOpacity,100,s->UtilitySettings.killBorderOpacity=s.getValueInt()));
             buttonList.add(new ChoiceButton(this,22,panel.left(),panel.choice(),panel.width(),"Player heads",java.util.Arrays.stream(KillFeedRules.HeadMode.values()).map(v->v.label).toArray(String[]::new),UtilitySettings.killFeedHeads.ordinal(),v->UtilitySettings.killFeedHeads=KillFeedRules.HeadMode.values()[v]));

@@ -12,12 +12,13 @@ public final class UtilitySettings {
     private static boolean loaded;
     /** Active profile name; profiles keep their own HUD positions and module settings. */
     static String profile="Default";
-    public static boolean chat=true, counts=true, otherFaces=true, showTabChat=true, mapPreview=true, nonPlayerChat=false;
+    public static boolean chat=true, counts=true, otherFaces=true, showTabChat=true, mapPreview=true;
     static boolean previewOnCommand=true;
     static boolean largeMapPreview=false;
     public static boolean leftHand=false;
-    public static boolean bowOptimizer=false;
-    static boolean bowOptimization=true,bowAccuracy=true;
+    public static boolean bowOptimizer=true;
+    static boolean bowOptimization=true,bowAccuracy=false;
+    static boolean bowArrowTrail=true,bowHideArrowParticles=true;
     static boolean bowAccuracyPrefix=true;
     static BowAccuracy.Mode bowAccuracyMode=BowAccuracy.Mode.ALWAYS;
     static boolean bowAccuracyAnimate=true;
@@ -25,12 +26,13 @@ public final class UtilitySettings {
     static int bowAccuracyFadeIn=0,bowAccuracyFadeOut=50;
     public static boolean minimap=false;
     static boolean minimapStatic=false,minimapCutaway=true,minimapBorder=true;
+    static boolean minimapHideUnavailable=false;
     static boolean minimapRotate=true,minimapCardinals=true,minimapCoordinates=true;
     static int minimapSize=100,minimapOpacity=25,minimapLargeOpacity=100;
     public static int minimapLargeBackground=25;
     public static int minimapZoom=2,minimapAltZoom=4;
     public static int minimapHeadSize=125;
-    static boolean bowHitSound=false,bowKillSound=false,bowHitMarker=false;
+    static boolean bowHitSound=false,bowKillSound=false,bowHitMarker=true;
     static int bowHitMarkerSize=100;
     static boolean mainHandLeft=false;
     static LeftHand.Type handType=LeftHand.Type.ALL;
@@ -38,38 +40,30 @@ public final class UtilitySettings {
     static String tabPositionLabel(){
         return new String[]{"Bottom Left","Bottom Right","Top Left","Top Right"}[Math.max(0,Math.min(3,tabChatPosition))];
     }
-    public static boolean faceRig=false;
-    public static boolean heightLimitOverlay=false;
-    static boolean heightLimitIndicator=true;
-    static boolean heightLimitTopOnly=false;
-    static int heightLimitOpacity=25;
-    static int heightLimitIndicatorSeconds=4;
-    static int heightLimitSize=75;
+    public static boolean faceRig=true;
     /** Top-centre team bar: heads per team with the match timer in the middle. */
     public static boolean teamBar=true;
     /** Heads per side (1-75) and the bar's scale; below 10 heads they stay full size. */
-    public static int teamBarPlayers=5,teamBarSize=100;
+    public static int teamBarPlayers=10,teamBarSize=150,teamBarDeadOpacity=50;
     public static boolean teamBarHideBoss=false;
+    public static boolean teamBarHideOnTab=false;
     /** Keep showing the bar while watching as an observer. */
     public static boolean teamBarObserver=true;
     /** A thin vertical bar of the team's colour beside each team row. */
     public static boolean teamBarTeamColor=true;
-    public static boolean killFeed=true,hideKillChat=false;
+    public static boolean killFeed=true,hideKillChat=true;
     static KillFeedRules.HeadMode killFeedHeads=KillFeedRules.HeadMode.ONLY_ME;
     static KillFeedRules.FilterMode killFeedFilter=KillFeedRules.FilterMode.ALL;
-    static int killFeedSize=75,killBorderOpacity=100,killBorderColor=0xFFBD45,deathBorderColor=0xFF5555,assistBorderColor=0x55FFFF;
+    static int killFeedSize=96,killBorderOpacity=100,killBorderColor=0xFFBD45,deathBorderColor=0xFF5555,assistBorderColor=0x55FFFF;
     static int killBackgroundOpacity=25,tabHudSize=100;
     static boolean killFeedSlide=false;
     public static boolean killConfirm=false;
     static boolean killConfirmSounds=false;
     static boolean totalExpKills=false;
     static boolean killConfirmPlayerHead=false;
-    static boolean hideKillConfirmChat=false;
-    static int killConfirmSize=75,killConfirmOpacity=25;
+    static boolean hideKillConfirmChat=true;
+    static int killConfirmSize=75,killConfirmOpacity=0;
     static int killFeedRows=5,killFeedSeconds=10;
-    static int noticeOpacity=25;
-    static int noticeSize=100;
-    static ServerNoticeRules.Mode noticeMode=ServerNoticeRules.Mode.ALL;
     public static final Map<String,HudLayout.Position> hudPositions=new HashMap<>();
     static final Set<String> mapFavorites=new LinkedHashSet<>();
     static String favoriteKey(String path){
@@ -81,19 +75,23 @@ public final class UtilitySettings {
         for(String part:path.split("/"))if(part.equals(".")||part.equals(".."))return null;
         return path;
     }
-    public static boolean rememberDrafts=false, unlimitedHistory=false, cycleTabs=true, bubbles=false, bubbleTeamAndChat=false, regionOverlay=false, customVotebook=true;
+    public static boolean rememberDrafts=false, unlimitedHistory=true, cycleTabs=true, bubbles=true, bubbleTeamAndChat=true, regionOverlay=false, customVotebook=true;
     /** Touchdown maps: a 3D football item and floating footballs instead of the flag banners. */
     public static boolean touchdown=true;
+    public static boolean touchdownFootball3d=true, touchdownHideBallParticles=true;
+    /** Temporary player celebration when a touchdown is scored. */
+    public static boolean touchdownCard=true;
+    public static int touchdownCardAnimation=2;
     /** A contrail behind the thrown ball, drawn as a line strip instead of particles. */
     public static boolean touchdownTrail=true;
     /** Auto GG: say "gg" once when the match ends. Off by default: it speaks for the player. */
-    public static boolean autoGg=false;
+    public static boolean autoGg=true;
     /** Auto GG while watching as an observer; off keeps a spectator quiet. */
     static boolean autoGgObserver=true;
     /** Milliseconds to wait before saying gg; 0 says it on the next tick. */
-    static int autoGgDelay=0;
+    static int autoGgDelay=5000;
     /** Spread the wait anywhere up to the delay instead of always using exactly it. */
-    static boolean autoGgRandom=false;
+    static boolean autoGgRandom=true;
     public static boolean regionHud=false;
     static boolean regionHudPrefix=true;
     static int regionHudBackground=25;
@@ -133,17 +131,12 @@ public final class UtilitySettings {
         read(j,"profile_order",e->{Profiles.profileOrder.clear();for(JsonElement el:e.getAsJsonArray())Profiles.profileOrder.add(Profiles.safeName(el.getAsString()));});
         read(j,"reliable_chat",e->chat=e.getAsBoolean());
         read(j,"face_rig",e->faceRig=e.getAsBoolean());
-        // Temporarily unavailable; ignore saved ON preferences.
-        heightLimitOverlay=false;nonPlayerChat=false;
-            read(j,"height_limit_indicator",e->heightLimitIndicator=e.getAsBoolean());
-            read(j,"height_limit_top_only",e->heightLimitTopOnly=e.getAsBoolean());
-        read(j,"height_limit_opacity",e->heightLimitOpacity=Math.max(0,Math.min(100,e.getAsInt())));
-            read(j,"height_limit_indicator_seconds",e->heightLimitIndicatorSeconds=Math.max(1,Math.min(10,e.getAsInt())));
-            read(j,"height_limit_size",e->heightLimitSize=Math.max(50,Math.min(150,e.getAsInt())));
         read(j,"team_bar",e->teamBar=e.getAsBoolean());
         read(j,"team_bar_players",e->teamBarPlayers=Math.max(1,Math.min(75,e.getAsInt())));
         read(j,"team_bar_size",e->teamBarSize=Math.max(50,Math.min(150,e.getAsInt())));
+        read(j,"team_bar_dead_opacity",e->teamBarDeadOpacity=Math.max(25,Math.min(100,e.getAsInt())));
         read(j,"team_bar_hide_boss",e->teamBarHideBoss=e.getAsBoolean());
+        read(j,"team_bar_hide_on_tab",e->teamBarHideOnTab=e.getAsBoolean());
         read(j,"team_bar_observer",e->teamBarObserver=e.getAsBoolean());
         read(j,"team_bar_team_color",e->teamBarTeamColor=e.getAsBoolean());
         read(j,"kill_feed",e->killFeed=e.getAsBoolean());
@@ -180,6 +173,8 @@ public final class UtilitySettings {
         read(j,"left_hand",e->leftHand=e.getAsBoolean());
         read(j,"bow_optimizer",e->bowOptimizer=e.getAsBoolean());
         read(j,"bow_optimization",e->bowOptimization=e.getAsBoolean());
+        read(j,"bow_arrow_trail",e->bowArrowTrail=e.getAsBoolean());
+        read(j,"bow_hide_arrow_particles",e->bowHideArrowParticles=e.getAsBoolean());
         read(j,"bow_accuracy",e->bowAccuracy=e.getAsBoolean());
         read(j,"bow_accuracy_prefix",e->bowAccuracyPrefix=e.getAsBoolean());
         read(j,"bow_accuracy_on_hit",e->bowAccuracyMode=e.getAsBoolean()?BowAccuracy.Mode.ON_HIT:BowAccuracy.Mode.ALWAYS);
@@ -194,6 +189,7 @@ public final class UtilitySettings {
         read(j,"minimap_static",e->minimapStatic=e.getAsBoolean());
         read(j,"minimap_cutaway",e->minimapCutaway=e.getAsBoolean());
         read(j,"minimap_border",e->minimapBorder=e.getAsBoolean());
+        read(j,"minimap_hide_unavailable",e->minimapHideUnavailable=e.getAsBoolean());
         read(j,"minimap_rotate",e->minimapRotate=e.getAsBoolean());
         read(j,"minimap_cardinals",e->minimapCardinals=e.getAsBoolean());
         read(j,"minimap_coordinates",e->minimapCoordinates=e.getAsBoolean());
@@ -210,7 +206,12 @@ public final class UtilitySettings {
         read(j,"region_hud_background",e->regionHudBackground=Math.max(0,Math.min(100,e.getAsInt())));
         read(j,"custom_votebook",e->customVotebook=e.getAsBoolean());
         read(j,"touchdown",e->touchdown=e.getAsBoolean());
+        read(j,"touchdown_football_3d",e->touchdownFootball3d=e.getAsBoolean());
+        read(j,"touchdown_hide_ball_particles",e->touchdownHideBallParticles=e.getAsBoolean());
         read(j,"touchdown_trail",e->touchdownTrail=e.getAsBoolean());
+        read(j,"touchdown_card",e->touchdownCard=e.getAsBoolean());
+        if(j.has("touchdown_card_animation"))read(j,"touchdown_card_animation",e->touchdownCardAnimation=Math.max(0,Math.min(4,e.getAsInt())));
+        else read(j,"touchdown_card_entrance",e->touchdownCardAnimation=Math.max(0,Math.min(4,e.getAsInt())));
         read(j,"auto_gg",e->autoGg=e.getAsBoolean());
         read(j,"auto_gg_observer",e->autoGgObserver=e.getAsBoolean());
         read(j,"auto_gg_delay",e->autoGgDelay=Math.max(0,Math.min(5000,e.getAsInt())));
@@ -232,9 +233,6 @@ public final class UtilitySettings {
         read(j,"tab_background_opacity",e->tabBackgroundOpacity=Math.max(0,Math.min(100,e.getAsInt())));
         read(j,"typing_tab_background_opacity",e->typingTabBackgroundOpacity=Math.max(0,Math.min(100,e.getAsInt())));
         read(j,"chat_scrollbar",e->chatScrollbar=e.getAsBoolean());
-        read(j,"notice_opacity",e->noticeOpacity=Math.max(0,Math.min(100,e.getAsInt())));
-        read(j,"notice_size",e->noticeSize=Math.max(50,Math.min(150,e.getAsInt())));
-        read(j,"notice_mode",e->noticeMode=ServerNoticeRules.Mode.parse(e.getAsString()));
         if(j.has("map_favorites"))for(JsonElement e:j.getAsJsonArray("map_favorites")){
             String key=favoriteKey(e.getAsString());if(key!=null&&mapFavorites.size()<2000)mapFavorites.add(key);
         }
@@ -261,15 +259,11 @@ public final class UtilitySettings {
     static JsonObject snapshot(){
             JsonObject j=new JsonObject();j.addProperty("schema_version",1);j.addProperty("profile",profile);j.addProperty("reliable_chat",chat);j.addProperty("unread_counts",counts);j.addProperty("other_faces",otherFaces);j.addProperty("show_tab_chat",showTabChat);j.addProperty("map_preview",mapPreview);j.addProperty("tab_chat_position",tabChatPosition);
             j.addProperty("face_rig",faceRig);
-            j.addProperty("height_limit_overlay",heightLimitOverlay);
-            j.addProperty("height_limit_indicator",heightLimitIndicator);
-            j.addProperty("height_limit_top_only",heightLimitTopOnly);
-            j.addProperty("height_limit_opacity",heightLimitOpacity);
-            j.addProperty("height_limit_indicator_seconds",heightLimitIndicatorSeconds);
-            j.addProperty("height_limit_size",heightLimitSize);
             j.addProperty("team_bar",teamBar);
             j.addProperty("team_bar_players",teamBarPlayers);j.addProperty("team_bar_size",teamBarSize);
+            j.addProperty("team_bar_dead_opacity",teamBarDeadOpacity);
             j.addProperty("team_bar_hide_boss",teamBarHideBoss);
+            j.addProperty("team_bar_hide_on_tab",teamBarHideOnTab);
             j.addProperty("team_bar_observer",teamBarObserver);
         j.addProperty("team_bar_team_color",teamBarTeamColor);
             j.addProperty("kill_feed",killFeed);j.addProperty("hide_kill_chat",hideKillChat);
@@ -292,6 +286,8 @@ public final class UtilitySettings {
             j.addProperty("left_hand",leftHand);
             j.addProperty("bow_optimizer",bowOptimizer);
             j.addProperty("bow_optimization",bowOptimization);
+            j.addProperty("bow_arrow_trail",bowArrowTrail);
+            j.addProperty("bow_hide_arrow_particles",bowHideArrowParticles);
             j.addProperty("bow_accuracy",bowAccuracy);
             j.addProperty("bow_accuracy_prefix",bowAccuracyPrefix);
             j.addProperty("bow_accuracy_mode",bowAccuracyMode.name());
@@ -305,6 +301,7 @@ public final class UtilitySettings {
             j.addProperty("minimap_static",minimapStatic);
             j.addProperty("minimap_cutaway",minimapCutaway);
             j.addProperty("minimap_border",minimapBorder);
+            j.addProperty("minimap_hide_unavailable",minimapHideUnavailable);
             j.addProperty("minimap_rotate",minimapRotate);
             j.addProperty("minimap_cardinals",minimapCardinals);
             j.addProperty("minimap_coordinates",minimapCoordinates);
@@ -321,7 +318,11 @@ public final class UtilitySettings {
             j.addProperty("region_hud_background",regionHudBackground);
             j.addProperty("custom_votebook",customVotebook);
             j.addProperty("touchdown",touchdown);
+            j.addProperty("touchdown_football_3d",touchdownFootball3d);
+            j.addProperty("touchdown_hide_ball_particles",touchdownHideBallParticles);
             j.addProperty("touchdown_trail",touchdownTrail);
+            j.addProperty("touchdown_card",touchdownCard);
+            j.addProperty("touchdown_card_animation",touchdownCardAnimation);
             j.addProperty("auto_gg",autoGg);
             j.addProperty("auto_gg_observer",autoGgObserver);
             j.addProperty("auto_gg_delay",autoGgDelay);
@@ -332,12 +333,9 @@ public final class UtilitySettings {
             j.addProperty("bow_hit_marker_size",bowHitMarkerSize);
             j.addProperty("main_hand_left",mainHandLeft);j.addProperty("hand_type",handType.name());
             j.addProperty("remember_drafts",rememberDrafts);j.addProperty("unlimited_history",unlimitedHistory);j.addProperty("shift_tab",cycleTabs);j.addProperty("team_bubbles",bubbles);j.addProperty("bubble_team_and_chat",bubbleTeamAndChat);j.addProperty("bubble_characters",bubbleCharacters);j.addProperty("bubble_seconds",bubbleSeconds);
-            j.addProperty("non_player_chat",nonPlayerChat);
             j.addProperty("tab_background_opacity",tabBackgroundOpacity);
             j.addProperty("typing_tab_background_opacity",typingTabBackgroundOpacity);
             j.addProperty("chat_scrollbar",chatScrollbar);
-            j.addProperty("notice_opacity",noticeOpacity);j.addProperty("notice_mode",noticeMode.name());
-            j.addProperty("notice_size",noticeSize);
             JsonArray favorites=new JsonArray();for(String key:mapFavorites)favorites.add(new JsonPrimitive(key));j.add("map_favorites",favorites);
             JsonArray order=new JsonArray();for(String n:Profiles.profileOrder)order.add(new JsonPrimitive(n));j.add("profile_order",order);
             JsonObject channels=new JsonObject();selected.forEach(channels::addProperty);j.add("selected_channels",channels);

@@ -51,12 +51,12 @@ public class MapRegionsTest {
         assertNull(Regions.regionAt(m,200,200,200));
     }
 
-    /** The region text is a movable HUD element, defaulting to the top centre. */
+    /** The region text is a movable HUD element, defaulting to the right side. */
     @Test public void regionTextIsMovableHudElement(){
         assertTrue(HudLayout.valid(HudLayout.REGION));
         HudLayout.Position p=HudLayout.position(HudLayout.REGION);
-        assertEquals(0.5,p.x,0.001);
-        assertEquals(0.0,p.y,0.001);
+        assertEquals(1.0,p.x,0.001);
+        assertEquals(0.5865,p.y,0.001);
     }
 
     @Test public void hudLabelHonoursPrefix(){

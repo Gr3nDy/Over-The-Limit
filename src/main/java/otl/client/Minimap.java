@@ -29,6 +29,10 @@ final class Minimap {
     private volatile String status="Waiting for map";
     final MinimapRenderer renderer=new MinimapRenderer();
     private volatile boolean permanentFailure;
+    private volatile long unavailableAt;
+    private boolean matchEnded;
+    private boolean preserveViewOnMapChange;
+    private static final long HIDE_DELAY=5_000_000_000L,FADE_TIME=1_000_000_000L;
     private volatile long retryAt;
     private int retries;
     private static final int MAX_RETRIES=3;
@@ -96,14 +100,20 @@ final class Minimap {
     @SubscribeEvent(priority=net.minecraftforge.fml.common.eventhandler.EventPriority.LOWEST,receiveCanceled=true) public void chat(ClientChatReceivedEvent event){
         if(event.type==2||!ServerScope.active()||ChatRules.playerMessage(event.message.getFormattedText()))return;
         session();
+        for(String line:ChatRules.plain(event.message.getUnformattedText()).split("[\\r\\n]+"))if(MatchEnd.is(line.trim()))matchEnded=true;
         String next=announcement.receive(event.message.getFormattedText(),System.nanoTime());
-        if(next!=null&&!next.equals(query)){query=next;requested=null;request++;model=null;permanentFailure=false;retries=0;retryAt=0;if(view==1)view=0;status="Loading map...";}
+        if(next!=null&&(!next.equals(query)||matchEnded)){
+            boolean preserveView=UtilitySettings.minimapHideUnavailable&&(unavailableAt!=0||preserveViewOnMapChange);
+            query=next;requested=null;request++;model=null;permanentFailure=false;unavailableAt=0;matchEnded=false;retries=0;retryAt=0;
+            preserveViewOnMapChange=false;
+            if(view==1&&!preserveView)view=0;status="Loading map...";
+        }
     }
     private void session(){
         String next=ServerScope.current();
         if(!host.equals(next)){host=next;clearMap();}
     }
-    private void clearMap(){query=requested=null;request++;model=null;status="Waiting for map";announcement.clear();permanentFailure=false;retries=0;retryAt=0;}
+    private void clearMap(){if(UtilitySettings.minimapHideUnavailable&&unavailableAt!=0)preserveViewOnMapChange=true;query=requested=null;request++;model=null;status="Waiting for map";announcement.clear();permanentFailure=false;unavailableAt=0;matchEnded=false;retries=0;retryAt=0;}
     @SubscribeEvent public void unload(WorldEvent.Unload event){if(event.world.isRemote)clearMap();}
     @SubscribeEvent public void tick(TickEvent.ClientTickEvent event){
         if(event.phase!=TickEvent.Phase.END)return;UtilitySettings.load();session();
@@ -112,7 +122,7 @@ final class Minimap {
             if(model!=null||requested!=null){request++;model=null;requested=null;}
             renderer.release();return;
         }
-        if(view==1&&(MinecraftAccess.get().currentScreen!=null||permanentFailure))view=0;
+        if(view==1&&(MinecraftAccess.get().currentScreen!=null||(permanentFailure&&!UtilitySettings.minimapHideUnavailable)))view=0;
         if(retryAt!=0&&System.nanoTime()>=retryAt){requested=null;retryAt=0;}
         if(permanentFailure)return;
         if(query==null||query.equals(requested))return;
@@ -143,6 +153,7 @@ final class Minimap {
             return;
         }
         status=reason!=null&&reason.startsWith("mesh download failed")?"Map broken; try again later":"Preview unavailable";
+        unavailableAt=System.nanoTime();
         permanentFailure=true;
         if(reason!=null)System.err.println("OTL: minimap "+reason);
     }
@@ -162,6 +173,10 @@ final class Minimap {
         String base=status;
         if(base.endsWith("..."))return base.substring(0,base.length()-3)+new String(new char[dots]).replace('\0','.');
         return base;
+    }
+    static float visibility(boolean enabled,boolean ended,long unavailableAt,long now){
+        if(!enabled||ended||unavailableAt==0)return 1F;
+        return Math.max(0F,Math.min(1F,1F-(now-unavailableAt-HIDE_DELAY)/(float)FADE_TIME));
     }
 
     /** URL-encodes each path segment so map directories with spaces, % or non-ASCII work. */
@@ -246,7 +261,7 @@ final class Minimap {
         boolean large=view==1&&!preview;
         if(view==2&&!preview)return;
         float mapOpacity=large?UtilitySettings.minimapLargeOpacity/100F:1F;
-        float visibility=preview?1:1F;
+        float visibility=preview?1:visibility(UtilitySettings.minimapHideUnavailable,matchEnded,unavailableAt,System.nanoTime());
         float alpha=visibility*mapOpacity;int textAlpha=(int)(255*alpha);if(textAlpha<4)return;
         Minecraft mc=MinecraftAccess.get();ScaledResolution sr=new ScaledResolution(mc);HudLayout.Rect widget=bounds();
         int pad=borderPad();
@@ -286,7 +301,7 @@ final class Minimap {
                 String trimmed=mc.fontRendererObj.trimStringToWidth(label,max);
                 if(trimmed.length()<label.length()){String dots="...";trimmed=mc.fontRendererObj.trimStringToWidth(label,Math.max(1,max-mc.fontRendererObj.getStringWidth(dots)))+dots;}
                 label=trimmed;
-                mc.fontRendererObj.drawStringWithShadow(label,box.x+(box.w-mc.fontRendererObj.getStringWidth(label))/2,box.y+box.h/2-4,0xFFFFFFFF);
+                mc.fontRendererObj.drawStringWithShadow(label,box.x+(box.w-mc.fontRendererObj.getStringWidth(label))/2,box.y+box.h/2-4,((int)(255*visibility)<<24)|0xFFFFFF);
             }
             if(UtilitySettings.minimapCardinals){
                 String[] labels={"N","W","E","S"};double[][] directions={{0,-1},{-1,0},{1,0},{0,1}};

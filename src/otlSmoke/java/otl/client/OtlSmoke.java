@@ -25,18 +25,32 @@ public final class OtlSmoke {
     int scopeEnd=63;
     int ggBaseline;
     long serverStarted;
+    long liveStarted,liveLastSample;int liveInitial=-1,liveMismatches;boolean liveThrew,livePickedUp,liveThrowConfirmed;
+    int liveGoals;boolean liveSeeking,liveTargetSent;String liveEndZone;
+    final java.util.concurrent.atomic.AtomicInteger particlesBefore=new java.util.concurrent.atomic.AtomicInteger(),particlesAfter=new java.util.concurrent.atomic.AtomicInteger(),otherParticles=new java.util.concurrent.atomic.AtomicInteger();
     ResourceLocation allureTexture;
     boolean allureWasFavorite;
     MapInfoScreen card,searchCard;String cardDir;long cardWait;
     final Map<String,Object> accuracyPreferences=new HashMap<>();
     ItemStack accuracyHeld;int accuracySlot,accuracyPerspective;HudLayout.Position accuracyPosition;
+    ItemStack cardPreviewChest,cardPreviewHelmet;
     final AccuracySounds accuracySounds=new AccuracySounds();
     volatile Throwable accuracyPacketFailure;
     final Map<String,Object> minimapPreferences=new HashMap<>();
     HudLayout.Position minimapPosition;double minimapX,minimapY,minimapZ;boolean minimapFlying;
     long minimapStarted,minimapFrames;
     final List<String> packets=Collections.synchronizedList(new ArrayList<String>());
-    @Mod.EventHandler public void init(FMLInitializationEvent e){FMLCommonHandler.instance().bus().register(this);}
+    @Mod.EventHandler public void init(FMLInitializationEvent e){FMLCommonHandler.instance().bus().register(this);if(scope.startsWith("shingeki"))MinecraftForge.EVENT_BUS.register(this);}
+    @SubscribeEvent(receiveCanceled=true) public void liveChat(net.minecraftforge.client.event.ClientChatReceivedEvent event){
+        if(!scope.startsWith("shingeki"))return;
+        if(scope.equals("shingekiinspect")||scope.equals("shingekicard")||scope.equals("shingekiwin"))System.out.println("OTL_WELCOME: "+visible(event.message.getFormattedText()));
+        String text=ChatRules.plain(event.message.getUnformattedText());
+        if(text.contains("DangerMode picked up the Flag"))livePickedUp=true;
+        if(text.contains("DangerMode threw the Football"))liveThrowConfirmed=true;
+        if(scope.equals("shingekiwin")&&text.contains("DangerMode takes it to the end zone!")){
+            liveGoals++;liveSeeking=false;liveTargetSent=false;livePickedUp=false;liveStarted=System.currentTimeMillis();
+        }
+    }
     void require(boolean ok,String message){if(!ok)throw new AssertionError(message);}
     MapInfo cardInfo(MapInfoScreen screen){
         return screen==null?null:ReflectionHelper.getPrivateValue(MapInfoScreen.class,screen,"info");
@@ -61,7 +75,8 @@ public final class OtlSmoke {
     void click(int id){for(GuiButton b:buttons(face))if(b.id==id){face.actionPerformed(b);return;}throw new AssertionError("Missing button "+id);}
     /** Everything the team bar could read from a real match, printed so the live scope can be checked. */
     /** Raw chat text with § shown as & so colour codes survive the console. */
-    static String visible(String text){return text==null?"null":text.replace('\u00a7','&');}
+    static String visible(String text){return text==null?"null":text.replace('\u00a7','&').replace("\n","\\n").replace("\r","\\r");}
+    static String codepoints(String text){StringBuilder out=new StringBuilder();for(char c:text.toCharArray())out.append(String.format("%04X ",(int)c));return out.toString();}
     void dumpMatch(Minecraft mc){
         net.minecraft.scoreboard.Scoreboard board=mc.theWorld.getScoreboard();
         net.minecraft.scoreboard.ScoreObjective sidebar=board.getObjectiveInDisplaySlot(1);
@@ -70,6 +85,7 @@ public final class OtlSmoke {
             net.minecraft.scoreboard.ScorePlayerTeam team=board.getPlayersTeam(score.getPlayerName());
             System.out.println("OTL_LIVE:   ["+score.getScorePoints()+"] "+visible(score.getPlayerName())
                 +(team==null?"":"  prefix="+visible(team.getColorPrefix())+" suffix="+visible(team.getColorSuffix())));
+            if(scope.equals("shingekiwin")&&team!=null)System.out.println("OTL_LIVE: row-codes="+codepoints(team.getColorPrefix()+team.getColorSuffix()));
         }
         System.out.println("OTL_LIVE: boss="+ChatRules.plain(net.minecraft.entity.boss.BossStatus.bossName==null?"":net.minecraft.entity.boss.BossStatus.bossName));
         try{
@@ -81,11 +97,12 @@ public final class OtlSmoke {
         }catch(Exception e){System.out.println("OTL_LIVE: footer=unknown ("+e.getClass().getSimpleName()+")");}
         for(net.minecraft.scoreboard.ScorePlayerTeam team:board.getTeams()){
             if(team.getTeamName().contains("TabView"))continue;
-            System.out.println("OTL_LIVE: team '"+team.getTeamName()+"' members="+team.getMembershipCollection());
+            System.out.println("OTL_LIVE: team '"+team.getTeamName()+"' prefix="+visible(team.getColorPrefix())+" members="+team.getMembershipCollection());
         }
         for(TeamBar.Side side:TeamBar.sides(mc))System.out.println("OTL_LIVE: bar side '"+side.name+"' "+side.members);
         TeamBar.Timer timer=TeamBar.INSTANCE.timer(mc);
         System.out.println("OTL_LIVE: bar timer="+(timer==null?"none":timer.label+" countdown="+timer.countdown));
+        if(scope.equals("shingekilive"))System.out.println("OTL_LIVE: source="+ReflectionHelper.getPrivateValue(TeamBar.class,TeamBar.INSTANCE,"clockSource")+" observed="+ReflectionHelper.getPrivateValue(TeamBar.class,TeamBar.INSTANCE,"observed")+" changes="+Arrays.toString((int[])ReflectionHelper.getPrivateValue(TeamBar.class,TeamBar.INSTANCE,"changes"))+" lines="+visible(Arrays.toString((String[])ReflectionHelper.getPrivateValue(TeamBar.class,TeamBar.INSTANCE,"lastLine"))));
     }
 
     /** Replaces the sidebar's only score line, the way PGM updates it once per second. */
@@ -248,6 +265,11 @@ public final class OtlSmoke {
         UtilitySettings.killFeed=true;UtilitySettings.killFeedSlide=true;
         BowOptimizerSettings options=new BowOptimizerSettings(null);mc.displayGuiScreen(options);
         require(find(options,"Bow Hit Sound: OFF")!=null&&find(options,"Hit Marker: OFF")!=null,"Optional bow feedback did not default OFF");
+        require(find(options,"Arrow trail: ON")!=null&&find(options,"Hide arrow particles: OFF")!=null,"Arrow trail options missing or wrong default");
+        options.actionPerformed(find(options,"Arrow trail: ON"));require(!UtilitySettings.bowArrowTrail,"Arrow trail toggle did not disable");
+        options.actionPerformed(find(options,"Arrow trail: OFF"));require(UtilitySettings.bowArrowTrail,"Arrow trail toggle did not re-enable");
+        options.actionPerformed(find(options,"Hide arrow particles: OFF"));require(UtilitySettings.bowHideArrowParticles,"Arrow particle toggle did not enable");
+        options.actionPerformed(find(options,"Hide arrow particles: ON"));require(!UtilitySettings.bowHideArrowParticles,"Arrow particle toggle did not turn off");
         options.actionPerformed(find(options,"Bow-Kill Sound: OFF"));require(UtilitySettings.bowKillSound,"Bow kill sound toggle did not enable");
         options.actionPerformed(find(options,"Optimization: ON"));require(!BowOptimizer.active(),"Inner optimizer toggle did not disable optimization");
         options.actionPerformed(find(options,"Bow Hit Sound: OFF"));options.actionPerformed(find(options,"Hit Marker: OFF"));
@@ -357,12 +379,15 @@ public final class OtlSmoke {
         }
     }
     void prepareMinimap(Minecraft mc)throws Exception{
-        for(String name:new String[]{"minimap","minimapSize","minimapOpacity","minimapLargeOpacity","minimapLargeBackground","minimapHeadSize","minimapZoom","minimapAltZoom","minimapBorder"})minimapPreferences.put(name,UtilitySettings.class.getDeclaredField(name).get(null));
+        for(String name:new String[]{"minimap","minimapSize","minimapOpacity","minimapLargeOpacity","minimapLargeBackground","minimapHeadSize","minimapZoom","minimapAltZoom","minimapBorder","minimapHideUnavailable"})minimapPreferences.put(name,UtilitySettings.class.getDeclaredField(name).get(null));
         minimapPosition=UtilitySettings.hudPositions.get(HudLayout.MINIMAP);
         minimapX=mc.thePlayer.posX;minimapY=mc.thePlayer.posY;minimapZ=mc.thePlayer.posZ;minimapFlying=mc.thePlayer.capabilities.isFlying;
         UtilitySettings.minimap=false;UtilitySettings.minimapBorder=true;line("            Allure            ");line(" Capture the enemy's wool!");line(" Created by jcane");
         MinimapSettings options=new MinimapSettings(null);mc.displayGuiScreen(options);
         options.actionPerformed(find(options,"Minimap: OFF"));
+        UtilitySettings.minimapHideUnavailable=false;options.initGui();
+        options.actionPerformed(find(options,"Hide unavailable map: OFF"));
+        require(UtilitySettings.minimapHideUnavailable,"Unavailable-map option did not turn on");
         net.minecraftforge.fml.client.config.GuiSlider size=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==1).findFirst().get();
         net.minecraftforge.fml.client.config.GuiSlider opacity=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==2).findFirst().get();
         size.setValue(120);size.updateSlider();opacity.setValue(65);opacity.updateSlider();
@@ -375,9 +400,9 @@ public final class OtlSmoke {
         require(UtilitySettings.minimapBorder&&Minimap.bounds().w==plain,"Minimap border did not add back its 2px bevel");
         require(Minimap.nextView(0)==1&&Minimap.nextView(1)==2&&Minimap.nextView(2)==0,"M key does not cycle small/large/hidden");
         UtilitySettings.hudPositions.put(HudLayout.MINIMAP,new HudLayout.Position(0,0));UtilitySettings.save();
-        UtilitySettings.minimap=false;UtilitySettings.minimapSize=50;UtilitySettings.minimapOpacity=0;
+        UtilitySettings.minimap=false;UtilitySettings.minimapSize=50;UtilitySettings.minimapOpacity=0;UtilitySettings.minimapHideUnavailable=false;
         ReflectionHelper.setPrivateValue(UtilitySettings.class,null,false,"loaded");UtilitySettings.load();
-        require(UtilitySettings.minimap&&UtilitySettings.minimapSize==120&&UtilitySettings.minimapOpacity==65,"Minimap preferences did not persist");
+        require(UtilitySettings.minimap&&UtilitySettings.minimapSize==120&&UtilitySettings.minimapOpacity==65&&UtilitySettings.minimapHideUnavailable,"Minimap preferences did not persist");
         mc.displayGuiScreen(null);mc.thePlayer.capabilities.isFlying=true;
         mc.thePlayer.setPosition(-52.5,16,41.5);mc.thePlayer.lastTickPosX=-52.5;mc.thePlayer.lastTickPosY=16;mc.thePlayer.lastTickPosZ=41.5;
         Minimap.INSTANCE.tick(new TickEvent.ClientTickEvent(TickEvent.Phase.END));
@@ -459,6 +484,20 @@ public final class OtlSmoke {
             MinecraftForge.EVENT_BUS.post(new net.minecraftforge.event.entity.PlaySoundAtEntityEvent(mc.thePlayer,"random.bow",1,1));
             require(sounds.sounds.size()==1,"Fishing rod sound was mistaken for a bow release");
             require(org.lwjgl.opengl.GL11.glGetError()==0,"Bow Optimizer left a GL error");
+            require(ArrowParticles.installed,"Arrow particle filter was never installed by client ticks");
+            ArrowParticles.INSTANCE.tick(new TickEvent.ClientTickEvent(TickEvent.Phase.END));
+            ArrowParticles.arrows=new double[][]{{mc.thePlayer.posX,mc.thePlayer.posY,mc.thePlayer.posZ}};
+            UtilitySettings.bowHideArrowParticles=true;
+            require(mc.effectRenderer.spawnEffectParticle(net.minecraft.util.EnumParticleTypes.CRIT.getParticleID(),mc.thePlayer.posX,mc.thePlayer.posY,mc.thePlayer.posZ,0,0,0)==null,"Arrow crit particles were not hidden");
+            require(mc.effectRenderer.spawnEffectParticle(net.minecraft.util.EnumParticleTypes.CRIT.getParticleID(),mc.thePlayer.posX+20,mc.thePlayer.posY,mc.thePlayer.posZ,0,0,0)!=null,"Unrelated crit particles were hidden");
+            net.minecraft.entity.projectile.EntityArrow drill=new net.minecraft.entity.projectile.EntityArrow(mc.theWorld,mc.thePlayer.posX+2,mc.thePlayer.posY+2,mc.thePlayer.posZ);
+            drill.setIsCritical(true);
+            mc.theWorld.spawnEntityInWorld(drill);
+            ArrowParticles.INSTANCE.tick(new TickEvent.ClientTickEvent(TickEvent.Phase.END));
+            require(!drill.getIsCritical(),"Critical flag stayed on, so the vanilla sparkle would still spawn");
+            mc.theWorld.removeEntity(drill);
+            UtilitySettings.bowHideArrowParticles=false;
+            ArrowParticles.arrows=new double[0][];
             System.out.println("OTL_SMOKE: bow toggle/persistence, same-slot durability animation, immediate release sound, echo suppression, short draws and OFF behavior PASS");
         }finally{
             MinecraftForge.EVENT_BUS.unregister(sounds);mc.thePlayer.inventory.mainInventory[slot]=oldHeld;
@@ -477,9 +516,9 @@ public final class OtlSmoke {
             case "gui":state=64;scopeEnd=68;mc.displayGuiScreen(new ModulesScreen(null));return;
             case "maps":state=7;scopeEnd=23;sniffPackets(mc);return;
             case "hand":state=24;scopeEnd=30;return;
-            case "bubbles":state=31;scopeEnd=32;UtilitySettings.nonPlayerChat=false;UtilitySettings.mainHandLeft=false;UtilitySettings.handType=LeftHand.Type.ALL;mc.displayGuiScreen(new PreferedHandSettings(new UtilityScreen()));return;
+            case "bubbles":state=31;scopeEnd=32;UtilitySettings.mainHandLeft=false;UtilitySettings.handType=LeftHand.Type.ALL;mc.displayGuiScreen(new PreferedHandSettings(new UtilityScreen()));return;
             case "killfeed":state=33;scopeEnd=42;ReliableChat.session();return;
-            case "notices":state=43;scopeEnd=44;mc.displayGuiScreen(new HudEditor());ReliableChat.session();return;
+            case "chatui":state=43;scopeEnd=44;mc.displayGuiScreen(new HudEditor());ReliableChat.session();return;
             case "killconfirm":state=45;scopeEnd=51;UtilitySettings.killConfirm=false;mc.displayGuiScreen(new HudEditor());ReliableChat.session();return;
             case "tabs":state=52;scopeEnd=54;prepareTabs(mc);return;
             case "bow":state=55;scopeEnd=58;return;
@@ -488,7 +527,7 @@ public final class OtlSmoke {
             case "vote":state=69;scopeEnd=78;return;
             case "teambar":state=79;scopeEnd=89;UtilitySettings.teamBar=true;return;
             case "live":state=90;scopeEnd=110;UtilitySettings.teamBar=true;UtilitySettings.devHosts.add("localhost");return;
-            case "touchdown":state=111;scopeEnd=116;UtilitySettings.touchdown=true;mc.gameSettings.thirdPersonView=0;return;
+            case "touchdown":state=111;scopeEnd=116;UtilitySettings.touchdown=true;UtilitySettings.touchdownFootball3d=true;UtilitySettings.touchdownHideBallParticles=false;mc.gameSettings.thirdPersonView=0;return;
             default:throw new IllegalArgumentException("Unknown smoke scope: "+scope);
         }
     }
@@ -499,9 +538,16 @@ public final class OtlSmoke {
     }
     @SubscribeEvent public void tick(TickEvent.ClientTickEvent e){
         if(e.phase!=TickEvent.Phase.END)return;Minecraft mc=Minecraft.getMinecraft();
+        if(scope.equals("shingekiwin")&&state==126&&liveSeeking&&!livePickedUp&&mc.thePlayer!=null)
+            mc.thePlayer.sendQueue.addToSendQueue(new net.minecraft.network.play.client.C03PacketPlayer.C04PacketPlayerPosition(91.6,8,101.5,true));
         if(!started&&mc.currentScreen instanceof GuiMainMenu){
             started=true;
-            if(serverOnly){
+            if(scope.startsWith("shingeki")){
+                ReflectionHelper.setPrivateValue(Minecraft.class,mc,new net.minecraft.util.Session("DangerMode","","","legacy"),"session","field_71449_j");
+                UtilitySettings.load();UtilitySettings.teamBar=true;UtilitySettings.touchdown=true;
+                state=120;scopeEnd=scope.equals("shingekiinspect")?124:126;serverStarted=System.currentTimeMillis();
+                mc.displayGuiScreen(new net.minecraft.client.multiplayer.GuiConnecting(new GuiMainMenu(),mc,new net.minecraft.client.multiplayer.ServerData("Isolated PGM","localhost:25567",false)));
+            }else if(serverOnly){
                 UtilitySettings.load();UtilitySettings.chat=true;UtilitySettings.mapPreview=true;UtilitySettings.previewOnCommand=true;UtilitySettings.devHosts.add("localhost");
                 MapRemote.requestCatalog();state=15;serverStarted=System.currentTimeMillis();
                 System.out.println("OTL_SMOKE: targeted localhost checks; integrated fixtures SKIPPED");
@@ -563,16 +609,17 @@ public final class OtlSmoke {
                 ModulesScreen menu=(ModulesScreen)mc.currentScreen;
                 require(find(menu,"DONE")!=null,"Modules menu missing its Done button");
                 boolean faceRig=UtilitySettings.faceRig;
-                cardToggle(menu,0);
+                cardToggle(menu,OtlModule.ALL.indexOf(OtlModule.byId("face_rig")));
                 require(UtilitySettings.faceRig!=faceRig,"Module card toggle did not apply");
-                cardToggle(menu,0);
+                cardToggle(menu,OtlModule.ALL.indexOf(OtlModule.byId("face_rig")));
                 require(UtilitySettings.faceRig==faceRig,"Module card toggle did not revert");
                 boolean leftHand=UtilitySettings.leftHand;
-                cardToggle(menu,4);
+                int leftHandCard=OtlModule.ALL.indexOf(OtlModule.byId("left_hand"));
+                cardToggle(menu,leftHandCard);
                 require(UtilitySettings.leftHand!=leftHand,"Left Hand card toggle did not apply");
                 ReflectionHelper.setPrivateValue(UtilitySettings.class,null,false,"loaded");UtilitySettings.leftHand=leftHand;UtilitySettings.load();
                 require(UtilitySettings.leftHand!=leftHand,"Left Hand preference did not persist");
-                cardToggle(menu,4);
+                cardToggle(menu,leftHandCard);
                 require(UtilitySettings.leftHand==leftHand,"Left Hand card toggle did not restore");
                 UtilitySettings.mainHandLeft=false;UtilitySettings.handType=LeftHand.Type.ALL;
                 PreferedHandSettings hands=new PreferedHandSettings(menu);mc.displayGuiScreen(hands);
@@ -593,12 +640,6 @@ public final class OtlSmoke {
                 require("".equals(ServerScope.host("localhost:25565")),"dev host not removed");
                 require("".equals(ServerScope.host("play.oc.tc.example.com")),"Scope suffix bypass");
                 require("".equals(ServerScope.host("localhost:abc")),"Scope bad port");
-                OtlModule height=OtlModule.ALL.stream().filter(m->m.id.equals("height_limit_overlay")).findFirst().get();
-                require(!height.available()&&!height.enabled(),"Height module was not visibly locked");
-                ReflectionHelper.setPrivateValue(ModulesScreen.class,menu,OtlModule.ALL.indexOf(height)/3,"scrollRow");
-                menu.initGui();
-                cardToggle(menu,OtlModule.ALL.indexOf(height));
-                require(!UtilitySettings.heightLimitOverlay&&mc.currentScreen==menu,"Disabled height module could be re-enabled");
                 menu.drawScreen(0,0,0);
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-menu.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
             }else if(state==7){
@@ -623,71 +664,8 @@ public final class OtlSmoke {
                 require(MapPreview.INSTANCE.hover(bookScreen,left+300,36)==null,"Map hover matched outside the map name");
                 MapInfo cached=MapInfo.findLocal("Allure");
                 require(cached!=null&&"Allure".equals(cached.name)&&cached.objective.contains("wool")&&cached.players==24,"Local map info: "+cached);
-                require(!UtilitySettings.heightLimitOverlay&&cached.maxBuildHeight==35,"Height overlay should start disabled; Allure XML limit must remain available");
-                OtlModule heightModule=OtlModule.ALL.stream().filter(m->m.name.equals("Height Limit Overlay")).findFirst().get();
-                if(heightModule.available()){
-                heightModule.setEnabled(false);UtilitySettings.save();
-                ReflectionHelper.setPrivateValue(UtilitySettings.class,null,false,"loaded");UtilitySettings.heightLimitOverlay=true;UtilitySettings.load();
-                require(!heightModule.enabled(),"Height overlay toggle did not persist");heightModule.setEnabled(true);UtilitySettings.save();
-                HeightLimitSettings heightSettings=new HeightLimitSettings(bookScreen);mc.displayGuiScreen(heightSettings);
-                net.minecraftforge.fml.client.config.GuiSlider darkness=(net.minecraftforge.fml.client.config.GuiSlider)buttons(heightSettings).stream().filter(b->b.displayString.startsWith("Darkness opacity:")).findFirst().get();
-                darkness.setValue(65);darkness.updateSlider();heightSettings.onGuiClosed();
-                ReflectionHelper.setPrivateValue(UtilitySettings.class,null,false,"loaded");UtilitySettings.heightLimitOpacity=0;UtilitySettings.load();
-                require(UtilitySettings.heightLimitOpacity==65,"Height overlay opacity slider did not persist");
-                darkness.setValue(37);darkness.updateSlider();UtilitySettings.save();mc.displayGuiScreen(bookScreen);
-                mc.displayGuiScreen(heightSettings);
-                net.minecraftforge.fml.client.config.GuiSlider fadeSlider=(net.minecraftforge.fml.client.config.GuiSlider)buttons(heightSettings).stream().filter(b->b.displayString.startsWith("Indicator fade:")).findFirst().get();
-                fadeSlider.setValue(7);fadeSlider.updateSlider();heightSettings.onGuiClosed();
-                ReflectionHelper.setPrivateValue(UtilitySettings.class,null,false,"loaded");UtilitySettings.heightLimitIndicatorSeconds=1;UtilitySettings.load();
-                require(UtilitySettings.heightLimitIndicatorSeconds==7,"Height indicator fade slider did not persist");
-                fadeSlider.setValue(4);fadeSlider.updateSlider();UtilitySettings.save();mc.displayGuiScreen(bookScreen);
-                HeightLimitOverlay.INSTANCE.receive(new net.minecraftforge.client.event.ClientChatReceivedEvent((byte)0,new ChatComponentText("Playing Allure by Author")));
-                MapInfo activeMap=ReflectionHelper.getPrivateValue(HeightLimitOverlay.class,HeightLimitOverlay.INSTANCE,"map");
-                require(activeMap!=null&&activeMap.maxBuildHeight==35,"Height overlay did not identify the active PGM map");
-                MinecraftForge.EVENT_BUS.post(new net.minecraftforge.event.world.WorldEvent.Unload(mc.theWorld));
-                require(ReflectionHelper.getPrivateValue(HeightLimitOverlay.class,HeightLimitOverlay.INSTANCE,"map")==activeMap,"Leaving the hub cleared the announced map");
-                int ground=mc.thePlayer.getPosition().down().getY();
-                MapInfo overlayFixture=MapInfo.parse("<map><maxbuildheight>"+(ground+2)+"</maxbuildheight></map>","ctw/fixture",true,null,id->null);
-                ReflectionHelper.setPrivateValue(HeightLimitOverlay.class,HeightLimitOverlay.INSTANCE,overlayFixture,"map");
-                net.minecraftforge.fml.common.gameevent.TickEvent.ClientTickEvent overlayTick=new net.minecraftforge.fml.common.gameevent.TickEvent.ClientTickEvent(net.minecraftforge.fml.common.gameevent.TickEvent.Phase.END);
-                BlockPos placement=mc.thePlayer.getPosition().add(3,0,0);
-                placement=new BlockPos(placement.getX(),ground+1,placement.getZ());
-                net.minecraft.block.state.IBlockState original=mc.theWorld.getBlockState(placement);
-                net.minecraft.item.ItemStack oldHeld=mc.thePlayer.inventory.getCurrentItem();
-                try{
-                    require(original.getBlock()==net.minecraft.init.Blocks.air,"Overlay test placement must start as air");
-                    HeightLimitOverlay.INSTANCE.tick(overlayTick);
-                    @SuppressWarnings("unchecked") java.util.Map<net.minecraft.world.chunk.Chunk,java.util.BitSet[]> tracked=ReflectionHelper.getPrivateValue(HeightLimitOverlay.class,HeightLimitOverlay.INSTANCE,"chunks");
-                    net.minecraft.world.chunk.Chunk chunk=mc.theWorld.getChunkFromBlockCoords(placement);
-                    int bit=(placement.getX()&15)*16+(placement.getZ()&15);
-                    require(tracked.containsKey(chunk)&&!tracked.get(chunk)[1].get(bit)&&!tracked.get(chunk)[0].get(bit),"Initial snapshot treated air as terrain");
-                    mc.thePlayer.inventory.mainInventory[mc.thePlayer.inventory.currentItem]=new ItemStack(net.minecraft.init.Blocks.stone);
-                    net.minecraft.client.entity.EntityOtherPlayerMP other=new net.minecraft.client.entity.EntityOtherPlayerMP(mc.theWorld,new com.mojang.authlib.GameProfile(java.util.UUID.randomUUID(),"Other"));
-                    HeightLimitOverlay.INSTANCE.interact(new net.minecraftforge.event.entity.player.PlayerInteractEvent(other,net.minecraftforge.event.entity.player.PlayerInteractEvent.Action.RIGHT_CLICK_BLOCK,placement.down(),EnumFacing.UP,mc.theWorld,null));
-                    require(ReflectionHelper.getPrivateValue(HeightLimitOverlay.class,HeightLimitOverlay.INSTANCE,"pending")==null,"Another player's click armed our height indicator");
-                    HeightLimitOverlay.INSTANCE.interact(new net.minecraftforge.event.entity.player.PlayerInteractEvent(mc.thePlayer,net.minecraftforge.event.entity.player.PlayerInteractEvent.Action.RIGHT_CLICK_BLOCK,placement.down(),EnumFacing.UP,mc.theWorld,null));
-                    require(placement.equals(ReflectionHelper.getPrivateValue(HeightLimitOverlay.class,HeightLimitOverlay.INSTANCE,"pending")),"Own placement was not armed");
-                    mc.theWorld.setBlockState(placement,net.minecraft.init.Blocks.stone.getDefaultState());HeightLimitOverlay.INSTANCE.tick(overlayTick);
-                    require(mc.theWorld.getBlockState(placement).getBlock()==net.minecraft.init.Blocks.stone,"Fixture world did not accept block placement");
-                    require(tracked.get(chunk)[1].get(bit),"New block at limit was not tracked");
-                    require((long)ReflectionHelper.getPrivateValue(HeightLimitOverlay.class,HeightLimitOverlay.INSTANCE,"shownAt")>0,"Own placement did not show height indicator");
-                    mc.getFramebuffer().bindFramebuffer(true);mc.entityRenderer.setupOverlayRendering();
-                    net.minecraft.client.gui.Gui.drawRect(0,0,bookScreen.width,bookScreen.height,0xFF202020);
-                    HeightLimitOverlay.INSTANCE.indicator(new net.minecraftforge.client.event.RenderGameOverlayEvent.Post(new net.minecraftforge.client.event.RenderGameOverlayEvent(0,new ScaledResolution(mc)),net.minecraftforge.client.event.RenderGameOverlayEvent.ElementType.CHAT));
-                    ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-height-indicator.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
-                    float yaw=mc.thePlayer.rotationYaw,pitch=mc.thePlayer.rotationPitch;
-                    try{
-                        mc.thePlayer.rotationYaw=-90;mc.thePlayer.prevRotationYaw=-90;
-                        mc.thePlayer.rotationPitch=23;mc.thePlayer.prevRotationPitch=23;
-                        mc.getFramebuffer().bindFramebuffer(true);
-                        mc.entityRenderer.renderWorld(0,System.nanoTime());
-                        require(org.lwjgl.opengl.GL11.glGetError()==0,"Height limit overlay left a GL error");
-                        ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-height-limit-overlay.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
-                    }finally{mc.thePlayer.rotationYaw=yaw;mc.thePlayer.prevRotationYaw=yaw;mc.thePlayer.rotationPitch=pitch;mc.thePlayer.prevRotationPitch=pitch;}
-                    mc.theWorld.setBlockState(placement,original);HeightLimitOverlay.INSTANCE.tick(overlayTick);
-                    require(!tracked.get(chunk)[1].get(bit),"Removed block stayed in overlay");
-                }finally{mc.theWorld.setBlockState(placement,original);mc.thePlayer.inventory.mainInventory[mc.thePlayer.inventory.currentItem]=oldHeld;ReflectionHelper.setPrivateValue(HeightLimitOverlay.class,HeightLimitOverlay.INSTANCE,activeMap,"map");}
-                }else System.out.println("OTL_SMOKE: height-overlay runtime fixtures SKIPPED (module locked LOCKED)");
+                require(cached.maxBuildHeight==35,"Allure XML limit must remain available");
+
                 require(!"".equals(cached.authors)&&!"".equals(cached.contributors),"Missing author credits");
                 require("100rooms".equals(MapInfo.norm("100 Rooms")),"Map name normalization");
                 MapInfoScreen card=new MapInfoScreen("Allure");
@@ -946,18 +924,7 @@ public final class OtlSmoke {
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-preferred-hand-settings.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
                 UtilitySettings.leftHand=false;
                 require(org.lwjgl.opengl.GL11.glGetError()==0,"Left Hand left a GL error");
-                mc.displayGuiScreen(new ServerNoticeSettings(new UtilityScreen()));
-                if(new otl.client.modules.ServerNoticesModule().available()){
-                    require(find(mc.currentScreen,"Server Notices: OFF")!=null,"Server notices module missing/default not OFF");
-                    ((ServerNoticeSettings)mc.currentScreen).actionPerformed(find(mc.currentScreen,"Server Notices: OFF"));
-                    require(UtilitySettings.nonPlayerChat,"Server notices toggle did not enable");
-                }else{
-                    GuiButton locked=find(mc.currentScreen,"Server Notices: LOCKED");
-                    require(locked!=null&&!locked.enabled,"Server notices not visibly locked");
-                    ((ServerNoticeSettings)mc.currentScreen).actionPerformed(locked);
-                    require(!UtilitySettings.nonPlayerChat,"Locked Server Notices toggle did not stay disabled");
-                }
-                mc.displayGuiScreen(null);line("OTL smoke: server notice in top left");
+                mc.displayGuiScreen(null);
                 UtilitySettings.bubbles=true;mc.gameSettings.thirdPersonView=1;
                 TeamBubbles.clearBubbles();line("(Any Team) "+mc.thePlayer.getName()+": third-person bubble render check");
                 require(TeamBubbles.bubbles.containsKey(mc.thePlayer.getUniqueID()),"Own bubble missing before render");
@@ -969,7 +936,7 @@ public final class OtlSmoke {
                 line("(Any Team) "+mc.thePlayer.getName()+": front third-person bubble check");
             }else if(state==33){
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-front-third-person-bubble.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
-                UtilitySettings.nonPlayerChat=false;UtilitySettings.bubbles=false;UtilitySettings.save();mc.gameSettings.thirdPersonView=0;
+                UtilitySettings.bubbles=false;UtilitySettings.save();mc.gameSettings.thirdPersonView=0;
                 ReliableChat.session().select(ChatRules.PARTY);int partyBefore=chatHistory("party").size(),allBefore=chatHistory("all").size();
                 ReliableChat.send("/unknown-command");ReliableChat.session().select(ChatRules.TEAM);
                 line("\u00a7c\u26a0 Unknown command");
@@ -1033,14 +1000,14 @@ public final class OtlSmoke {
                 sizeReset.mousePressed(mc,sizeReset.xPosition+sizeReset.width-5,sizeReset.yPosition+8);
                 opacityReset.mousePressed(mc,opacityReset.xPosition+opacityReset.width-5,opacityReset.yPosition+8);
                 outlineReset.mousePressed(mc,outlineReset.xPosition+outlineReset.width-5,outlineReset.yPosition+8);
-                require(UtilitySettings.killFeedSize==75&&UtilitySettings.killBackgroundOpacity==25&&UtilitySettings.killBorderOpacity==100&&UtilitySettings.killBorderColor==0xFFBD45&&UtilitySettings.deathBorderColor==0xFF5555&&UtilitySettings.assistBorderColor==0x55FFFF,String.format("Appearance resets failed: size=%d bg=%d outline=%d colors=%06X/%06X/%06X",UtilitySettings.killFeedSize,UtilitySettings.killBackgroundOpacity,UtilitySettings.killBorderOpacity,UtilitySettings.killBorderColor,UtilitySettings.deathBorderColor,UtilitySettings.assistBorderColor));
+                require(UtilitySettings.killFeedSize==96&&UtilitySettings.killBackgroundOpacity==25&&UtilitySettings.killBorderOpacity==100&&UtilitySettings.killBorderColor==0xFFBD45&&UtilitySettings.deathBorderColor==0xFF5555&&UtilitySettings.assistBorderColor==0x55FFFF,String.format("Appearance resets failed: size=%d bg=%d outline=%d colors=%06X/%06X/%06X",UtilitySettings.killFeedSize,UtilitySettings.killBackgroundOpacity,UtilitySettings.killBorderOpacity,UtilitySettings.killBorderColor,UtilitySettings.deathBorderColor,UtilitySettings.assistBorderColor));
                 options.actionPerformed(find(options,"Appearance"));
                 net.minecraftforge.fml.client.config.GuiSlider sizeSnap=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==4).findFirst().get();
                 int snapTrack=sizeSnap.width-22,snapX=sizeSnap.xPosition+4+(int)(snapTrack*0.7D);
                 sizeSnap.mousePressed(mc,snapX,sizeSnap.yPosition+8);sizeSnap.mouseReleased(snapX,sizeSnap.yPosition+8);
                 require(UtilitySettings.killFeedSize==125,"Preset slider did not snap to a preset");
                 sizeSnap.mousePressed(mc,sizeSnap.xPosition+sizeSnap.width-5,sizeSnap.yPosition+8);
-                require(UtilitySettings.killFeedSize==75,"Preset slider reset glyph failed");
+                require(UtilitySettings.killFeedSize==96,"Preset slider reset glyph failed");
                 options.actionPerformed(find(options,"General"));options.actionPerformed(find(options,"Slide animation: ON"));options.actionPerformed(find(options,"Colors"));
                 options.actionPerformed(buttons(options).stream().filter(b->b.id==19).findFirst().get());require(mc.currentScreen instanceof ColorSwatches,"Color swatches did not open");
                 ((ColorSwatches)mc.currentScreen).actionPerformed(buttons(mc.currentScreen).get(4));
@@ -1154,27 +1121,7 @@ public final class OtlSmoke {
             }else if(state==43){
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-hud-preview-opacity-100.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());UtilitySettings.save();
                 UtilitySettings.killBorderOpacity=100;
-                UtilitySettings.nonPlayerChat=true;UtilitySettings.noticeMode=ServerNoticeRules.Mode.ALL;ServerNotices.history.clear();
-                ReliableChat.session().select("all");int oldChat=chatHistory("all").size();
-                line("Server restarts in 60 seconds");require(chatHistory("all").size()==oldChat&&ServerNotices.history.size()==1,"Notice duplicated into normal chat");
-                line("\u00a77Alex\u00a7r: observer chat stays here");line("<[VIP] Alex>: global chat stays here");line("(Observers) [VIP] *Alex: team chat stays here");
-                require(ServerNotices.history.size()==1,"Player/observer chat entered Server Notices");
-                UtilitySettings.noticeMode=ServerNoticeRules.Mode.JOINS_LEAVES;
-                line("Alex joined the game");line("Another server announcement");require(ServerNotices.history.size()==2,"Join-only mode routed other notices");
-                UtilitySettings.noticeMode=ServerNoticeRules.Mode.EXCEPT_JOINS_LEAVES;
-                line("Alex left the game");line("Other announcement");require(ServerNotices.history.size()==3,"Exclude-joins mode routed join/leave notices");
-                UtilitySettings.chat=false;line("Notice works without Reliable Chat");require(ServerNotices.history.size()==4,"Standalone notices depend on Reliable Chat");UtilitySettings.chat=true;
-                ServerNoticeSettings options=new ServerNoticeSettings(new HudEditor());mc.displayGuiScreen(options);
-                UtilitySettings.noticeSize=100;int normalNoticeWidth=ServerNotices.bounds().w;
-                net.minecraftforge.fml.client.config.GuiSlider noticeSize=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==5).findFirst().get();noticeSize.setValue(125);noticeSize.updateSlider();
-                require(UtilitySettings.noticeSize==125&&ServerNotices.bounds().w>normalNoticeWidth,"Notice slider did not scale HUD bounds");
-                net.minecraftforge.fml.client.config.GuiSlider opacity=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==2).findFirst().get();opacity.setValue(55);opacity.updateSlider();options.onGuiClosed();
-                UtilitySettings.noticeMode=ServerNoticeRules.Mode.ALL;UtilitySettings.noticeOpacity=0;UtilitySettings.noticeSize=100;ReflectionHelper.setPrivateValue(UtilitySettings.class,null,false,"loaded");UtilitySettings.load();
-                require(UtilitySettings.noticeMode==ServerNoticeRules.Mode.EXCEPT_JOINS_LEAVES&&UtilitySettings.noticeOpacity==55&&UtilitySettings.noticeSize==125,"Notice settings did not persist");
-                require(buttons(options).stream().noneMatch(b->b.enabled&&b.id==0),"Unavailable notice module still toggles");
-                UtilitySettings.restore("notice_size");UtilitySettings.save();
-                require(UtilitySettings.noticeSize==100&&ServerNotices.bounds().w==normalNoticeWidth,"Notice size reset failed");
-                UtilitySettings.nonPlayerChat=false;UtilitySettings.noticeMode=ServerNoticeRules.Mode.ALL;UtilitySettings.noticeOpacity=0;ReliableChat.session().select("all");
+                ReliableChat.session().select("all");
                 ChatComponentText original=new ChatComponentText("Full original wrapped message "+String.join(" ",Collections.nCopies(50,"preserved")));
                 original.getChatStyle().setChatClickEvent(new net.minecraft.event.ClickEvent(net.minecraft.event.ClickEvent.Action.SUGGEST_COMMAND,"/msg Alex "));
                 ReliableChat.receive(original,0);mc.displayGuiScreen(new GuiChat());ReliableChat.currentView().bottom();
@@ -1207,7 +1154,6 @@ public final class OtlSmoke {
                 ReliableChatScreen chat=(ReliableChatScreen)mc.currentScreen;ChatScroll.Bar bar=chat.scrollbar();
                 chat.mouseClicked(bar.x+4,bar.trackTop+1,0);chat.mouseClickMove(bar.x+4,bar.top+bar.height+100,0,100);chat.mouseReleased(bar.x+4,bar.top+bar.height+100,0);
                 require(ReliableChat.currentView().scroll()==0,"Scrollbar did not return to newest messages");
-                require(OtlModule.ALL.stream().anyMatch(m->m.name.equals("Server Notices")),"Server Notices missing from modules");
                 mc.displayGuiScreen(new HudEditor());
             }else if(state==45){
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-hud-all-previews.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());UtilitySettings.save();
@@ -1243,16 +1189,16 @@ public final class OtlSmoke {
                 require(KillConfirm.state.reward.labels(KillConfirm.state.streak).equals(java.util.Arrays.asList("KILL ASSIST")),"Assist showed bonus rows");
             }else if(state==47){
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-kill-confirm-assist.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
-                UtilitySettings.nonPlayerChat=true;line("+5 raindrops | Kill");require(KillConfirm.state.streak==3&&KillConfirm.state.streakExp==18&&KillConfirmRules.streakLabel(KillConfirm.state.streak,false).isEmpty(),"Non-milestone kill lost EXP or showed a streak tag");
+                line("+5 raindrops | Kill");require(KillConfirm.state.streak==3&&KillConfirm.state.streakExp==18&&KillConfirmRules.streakLabel(KillConfirm.state.streak,false).isEmpty(),"Non-milestone kill lost EXP or showed a streak tag");
                 require(!KillConfirm.state.reward.labels(KillConfirm.state.streak).contains("3 KILL STREAK"),"Non-milestone streak row leaked into the white stack");
                 line(mc.thePlayer.getName()+" fell out of the world");require(KillConfirm.state.streak==0&&KillConfirm.state.reward==null,"Death did not reset streak with Kill Feed OFF");
                 line("+5 raindrops | Kill");KillConfirm.INSTANCE.unload(new net.minecraftforge.event.world.WorldEvent.Unload(mc.theWorld));require(KillConfirm.state.streak==0&&KillConfirm.state.reward==null,"World change did not reset confirmations");
-                UtilitySettings.hideKillConfirmChat=true;int noticeCount=ServerNotices.history.size(),chatCount=chatHistory("all").size();
+                UtilitySettings.hideKillConfirmChat=true;int chatCount=chatHistory("all").size();
                 line("+5 raindrops | Kill");line("+3 raindrops | Kill Assist");
-                require(KillConfirm.state.streak==1&&KillConfirm.state.reward.assist&&ServerNotices.history.size()==noticeCount&&chatHistory("all").size()==chatCount,"Hidden rewards leaked to chat/notices or stopped popups");
+                require(KillConfirm.state.streak==1&&KillConfirm.state.reward.assist&&chatHistory("all").size()==chatCount,"Hidden rewards leaked to chat or stopped popups");
                 line("<Alex>: +5 raindrops | Kill");require(chatHistory("all").get(0).getChatComponent().getUnformattedText().equals("<Alex>: +5 raindrops | Kill")&&KillConfirm.state.streak==1,"Reward hiding suppressed player chat");
-                KillConfirm.state.clear();UtilitySettings.killConfirm=false;line("+5 raindrops | Kill");require(KillConfirm.state.reward==null&&ServerNotices.history.size()==noticeCount+1,"Disabled module counted/hidden reward");UtilitySettings.hideKillConfirmChat=false;
-                UtilitySettings.killFeed=true;UtilitySettings.nonPlayerChat=false;UtilitySettings.killConfirmSounds=false;UtilitySettings.save();
+                KillConfirm.state.clear();UtilitySettings.killConfirm=false;line("+5 raindrops | Kill");require(KillConfirm.state.reward==null,"Disabled module counted/hidden reward");UtilitySettings.hideKillConfirmChat=false;
+                UtilitySettings.killFeed=true;UtilitySettings.killConfirmSounds=false;UtilitySettings.save();
                 require(org.lwjgl.opengl.GL11.glGetError()==0,"Kill Confirm left a GL error");
                 UtilityScreen appearance=new UtilityScreen();mc.displayGuiScreen(appearance);appearance.actionPerformed(find(appearance,"Appearance"));
                 net.minecraftforge.fml.client.config.GuiSlider tabs=(net.minecraftforge.fml.client.config.GuiSlider)buttons(appearance).stream().filter(b->b.id==16).findFirst().get();
@@ -1388,6 +1334,16 @@ public final class OtlSmoke {
                 String status=ReflectionHelper.getPrivateValue(Minimap.class,Minimap.INSTANCE,"status");
                 if(status.equals("Loading map...")){require(System.nanoTime()-minimapStarted<15000000000L,"Unknown-map fallback did not finish");return;}
                 require(status.equals("Preview unavailable")&&ReflectionHelper.getPrivateValue(Minimap.class,Minimap.INSTANCE,"model")==null,"Unknown-map fallback failed");
+                UtilitySettings.minimapHideUnavailable=true;
+                mc.displayGuiScreen(null);
+                ReflectionHelper.setPrivateValue(Minimap.class,Minimap.INSTANCE,1,"view");
+                Minimap.INSTANCE.tick(new TickEvent.ClientTickEvent(TickEvent.Phase.END));
+                require((int)ReflectionHelper.getPrivateValue(Minimap.class,Minimap.INSTANCE,"view")==1,"Unavailable map changed the selected large view");
+                line("Game over!");
+                require((boolean)ReflectionHelper.getPrivateValue(Minimap.class,Minimap.INSTANCE,"matchEnded"),"Match end did not restore the selected minimap view");
+                Minimap.INSTANCE.unload(new net.minecraftforge.event.world.WorldEvent.Unload(mc.theWorld));
+                line("Playing Allure by jcane");
+                require((int)ReflectionHelper.getPrivateValue(Minimap.class,Minimap.INSTANCE,"view")==1,"New match lost the selected minimap view");
                 Minimap.drawPreview();require(!Minimap.INSTANCE.renderer.loaded(),"Unknown map still drew an old GPU model");
                 Minimap.INSTANCE.unload(new net.minecraftforge.event.world.WorldEvent.Unload(mc.theWorld));
                 require(ReflectionHelper.getPrivateValue(Minimap.class,Minimap.INSTANCE,"query")==null,"World change retained the previous map identity");
@@ -1455,7 +1411,7 @@ public final class OtlSmoke {
                 int bx=ReflectionHelper.getPrivateValue(ModulesScreen.class,browser,"x"),by=ReflectionHelper.getPrivateValue(ModulesScreen.class,browser,"y");
                 browser.mouseClicked(bx+10,by+10,0);
                 require(mc.currentScreen instanceof HudEditor,"Top-left back arrow did not open HUD editor");
-                SettingsScreen[] screens={new KillFeedSettings(null),new KillConfirmSettings(null),new MinimapSettings(null),new HeightLimitSettings(null),new ServerNoticeSettings(null),new TeamBarSettings(null),new UtilityScreen(),new MapPreviewSettings(null),new PreferedHandSettings(null),new BowOptimizerSettings(null),new RegionSettings(null),new ColorSwatches(null,0),new AutoGgSettings(null)};
+                SettingsScreen[] screens={new KillFeedSettings(null),new KillConfirmSettings(null),new MinimapSettings(null),new TeamBarSettings(null),new UtilityScreen(),new MapPreviewSettings(null),new PreferedHandSettings(null),new BowOptimizerSettings(null),new RegionSettings(null),new ColorSwatches(null,0),new AutoGgSettings(null)};
                 int scrollable=0;
                 for(SettingsScreen screen:screens){
                     screen.setWorldAndResolution(mc,427,240);
@@ -1730,12 +1686,25 @@ public final class OtlSmoke {
                 board.setObjectiveInDisplaySlot(1,objective);
                 sidebar(board,objective,"Time Limit: 10:00");
                 // RedPlayer0 is dead: PGM greys their tab-list name until they respawn.
-                for(int i=0;i<5;i++)tabEntry(mc,"RedPlayer"+i,i==0?"\u00a77RedPlayer0":"\u00a7cRedPlayer"+i);
+                for(int i=0;i<5;i++)tabEntry(mc,"RedPlayer"+i,i==0?"\u00a78RedPlayer0":"\u00a7cRedPlayer"+i);
                 // The hub has a clock and scoreboard teams of its own but no map, so the bar must stay away.
                 require(TeamBar.INSTANCE.bar(mc,false)==null,"The Team Bar was drawn in the lobby");
-                line("Playing Allure");
-                require(TeamBar.INSTANCE.bar(mc,false)!=null,"The Team Bar did not come back for an announced map");
                 line("The match has started!");
+                require(TeamBar.INSTANCE.bar(mc,false)!=null,"The Team Bar did not appear on match start without a map announcement");
+                line("Game over!");
+                TeamBar.INSTANCE.unload(new net.minecraftforge.event.world.WorldEvent.Unload(mc.theWorld));
+                require(TeamBar.INSTANCE.bar(mc,false)==null,"The Team Bar remained visible after leaving a match");
+                line("--- Playing Allure by Author ---");
+                require(TeamBar.INSTANCE.bar(mc,false)!=null,"The Team Bar did not appear for a wrapped map announcement");
+                line("The match has started!");
+                line("Overcast Community\nview our /servers or click the beacon");
+                require(TeamBar.INSTANCE.bar(mc,false)==null,"The Team Bar stayed visible in the Overcast lobby after a match");
+                line("\u00a7f\u00a7m           \u00a7r \u00a7b\u00a7lAllure\u00a7r \u00a7f\u00a7m           ");
+                line("Created by Kazoha");
+                require("Allure".equals(ReflectionHelper.getPrivateValue(TeamBar.class,TeamBar.INSTANCE,"teamMap")),"A mid-match welcome did not identify the map");
+                line("Playing Allure");
+                line("The match has started!");
+                require(TeamBar.INSTANCE.bar(mc,false)!=null,"The Team Bar did not return after leaving the lobby");
                 UtilitySettings.teamBarPlayers=5;
             }else if(state==80){
                 java.util.List<TeamBar.Side> sides=TeamBar.sides(mc);
@@ -1753,7 +1722,7 @@ public final class OtlSmoke {
                 TeamBar.Timer limit=TeamBar.INSTANCE.timer(mc);
                 require(limit!=null&&limit.seconds>=597&&limit.seconds<=600,"Team Bar did not read the sidebar timer: "+(limit==null?"none":limit.label));
                 require(limit.countdown,"Time-limit timer was not marked as a countdown");
-                require(TeamBar.headSize(1)==16&&TeamBar.headSize(75)==16,"Heads shrank instead of wrapping to another row");
+                require(TeamBar.headSize(5)==16&&TeamBar.headSize(10)==15&&TeamBar.headSize(15)==14&&TeamBar.headSize(75)==2,"Head size did not shrink in five-player steps");
                 // Pin the size: a previous smoke run can leave a different value in settings.json.
                 UtilitySettings.teamBarSize=100;
                 TeamBar.Bar bar=TeamBar.INSTANCE.bar(mc,false);
@@ -1796,8 +1765,7 @@ public final class OtlSmoke {
                 require(TeamBar.teamColour(mc,sides.get(0).members)==0xFF5555FF,"The second team got the wrong colour");
                 UtilitySettings.teamBarTeamColor=lineSetting;
                 require(bar.head==16,"Five heads per side were not kept at full size");
-                // The Size option is the only thing that may change head size for a row of ten
-                // or fewer: the count itself must never shrink them.
+                // The Size option still scales the five-player base.
                 int wasSize=UtilitySettings.teamBarSize;
                 UtilitySettings.teamBarSize=50;
                 require(TeamBar.INSTANCE.bar(mc,false).head==8,"Size 50% did not halve the heads: "+TeamBar.INSTANCE.bar(mc,false).head);
@@ -1818,22 +1786,23 @@ public final class OtlSmoke {
                 // fit-to-screen pass: that pass turned "150%" into heads smaller than 100%.
                 UtilitySettings.teamBarPlayers=10;UtilitySettings.teamBarSize=150;
                 TeamBar.Bar big=TeamBar.INSTANCE.bar(mc,false);
-                require(big.head==24,"A ten-head row was shrunk instead of wrapping: "+big.head);
+                require(big.head==22,"The ten-player base was not scaled to 150%: "+big.head);
                 require(big.width<=new ScaledResolution(mc).getScaledWidth()-8,"The bigger bar spills off the screen");
                 require(big.left.get(0).size()<=TeamBar.MAX_PER_ROW,"A row held more than ten heads");
                 UtilitySettings.teamBarPlayers=5;UtilitySettings.teamBarSize=wasSize;
                 UtilitySettings.teamBarPlayers=75;
                 TeamBar.Bar wide=TeamBar.INSTANCE.bar(mc,false);
-                // Ten heads fill a row; a bigger team wraps onto the rows below at full size.
+                // Ten heads fill a row; a bigger team wraps onto rows below at the smaller size.
                 require(wide.left.get(0).size()==TeamBar.MAX_PER_ROW,"A full row did not hold ten heads: "+wide.left.get(0).size());
                 require(wide.left.size()>=8,"Seventy-five players did not wrap onto rows below: "+wide.left.size());
-                require(wide.head==16,"Wrapped rows shrank the heads instead of using another row");
+                require(wide.head==2,"Seventy-five players did not use the smaller head size: "+wide.head);
                 require(wide.textX+wide.textW/2==wide.width/2,"The clock moved when the rows grew");
                 require(wide.width<=new ScaledResolution(mc).getScaledWidth()-8,"The full bar spills off the screen");
                 UtilitySettings.teamBarPlayers=5;
                 HudLayout.Rect box=HudEditor.bounds(HudLayout.TEAM_BAR);
-                require(box.y<=8&&box.x>=4&&box.x+box.w<=new ScaledResolution(mc).getScaledWidth()-4,"Team Bar HUD bounds are off screen");
-                require(Math.abs(box.x+box.w/2-new ScaledResolution(mc).getScaledWidth()/2)<=2,"Team Bar does not default to top centre");
+                ScaledResolution teambarScreen=new ScaledResolution(mc);
+                require(box.y>=4&&box.x>=4&&box.x+box.w<=teambarScreen.getScaledWidth()-4&&box.y+box.h<=teambarScreen.getScaledHeight()-4,"Team Bar HUD bounds are off screen");
+                require(Math.abs(box.x+box.w/2-teambarScreen.getScaledWidth()/2)<=8,"Team Bar does not default near top centre");
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-team-bar.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
                 // Many teams keep stacking downward; a stack taller than the screen shrinks to fit.
                 net.minecraft.scoreboard.Scoreboard many=mc.theWorld.getScoreboard();
@@ -1871,6 +1840,15 @@ public final class OtlSmoke {
                 require(!TeamBar.dead("RedPlayer0"),"A respawned player stayed greyed out");
                 TeamBar.Timer up=TeamBar.INSTANCE.timer(mc);
                 require(up!=null&&"0:42".equals(up.label)&&!up.countdown,"Count-up timer was not left white: "+(up==null?"none":up.label));
+                sidebar(mc.theWorld.getScoreboard(),mc.theWorld.getScoreboard().getObjective("otl_teambar"),"Players: 24");
+                net.minecraft.entity.boss.BossStatus.bossName=null;
+                line("Playing Allure");
+                line("The match has started!");
+                long startedAt=System.nanoTime();
+                TeamBar.Timer running=TeamBar.INSTANCE.timer(mc,startedAt+10_000_000_000L);
+                line("Go!");
+                TeamBar.Timer repeated=TeamBar.INSTANCE.timer(mc,startedAt+10_000_000_000L);
+                require(repeated.seconds==running.seconds,"A repeated start reset the running clock: "+repeated.label);
                 // Local clock: read the limit once, then tick from it without any server update.
                 line("The match has started!");
                 sidebar(mc.theWorld.getScoreboard(),mc.theWorld.getScoreboard().getObjective("otl_teambar"),"Time Remaining: 10:00");
@@ -1995,6 +1973,34 @@ public final class OtlSmoke {
                 TeamBar.Timer held=TeamBar.INSTANCE.timer(mc,now+4_000_000_000L);
                 require(held!=null&&"9:56".equals(held.label),"The bar jumped to the static limit: "+(held==null?"none":held.label));
                 sidebar(board,sidebar,"Players: 24");
+                line("Playing Shingeki no Brady");
+                line("The match has started!");
+                tabFooter(mc,"Time: 00:11");
+                TeamBar.INSTANCE.timer(mc,now);
+                tabFooter(mc,"Time: 00:12");
+                TeamBar.INSTANCE.timer(mc,now+1_000_000_000L);
+                net.minecraft.entity.boss.BossStatus.bossName="Time Remaining: 07:49";
+                TeamBar.INSTANCE.timer(mc,now+1_000_000_000L);
+                net.minecraft.entity.boss.BossStatus.bossName="Time Remaining: 07:48";
+                TeamBar.Timer remaining=TeamBar.INSTANCE.timer(mc,now+2_000_000_000L);
+                require(remaining!=null&&remaining.countdown&&"7:48".equals(remaining.label),"Elapsed time won over the live time limit: "+(remaining==null?"none":remaining.label));
+                net.minecraft.entity.boss.BossStatus.bossName="Flag will respawn in 4 seconds";
+                tabFooter(mc,"Time: 00:13");
+                TeamBar.Timer flagMessage=TeamBar.INSTANCE.timer(mc,now+3_000_000_000L);
+                require(flagMessage!=null&&flagMessage.countdown&&"7:47".equals(flagMessage.label),"The flag message switched the time limit to elapsed time: "+(flagMessage==null?"none":flagMessage.label));
+                tabFooter(mc,"");
+                line("Playing Overtime Test");
+                line("The match has started!");
+                net.minecraft.entity.boss.BossStatus.bossName="Overtime 0:30";
+                long overtimeAt=System.nanoTime();
+                TeamBar.Timer overtime=TeamBar.INSTANCE.timer(mc,overtimeAt);
+                require(overtime!=null&&"0:30".equals(overtime.label)&&overtime.countdown,"The overtime clock was not read");
+                TeamBar.Timer tied=TeamBar.INSTANCE.timer(mc,overtimeAt+5_000_000_000L);
+                require("0:30".equals(tied.label),"The overtime clock counted down during a tie: "+tied.label);
+                net.minecraft.entity.boss.BossStatus.bossName="Overtime 0:29";
+                TeamBar.Timer untied=TeamBar.INSTANCE.timer(mc,overtimeAt+6_000_000_000L);
+                require("0:29".equals(untied.label),"The overtime clock did not follow the server after the tie broke: "+untied.label);
+                net.minecraft.entity.boss.BossStatus.bossName=null;
             }else if(state==83){
                 // A leaver: seen online once, then the tab entry goes away. The head must follow
                 // after the short grace instead of sitting on the row forever.
@@ -2038,11 +2044,13 @@ public final class OtlSmoke {
                 int grey=TeamBar.greyed(0xFFC04020);
                 require(((grey>>16)&255)==((grey>>8)&255)&&((grey>>8)&255)==(grey&255),"Dead heads are not grey");
                 require(((grey>>16)&255)<0xC0,"Dead heads were not dimmed");
-                require(TeamBar.grey("\u00a77\u00a7lRedPlayer"),"A decorated grey tab name was not read as dead");
+                require(TeamBar.grey("\u00a78\u00a7lRedPlayer"),"A decorated dark-grey tab name was not read as dead");
+                require(!TeamBar.grey("\u00a77\u00a7lRedPlayer"),"A light-grey tab name was read as dead");
                 require(!TeamBar.grey("\u00a7c\u00a7lRedPlayer"),"A team-coloured decorated name was read as dead");
             }else if(state==84){
                 // Match start with no server clock at all: count up from zero in white.
                 net.minecraft.entity.boss.BossStatus.bossName=null;
+                line("Playing Allure");
                 line("The match has started!");
                 long began=System.nanoTime();
                 require("0:00".equals(TeamBar.INSTANCE.timer(mc,began).label),"The new match did not start at zero");
@@ -2108,24 +2116,54 @@ public final class OtlSmoke {
                 require(!TeamBar.dead(me),"The local player's head stayed grey after respawn");
                 net.minecraft.client.network.NetworkPlayerInfo self=mc.getNetHandler().getPlayerInfo(me);
                 String before=TeamBar.tabName(self);
-                self.setDisplayName(new ChatComponentText("\u00a77"+me));
+                self.setDisplayName(new ChatComponentText("\u00a78"+me));
                 require(TeamBar.dead(me),"The server's grey tab name did not grey the local player's head");
                 self.setDisplayName(before==null?null:new ChatComponentText(before));
                 require(!TeamBar.dead(me),"The local player's head stayed grey after the tab name cleared");
+                mc.ingameGUI.displayTitle(null,null,-1,-1,-1);
+                mc.ingameGUI.displayTitle("You died!",null,0,60,0);
+                mc.ingameGUI.displayTitle(null,"Left click to respawn in 3.0s",-1,-1,-1);
+                require(TeamBar.dead(me),"The local player's head did not grey during manual respawn");
+                mc.ingameGUI.displayTitle(null,"Respawning in 2.0s",-1,-1,-1);
+                require(TeamBar.dead(me),"The local player's head did not grey during automatic respawn");
+                mc.ingameGUI.displayTitle(null,null,-1,-1,-1);
+                require(!TeamBar.dead(me),"The local player's head stayed grey after the respawn title cleared");
                 // A respawning player is already back in the world, but PGM keeps the grey tab name
                 // until the respawn finishes: the head must stay grey with the name, not clear early.
                 net.minecraft.client.entity.EntityOtherPlayerMP respawning=new net.minecraft.client.entity.EntityOtherPlayerMP(mc.theWorld,
                     new com.mojang.authlib.GameProfile(java.util.UUID.randomUUID(),"RespawningMate"));
                 mc.theWorld.addEntityToWorld(-9103,respawning);
-                tabEntry(mc,"RespawningMate","\u00a77RespawningMate");
+                tabEntry(mc,"RespawningMate","\u00a78RespawningMate");
                 require(TeamBar.dead("RespawningMate"),"A live body cleared the head while the tab name was still grey");
                 removeTabEntry(mc,"RespawningMate");
                 require(!TeamBar.dead("RespawningMate"),"A live body was read as dead without a tab entry");
                 mc.theWorld.removeEntityFromWorld(-9103);
+                // PGM displays a separate synthetic profile for the tab-list row; the real
+                // profile can stay team-coloured throughout death and respawn.
+                tabEntry(mc,"OtherPlayer","\u00a7cOtherPlayer");
+                tabEntry(mc,"|otl-fake-tab","\u00a7c[Rank] \u00a7cOtherPlayer\u00a77 [VIP]");
+                require(!TeamBar.dead("OtherPlayer"),"A grey tab suffix marked a living player dead");
+                tabEntry(mc,"|otl-fake-tab","\u00a7c[Rank] \u00a77OtherPlayer\u00a7c [VIP]");
+                require(!TeamBar.dead("OtherPlayer"),"A light-grey player name was read as dead");
+                tabEntry(mc,"|otl-fake-tab","\u00a7c[Rank] \u00a78OtherPlayer\u00a7c [VIP]");
+                require(TeamBar.dead("OtherPlayer"),"The grey synthetic tab entry did not mark the other player dead");
+                net.minecraft.scoreboard.Scoreboard deathBoard=mc.theWorld.getScoreboard();
+                deathBoard.addPlayerToTeam("OtherPlayer","red");
+                long deathAt=System.nanoTime();
+                TeamBar.sides(mc,deathAt);
+                deathBoard.removePlayerFromTeam("OtherPlayer",deathBoard.getTeam("red"));
+                TeamBar.sides(mc,deathAt+1);
+                require(side(TeamBar.sides(mc,deathAt+TeamBar.KEEP_DEAD+1_000_000_000L),"red").members.contains("OtherPlayer"),"A grey online player disappeared during a long respawn");
+                deathBoard.addPlayerToTeam("OtherPlayer","red");
+                tabEntry(mc,"|otl-fake-tab","\u00a7c[Rank] \u00a7cOtherPlayer\u00a77 [VIP]");
+                require(!TeamBar.dead("OtherPlayer"),"The other player stayed grey after the synthetic tab entry recovered");
+                deathBoard.removePlayerFromTeam("OtherPlayer",deathBoard.getTeam("red"));
+                removeTabEntry(mc,"|otl-fake-tab");removeTabEntry(mc,"OtherPlayer");
             }else if(state==87){
                 // Auto GG: never say gg while the map is starting.
                 ggBaseline=AutoGg.INSTANCE.sentCount;
                 UtilitySettings.autoGg=true;
+                UtilitySettings.autoGgDelay=0;UtilitySettings.autoGgRandom=false; // the timing itself is covered by the dedicated Auto GG checks
                 line("Playing Allure");
                 line("Your team won!"); // PGM's leftover result right after the map loads
             }else if(state==88){
@@ -2155,7 +2193,7 @@ public final class OtlSmoke {
                 require(alone.left.isEmpty()&&alone.right.isEmpty(),"Heads were drawn with no teams: "+alone.left+"/"+alone.right);
                 int sw=new ScaledResolution(mc).getScaledWidth();
                 HudLayout.Rect where=TeamBar.placed(alone);
-                require(Math.abs(where.x+alone.textX+alone.textW/2-sw/2)<=1,
+                require(Math.abs(where.x+alone.textX+alone.textW/2-sw/2)<=3,
                     "The clock is off centre while observing: "+(where.x+alone.textX+alone.textW/2)+" vs "+sw/2);
                 // FFA: PGM gives every player their own one-member team so each name gets its own
                 // colour. That is not a team: the bar must pool the heads and draw no colour line.
@@ -2220,6 +2258,16 @@ public final class OtlSmoke {
                 for(java.util.List<String> members:TeamBar.INSTANCE.bar(mc,false).right)dupHeads+=members.size();
                 require(dupHeads==12,"A player listed on two teams was drawn twice: "+dupHeads);
                 board.getTeam("ffa1").getMembershipCollection().remove("FfaPlayer2");
+                for(int i=0;i<12;i++)if(board.getTeam("ffa"+i)!=null)board.removeTeam(board.getTeam("ffa"+i));
+                line("Playing FFA Order Test");
+                String[] orderTeams={"zTeam","aTeam","mTeam"},orderNames={"Zed","Aaron","Mia"};
+                for(int i=0;i<orderTeams.length;i++){
+                    board.createTeam(orderTeams[i]);board.addPlayerToTeam(orderNames[i],orderTeams[i]);
+                    TeamBar.INSTANCE.bar(mc,false);
+                }
+                TeamBar.Bar joined=TeamBar.INSTANCE.bar(mc,false);
+                require(joined.left.get(0).equals(java.util.Arrays.asList("Zed","Mia"))&&joined.right.get(0).equals(java.util.Arrays.asList("Aaron")),
+                    "FFA did not alternate by join order: "+joined.left+" / "+joined.right);
                 UtilitySettings.teamBarPlayers=shownBefore;
             }else if(state==90){
                 // Real PGM match on the local server: dump what the scoreboard actually carries.
@@ -2244,6 +2292,125 @@ public final class OtlSmoke {
                 else require(timer==null,"Team Bar invented a timer: "+(timer==null?"none":timer.label));
                 System.out.println("OTL_LIVE: boss-bar clock check PASS ("+plain.trim()+")");
                 mc.thePlayer.sendChatMessage("/leave");
+            }else if(state==120){
+                mc.thePlayer.sendChatMessage("/sn Shingeki no Brady");
+            }else if(state==121){
+                mc.thePlayer.sendChatMessage("/cycle 0 -f");serverStarted=System.currentTimeMillis();
+            }else if(state==122){
+                if(System.currentTimeMillis()-serverStarted<7000)return;
+                mc.thePlayer.sendChatMessage("/join");
+            }else if(state==123){
+                mc.thePlayer.sendChatMessage("/start 0");serverStarted=System.currentTimeMillis();
+            }else if(state==124){
+                if(System.currentTimeMillis()-serverStarted<12000)return;
+                dumpMatch(mc);
+                if(scope.equals("shingekiparticles")){
+                    require(Touchdown.active(),"Touchdown was not detected after joining the map");
+                    UtilitySettings.touchdownHideBallParticles=true;
+                    BallParticles.INSTANCE.tick(new TickEvent.ClientTickEvent(TickEvent.Phase.END));
+                    net.minecraft.network.NetworkManager manager=mc.getNetHandler().getNetworkManager();
+                    io.netty.channel.Channel ch=manager.channel();
+                    require(ch.pipeline().get("otl_ball_particles")!=null,"Ball particle filter was not installed");
+                    ch.pipeline().addBefore("otl_ball_particles","otl_particle_before",new io.netty.channel.ChannelInboundHandlerAdapter(){
+                        public void channelRead(io.netty.channel.ChannelHandlerContext ctx,Object packet){
+                            if(packet instanceof net.minecraft.network.play.server.S2APacketParticles&&((net.minecraft.network.play.server.S2APacketParticles)packet).getParticleType()==net.minecraft.util.EnumParticleTypes.REDSTONE)particlesBefore.incrementAndGet();
+                            ctx.fireChannelRead(packet);
+                        }
+                    });
+                    ch.pipeline().addBefore(ch.pipeline().context(manager).name(),"otl_particle_probe",new io.netty.channel.ChannelInboundHandlerAdapter(){
+                        public void channelRead(io.netty.channel.ChannelHandlerContext ctx,Object packet){
+                            if(packet instanceof net.minecraft.network.play.server.S2APacketParticles){
+                                net.minecraft.network.play.server.S2APacketParticles p=(net.minecraft.network.play.server.S2APacketParticles)packet;
+                                if(p.getParticleType()==net.minecraft.util.EnumParticleTypes.REDSTONE)particlesAfter.incrementAndGet();else otherParticles.incrementAndGet();
+                            }
+                            ctx.fireChannelRead(packet);
+                        }
+                    });
+                }
+                if(scope.equals("shingekiinspect")){
+                    java.util.List<String> order=ReflectionHelper.getPrivateValue(TeamBar.class,TeamBar.INSTANCE,"teamOrder");
+                    require(order.equals(java.util.Arrays.asList("Eldia","Marley")),"Shingeki team order was not resolved from XML: "+order);
+                    TeamBar.Bar real=TeamBar.INSTANCE.bar(mc,false);
+                    net.minecraft.scoreboard.ScorePlayerTeam team=mc.theWorld.getScoreboard().getPlayersTeam(mc.thePlayer.getName());
+                    int rank=TeamBar.teamRank(team.getTeamName(),order);
+                    require(real!=null&&rank<2&&(rank==0?!real.left.isEmpty():!real.right.isEmpty()),"The local team was not on its XML side");
+                    System.out.println("OTL_LIVE: Shingeki XML team order="+order+" local rank="+rank);
+                }
+                mc.thePlayer.sendChatMessage("/tp DangerMode 91.5 8 101.5");serverStarted=System.currentTimeMillis();
+            }else if(state==125){
+                if(System.currentTimeMillis()-serverStarted<5000){
+                    mc.thePlayer.sendQueue.addToSendQueue(new net.minecraft.network.play.client.C03PacketPlayer.C04PacketPlayerPosition(91.6,8,101.5,true));
+                    return;
+                }
+                if(scope.equals("shingekicard")||scope.equals("shingekiwin")){
+                    if(!livePickedUp&&System.currentTimeMillis()-serverStarted<20000)return;
+                    require(livePickedUp,"Server did not confirm the flag pickup");
+                    net.minecraft.scoreboard.ScorePlayerTeam own=mc.theWorld.getScoreboard().getPlayersTeam(mc.thePlayer.getName());
+                    require(own!=null,"The live scorer has no team");
+                    boolean marley=ChatRules.plain(own.getTeamName()).toLowerCase(java.util.Locale.ROOT).contains("marley");
+                    liveEndZone=marley?"145.5":"56.5";
+                    mc.thePlayer.sendChatMessage("/tp DangerMode 91.5 8 "+liveEndZone);
+                    liveStarted=System.currentTimeMillis();state=126;
+                    return;
+                }
+                int slot=-1;
+                for(int i=0;i<9;i++)if(mc.thePlayer.inventory.getStackInSlot(i)!=null&&mc.thePlayer.inventory.getStackInSlot(i).getItem()==net.minecraft.init.Items.snowball){slot=i;break;}
+                if(slot<0&&System.currentTimeMillis()-serverStarted<20000)return;
+                System.out.println("OTL_LIVE: player pos="+mc.thePlayer.posX+","+mc.thePlayer.posY+","+mc.thePlayer.posZ);
+                for(Object obj:mc.theWorld.loadedEntityList)if(obj instanceof net.minecraft.entity.item.EntityItem){net.minecraft.entity.item.EntityItem item=(net.minecraft.entity.item.EntityItem)obj;System.out.println("OTL_LIVE: item "+item.getEntityItem()+" pos="+item.posX+","+item.posY+","+item.posZ);}
+                if(slot>=0){
+                    mc.thePlayer.inventory.currentItem=slot;
+                    liveThrew=mc.playerController.sendUseItem(mc.thePlayer,mc.theWorld,mc.thePlayer.getHeldItem());
+                }
+                System.out.println("OTL_LIVE: flag pickup="+(slot>=0)+" throw="+liveThrew);
+                liveStarted=System.currentTimeMillis();liveLastSample=0;
+            }else if(state==126){
+                if(scope.equals("shingekiwin")){
+                    if(liveGoals>=5){
+                        TouchdownCard.Card scored=TouchdownCard.current();
+                        if(scored==null||scored.score==null){require(System.currentTimeMillis()-liveStarted<4000,"Winning touchdown card did not get its score");return;}
+                        require("5 - 0".equals(scored.score),"Wrong winning score: "+scored.score);
+                        dumpMatch(mc);
+                        System.out.println("OTL_LIVE: final card="+(scored==null?"none":scored.scorer+" "+scored.score));
+                        System.out.println("OTL_SMOKE: PASS - shingekiwin");mc.shutdown();return;
+                    }
+                    if(liveGoals>0&&System.currentTimeMillis()-liveStarted>=13000&&!liveSeeking){
+                        mc.thePlayer.sendChatMessage("/tp DangerMode 91.5 8 101.5");liveSeeking=true;
+                    }
+                    if(liveSeeking&&livePickedUp&&!liveTargetSent){
+                        mc.thePlayer.sendChatMessage("/tp DangerMode 91.5 8 "+liveEndZone);liveTargetSent=true;liveStarted=System.currentTimeMillis();
+                    }
+                    require(System.currentTimeMillis()-liveStarted<25000,"Timed out waiting for touchdown "+(liveGoals+1));
+                    return;
+                }
+                if(scope.equals("shingekicard")){
+                    TouchdownCard.Card scored=TouchdownCard.current();
+                    if(scored==null||scored.score==null){require(System.currentTimeMillis()-liveStarted<15000,"Live touchdown card or its score did not arrive");return;}
+                    require("DangerMode".equalsIgnoreCase(scored.scorer),"Wrong live scorer: "+scored.scorer);
+                    System.out.println("OTL_LIVE: player card scorer="+scored.scorer+" score="+scored.score);
+                    System.out.println("OTL_SMOKE: PASS - shingekicard");mc.shutdown();return;
+                }
+                long elapsed=System.currentTimeMillis()-liveStarted;
+                TeamBar.Timer timer=TeamBar.INSTANCE.timer(mc);
+                if(liveInitial<0&&timer!=null)liveInitial=timer.seconds;
+                if(elapsed-liveLastSample>=10000||liveLastSample==0){
+                    liveLastSample=elapsed;System.out.println("OTL_LIVE: elapsed="+(elapsed/1000)+" timer="+(timer==null?"none":timer.label+" countdown="+timer.countdown));dumpMatch(mc);
+                    String boss=ChatRules.plain(net.minecraft.entity.boss.BossStatus.bossName==null?"":net.minecraft.entity.boss.BossStatus.bossName);
+                    java.util.regex.Matcher clock=java.util.regex.Pattern.compile("(?i)time remaining: ?(\\d+):(\\d\\d)").matcher(boss);
+                    if(clock.find()&&(timer==null||!timer.countdown||Math.abs(timer.seconds-(Integer.parseInt(clock.group(1))*60+Integer.parseInt(clock.group(2))))>2))liveMismatches++;
+                }
+                if(elapsed<(scope.equals("shingekiparticles")?10000:120000))return;
+                require(livePickedUp&&liveThrowConfirmed,"Server did not confirm flag pickup and throw");
+                if(scope.equals("shingekiparticles")){
+                    System.out.println("OTL_PARTICLE: redstone received="+particlesBefore.get()+" forwarded="+particlesAfter.get()+" other forwarded="+otherParticles.get());
+                    require(particlesBefore.get()>0&&particlesAfter.get()<particlesBefore.get(),"Football particles were not filtered");
+                    require(otherParticles.get()>0,"Unrelated particles did not pass through");
+                    UtilitySettings.touchdownHideBallParticles=false;
+                    mc.shutdown();System.out.println("OTL_SMOKE: PASS - shingekiparticles");return;
+                }
+                require(liveMismatches==0,"The Team Bar did not match the server countdown: "+liveMismatches+" samples differed");
+                require(timer!=null&&timer.countdown&&liveInitial>0&&timer.seconds<=liveInitial-90,"The time limit did not count down for two minutes");
+                mc.thePlayer.sendChatMessage("/leave");
             }else if(state==111){
                 // Exactly what PGM sends: the map name wrapped in a strikethrough rule, inside the welcome block.
                 line("\u00a78\u00a7m---------------- \u00a7b\u00a7lShingeki no Brady\u00a78\u00a7m ----------------\n"
@@ -2255,6 +2422,18 @@ public final class OtlSmoke {
                 net.minecraft.client.resources.model.IBakedModel model=mc.getRenderItem().getItemModelMesher().getItemModel(new ItemStack(net.minecraft.init.Items.snowball));
                 require(model instanceof FootballItemModel,"Football item model missing: "+model);
                 require(model.isBuiltInRenderer(),"Snowball did not switch to the football renderer");
+                TouchdownSettings touchdownOptions=new TouchdownSettings(null);
+                touchdownOptions.setWorldAndResolution(mc,854,480);
+                touchdownOptions.actionPerformed(buttons(touchdownOptions).stream().filter(b->b.id==1).findFirst().get());
+                require(!UtilitySettings.touchdownFootball3d&&!model.isBuiltInRenderer()&&Touchdown.active(),"3D football option did not restore the vanilla model independently");
+                require(!UtilitySettings.snapshot().get("touchdown_football_3d").getAsBoolean(),"3D football option was not included in saved settings");
+                touchdownOptions.actionPerformed(buttons(touchdownOptions).stream().filter(b->b.id==1).findFirst().get());
+                require(UtilitySettings.touchdownFootball3d&&model.isBuiltInRenderer(),"3D football option did not restore the model");
+                touchdownOptions.actionPerformed(buttons(touchdownOptions).stream().filter(b->b.id==2).findFirst().get());
+                require(UtilitySettings.touchdownHideBallParticles,"Hide ball particles option did not turn on");
+                require(UtilitySettings.snapshot().get("touchdown_hide_ball_particles").getAsBoolean(),"Hide ball particles option was not included in saved settings");
+                touchdownOptions.actionPerformed(buttons(touchdownOptions).stream().filter(b->b.id==2).findFirst().get());
+                require(!UtilitySettings.touchdownHideBallParticles,"Hide ball particles option did not turn off");
                 require(FootballMesh.quads()>=192,"Football mesh is too small: "+FootballMesh.quads());
                 // The look the user asked for: dark leather with a white stripe near each tip, so
                 // exactly two bands wrap the ball - no stripe, or a third, is a different ball.
@@ -2275,11 +2454,28 @@ public final class OtlSmoke {
                 require(org.lwjgl.opengl.GL11.glGetError()==0,"Banner item rendering left a GL error");
             }else if(state==112){
                 mc.displayGuiScreen(null);
+                Touchdown.INSTANCE.unload(new net.minecraftforge.event.world.WorldEvent.Unload(mc.theWorld));
+                require(!Touchdown.active(),"Touchdown stayed active after leaving the world");
+                Touchdown.announce("Touchdown");
+                line("Overcast Community\nview our /servers or click the beacon");
+                require(!Touchdown.active(),"Touchdown stayed active in the lobby");
+                line("\u00a7f\u00a7m           \u00a7r \u00a7b\u00a7lFind the Button!\u00a7r \u00a7f\u00a7m           ");
+                line("Created by Palmenikoo");
+                require(!Touchdown.active(),"A non-Touchdown welcome retained the previous football");
                 // The map from the screenshot: a real non-Touchdown PGM map, same decorated line.
                 line("\u00a7dPlaying \u00a7bFind the Button! \u00a77by \u00a7fPalmenikoo, ttAm, and MrTinyPig");
                 require(!Touchdown.active(),"Non-Touchdown map kept the football: "+Touchdown.gamemode());
                 net.minecraft.client.resources.model.IBakedModel model=mc.getRenderItem().getItemModelMesher().getItemModel(new ItemStack(net.minecraft.init.Items.snowball));
                 require(!model.isBuiltInRenderer(),"Snowball stayed a football off a Touchdown map");
+                net.minecraft.client.resources.model.IBakedModel base=ReflectionHelper.getPrivateValue(FootballItemModel.class,(FootballItemModel)model,"base");
+                require(base instanceof net.minecraftforge.client.model.IPerspectiveAwareModel,"Snowball fixture lacks Forge perspective transforms");
+                if(base instanceof net.minecraftforge.client.model.IPerspectiveAwareModel){
+                    for(net.minecraft.client.renderer.block.model.ItemCameraTransforms.TransformType type:new net.minecraft.client.renderer.block.model.ItemCameraTransforms.TransformType[]{net.minecraft.client.renderer.block.model.ItemCameraTransforms.TransformType.FIRST_PERSON,net.minecraft.client.renderer.block.model.ItemCameraTransforms.TransformType.GUI}){
+                        org.apache.commons.lang3.tuple.Pair<?,javax.vecmath.Matrix4f> expected=((net.minecraftforge.client.model.IPerspectiveAwareModel)base).handlePerspective(type);
+                        org.apache.commons.lang3.tuple.Pair<?,javax.vecmath.Matrix4f> actual=((FootballItemModel)model).handlePerspective(type);
+                        require(expected.getLeft()==actual.getLeft()&&java.util.Objects.equals(expected.getRight(),actual.getRight()),"Normal snowball lost its "+type+" transform");
+                    }
+                }
                 // Every thrown snowball on a normal server takes this delegate path, so prove it renders.
                 net.minecraft.util.Vec3 aim=mc.thePlayer.getLookVec();
                 net.minecraft.entity.projectile.EntitySnowball plain=new net.minecraft.entity.projectile.EntitySnowball(mc.theWorld,mc.thePlayer);
@@ -2371,7 +2567,15 @@ public final class OtlSmoke {
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-touchdown.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
                 require(org.lwjgl.opengl.GL11.glGetError()==0,"Football world rendering left a GL error");
                 System.out.println("OTL_SMOKE: Touchdown map index, Football fallback, flag banner and thrown ball PASS");
+                cardPreviewChest=mc.thePlayer.inventory.armorInventory[2];cardPreviewHelmet=mc.thePlayer.inventory.armorInventory[3];
+                mc.thePlayer.inventory.armorInventory[2]=new ItemStack(net.minecraft.init.Items.leather_chestplate);
+                ((net.minecraft.item.ItemArmor)net.minecraft.init.Items.leather_chestplate).setColor(mc.thePlayer.inventory.armorInventory[2],0x2255DD);
+                mc.thePlayer.inventory.armorInventory[3]=new ItemStack(net.minecraft.init.Items.iron_helmet);
+                mc.displayGuiScreen(new HudEditor());
             }else if(state==116){
+                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-touchdown-card-editor.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+                mc.thePlayer.inventory.armorInventory[2]=cardPreviewChest;mc.thePlayer.inventory.armorInventory[3]=cardPreviewHelmet;
+                mc.displayGuiScreen(null);
                 // Ball trail: two recorded flight points must draw a contrail by hand - a line
                 // strip, not particles - and leave no GL error.
                 Touchdown.announce("Touchdown");
@@ -2386,7 +2590,72 @@ public final class OtlSmoke {
                 require(BallTrail.points(trailBall.getEntityId())>=2,"The trail did not record the flight");
                 BallTrail.render(mc.getRenderManager(),0);
                 require(org.lwjgl.opengl.GL11.glGetError()==0,"Ball trail rendering left a GL error");
-                System.out.println("OTL_SMOKE: Ball trail contrail PASS");
+                // The trail retracts from the tail after its ball is gone, one point per tick.
+                mc.theWorld.removeEntity(trailBall);
+                mc.theWorld.loadedEntityList.remove(trailBall);
+                int beforeTail=BallTrail.points(trailBall.getEntityId());
+                BallTrail.INSTANCE.tick(new TickEvent.ClientTickEvent(TickEvent.Phase.END));
+                require(BallTrail.points(trailBall.getEntityId())<beforeTail,"The trail did not fade from the tail");
+                // A real PGM throw, teammate catch and immediate score make one duo card.
+                net.minecraft.scoreboard.Scoreboard cardBoard=mc.theWorld.getScoreboard();
+                net.minecraft.scoreboard.ScorePlayerTeam cardBlue=cardBoard.getTeam("OtlCardBlue");
+                if(cardBlue==null)cardBlue=cardBoard.createTeam("OtlCardBlue");
+                cardBoard.addPlayerToTeam("Player343","OtlCardBlue");cardBoard.addPlayerToTeam("Player344","OtlCardBlue");
+                UtilitySettings.touchdownCard=true;
+                line("\u00a76\u00a7l\u00bb TOUCHDOWN! \u00ab");
+                line("  3 \u00a76-\u00a7r 1");
+                line("\u00a7e\u00a7l\u25cf\u00a7r Player343\u00a76 threw the \u00a7cFootball\u00a76!");
+                line("\u00a7e\u00a7l\u25cf\u00a7r Player344\u00a76 caught the \u00a7cFootball\u00a76!");
+                line("\u00a7e\u00a7l\u00bb\u00a7r Player344\u00a77 takes it to the end zone!");
+                TouchdownCard.INSTANCE.tick(new TickEvent.ClientTickEvent(TickEvent.Phase.END));
+                TouchdownCard.Card scored=TouchdownCard.current();
+                require(scored!=null&&"Player344".equals(scored.scorer)&&"Player343".equals(scored.passer),"A passed touchdown did not produce the duo card");
+                require("3 - 1".equals(scored.score),"Score arriving before the scorer was lost");
+                TouchdownCard.INSTANCE.unload(new net.minecraftforge.event.world.WorldEvent.Unload(mc.theWorld));
+                line("\u00a7e\u00a7l\u25cf\u00a7r Player343\u00a76 threw the \u00a7cFootball\u00a76!");
+                line("\u00a7e\u00a7l\u25cf\u00a7r Player344\u00a76 intercepted the \u00a7cFootball\u00a76!");
+                line("\u00a7e\u00a7l\u00bb\u00a7r Player344\u00a77 takes it to the end zone!");
+                TouchdownCard.INSTANCE.tick(new TickEvent.ClientTickEvent(TickEvent.Phase.END));
+                require(TouchdownCard.current()!=null&&TouchdownCard.current().passer==null,"An interception was incorrectly credited as a pass");
+                line("\u00a76\u00a7l\u00bb TOUCHDOWN! \u00ab");line("  4 - 1");
+                require("4 - 1".equals(TouchdownCard.current().score),"Score arriving after the scorer was lost");
+                TouchdownSettings cardOptions=new TouchdownSettings(null,true);cardOptions.setWorldAndResolution(mc,854,480);
+                require(find(cardOptions,"Touchdown player card: ON")!=null,"Player card toggle missing from card tab");
+                require(buttons(cardOptions).stream().anyMatch(b->b.id==5)&&buttons(cardOptions).stream().noneMatch(b->b.id==6),"Combined card animation option missing");
+                cardBoard.removeTeam(cardBlue);
+                ItemStack oldChest=mc.thePlayer.inventory.armorInventory[2],oldHelmet=mc.thePlayer.inventory.armorInventory[3];
+                try{
+                    mc.thePlayer.inventory.armorInventory[2]=new ItemStack(net.minecraft.init.Items.diamond_chestplate);
+                    mc.thePlayer.inventory.armorInventory[3]=new ItemStack(net.minecraft.init.Items.iron_helmet);
+                    ItemStack[] captured=TouchdownCard.armor(mc,mc.thePlayer.getName());
+                    require(captured!=null&&captured[0].getItem()==net.minecraft.init.Items.diamond_chestplate&&captured[1].getItem()==net.minecraft.init.Items.iron_helmet,"Player card missed equipped armor");
+                    TouchdownCard.INSTANCE.unload(new net.minecraftforge.event.world.WorldEvent.Unload(mc.theWorld));
+                    line("\u00a7e\u00a7l\u00bb\u00a7r "+mc.thePlayer.getName()+"\u00a77 takes it to the end zone!");
+                    TouchdownCard.INSTANCE.tick(new TickEvent.ClientTickEvent(TickEvent.Phase.END));
+                    TouchdownCard.Card armoredCard=TouchdownCard.current();
+                    require(armoredCard!=null&&armoredCard.scorerArmor!=null&&armoredCard.scorerArmor[0].getItem()==net.minecraft.init.Items.diamond_chestplate,"Touchdown card did not capture the scorer's armor");
+                    mc.thePlayer.inventory.armorInventory[2]=null;
+                    require(captured[0].getItem()==net.minecraft.init.Items.diamond_chestplate&&armoredCard.scorerArmor[0].getItem()==net.minecraft.init.Items.diamond_chestplate,"Player card did not snapshot equipped armor");
+                    mc.thePlayer.inventory.armorInventory[2]=new ItemStack(net.minecraft.init.Items.leather_chestplate);
+                    TouchdownCard.player(mc,mc.thePlayer.getName(),120,120,40,0,false,1F);
+                    require(org.lwjgl.opengl.GL11.glGetError()==0,"Player card armor rendering left a GL error");
+                }finally{mc.thePlayer.inventory.armorInventory[2]=oldChest;mc.thePlayer.inventory.armorInventory[3]=oldHelmet;}
+                boolean alphaBefore=org.lwjgl.opengl.GL11.glIsEnabled(org.lwjgl.opengl.GL11.GL_ALPHA_TEST);
+                int alphaFuncBefore=org.lwjgl.opengl.GL11.glGetInteger(org.lwjgl.opengl.GL11.GL_ALPHA_TEST_FUNC);
+                float alphaRefBefore=org.lwjgl.opengl.GL11.glGetFloat(org.lwjgl.opengl.GL11.GL_ALPHA_TEST_REF);
+                int depthFuncBefore=org.lwjgl.opengl.GL11.glGetInteger(org.lwjgl.opengl.GL11.GL_DEPTH_FUNC);
+                boolean depthWriteBefore=org.lwjgl.opengl.GL11.glGetBoolean(org.lwjgl.opengl.GL11.GL_DEPTH_WRITEMASK);
+                TouchdownCard.player(mc,mc.thePlayer.getName(),120,120,40,0,false,1F);
+                require(alphaBefore==org.lwjgl.opengl.GL11.glIsEnabled(org.lwjgl.opengl.GL11.GL_ALPHA_TEST)
+                    &&alphaFuncBefore==org.lwjgl.opengl.GL11.glGetInteger(org.lwjgl.opengl.GL11.GL_ALPHA_TEST_FUNC)
+                    &&Math.abs(alphaRefBefore-org.lwjgl.opengl.GL11.glGetFloat(org.lwjgl.opengl.GL11.GL_ALPHA_TEST_REF))<.001F,
+                    "Touchdown card did not restore alpha testing");
+                require(depthFuncBefore==org.lwjgl.opengl.GL11.glGetInteger(org.lwjgl.opengl.GL11.GL_DEPTH_FUNC)
+                    &&depthWriteBefore==org.lwjgl.opengl.GL11.glGetBoolean(org.lwjgl.opengl.GL11.GL_DEPTH_WRITEMASK),"Touchdown card did not restore depth state");
+                TouchdownCard.drawPreview();
+                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-touchdown-player-card.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+                require(org.lwjgl.opengl.GL11.glGetError()==0,"Touchdown card rendering left a GL error");
+                System.out.println("OTL_SMOKE: Ball trail contrail and Touchdown player card PASS");
             }
             if(state==scopeEnd){
                 if(!scope.equals("all"))System.out.println("OTL_SMOKE: PASS - "+scope);

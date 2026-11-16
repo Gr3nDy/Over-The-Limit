@@ -21,4 +21,14 @@ public class BallTrailTest {
         assertEquals(1,BallTrail.points(2));
         assertEquals(9,BallTrail.paths.get(2).get(0)[0],1.0E-9);
     }
+
+    @Test public void arrowsGetTheirOwnThinnerTrail(){
+        BallTrail.clear();BallTrail.clearArrows();BallTrail.tickCounter=0;
+        for(int i=0;i<35;i++)BallTrail.addArrow(7,i,0,0);
+        assertEquals(30,BallTrail.arrowPoints(7));
+        assertEquals(0,BallTrail.points(7));
+        assertEquals(5,BallTrail.arrowPaths.get(7).get(0)[0],1.0E-9);
+        BallTrail.clearArrows();
+        assertEquals(0,BallTrail.arrowPoints(7));
+    }
 }

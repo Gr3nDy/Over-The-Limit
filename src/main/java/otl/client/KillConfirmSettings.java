@@ -12,7 +12,7 @@ public final class KillConfirmSettings extends SettingsScreen {
         buttonList.add(new NeutralButton(0,panel.left(),panel.row(),panel.width(),20,"Kill Confirm: "+(UtilitySettings.killConfirm?"ON":"OFF"),false));
         panel.section("APPEARANCE");
         buttonList.add(new PresetSlider(1,panel.left(),panel.row(),panel.width(),"Size: ","%",PresetSlider.SIZE,UtilitySettings.killConfirmSize,75,s->UtilitySettings.killConfirmSize=s.getValueInt()));
-        buttonList.add(new PresetSlider(3,panel.left(),panel.row(),panel.width(),"Background opacity: ","%",PresetSlider.PERCENT,UtilitySettings.killConfirmOpacity,25,s->UtilitySettings.killConfirmOpacity=s.getValueInt()));
+        buttonList.add(new PresetSlider(3,panel.left(),panel.row(),panel.width(),"Background opacity: ","%",PresetSlider.PERCENT,UtilitySettings.killConfirmOpacity,0,s->UtilitySettings.killConfirmOpacity=s.getValueInt()));
         buttonList.add(new ChoiceButton(this,9,panel.left(),panel.choice(),panel.width(),"Kill icon",new String[]{"Skull","Player Head"},UtilitySettings.killConfirmPlayerHead?1:0,v->UtilitySettings.killConfirmPlayerHead=v==1));
         panel.section("CHAT & FEEDBACK");
         buttonList.add(new NeutralButton(6,panel.left(),panel.row(),panel.width(),20,"Hide rewards in chat: "+(UtilitySettings.hideKillConfirmChat?"ON":"OFF"),false));

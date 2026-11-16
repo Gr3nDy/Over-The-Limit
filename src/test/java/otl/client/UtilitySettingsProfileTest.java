@@ -6,6 +6,20 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class UtilitySettingsProfileTest {
+    @Test public void deadHeadOpacityPersistsClampsAndResets(){
+        int before=UtilitySettings.teamBarDeadOpacity;
+        try{
+            JsonObject setting=new JsonObject();
+            setting.addProperty("team_bar_dead_opacity",75);
+            UtilitySettings.read(setting);
+            assertEquals(75,UtilitySettings.snapshot().get("team_bar_dead_opacity").getAsInt());
+            setting.addProperty("team_bar_dead_opacity",0);
+            UtilitySettings.read(setting);
+            assertEquals(25,UtilitySettings.teamBarDeadOpacity);
+            UtilitySettings.restore("team_bar_dead_opacity");
+            assertEquals(50,UtilitySettings.teamBarDeadOpacity);
+        }finally{UtilitySettings.teamBarDeadOpacity=before;}
+    }
     @Test public void factoryDefaultsAreCapturedForNewProfiles()throws Exception{
         Field field=UtilitySettings.class.getDeclaredField("DEFAULTS");field.setAccessible(true);
         JsonObject defaults=(JsonObject)field.get(null);
@@ -23,8 +37,9 @@ public class UtilitySettingsProfileTest {
         assertTrue(defaults.get("chat_scrollbar").getAsBoolean());
         // Every Team Bar option is per profile, including the new colour line.
         assertTrue(defaults.get("team_bar_team_color").getAsBoolean());
-        assertEquals(5,defaults.get("team_bar_players").getAsInt());
-        assertEquals(100,defaults.get("team_bar_size").getAsInt());
+        assertEquals(10,defaults.get("team_bar_players").getAsInt());
+        assertEquals(150,defaults.get("team_bar_size").getAsInt());
+        assertEquals(50,defaults.get("team_bar_dead_opacity").getAsInt());
         assertEquals("Default",defaults.get("profile").getAsString());
     }
 }

@@ -6,6 +6,15 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class MinimapModelTest {
+    @Test public void unavailableMapFadesOnlyAfterFiveSecondsAndReturnsAfterMatch(){
+        long start=1_000_000_000L;
+        assertEquals(1F,Minimap.visibility(true,false,start,start+5_000_000_000L),0.001F);
+        assertEquals(.5F,Minimap.visibility(true,false,start,start+5_500_000_000L),0.001F);
+        assertEquals(0F,Minimap.visibility(true,false,start,start+6_000_000_000L),0.001F);
+        assertEquals(1F,Minimap.visibility(false,false,start,start+9_000_000_000L),0.001F);
+        assertEquals(1F,Minimap.visibility(true,true,start,start+9_000_000_000L),0.001F);
+        assertEquals(1F,Minimap.visibility(true,false,0,start),0.001F);
+    }
     @Test public void recognizesCurrentMapJoinAndRotationBannersWithoutUsingArbitraryMapLookups(){
         Minimap.Announcement notices=new Minimap.Announcement();long now=1000000000L;
         assertNull(notices.receive("            Allure            ",now));

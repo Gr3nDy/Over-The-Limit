@@ -9,6 +9,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.ScaledResolution;
+import net.minecraft.client.gui.Gui;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.WorldRenderer;
@@ -26,6 +27,7 @@ import net.minecraftforge.event.world.WorldEvent;
 import net.minecraftforge.fml.common.eventhandler.EventPriority;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.relauncher.ReflectionHelper;
+import org.lwjgl.input.Mouse;
 
 /**
  * Team bar: one head row per side with the match clock between them.
@@ -62,6 +64,8 @@ final class TeamBar {
      */
     private static final java.util.Map<String,Boolean> deadCache=new java.util.HashMap<>();
     private static long deadAt;
+    private static String hovered;
+    private static long hoverSince;
     private static final long DEAD_TTL=250_000_000L;
     private String actionBar;
     private long actionBarAt;
@@ -71,6 +75,12 @@ final class TeamBar {
     private long baseNanos;
     private int direction;              // -1 countdown, +1 count up, 0 a static label
     private boolean ended;
+    /** A match-start announcement has already started this match's local clock. */
+    private boolean started;
+    /** Overtime can be held by PGM while the match is tied. */
+    private boolean overtime;
+    /** This match has an explicit remaining-time clock, not just elapsed time. */
+    private boolean timeLimitSeen;
     /** True while the middle slot counts the players in instead of showing the match clock. */
     private boolean preMatch=false;
     /** Display value captured when the match ended, so the stopped clock cannot drift. */
@@ -102,13 +112,20 @@ final class TeamBar {
     static final long STALE=2_000_000_000L;
     private static Field footerField;
     private static boolean footerBroken;
+    private static Field subtitleField,titleTimerField;
+    private static boolean titleFieldsBroken;
     /** Last complete read of the teams, used when a team packet lands mid-frame. */
     private static List<Side> lastSides=new ArrayList<>();
+    /** FFA slots retain their left/right assignment until a player leaves. */
+    private static final List<String> ffaSlots=new ArrayList<>();
+    private List<String> teamOrder=Collections.emptyList();
+    private int mapLookup;
+    private String teamMap="",welcomeTitle;
     /** A map has been announced and its match has not ended: outside that, the hub's teams mean nothing. */
     private boolean announced;
     /** The last match line was an end, so the next world unload is the way back to the hub. */
     private boolean matchOver;
-    /** A dead player can drop out of the team for the respawn delay; keep the head that long. */
+    /** Keep briefly missing players, and keep confirmed dead online players until they respawn. */
     static final long KEEP_DEAD=10_000_000_000L,LEFT_GRACE=3_000_000_000L;
     private static final java.util.Map<String,List<String>> lastMembers=new java.util.HashMap<>();
     private static final java.util.Map<String,Long> goneAt=new java.util.HashMap<>(),tabSeen=new java.util.HashMap<>();
@@ -179,13 +196,36 @@ final class TeamBar {
             actionBarAt=System.nanoTime();
             return;
         }
+        String formatted=event.message.getFormattedText();
+        if(formatted.contains("\u00a7m")&&formatted.contains("\u00a7l")&&!ChatRules.playerMessage(formatted)){
+            String title=ChatRules.plain(formatted).trim();
+            if(!title.isEmpty()&&!title.contains("\n"))welcomeTitle=title;
+        }
         for(String line:ChatRules.plain(event.message.getUnformattedText()).split("[\\r\\n]+")){
             String text=line.trim();
             if(MatchEnd.is(text)){ended=true;frozenSeconds=-1;matchOver=true;return;}
+            if(text.startsWith("Created by ")&&welcomeTitle!=null&&!ChatRules.playerMessage(formatted)){
+                String query=welcomeTitle;welcomeTitle=null;
+                if(!MapInfo.norm(query).equals(MapInfo.norm(teamMap))){
+                    announced=true;matchOver=false;reset(System.nanoTime());resolveTeamOrder(query);
+                }
+                continue;
+            }
             // "Playing <map>" is the map change itself: the last match's clock must not linger.
             // shortcut: a player typing "Playing x" in chat also resets it; the next server clock line repairs it
-            if(text.startsWith("Playing ")){announced=true;matchOver=false;reset(System.nanoTime());return;}
-            if(MatchEnd.kickoff(text)){begin(System.nanoTime());return;}
+            int playing=text.indexOf("Playing ");
+            if(playing==0||(playing>0&&MapPreview.serverQuery(text.substring(playing))!=null)){
+                announced=true;matchOver=false;reset(System.nanoTime());
+                String query=MapPreview.serverQuery(text.substring(playing).trim());
+                if(query!=null)resolveTeamOrder(query);
+                return;
+            }
+            if(MatchEnd.kickoff(text)){announced=true;matchOver=false;if(!started||ended)begin(System.nanoTime());return;}
+            if(!ended&&text.equalsIgnoreCase("Overtime! The timer will start after the tie is broken")){
+                long now=System.nanoTime();
+                if(baseSeconds>=0&&direction!=0)baseSeconds=Math.max(0,baseSeconds+(int)(Math.max(0,now-baseNanos)/1_000_000_000L)*direction);
+                baseNanos=now;overtime=true;return;
+            }
             // PGM sends its time limit as a chat message - "Time Remaining: 5:00", once a minute -
             // and puts it in no scoreboard, boss bar or tab footer at all. Without this the bar had
             // no clock to read and counted up from the kickoff, so a timed match looked untimed.
@@ -195,9 +235,27 @@ final class TeamBar {
 
     /** A new map has loaded: nothing has carried a clock yet, so the middle starts again at 0:00. */
     private void reset(long now){
-        ended=false;frozenSeconds=-1;preMatch=true;baseSeconds=0;baseNanos=now;direction=0;clockSource=0;
+        ended=false;started=false;overtime=false;timeLimitSeen=false;frozenSeconds=-1;preMatch=true;baseSeconds=0;baseNanos=now;direction=0;clockSource=0;
+        ffaSlots.clear();
+        teamOrder=Collections.emptyList();teamMap="";welcomeTitle=null;mapLookup++;
         // The old map's clock lines must not make a source look like it is still counting.
         forgetSources();
+    }
+
+    private void resolveTeamOrder(String query){
+        teamMap=query;
+        int token=mapLookup;
+        MapInfo local=MapInfo.findLocal(query);
+        if(local!=null&&local.exact(query))setTeamOrder(local);
+        if(local!=null&&!local.teamOrder.isEmpty()&&!local.incomplete)return;
+        MapRemote.lookup(query,map->MinecraftAccess.get().addScheduledTask(()->{
+            if(mapLookup==token&&map!=null&&map.exact(query))setTeamOrder(map);
+        }));
+    }
+
+    private void setTeamOrder(MapInfo map){
+        for(String name:map.teamOrder)if(name.trim().isEmpty()||name.contains("${"))return;
+        if(!map.teamOrder.isEmpty())teamOrder=map.teamOrder;
     }
 
     /**
@@ -211,7 +269,7 @@ final class TeamBar {
 
     @SubscribeEvent public void unload(WorldEvent.Unload event){if(event.world.isRemote)clear();}
 
-    private void clear(){actionBar=null;baseSeconds=-1;direction=0;ended=false;frozenSeconds=-1;world=null;preMatch=false;clockSource=0;forgetSources();lastMembers.clear();goneAt.clear();tabSeen.clear();lastSides=new ArrayList<>();
+    private void clear(){actionBar=null;baseSeconds=-1;direction=0;ended=false;started=false;overtime=false;timeLimitSeen=false;frozenSeconds=-1;world=null;preMatch=false;clockSource=0;forgetSources();lastMembers.clear();goneAt.clear();tabSeen.clear();ffaSlots.clear();lastSides=new ArrayList<>();
         // Hub and match are separate worlds, so this also runs on the teleport INTO a match, where
         // the "Playing" line has already arrived. Only a match end means we are going back out.
         if(matchOver)announced=false;matchOver=false;}
@@ -220,7 +278,7 @@ final class TeamBar {
         if(world!=mc.theWorld)clear();
         world=mc.theWorld;
         // Leaving the server: nothing is announced any more.
-        if(mc.theWorld==null){announced=false;matchOver=false;}
+        if(mc.theWorld==null){announced=false;matchOver=false;teamOrder=Collections.emptyList();teamMap="";welcomeTitle=null;mapLookup++;}
     }
 
     /** Every real team, most members first; the local head leads its own team. Observers, tab sorting and leavers are dropped. */
@@ -262,7 +320,7 @@ final class TeamBar {
         // Fixed order by team name, never by player count: a team keeps its column for the whole
         // match, so the bar cannot reshuffle itself when somebody joins or leaves. Observers and
         // PGM's tab-sorting teams are already dropped above, so this order is the match's teams.
-        found.sort((a,b)->String.CASE_INSENSITIVE_ORDER.compare(a.name,b.name));
+        sortSides(found,INSTANCE.teamOrder);
         for(int i=0;i<found.size();i++){
             List<String> members=new ArrayList<>(found.get(i).members);
             Collections.sort(members,String.CASE_INSENSITIVE_ORDER);
@@ -316,28 +374,27 @@ final class TeamBar {
             if(tabSeen.containsKey(name)&&mc.getNetHandler()!=null&&mc.getNetHandler().getPlayerInfo(name)==null){goneAt.remove(name);continue;}
             goneAt.putIfAbsent(name,now);
             Long gone=goneAt.get(name);
-            if(gone!=null&&now-gone<KEEP_DEAD)current.add(name);
+            if(gone!=null&&(now-gone<KEEP_DEAD||(mc.getNetHandler()!=null&&mc.getNetHandler().getPlayerInfo(name)!=null&&dead(name))))current.add(name);
         }
         lastMembers.put(team,new ArrayList<>(current));
         return current;
     }
 
-    /** A row holds up to ten heads; a bigger team wraps onto the rows below instead of shrinking. */
+    /** A row holds up to ten heads; a bigger team wraps onto rows below. */
     static final int MAX_PER_ROW=10;
-    /** Head size: full size, since a row never holds more than MAX_PER_ROW heads. */
-    static int headSize(int shown){return BASE_HEAD;}
+    /** Shrink one pixel for each five-player increase above the default of five. */
+    static int headSize(int shown){return Math.max(MIN_HEAD,BASE_HEAD-Math.max(0,shown/5-1));}
     private static int advance(int head){return head+(head>=8?2:0);}
     private static int row(List<String> members,int head,int advance){return members.isEmpty()?0:(members.size()-1)*advance+head;}
 
     /**
      * Sizes the bar for the current teams and options; null in game while nothing carries a clock.
      *
-     * The Size option alone decides head size. It used to be shrunk back down whenever the bar came
-     * out wider than the screen, so with a full row of ten a bigger Size drew smaller heads than a
-     * smaller one - the slider looked dead. A bar that is too wide now wraps onto more rows instead,
-     * so one to ten players a row always get exactly the size that was asked for.
+     * Players shown sets the base head size in five-player steps; Size scales that base.
+     * Rows still wrap when they would be wider than the screen.
      */
     Bar bar(Minecraft mc,boolean preview){
+        if(!preview&&!ReliableChat.fullChat()){announced=false;return null;}
         if(!preview&&!UtilitySettings.teamBarObserver&&observing(mc))return null;
         int shown=Math.max(1,Math.min(75,UtilitySettings.teamBarPlayers));
         List<Side> sides=sides(mc);
@@ -345,8 +402,9 @@ final class TeamBar {
         boolean ffa=isFfa(sides);
         Timer timer=timer(mc);
         // The hub runs a clock and keeps scoreboard teams of its own, so neither one means a match.
-        // Only PGM's "Playing <map>" line does, and it survives the teleport into the map.
+        // A PGM map or match-start announcement confirms a match, including through teleport.
         if(!preview&&!announced)return null;
+        if(!preview)updateFfaSlots(ffaSlots,sides);
         // Heads are a match thing: the hub keeps scoreboard teams and runs its own countdown, so
         // only a match clock earns a bar. The pre-match count-in draws the clock alone, in red,
         // and the heads come back when the match really starts.
@@ -375,15 +433,14 @@ final class TeamBar {
             // gets its own colour. Treat them as one pool of players - rows alternate between the
             // columns just to keep the stack balanced - and draw no team-colour line, since a line
             // per player would only repeat the heads' own colours.
-            List<String> pool=new ArrayList<>();
-            for(Side side:sides)pool.addAll(side.members);
-            if(mc.thePlayer!=null&&pool.remove(mc.thePlayer.getName()))pool.add(0,mc.thePlayer.getName());
-            int count=Math.min(shown,pool.size());
-            // Deal the pool out alternately - left, right, left - so both columns stay the same
-            // length. Filling one column to ten first left a lopsided block with two heads stranded
-            // on the other side.
+            List<String> pool=preview?new ArrayList<>():ffaSlots;
+            if(preview)for(Side side:sides)pool.addAll(side.members);
+            // Slot parity keeps each player's side stable when someone else leaves.
             List<String> odd=new ArrayList<>(),even=new ArrayList<>();
-            for(int i=0;i<count;i++)(i%2==0?odd:even).add(pool.get(i));
+            int count=0;
+            for(int i=0;i<pool.size()&&count<shown;i++)if(pool.get(i)!=null){
+                (i%2==0?odd:even).add(pool.get(i));count++;
+            }
             for(int from=0;from<odd.size();from+=perRow)
                 left.add(new ArrayList<>(odd.subList(from,Math.min(from+perRow,odd.size()))));
             for(int from=0;from<even.size();from+=perRow)
@@ -395,8 +452,10 @@ final class TeamBar {
             // block hugs the clock, so the local head moves to the outer end of its last row.
             for(int i=0;i<sides.size();i++){
                 List<String> members=new ArrayList<>(sides.get(i).members.subList(0,Math.min(shown,sides.get(i).members.size())));
-                if(i%2==1&&mc.thePlayer!=null&&members.remove(mc.thePlayer.getName()))members.add(mc.thePlayer.getName());
-                List<List<String>> column=i%2==0?left:right;
+                int rank=teamRank(sides.get(i).name,teamOrder);
+                int columnIndex=rank<teamOrder.size()?rank:i;
+                if(columnIndex%2==1&&mc.thePlayer!=null&&members.remove(mc.thePlayer.getName()))members.add(mc.thePlayer.getName());
+                List<List<String>> column=columnIndex%2==0?left:right;
                 for(int from=0;from<members.size();from+=perRow)
                     column.add(new ArrayList<>(members.subList(from,Math.min(from+perRow,members.size()))));
             }
@@ -430,6 +489,30 @@ final class TeamBar {
         int singles=0;
         for(Side side:sides)if(side.members.size()==1)singles++;
         return sides.size()>2&&singles*2>sides.size();
+    }
+
+    static int teamRank(String name,List<String> order){
+        String key=MapInfo.norm(ChatRules.plain(name));
+        for(int i=0;i<order.size();i++)if(key.equals(MapInfo.norm(ChatRules.plain(order.get(i)))))return i;
+        return order.size();
+    }
+
+    static void sortSides(List<Side> sides,List<String> order){
+        sides.sort((a,b)->{
+            int rank=Integer.compare(teamRank(a.name,order),teamRank(b.name,order));
+            return rank!=0?rank:String.CASE_INSENSITIVE_ORDER.compare(a.name,b.name);
+        });
+    }
+
+    static void updateFfaSlots(List<String> slots,List<Side> sides){
+        List<String> present=new ArrayList<>();
+        for(Side side:sides)for(String name:side.members)present.add(name.toLowerCase(Locale.ROOT));
+        for(int i=0;i<slots.size();i++)if(slots.get(i)!=null&&!present.contains(slots.get(i).toLowerCase(Locale.ROOT)))slots.set(i,null);
+        for(Side side:sides)for(String name:side.members){
+            boolean found=false;
+            for(String slot:slots)if(slot!=null&&slot.equalsIgnoreCase(name)){found=true;break;}
+            if(!found){int free=slots.indexOf(null);if(free<0)slots.add(name);else slots.set(free,name);}
+        }
     }
 
     /** Width of the team-colour bar plus the gap to the heads; 0 when off or in FFA. */
@@ -476,14 +559,14 @@ final class TeamBar {
             begin(baseNanos+baseSeconds*1_000_000_000L);
         if(ended){
             if(frozenSeconds<0&&direction!=0){
-                long elapsed=Math.max(0,(now-baseNanos)/1_000_000_000L);
+                long elapsed=overtime?0:Math.max(0,(now-baseNanos)/1_000_000_000L);
                 frozenSeconds=Math.max(0,baseSeconds+(int)elapsed*direction);
             }
             int stopped=frozenSeconds>=0?frozenSeconds:baseSeconds;
             return new Timer(format(stopped),stopped,direction<0,preMatch);
         }
         int seconds=baseSeconds;
-        if(direction!=0){
+        if(direction!=0&&!overtime){
             long elapsed=Math.max(0,(now-baseNanos)/1_000_000_000L);
             seconds=Math.max(0,baseSeconds+(int)elapsed*direction);
         }
@@ -492,7 +575,7 @@ final class TeamBar {
 
     /** A match has started with no server clock: count up from 0:00 in white until one arrives. */
     private void begin(long now){
-        ended=false;frozenSeconds=-1;preMatch=false;
+        ended=false;started=true;overtime=false;timeLimitSeen=false;frozenSeconds=-1;preMatch=false;
         baseSeconds=0;baseNanos=now;direction=1;
         forgetSources();
     }
@@ -519,7 +602,10 @@ final class TeamBar {
         int raw=Integer.parseInt(m.group(1))*60+Integer.parseInt(m.group(2));
         preMatch=false; // a real clock replaced the countdown
         String lower=line.toLowerCase(Locale.ROOT);
-        boolean countdown=lower.contains("remaining")||lower.contains("left")||lower.contains("limit")||lower.contains("ends in");
+        if(lower.contains("overtime"))overtime=true;
+        if(explicitCountdown(line))timeLimitSeen=true;
+        boolean countdown=overtime||lower.contains("remaining")||lower.contains("left")||lower.contains("limit")||lower.contains("ends in");
+        if(overtime)direction=-1;
         // An idle PGM server writes a bare "0:00" into its scoreboard; that is not a match clock.
         if(baseSeconds<0&&raw==0&&!countdown)return;
         // A new value re-anchors the clock; the same value leaves it alone so the display keeps
@@ -546,6 +632,12 @@ final class TeamBar {
     /** A line that carries a clock: either m:ss or the pre-match "starting in N seconds". */
     private static boolean clock(String text){
         return text!=null&&(TIME.matcher(text).find()||STARTING.matcher(text).find());
+    }
+
+    private static boolean explicitCountdown(String text){
+        if(text==null)return false;
+        String lower=text.toLowerCase(Locale.ROOT);
+        return lower.contains("remaining")||lower.contains("ends in")||lower.contains("overtime")||lower.contains("time left");
     }
 
     /**
@@ -583,25 +675,27 @@ final class TeamBar {
             }
         }
         int chosen=0;
+        // A ticking explicit time limit beats the footer's separate elapsed match clock.
+        for(int source=1;source<=4;source++)if(explicitCountdown(lines[source])&&changes[source]>0&&now-changedAt[source]<STALE){chosen=source;break;}
         // Hold the lock while its source is still ticking, so two live sources cannot fight.
-        if(clockSource!=0&&lines[clockSource]!=null&&changes[clockSource]>0&&now-changedAt[clockSource]<STALE)
+        if(chosen==0&&clockSource!=0&&lines[clockSource]!=null&&(!timeLimitSeen||explicitCountdown(lines[clockSource]))&&changes[clockSource]>0&&now-changedAt[clockSource]<STALE)
             chosen=clockSource;
         // Otherwise follow the freshest source that has actually ticked.
         if(chosen==0){
             long freshest=Long.MIN_VALUE;
             for(int source=1;source<=4;source++){
-                if(lines[source]==null||changes[source]==0||now-changedAt[source]>=STALE)continue;
+                if(lines[source]==null||(timeLimitSeen&&!explicitCountdown(lines[source]))||changes[source]==0||now-changedAt[source]>=STALE)continue;
                 if(changedAt[source]>freshest){freshest=changedAt[source];chosen=source;}
             }
         }
         // Nothing ticked recently: a paused clock keeps its own number. A line that never ticked
         // does not, because it may be the map's static "Time Limit" line rather than the match.
-        if(chosen==0&&clockSource!=0&&lines[clockSource]!=null&&changes[clockSource]>0)chosen=clockSource;
+        if(chosen==0&&clockSource!=0&&lines[clockSource]!=null&&(!timeLimitSeen||explicitCountdown(lines[clockSource]))&&changes[clockSource]>0)chosen=clockSource;
         // A line that never moved is still usable when it is all there is (a join, or the first
         // second of a match). Once this match has had a ticking clock, its source going away -
         // PGM swapping the boss bar's text, say - must not hand the bar to a static line or leave
         // it stuck: the local clock counts on from its last value until a source ticks again.
-        if(chosen==0&&!observed)for(int source=1;source<=4;source++)if(lines[source]!=null){chosen=source;break;}
+        if(chosen==0&&!observed)for(int source=1;source<=4;source++)if(lines[source]!=null&&(!timeLimitSeen||explicitCountdown(lines[source]))){chosen=source;break;}
         clockSource=chosen;
         if(chosen==0)return null;
         observed|=changes[chosen]>0;
@@ -687,13 +781,38 @@ final class TeamBar {
         // Your own body knows first: your entity is dropped while the death screen is up, and PGM
         // can keep your own tab name in the team colour until the respawn.
         if(self&&(!mc.thePlayer.isEntityAlive()||mc.thePlayer.getHealth()<=0F
-            ||mc.currentScreen instanceof net.minecraft.client.gui.GuiGameOver))return true;
+            ||mc.currentScreen instanceof net.minecraft.client.gui.GuiGameOver||respawning(mc)))return true;
         NetworkPlayerInfo info=mc.getNetHandler()==null?null:mc.getNetHandler().getPlayerInfo(name);
-        if(info!=null)return grey(tabName(info));
+        if(mc.getNetHandler()!=null&&name!=null)for(NetworkPlayerInfo entry:mc.getNetHandler().getPlayerInfoMap()){
+            if(!entry.getGameProfile().getName().startsWith("|")||entry.getDisplayName()==null)continue;
+            Boolean shown=greyPlayerName(entry.getDisplayName().getFormattedText(),name);
+            if(shown!=null)return shown;
+        }
+        if(info!=null){
+            String formatted=tabName(info);
+            Boolean shown=greyPlayerName(formatted,name);
+            return shown!=null?shown:grey(formatted);
+        }
         if(self)return false;
         net.minecraft.entity.player.EntityPlayer player=mc.theWorld==null?null:mc.theWorld.getPlayerEntityByName(name);
         if(player!=null)return !player.isEntityAlive()||player.getHealth()<=0F;
         return mc.theWorld!=null&&grey(teamPrefix(mc,name));
+    }
+
+    private static boolean respawning(Minecraft mc){
+        if(mc.ingameGUI==null||titleFieldsBroken)return false;
+        try{
+            if(subtitleField==null)subtitleField=ReflectionHelper.findField(net.minecraft.client.gui.GuiIngame.class,"displayedSubTitle","field_175200_y");
+            if(titleTimerField==null)titleTimerField=ReflectionHelper.findField(net.minecraft.client.gui.GuiIngame.class,"titlesTimer","field_175195_w");
+            return titleTimerField.getInt(mc.ingameGUI)>0&&respawnSubtitle((String)subtitleField.get(mc.ingameGUI));
+        }catch(Exception missingField){titleFieldsBroken=true;return false;}
+    }
+
+    static boolean respawnSubtitle(String text){
+        if(text==null)return false;
+        // shortcut: matches English PGM respawn text only; use translation keys if the server exposes them.
+        String plain=ChatRules.plain(text).trim().toLowerCase(Locale.ROOT);
+        return plain.startsWith("left click to respawn")||plain.startsWith("respawning in ")||plain.startsWith("you will respawn ");
     }
 
     private static String teamPrefix(Minecraft mc,String name){
@@ -701,8 +820,28 @@ final class TeamBar {
         return team==null?null:team.getColorPrefix();
     }
 
+    /** The colour at the actual account name, not a rank prefix or a later suffix. */
+    static Boolean greyPlayerName(String formatted,String name){
+        if(formatted==null||name==null||name.isEmpty())return null;
+        String plain=ChatRules.plain(formatted);
+        Matcher match=Pattern.compile("(?i)(?<![A-Za-z0-9_])"+Pattern.quote(name)+"(?![A-Za-z0-9_])").matcher(plain);
+        if(!match.find())return null;
+        int visible=0;char colour='r';
+        for(int i=0;i<formatted.length();i++){
+            char c=formatted.charAt(i);
+            if(c=='\u00a7'&&i+1<formatted.length()){
+                char code=Character.toLowerCase(formatted.charAt(++i));
+                if("0123456789abcdefr".indexOf(code)>=0)colour=code;
+            }else{
+                if(visible==match.start())return colour=='8';
+                visible++;
+            }
+        }
+        return null;
+    }
+
     /**
-     * Grey (§7) and dark grey (§8) are the dead marker. PGM puts the colour after
+     * Dark grey (§8) is the dead marker. PGM puts the colour after
      * decorations ("§7§lName"), so the last colour code in the string decides.
      */
     static boolean grey(String formatted){
@@ -710,7 +849,7 @@ final class TeamBar {
         Matcher m=COLOUR.matcher(formatted);
         String last=null;
         while(m.find())last=m.group(1);
-        return "7".equals(last)||"8".equals(last);
+        return "8".equals(last);
     }
 
     /** The player is watching, not playing: PGM's observer team, or plain spectator mode. */
@@ -747,6 +886,7 @@ final class TeamBar {
         Minecraft mc=MinecraftAccess.get();
         if(!UtilitySettings.teamBar||mc.thePlayer==null||mc.theWorld==null||mc.gameSettings.hideGUI)return;
         if(mc.currentScreen instanceof HudEditor)return; // the editor draws its own preview
+        if(UtilitySettings.teamBarHideOnTab&&playerListVisible(mc))return;
         Bar bar;
         try{
             bar=bar(mc,false);
@@ -755,7 +895,39 @@ final class TeamBar {
         }
         if(bar==null)return;
         HudLayout.Rect box=placed(bar);
-        draw(mc,bar,box.x,box.y);
+        ScaledResolution sr=new ScaledResolution(mc);
+        int mx=Mouse.getX()*sr.getScaledWidth()/mc.displayWidth;
+        int my=sr.getScaledHeight()-Mouse.getY()*sr.getScaledHeight()/mc.displayHeight-1;
+        String name=Mouse.isGrabbed()?null:headAt(bar,mx-box.x,my-box.y);
+        if(!java.util.Objects.equals(name,hovered)){hovered=name;hoverSince=System.nanoTime();}
+        draw(mc,bar,box.x,box.y,name,hoverSince);
+        if(name!=null){
+            int w=mc.fontRendererObj.getStringWidth(name),tx=Math.max(0,Math.min(mx+8,sr.getScaledWidth()-w-6));
+            int ty=Math.max(0,Math.min(my+8,sr.getScaledHeight()-14));
+            Gui.drawRect(tx,ty,tx+w+6,ty+14,0xE0101010);
+            mc.fontRendererObj.drawStringWithShadow(name,tx+3,ty+3,0xFFFFFFFF);
+        }
+    }
+
+    static boolean playerListVisible(Minecraft mc){
+        return mc.gameSettings.keyBindPlayerList.isKeyDown()&&(!mc.isIntegratedServerRunning()
+            ||mc.thePlayer.sendQueue.getPlayerInfoMap().size()>1||mc.theWorld.getScoreboard().getObjectiveInDisplaySlot(0)!=null);
+    }
+
+    static String headAt(Bar bar,int x,int y){
+        for(int side=0;side<2;side++){
+            List<List<String>> rows=side==0?bar.left:bar.right;
+            for(int r=0;r<rows.size();r++){
+                List<String> members=rows.get(r);
+                int top=r*(bar.band+ROW_GAP)+(bar.band-bar.head)/2;
+                int start=side==0?bar.leftStart(members):bar.rightStart(members);
+                for(int i=0;i<members.size();i++){
+                    int left=start+i*bar.advance;
+                    if(x>=left&&x<left+bar.head&&y>=top&&y<top+bar.head)return members.get(i);
+                }
+            }
+        }
+        return null;
     }
 
     /** The HUD editor's preview: real teams when a match is running, otherwise a placeholder row. */
@@ -767,7 +939,12 @@ final class TeamBar {
     }
 
     private static void draw(Minecraft mc,Bar bar,int x,int y){
+        draw(mc,bar,x,y,null,0);
+    }
+
+    private static void draw(Minecraft mc,Bar bar,int x,int y,String hover,long since){
         int band=bar.band;
+        int hx=0,hy=0;boolean found=false;
         int lineW=bar.line>0?bar.line-LINE_GAP:0;
         // One tessellator pass for the whole bar: a head is up to 64 quads, and drawing each one
         // as its own rect was thousands of draw calls per frame in a full match.
@@ -784,7 +961,7 @@ final class TeamBar {
             // The line sits at the row's own outer end, so it stays attached to its heads.
             if(lineW>0)quad(world,x+bar.leftLine(members),top,x+bar.leftLine(members)+lineW,top+bar.head,teamColour(mc,members));
             int start=x+bar.leftStart(members);
-            for(int i=0;i<members.size();i++)head(world,members.get(i),start+i*bar.advance,top,bar.head);
+            for(int i=0;i<members.size();i++)if(members.get(i).equals(hover)){hx=start+i*bar.advance;hy=top;found=true;}else head(world,members.get(i),start+i*bar.advance,top,bar.head);
         }
         for(int r=0;r<bar.right.size();r++){
             List<String> members=bar.right.get(r);
@@ -792,7 +969,11 @@ final class TeamBar {
             // Rows are flush with the clock and grow outward, so both columns read from the middle.
             int start=x+bar.rightStart(members);
             if(lineW>0)quad(world,x+bar.rightLine(members),top,x+bar.rightLine(members)+lineW,top+bar.head,teamColour(mc,members));
-            for(int i=0;i<members.size();i++)head(world,members.get(i),start+i*bar.advance,top,bar.head);
+            for(int i=0;i<members.size();i++)if(members.get(i).equals(hover)){hx=start+i*bar.advance;hy=top;found=true;}else head(world,members.get(i),start+i*bar.advance,top,bar.head);
+        }
+        if(found){
+            int extra=Math.round(Math.max(2,bar.head*.25F)*Math.min(1F,Math.max(0F,(System.nanoTime()-since)/150_000_000F)));
+            head(world,hover,hx-extra/2,hy-extra/2,bar.head+extra);
         }
         tessellator.draw();
         GlStateManager.enableTexture2D();
@@ -835,17 +1016,16 @@ final class TeamBar {
     }
 
     /**
-     * Dead players lose their colours, exactly like the grey tab-list name, so the head is
-     * visibly faded and comes back on respawn. The texels stay, so the skin is still readable.
+     * Dead players grey and fade until respawn, including the local player.
      */
     private static void head(WorldRenderer world,String name,int x,int y,int size){
         int[] pixels=KillFeed.face(name);
         boolean dead=deadNow(name);
-        if(pixels.length!=64){quad(world,x,y,x+size,y+size,dead?DEAD_FALLBACK:FALLBACK);return;}
+        if(pixels.length!=64){quad(world,x,y,x+size,y+size,headColour(dead?DEAD_FALLBACK:FALLBACK,dead,UtilitySettings.teamBarDeadOpacity));return;}
         if(size>=8){
             for(int row=0;row<8;row++)for(int col=0;col<8;col++){
                 int pixel=pixels[row*8+col];if((pixel>>>24)<16)continue;
-                quad(world,x+col*size/8,y+row*size/8,x+(col+1)*size/8,y+(row+1)*size/8,dead?greyed(pixel):pixel);
+                quad(world,x+col*size/8,y+row*size/8,x+(col+1)*size/8,y+(row+1)*size/8,headColour(pixel,dead,UtilitySettings.teamBarDeadOpacity));
             }
         }else{
             // Below eight pixels the texels are invisible, so average the face into one readable swatch.
@@ -854,12 +1034,17 @@ final class TeamBar {
                 if((pixel>>>24)<16)continue;
                 red+=pixel>>16&255;green+=pixel>>8&255;blue+=pixel&255;seen++;
             }
-            if(seen==0)quad(world,x,y,x+size,y+size,dead?DEAD_FALLBACK:FALLBACK);
+            if(seen==0)quad(world,x,y,x+size,y+size,headColour(dead?DEAD_FALLBACK:FALLBACK,dead,UtilitySettings.teamBarDeadOpacity));
             else{
                 int average=0xFF000000|(int)(red/seen)<<16|(int)(green/seen)<<8|(int)(blue/seen);
-                quad(world,x,y,x+size,y+size,dead?greyed(average):average);
+                quad(world,x,y,x+size,y+size,headColour(average,dead,UtilitySettings.teamBarDeadOpacity));
             }
         }
+    }
+
+    static int headColour(int pixel,boolean dead,int opacity){
+        if(!dead)return pixel;
+        return (greyed(pixel)&0xFFFFFF)|(((pixel>>>24)*opacity/100)<<24);
     }
 
     /** The draw-time dead flag: cached for a quarter second so a frame does not re-read the tab list. */

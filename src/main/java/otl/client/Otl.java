@@ -13,9 +13,9 @@ import net.minecraft.client.renderer.entity.RenderPlayer;
 import net.minecraft.client.resources.*;
 import org.lwjgl.input.Keyboard;
 
-@Mod(modid="otl",name="Over The Limit",version="0.4.0",clientSideOnly=true,acceptedMinecraftVersions="[1.8.9]",acceptableRemoteVersions="*")
+@Mod(modid="otl",name="Over The Limit",version="0.5.0",clientSideOnly=true,acceptedMinecraftVersions="[1.8.9]",acceptableRemoteVersions="*")
 public final class Otl {
-    static final String VERSION="0.4.0";
+    static final String VERSION="0.5.0";
     private final KeyBinding modules=new KeyBinding("key.otl.modules",Keyboard.KEY_P,"key.categories.otl");
     private final KeyBinding teamChat=new KeyBinding("key.otl.team_chat",Keyboard.KEY_Y,"key.categories.otl");
     private final KeyBinding partyChat=new KeyBinding("key.otl.party_chat",Keyboard.KEY_NONE,"key.categories.otl");
@@ -28,7 +28,6 @@ public final class Otl {
         ClientRegistry.registerKeyBinding(minimap);
         ClientRegistry.registerKeyBinding(minimapZoom);
         MinecraftForge.EVENT_BUS.register(ReliableChat.INSTANCE);
-        MinecraftForge.EVENT_BUS.register(ServerNotices.INSTANCE);
         MinecraftForge.EVENT_BUS.register(KillFeed.INSTANCE);
         MinecraftForge.EVENT_BUS.register(KillConfirm.INSTANCE);
         MinecraftForge.EVENT_BUS.register(BowOptimizer.INSTANCE);
@@ -36,7 +35,6 @@ public final class Otl {
         FMLCommonHandler.instance().bus().register(BowAccuracy.INSTANCE);
         MinecraftForge.EVENT_BUS.register(Minimap.INSTANCE);
         FMLCommonHandler.instance().bus().register(Minimap.INSTANCE);
-        // Height Limit Overlay is temporarily unavailable; keep all its runtime handlers detached.
         FMLCommonHandler.instance().bus().register(KillConfirm.INSTANCE);
         MinecraftForge.EVENT_BUS.register(MapPreview.INSTANCE);
         FMLCommonHandler.instance().bus().register(MapPreview.INSTANCE);
@@ -54,8 +52,14 @@ public final class Otl {
         FMLCommonHandler.instance().bus().register(TeamBubbles.INSTANCE);
         MinecraftForge.EVENT_BUS.register(Touchdown.INSTANCE);
         FMLCommonHandler.instance().bus().register(Touchdown.INSTANCE);
+        MinecraftForge.EVENT_BUS.register(TouchdownCard.INSTANCE);
+        FMLCommonHandler.instance().bus().register(TouchdownCard.INSTANCE);
         MinecraftForge.EVENT_BUS.register(BallTrail.INSTANCE);
         FMLCommonHandler.instance().bus().register(BallTrail.INSTANCE);
+        MinecraftForge.EVENT_BUS.register(BallParticles.INSTANCE);
+        FMLCommonHandler.instance().bus().register(BallParticles.INSTANCE);
+        MinecraftForge.EVENT_BUS.register(ArrowParticles.INSTANCE);
+        FMLCommonHandler.instance().bus().register(ArrowParticles.INSTANCE);
         installTouchdown();
         FMLCommonHandler.instance().bus().register(this);MinecraftForge.EVENT_BUS.register(this);
         net.minecraft.client.renderer.entity.RenderManager rm=MinecraftAccess.get().getRenderManager();

@@ -15,7 +15,7 @@ final class FootballBannerRenderer extends TileEntitySpecialRenderer<TileEntityB
     FootballBannerRenderer(TileEntitySpecialRenderer<TileEntityBanner> delegate){this.delegate=delegate;}
     @Override public void renderTileEntityAt(TileEntityBanner banner,double x,double y,double z,float partialTicks,int destroyStage){
         // A banner item has no world, and getBlockType() would dereference it.
-        if(!Touchdown.active()||banner.getWorld()==null||!(banner.getBlockType() instanceof BlockBanner)){
+        if(!Touchdown.modelActive()||banner.getWorld()==null||!(banner.getBlockType() instanceof BlockBanner)){
             delegate.renderTileEntityAt(banner,x,y,z,partialTicks,destroyStage);
             return;
         }

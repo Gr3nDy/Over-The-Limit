@@ -4,6 +4,7 @@ import java.util.Locale;
 import net.minecraft.client.Minecraft;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
+import net.minecraftforge.event.world.WorldEvent;
 import net.minecraftforge.fml.common.eventhandler.EventPriority;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
@@ -23,17 +24,27 @@ final class Touchdown {
     private static String gamemode="";
     private static int lookup;
     private static Object world;
+    private static String welcomeTitle;
     private Touchdown(){}
 
-    static boolean active(){return UtilitySettings.touchdown&&(mapKnown?mapTouchdown:ballSeen);}
+    static boolean active(){return UtilitySettings.touchdown&&ReliableChat.fullChat()&&(mapKnown?mapTouchdown:ballSeen);}
+    static boolean modelActive(){return UtilitySettings.touchdownFootball3d&&active();}
 
     @SubscribeEvent(priority=EventPriority.LOWEST,receiveCanceled=true)
     public void chat(ClientChatReceivedEvent event){
         if(event.type==2)return;
-        String text=ChatRules.plain(event.message.getFormattedText());
+        String formatted=event.message.getFormattedText();
+        String text=ChatRules.plain(formatted);
+        if(formatted.contains("\u00a7m")&&formatted.contains("\u00a7l")&&!ChatRules.playerMessage(formatted)){
+            String title=text.trim();
+            if(!title.isEmpty()&&!title.contains("\n"))welcomeTitle=title;
+        }
         // PGM decorates the line with a strikethrough rule and may send it inside the welcome
         // block, so look for it anywhere rather than only at the start of the first line.
         for(String raw:text.split("[\\r\\n]+")){
+            if(raw.trim().startsWith("Created by ")&&welcomeTitle!=null&&!ChatRules.playerMessage(formatted)){
+                String query=welcomeTitle;welcomeTitle=null;reset();resolve(query);return;
+            }
             int at=raw.indexOf("Playing ");
             if(at<0)continue;
             String query=MapPreview.serverQuery(raw.substring(at).trim());
@@ -44,15 +55,15 @@ final class Touchdown {
             return;
         }
         // Touchdown's own lines ("... threw the Football!") identify the ball without the map index.
-        if(!mapKnown&&text.contains("the Football"))ballSeen=true;
+        if(!mapKnown&&!ChatRules.playerMessage(formatted)&&text.contains("the Football"))ballSeen=true;
     }
 
     private static void resolve(String query){
         int token=++lookup;
         MapInfo local=MapInfo.findLocal(query);
-        if(local!=null){apply(local.gamemode);return;}
+        if(local!=null&&local.exact(query)){apply(local.gamemode);return;}
         MapRemote.lookup(query,map->MinecraftAccess.get().addScheduledTask(()->{
-            if(lookup==token)apply(map==null?"":map.gamemode);
+            if(lookup==token)apply(map==null||!map.exact(query)?"":map.gamemode);
         }));
     }
 
@@ -65,6 +76,10 @@ final class Touchdown {
     }
 
     private static void reset(){mapKnown=false;mapTouchdown=false;ballSeen=false;}
+
+    @SubscribeEvent public void unload(WorldEvent.Unload event){
+        if(event.world.isRemote){reset();gamemode="";welcomeTitle=null;world=null;lookup++;}
+    }
 
     @SubscribeEvent public void tick(TickEvent.ClientTickEvent event){
         if(event.phase!=TickEvent.Phase.END)return;

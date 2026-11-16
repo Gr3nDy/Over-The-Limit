@@ -186,7 +186,6 @@ public final class ReliableChat {
         if(!UtilitySettings.bubbles)TeamBubbles.clearBubbles();
     }
     static void receive(IChatComponent text,int id){
-        if(ServerNotices.route(text,id))return;
         Session s=session();String formatted=text.getFormattedText();
         if(fullChat()&&ChatRules.commandWarning(formatted)&&recentCommand!=null&&recentCommand.host.equals(ServerScope.current())&&System.nanoTime()-recentCommand.time<8000000000L&&s.views.containsKey(recentCommand.key)){
             s.views.get(recentCommand.key).append(text,id,true);return;
@@ -252,7 +251,6 @@ public final class ReliableChat {
     @SubscribeEvent(priority=EventPriority.LOWEST) public void serverChat(ClientChatReceivedEvent event){
         if(event.type==2)return;
         observeWelcome(event.message);
-        if(ServerNotices.route(event.message,0)){event.setCanceled(true);return;}
         if(!active())return;
         Minecraft mc=MinecraftAccess.get();GuiNewChat hud=mc.ingameGUI.getChatGUI();
         GuiNewChat fallback=hud instanceof RoutingHud?((RoutingHud)hud).original:hud;
@@ -356,7 +354,6 @@ public final class ReliableChat {
             finally{GlStateManager.popMatrix();}
         }
         @Override public void printChatMessageWithOptionalDeletion(IChatComponent text,int id){
-            if(ServerNotices.route(text,id))return;
             original.printChatMessageWithOptionalDeletion(text,id);
             if(active())receive(text,id);
             else if(ServerScope.active()){String self=MinecraftAccess.get().thePlayer==null?"":MinecraftAccess.get().thePlayer.getName();session().views.get(ChatRules.ALL).append(text,id,!self.isEmpty()&&ChatRules.authoredBy(text.getFormattedText(),self));}

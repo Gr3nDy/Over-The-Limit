@@ -14,7 +14,7 @@ public final class AutoGgSettings extends SettingsScreen {
         buttonList.add(new NeutralButton(0,panel.left(),panel.row(),panel.width(),20,"Auto GG: "+(UtilitySettings.autoGg?"ON":"OFF"),false));
         buttonList.add(new NeutralButton(1,panel.left(),panel.row(),panel.width(),20,"Say gg in observer: "+(UtilitySettings.autoGgObserver?"ON":"OFF"),false));
         panel.section("DELAY");
-        buttonList.add(new PresetSlider(2,panel.left(),panel.row(),panel.width(),"Delay: "," ms",PresetSlider.DELAY,UtilitySettings.autoGgDelay,1000,s->UtilitySettings.autoGgDelay=s.getValueInt()));
+        buttonList.add(new PresetSlider(2,panel.left(),panel.row(),panel.width(),"Delay: "," ms",PresetSlider.DELAY,UtilitySettings.autoGgDelay,5000,s->UtilitySettings.autoGgDelay=s.getValueInt()));
         buttonList.add(new NeutralButton(3,panel.left(),panel.row(),panel.width(),20,"Randomise delay: "+(UtilitySettings.autoGgRandom?"ON":"OFF"),false));
         panel.note("Randomise picks any delay up to the value above.");
         back(4);
