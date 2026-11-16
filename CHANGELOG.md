@@ -3,10 +3,11 @@
 ## v0.6.0 - 2026-11-16
 
 ### Added
-- **Team Bar objectives** (ON by default) - PGM's own sidebar objectives sit in a strip under the clock: Capture the Wool wools as coloured squares that change with their state (hollow untouched, half picked up, filled placed, each in the wool's colour), destroyables and other goals as their label and progress, and team scores as `12 Red` / `3/10 Blue`. A team's name is kept above its wools so you can tell whose they are. Everything is read from the sidebar PGM already draws, so a mode with no goals simply has no strip, and the strip is capped at half the screen width so it can never push the bar off screen. The strip and the clock always share the same centre, so the bar never sits lopsided.
-- **Compact objectives** (OFF by default) - drop the objective names and keep only the markers, moved beside the clock instead of under it: each team's objectives sit on that team's own side, to the left or the right of the time, with the clock still exactly centred. A team with nobody online keeps its own side too. Open chat and hover a marker to see which objective it is.
+- **Team Bar objectives** (ON by default) - PGM's own sidebar objectives sit beside the clock, one line per sidebar row: Capture the Wool wools as coloured squares that change with their state (hollow untouched, half picked up, filled placed, each in the wool's colour), destroyables and other goals as their label and progress, and team scores as `12 Red` / `3/10 Blue`. Each team's objectives sit on that team's own side, to the left or the right of the time, in the same order the sidebar prints them. Everything is read from the sidebar PGM already draws, so a mode with no goals simply has no strip, and a line is capped at a third of the room beside the clock so it can never push the bar off screen. The clock stays on the exact centre.
+- **Compact objectives** (OFF by default) - drop the objective names and keep only the markers, one line per side. Open chat and hover a marker to see which objective it is.
 ### Fixed
-- **Objectives order** - a goal now reads `[icon] Name`, the same order PGM's own sidebar prints, instead of the icon trailing the name.
+- **Objectives order** - a goal now reads `[icon] Name`, the same order PGM's own sidebar prints, so the icons always end up nearest the clock instead of trailing the name.
+- **Objectives on the wrong side** - a team's goals printed above its name in the sidebar were left with no team and every one of them landed on the left side of the clock; each row now takes the nearest team name in either direction.
 
 ## v0.5.0 - 2026-11-16
 

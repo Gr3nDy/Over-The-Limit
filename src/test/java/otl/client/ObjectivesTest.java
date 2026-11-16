@@ -124,6 +124,27 @@ public class ObjectivesTest {
         assertEquals("blue",entries.get(4).team);
     }
 
+    @Test public void goalsBeforeTheirTeamNameStillBelongToThatTeam(){
+        // A sidebar that prints the first team's goals above its name left those rows with no
+        // team at all, and every one of them landed on the left side of the clock.
+        List<Objectives.Entry> entries=Objectives.entries(Arrays.asList(
+            "\u00a7f\u2B1C \u00a7cRed Wool","\u00a7cRed",
+            "\u00a79Blue","\u00a7f\u2592 \u00a79Blue Wool"),TEAMS);
+        assertEquals(4,entries.size());
+        assertEquals("red",entries.get(0).team);
+        // A row under a header still takes that header, not the one below it.
+        assertEquals("blue",entries.get(3).team);
+    }
+
+    @Test public void aRowWithNoTeamAtAllIsStillPlaced(){
+        // Nothing in this sidebar names a team, so nothing can say whose the goals are; they must
+        // not silently pile onto one side.
+        List<Objectives.Entry> entries=Objectives.entries(
+            Collections.singletonList("\u00a7a\u2714 \u00a7fNorth Monument"),TEAMS);
+        assertEquals(1,entries.size());
+        assertNull(entries.get(0).team);
+    }
+
     @Test public void compactPutsEachTeamOnItsOwnSideOfTheClock(){
         List<Objectives.Entry> entries=Objectives.entries(Arrays.asList(
             "\u00a7cRed"," \u00a7c\u2B1C",
@@ -131,12 +152,45 @@ public class ObjectivesTest {
             "\u00a7aGreen"," \u00a7a\u2B1B"),Arrays.asList("red","blue","green"));
         java.util.Map<String,Integer> columns=new java.util.HashMap<>();
         columns.put("red",0);columns.put("blue",1);columns.put("green",2);
-        List<List<List<Objectives.Part>>> rows=Objectives.split(entries,columns);
+        List<List<List<Objectives.Part>>> rows=Objectives.split(entries,columns,true);
         // Even columns go left, odd go right - the same rule the head columns follow. A third
         // team must not pile onto one side, or the clock ends up lopsided.
         assertEquals("red",rows.get(0).get(0).get(0).name);
         assertEquals("blue",rows.get(1).get(0).get(0).name);
         assertEquals("green",rows.get(0).get(1).get(0).name);
+    }
+
+    @Test public void aTeamsObjectivesFollowThatTeamsOwnColumn(){
+        // The bar puts a team's heads on a side from its column; the objectives must match, or a
+        // team's goals end up beside the other team's row.
+        List<Objectives.Entry> entries=Objectives.entries(Arrays.asList(
+            "\u00a7cRed"," \u00a7c\u2B1C",
+            "\u00a79Blue"," \u00a79\u2592"),TEAMS);
+        java.util.Map<String,Integer> columns=new java.util.HashMap<>();
+        // Blue is the first column here, so blue's goals go left and red's go right.
+        columns.put("blue",0);columns.put("red",1);
+        List<List<List<Objectives.Part>>> rows=Objectives.split(entries,columns,true);
+        assertEquals("blue",rows.get(0).get(0).get(0).name);
+        assertEquals("red",rows.get(1).get(0).get(0).name);
+    }
+
+    @Test public void theIconsHugTheClockOnBothSides(){
+        // The left strip is right-aligned against the clock and the right one left-aligned, so a
+        // mirrored order puts the state markers nearest the time on both sides.
+        List<Objectives.Entry> entries=Objectives.entries(Arrays.asList(
+            "\u00a7cRed"," \u00a7f\u2B1C \u00a7cRed Wool",
+            "\u00a79Blue"," \u00a7f\u2592 \u00a79Blue Wool"),TEAMS);
+        java.util.Map<String,Integer> columns=new java.util.HashMap<>();
+        columns.put("red",0);columns.put("blue",1);
+        List<List<List<Objectives.Part>>> rows=Objectives.split(entries,columns,false);
+        // Row 0 is the team header, row 1 the wool itself.
+        List<Objectives.Part> left=rows.get(0).get(1);
+        assertEquals("Red Wool",left.get(0).text);
+        assertNull("the left wool lost its square",left.get(1).text);
+        // Right: marker then name, mirroring it.
+        List<Objectives.Part> right=rows.get(1).get(1);
+        assertNull("the right wool lost its square",right.get(0).text);
+        assertEquals("Blue Wool",right.get(1).text);
     }
 
     @Test public void compactKeepsOnlyMarkersOnTheirOwnTeamsSide(){
@@ -145,7 +199,7 @@ public class ObjectivesTest {
             "\u00a79Blue","\u00a7f12 \u00a79Blue"),TEAMS);
         java.util.Map<String,Integer> columns=new java.util.HashMap<>();
         columns.put("red",0);columns.put("blue",1);
-        List<List<List<Objectives.Part>>> rows=Objectives.split(entries,columns);
+        List<List<List<Objectives.Part>>> rows=Objectives.split(entries,columns,true);
         // Red is on the left: two wool squares, plus the completed goal's tick beside them.
         assertEquals(2,rows.get(0).size());
         assertEquals(2,rows.get(0).get(0).size());
@@ -167,7 +221,7 @@ public class ObjectivesTest {
         List<Objectives.Entry> entries=Objectives.entries(
             Collections.singletonList("\u00a7a\u2714 \u00a7fNorth Monument"),TEAMS);
         java.util.Map<String,Integer> columns=new java.util.HashMap<>();
-        List<List<List<Objectives.Part>>> rows=Objectives.split(entries,columns);
+        List<List<List<Objectives.Part>>> rows=Objectives.split(entries,columns,true);
         assertEquals("a completed goal vanished from compact mode",1,rows.get(0).size());
         Objectives.Part marker=rows.get(0).get(0).get(0);
         assertEquals("North Monument",marker.name);

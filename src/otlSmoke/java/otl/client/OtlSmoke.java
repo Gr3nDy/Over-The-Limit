@@ -1717,10 +1717,8 @@ public final class OtlSmoke {
                 UtilitySettings.teamBarPlayers=5;
                 // PGM's own sidebar rows, so the next frame draws them in the strip: a team header
                 // over its compact wools, then a score and a goal, as a real Capture the Wool map does.
-                sidebarRow(board,objective,"otl_obj1","\u00a7cRed",6);
-                sidebarRow(board,objective,"otl_obj2"," \u00a7c\u2B1C \u00a79\u2592 \u00a7e\u2B1B",5);
-                sidebarRow(board,objective,"otl_obj3","\u00a7f12 \u00a7cRed",4);
-                sidebarRow(board,objective,"otl_obj4","\u00a7a\u2714 \u00a7fNorth Monument",3);
+                // They are added here rather than a state earlier so they cannot steal head room
+                // from the team-stacking checks above.
             }else if(state==80){
                 java.util.List<TeamBar.Side> sides=TeamBar.sides(mc);
                 require(sides.size()==3,"Team Bar did not find all three teams: "+sides.size());
@@ -1819,30 +1817,48 @@ public final class OtlSmoke {
                 require(box.y>=4&&box.x>=4&&box.x+box.w<=teambarScreen.getScaledWidth()-4&&box.y+box.h<=teambarScreen.getScaledHeight()-4,"Team Bar HUD bounds are off screen");
                 require(Math.abs(box.x+box.w/2-teambarScreen.getScaledWidth()/2)<=8,"Team Bar does not default near top centre");
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-team-bar.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
-                // Objectives: PGM's own sidebar rows become squares, statuses and scores under the clock.
+                // Objectives: PGM's own sidebar rows become squares, statuses and scores beside the clock.
                 net.minecraft.scoreboard.Scoreboard objBoard=mc.theWorld.getScoreboard();
                 net.minecraft.scoreboard.ScoreObjective objSidebar=objBoard.getObjective("otl_teambar");
                 if(objSidebar==null)objSidebar=objBoard.addScoreObjective("otl_teambar",net.minecraft.scoreboard.IScoreObjectiveCriteria.DUMMY);
                 objBoard.setObjectiveInDisplaySlot(1,objSidebar);
+                // A team header over its compact wools, then a score and a goal, as a real
+                // Capture the Wool map prints them.
+                sidebarRow(objBoard,objSidebar,"otl_obj1","\u00a7cRed",6);
+                sidebarRow(objBoard,objSidebar,"otl_obj2"," \u00a7c\u2B1C \u00a79\u2592 \u00a7e\u2B1B",5);
+                sidebarRow(objBoard,objSidebar,"otl_obj3","\u00a7f12 \u00a7cRed",4);
+                sidebarRow(objBoard,objSidebar,"otl_obj4","\u00a7a\u2714 \u00a7fNorth Monument",3);
                 TeamBar.Bar withObjectives=TeamBar.INSTANCE.bar(mc,false);
-                require(withObjectives.strip!=null,"The sidebar objectives did not reach the bar");
-                require(withObjectives.strip.parts.size()==7,"The objective strip lost or invented rows: "+withObjectives.strip.parts.size());
-                require("Red".equals(withObjectives.strip.parts.get(0).text)&&TeamBar.chatColour('c')==withObjectives.strip.parts.get(0).colour,
-                    "The team header above the wools was dropped: "+(withObjectives.strip.parts.get(0).text==null?"square":withObjectives.strip.parts.get(0).text));
-                require(withObjectives.strip.parts.get(1).text==null&&withObjectives.strip.parts.get(1).state==0,"A wool row did not start as an untouched square");
-                require(withObjectives.strip.parts.get(3).state==2,"A placed wool was not read as placed");
-                require("North Monument".equals(withObjectives.strip.parts.get(6).text),"A goal row lost its name: "+withObjectives.strip.parts.get(6).text);
+                // Red's column decides its side; its objectives must land on that same side.
+                java.util.Map<String,Integer> objColumns=new java.util.HashMap<>();
+                java.util.List<String> objTeams=TeamBar.teamNames(mc,TeamBar.sides(mc),java.util.Collections.<String>emptyList());
+                for(int i=0;i<objTeams.size();i++)objColumns.put(MapInfo.norm(objTeams.get(i)),i);
+                int redColumn=objColumns.containsKey("red")?objColumns.get("red"):0;
+                java.util.List<Objectives.Strip> redSide=redColumn%2==0?withObjectives.leftStrips:withObjectives.rightStrips;
+                java.util.List<Objectives.Strip> otherSide=redColumn%2==0?withObjectives.rightStrips:withObjectives.leftStrips;
+                require(!redSide.isEmpty(),"The sidebar objectives did not reach the bar");
+                require(otherSide.isEmpty(),"A team with no objectives got a strip of its own");
+                // One line per sidebar row, in the sidebar's own order.
+                require(redSide.size()==4,"The objective stack lost or invented rows: "+redSide.size());
+                require("Red".equals(redSide.get(0).parts.get(0).text)&&TeamBar.chatColour('c')==redSide.get(0).parts.get(0).colour,
+                    "The team header above the wools was dropped: "+(redSide.get(0).parts.get(0).text==null?"square":redSide.get(0).parts.get(0).text));
+                require(redSide.get(1).parts.size()==3,"The wool row lost a square: "+redSide.get(1).parts.size());
+                require(redSide.get(1).parts.get(0).text==null&&redSide.get(1).parts.get(0).state==0,"A wool row did not start as an untouched square");
+                require(redSide.get(1).parts.get(2).state==2,"A placed wool was not read as placed");
+                // The score row's name sits outward and its number against the clock.
+                require("Red".equals(redSide.get(2).parts.get(0).text)&&"12".equals(redSide.get(2).parts.get(1).text),
+                    "A score row was not mirrored against the clock");
+                require("North Monument".equals(redSide.get(3).parts.get(0).text),"A goal row lost its name: "+redSide.get(3).parts.get(0).text);
                 require(withObjectives.textX+withObjectives.textW/2==withObjectives.width/2,"The objectives pushed the clock off centre");
-                require(withObjectives.height>=withObjectives.band+Objectives.HEIGHT,"The bar left no room for the objectives");
                 require(withObjectives.width<=new ScaledResolution(mc).getScaledWidth()-8,"The objectives pushed the bar off the screen");
                 UtilitySettings.teamBarObjectives=false;
-                require(TeamBar.INSTANCE.bar(mc,false).strip==null,"The Objectives option did not hide the strip");
+                TeamBar.Bar withoutObjectives=TeamBar.INSTANCE.bar(mc,false);
+                require(withoutObjectives.leftStrips.isEmpty()&&withoutObjectives.rightStrips.isEmpty(),"The Objectives option did not hide the strip");
                 UtilitySettings.teamBarObjectives=true;
                 // Compact: markers only, beside the clock on each team's own side.
                 UtilitySettings.teamBarObjectivesCompact=true;
                 TeamBar.Bar compact=TeamBar.INSTANCE.bar(mc,false);
-                require(compact.strip==null,"Compact objectives also drew a line under the clock");
-                require(compact.leftStrip!=null||compact.rightStrip!=null,"Compact objectives vanished");
+                require(!compact.leftStrips.isEmpty()||!compact.rightStrips.isEmpty(),"Compact objectives vanished");
                 // A team with nobody online still needs its own side of the clock: PGM keeps
                 // printing that team's goals, and with no column they all fell in on the left.
                 net.minecraft.scoreboard.Scoreboard sideBoard=mc.theWorld.getScoreboard();
@@ -1851,10 +1867,11 @@ public final class OtlSmoke {
                 sidebarRow(sideBoard,sideObjective,"otl_side1","\u00a7aPlayerless",2);
                 sidebarRow(sideBoard,sideObjective,"otl_side2"," \u00a7a\u2B1C",1);
                 TeamBar.Bar withPlayerless=TeamBar.INSTANCE.bar(mc,false);
-                require(withPlayerless.rightStrip!=null,
+                require(!withPlayerless.rightStrips.isEmpty(),
                     "A team with nobody online had its objectives dumped on the other side");
                 boolean onRight=false;
-                for(Objectives.Part part:withPlayerless.rightStrip.parts)if(part.name!=null&&part.name.equalsIgnoreCase("playerless"))onRight=true;
+                for(Objectives.Strip line:withPlayerless.rightStrips)
+                    for(Objectives.Part part:line.parts)if(part.name!=null&&part.name.equalsIgnoreCase("playerless"))onRight=true;
                 require(onRight,"A playerless team's wool was credited to another team");
                 // Drop only the fixture rows, so the objective strip stays for the checks below.
                 for(net.minecraft.scoreboard.Score score:new ArrayList<>(sideBoard.getSortedScores(sideObjective))){
@@ -1866,18 +1883,19 @@ public final class OtlSmoke {
                 sideBoard.removeTeam(sideBoard.getTeam("otl_side1"));
                 sideBoard.removeTeam(sideBoard.getTeam("otl_side2"));
                 sideBoard.removeTeam(sideBoard.getTeam("playerless"));
-                for(Objectives.Strip s:new Objectives.Strip[]{compact.leftStrip,compact.rightStrip}){
-                    if(s==null)continue;
+                java.util.List<Objectives.Strip> compactLines=new ArrayList<>(compact.leftStrips);
+                compactLines.addAll(compact.rightStrips);
+                for(Objectives.Strip s:compactLines)
                     for(Objectives.Part part:s.parts)if(part.text!=null)
                         require(part.marker,"Compact objectives kept a name: "+part.text);
-                }
-                if(compact.leftStrip!=null)require(compact.leftStripX+compact.leftStrip.width<compact.textX,"The left objectives overlapped the clock");
-                if(compact.rightStrip!=null)require(compact.rightStripX>compact.textX+compact.textW,"The right objectives overlapped the clock");
+                require(compact.leftStripX+TeamBar.stripWidth(compact.leftStrips)<compact.textX,"The left objectives overlapped the clock");
+                require(compact.rightStripX>compact.textX+compact.textW,"The right objectives overlapped the clock");
                 require(compact.textX+compact.textW/2==compact.width/2,"Compact objectives pushed the clock off centre");
                 // Hovering a compact objective names it, since compact mode draws no names.
-                if(compact.leftStrip!=null){
-                    int x=compact.leftStripX+compact.leftStrip.parts.get(0).space+1;
-                    int y=(compact.band-Objectives.HEIGHT)/2+1;
+                if(!compact.leftStrips.isEmpty()){
+                    Objectives.Strip line=compact.leftStrips.get(0);
+                    int x=compact.stripX(0,line)+line.parts.get(0).space+1;
+                    int y=compact.stripY+1;
                     require(TeamBar.objectiveAt(compact,x,y,mc.fontRendererObj)!=null,
                         "Hovering a compact objective showed no name");
                     require(TeamBar.objectiveAt(compact,0,0,mc.fontRendererObj)==null,
@@ -1888,8 +1906,7 @@ public final class OtlSmoke {
                 mc.displayGuiScreen(new HudEditor());
                 UtilitySettings.teamBarObjectivesCompact=false;
                 TeamBar.Bar previewBar=TeamBar.INSTANCE.bar(mc,true);
-                require(previewBar.strip!=null,"The editor preview lost the objective strip");
-                require(previewBar.stripX+previewBar.strip.width/2==previewBar.width/2,"The editor preview strip is off centre");
+                require(!previewBar.leftStrips.isEmpty()||!previewBar.rightStrips.isEmpty(),"The editor preview lost the objective strip");
                 require(previewBar.textX+previewBar.textW/2==previewBar.width/2,"The editor preview clock is off centre");
                 mc.displayGuiScreen(null);
                 // Many teams keep stacking downward; a stack taller than the screen shrinks to fit.
@@ -1907,6 +1924,7 @@ public final class OtlSmoke {
                 for(int i=0;i<24;i++)if(many.getTeam("extra"+i)!=null)many.removeTeam(many.getTeam("extra"+i));
                 // Respawn: the server puts the team colour back, so the head must clear itself.
                 tabEntry(mc,"RedPlayer0","\u00a7cRedPlayer0");
+                require(!TeamBar.dead("RedPlayer0"),"A respawned player stayed greyed out");
                 // A death that drops the player from the team must not make the head vanish.
                 mc.theWorld.getScoreboard().removePlayerFromTeam("AAAPlayer",mc.theWorld.getScoreboard().getTeam("red"));
                 require(side(TeamBar.sides(mc),"red").members.contains("AAAPlayer"),"A dead player's head vanished from the bar");
@@ -1918,18 +1936,34 @@ public final class OtlSmoke {
                 mc.theWorld.getScoreboard().addPlayerToTeam("AAAPlayer","observers");
                 for(TeamBar.Side side:TeamBar.sides(mc))require(!side.members.contains("AAAPlayer"),"An observer was left on a team row");
                 // Same bar during a count-up match: no limit label, so the timer stays white.
+                // The sidebar is the live clock source here, so two rising readings are written into
+                // it - a single static line would not prove the bar is following a ticking clock.
+                sidebar(mc.theWorld.getScoreboard(),mc.theWorld.getScoreboard().getObjective("otl_teambar"),"Time: 0:41");
+                TeamBar.INSTANCE.timer(mc);
                 sidebar(mc.theWorld.getScoreboard(),mc.theWorld.getScoreboard().getObjective("otl_teambar"),"Time: 0:42");
+                // The clock line replaced the objective rows; put them back so the frame drawn from
+                // here carries the named objectives for the next state's screenshot.
+                net.minecraft.scoreboard.Scoreboard back=mc.theWorld.getScoreboard();
+                net.minecraft.scoreboard.ScoreObjective backSidebar=back.getObjective("otl_teambar");
+                sidebarRow(back,backSidebar,"otl_obj1","\u00a7cRed",6);
+                sidebarRow(back,backSidebar,"otl_obj2"," \u00a7c\u2B1C \u00a79\u2592 \u00a7e\u2B1B",5);
+                sidebarRow(back,backSidebar,"otl_obj3","\u00a7f12 \u00a7cRed",4);
+                sidebarRow(back,backSidebar,"otl_obj4","\u00a7a\u2714 \u00a7fNorth Monument",3);
                 // Ten a row at 150%: the heads must be bigger, not shrunk back to fit the width.
                 UtilitySettings.teamBarPlayers=10;UtilitySettings.teamBarSize=150;
             }else if(state==81){
+                // The frame drawn during the wait above carries the named objectives: keep it.
+                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-team-bar-objectives.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
                 // The frame drawn during the wait above used the 150% bar; keep it as evidence.
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-team-bar-large.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
                 // Compact for the next frame, so 82 can screenshot it with its markers drawn.
                 UtilitySettings.teamBarObjectivesCompact=true;
                 UtilitySettings.teamBarPlayers=5;UtilitySettings.teamBarSize=100;
+                // The respawn lands a tick after the grey name, so the head clears here.
+                tabEntry(mc,"RedPlayer0","\u00a7cRedPlayer0");
                 require(!TeamBar.dead("RedPlayer0"),"A respawned player stayed greyed out");
                 TeamBar.Timer up=TeamBar.INSTANCE.timer(mc);
-                require(up!=null&&"0:42".equals(up.label)&&!up.countdown,"Count-up timer was not left white: "+(up==null?"none":up.label));
+                require(up!=null&&!up.countdown&&up.seconds>=42,"A count-up clock was not left white: "+(up==null?"none":up.label));
                 sidebar(mc.theWorld.getScoreboard(),mc.theWorld.getScoreboard().getObjective("otl_teambar"),"Players: 24");
                 net.minecraft.entity.boss.BossStatus.bossName=null;
                 line("Playing Allure");
@@ -2020,7 +2054,7 @@ public final class OtlSmoke {
                     gone.removePlayerFromTeam(score.getPlayerName(),holder);
                 }
                 for(String row:new String[]{"otl_obj1","otl_obj2","otl_obj3","otl_obj4"})if(gone.getTeam(row)!=null)gone.removeTeam(gone.getTeam(row));
-                require(TeamBar.INSTANCE.bar(mc,false).strip==null,"The objective rows outlived their sidebar lines");
+                require(TeamBar.INSTANCE.bar(mc,false).leftStrips.isEmpty()&&TeamBar.INSTANCE.bar(mc,false).rightStrips.isEmpty(),"The objective rows outlived their sidebar lines");
                 net.minecraft.entity.boss.BossStatus.bossName="Time Remaining: 9:50";
                 UtilitySettings.teamBarHideBoss=true;
                 require(TeamBar.hidesBossBar(mc),"Hide bossbar did not hide a PGM clock");

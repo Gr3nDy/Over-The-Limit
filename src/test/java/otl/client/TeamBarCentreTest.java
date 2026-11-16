@@ -15,89 +15,83 @@ public class TeamBarCentreTest {
         return new Objectives.Strip(list,width);
     }
 
-    private static TeamBar.Bar bar(List<String> left,List<String> right,int textW,Objectives.Strip strip){
-        return new TeamBar.Bar(Collections.singletonList(left),Collections.singletonList(right),16,textW,null,"",7,strip);
+    private static List<Objectives.Strip> lines(Objectives.Strip... strips){
+        return Arrays.asList(strips);
+    }
+
+    private static TeamBar.Bar bar(List<String> left,List<String> right,int textW,
+        List<Objectives.Strip> leftStrips,List<Objectives.Strip> rightStrips){
+        return new TeamBar.Bar(Collections.singletonList(left),Collections.singletonList(right),16,textW,null,"",7,leftStrips,rightStrips);
     }
 
     /** Everything the layout promises, checked on any bar. */
     private static void assertCentred(TeamBar.Bar bar,String what){
         assertEquals(what+": clock off centre",bar.width/2,bar.textX+bar.textW/2);
-        if(bar.strip!=null)assertEquals(what+": objectives off centre",bar.width/2,bar.stripX+bar.strip.width/2);
-        // Both head rows are the same distance from the clock, whatever the team sizes.
+        // Each side's heads sit just outside its own objectives, never on top of them.
         List<String> left=bar.left.get(0),right=bar.right.get(0);
-        int leftGap=bar.textX-(bar.leftStart(left)+bar.advance*(left.size()-1)+bar.head);
-        int rightGap=bar.rightStart(right)-(bar.textX+bar.textW);
-        assertEquals(what+": heads not equidistant from the clock",leftGap,rightGap);
-    }
-
-    /** Where the heads sit relative to the clock, so a strip cannot be shown to move them. */
-    private static String headLayout(TeamBar.Bar bar){
-        List<String> left=bar.left.get(0),right=bar.right.get(0);
-        int leftGap=bar.textX-(bar.leftStart(left)+bar.advance*(left.size()-1)+bar.head);
-        int rightGap=bar.rightStart(right)-(bar.textX+bar.textW);
-        return leftGap+","+rightGap;
+        int leftEnd=bar.leftStart(left)+bar.advance*(left.size()-1)+bar.head;
+        int rightStart=bar.rightStart(right);
+        if(!bar.leftStrips.isEmpty())assertTrue(what+": heads overlapped the left objectives",leftEnd<=bar.leftStripX);
+        if(!bar.rightStrips.isEmpty())
+            assertTrue(what+": heads overlapped the right objectives",rightStart>=bar.rightStripX+TeamBar.stripWidth(bar.rightStrips));
+        assertTrue(what+": heads off the bar",leftEnd>=0&&rightStart+bar.advance*(right.size()-1)+bar.head<=bar.width);
     }
 
     @Test public void equalSidesAreEquidistantFromTheClock(){
-        TeamBar.Bar bar=bar(Collections.singletonList("A"),Collections.singletonList("B"),20,strip(2,200));
-        assertCentred(bar,"equal");
+        assertCentred(bar(Collections.singletonList("A"),Collections.singletonList("B"),20,lines(strip(2,40)),lines(strip(2,40))),"equal");
     }
 
     @Test public void unevenTeamsKeepTheClockBetweenTheHeads(){
-        assertCentred(bar(Arrays.asList("A","B","C","D","E"),Arrays.asList("F","G"),20,strip(2,200)),"uneven");
+        assertCentred(bar(Arrays.asList("A","B","C","D","E"),Arrays.asList("F","G"),20,null,null),"uneven");
     }
 
-    @Test public void aStripWiderThanTheClockStillSharesItsCentre(){
-        // The strip is the widest thing in the bar: it must not drag the clock off centre.
-        assertCentred(bar(Collections.singletonList("A"),Collections.singletonList("B"),20,strip(9,260)),"wide strip");
+    @Test public void objectivesTakeTheSameRoomOnBothSides(){
+        // The strips sit between the heads and the clock, so the heads move outwards - but by the
+        // same amount on both sides, or the bar looks lopsided.
+        TeamBar.Bar plain=bar(Collections.singletonList("A"),Collections.singletonList("B"),20,null,null);
+        TeamBar.Bar wide=bar(Collections.singletonList("A"),Collections.singletonList("B"),20,lines(strip(9,60)),lines(strip(9,60)));
+        assertCentred(wide,"wide strip");
+        assertTrue("the objectives did not reserve any room",wide.width>plain.width);
+        // The heads sit outside both strips, never on top of them.
+        assertTrue(wide.leftStart(wide.left.get(0))+wide.head<=wide.leftStripX);
+        assertTrue(wide.rightStart(wide.right.get(0))>=wide.rightStripX+60);
     }
 
-    @Test public void objectivesNeverPushTheHeadsAwayFromTheClock(){
-        // The regression this guards: a long objective line widened the middle, so the heads sat
-        // far from the clock and the bar looked lopsided.
-        TeamBar.Bar plain=bar(Collections.singletonList("A"),Collections.singletonList("B"),20,null);
-        TeamBar.Bar wide=bar(Collections.singletonList("A"),Collections.singletonList("B"),20,strip(9,260));
-        assertEquals("the objectives moved the heads",headLayout(plain),headLayout(wide));
-        // The bar grows to hold the strip, symmetrically.
-        assertTrue(wide.width>=wide.strip.width);
-        assertEquals(wide.width/2,wide.stripX+wide.strip.width/2);
-    }
-
-    @Test public void theObjectivesSitOnTheirOwnLineUnderTheHeads(){
-        TeamBar.Bar bar=new TeamBar.Bar(Arrays.asList(Arrays.asList("A","B"),Collections.singletonList("C")),
-            Collections.singletonList(Collections.singletonList("D")),16,20,null,"",7,strip(2,200));
-        assertTrue("the objectives overlap the head rows",bar.stripY>=2*bar.band+TeamBar.ROW_GAP);
-        assertEquals("the bar left no room for its objectives",bar.stripY+Objectives.HEIGHT,bar.height);
-    }
-
-    @Test public void compactObjectivesSitBesideTheClockNotUnderIt(){
-        TeamBar.Bar bar=new TeamBar.Bar(Collections.singletonList(Collections.singletonList("A")),
-            Collections.singletonList(Collections.singletonList("B")),16,20,null,"",7,null,strip(1,30),strip(1,12));
-        // Both strips are beside the clock: one right-aligned to its left, one to its right.
+    @Test public void eachTeamsObjectivesSitBesideTheClockOnItsOwnSide(){
+        TeamBar.Bar bar=bar(Collections.singletonList("A"),Collections.singletonList("B"),20,lines(strip(1,30)),lines(strip(1,12)));
+        // Both sides are beside the clock: one right-aligned to its left, one to its right.
         assertEquals(bar.textX-TeamBar.OBJECTIVE_GAP-30,bar.leftStripX);
         assertEquals(bar.textX+bar.textW+TeamBar.OBJECTIVE_GAP,bar.rightStripX);
-        assertNull("compact mode must not also draw a line under the clock",bar.strip);
-        assertCentred(bar,"compact");
+        // The left lines are right-aligned against the clock, so a shorter line starts further in.
+        assertEquals(bar.textX-TeamBar.OBJECTIVE_GAP-12,bar.stripX(0,strip(1,12)));
+        assertCentred(bar,"beside the clock");
         // The heads stay clear of both strips.
         assertTrue(bar.leftStart(bar.left.get(0))+bar.head<=bar.leftStripX);
         assertTrue(bar.rightStart(bar.right.get(0))>=bar.rightStripX+12);
     }
 
-    @Test public void compactModeGivesBothSidesTheSameRoomSoTheClockStaysCentred(){
-        // A long strip on one side must not shove the clock sideways.
-        TeamBar.Bar bar=new TeamBar.Bar(Collections.singletonList(Collections.singletonList("A")),
-            Collections.singletonList(Collections.singletonList("B")),16,20,null,"",7,null,strip(3,60),strip(1,8));
-        assertCentred(bar,"uneven compact");
+    @Test public void aLongStripOnOneSideDoesNotShoveTheClock(){
+        // A long strip on one side must not push the clock sideways.
+        TeamBar.Bar bar=bar(Collections.singletonList("A"),Collections.singletonList("B"),20,lines(strip(3,60)),lines(strip(1,8)));
+        assertCentred(bar,"uneven strips");
     }
 
-    @Test public void aClockWiderThanTheStripStillSharesItsCentre(){
-        assertCentred(bar(Collections.singletonList("A"),Collections.singletonList("B"),40,strip(1,12)),"wide clock");
+    @Test public void aTallStackIsCentredOnTheClock(){
+        // A side with several sidebar rows stacks downward, and the stack is centred on the clock's
+        // own row so the bar does not read as bottom-heavy.
+        TeamBar.Bar bar=bar(Collections.singletonList("A"),Collections.singletonList("B"),20,
+            lines(strip(1,20),strip(1,20),strip(1,20)),lines(strip(1,20)));
+        assertEquals(3*TeamBar.STRIP_LINE,bar.stripH);
+        assertEquals((bar.height-bar.stripH)/2,bar.stripY);
+        assertTrue(bar.height>=bar.stripH);
+        assertCentred(bar,"tall stack");
     }
 
     @Test public void aBarWithNoObjectivesIsUnaffected(){
         TeamBar.Bar bar=new TeamBar.Bar(Collections.singletonList(Collections.singletonList("A")),
             Collections.singletonList(Collections.singletonList("B")),16,20,null,"");
-        assertNull(bar.strip);
+        assertTrue(bar.leftStrips.isEmpty());
+        assertTrue(bar.rightStrips.isEmpty());
         assertCentred(bar,"no objectives");
         assertEquals(bar.band,bar.height);
     }

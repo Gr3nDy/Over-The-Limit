@@ -47,8 +47,10 @@ final class TeamBar {
     static final int ROW_GAP=4;
     /** Gap between the team-colour line and its heads. */
     private static final int LINE_GAP=2;
-    /** Gap between a compact objective strip and the clock it sits beside. */
+    /** Gap between an objective line and the clock it sits beside. */
     static final int OBJECTIVE_GAP=4;
+    /** Height of one objective line; the stack is this tall per sidebar row. */
+    static final int STRIP_LINE=10;
     /** The sixteen chat colour codes as RGB, for the team-colour line. */
     private static final int[] COLOURS={0xFF000000,0xFF0000AA,0xFF00AA00,0xFF00AAAA,0xFFAA0000,0xFFAA00AA,0xFFFFAA00,0xFFAAAAAA,
         0xFF555555,0xFF5555FF,0xFF55FF55,0xFF55FFFF,0xFFFF5555,0xFFFF55FF,0xFFFFFF55,0xFFFFFFFF};
@@ -158,23 +160,21 @@ final class TeamBar {
         /** Space reserved on the outer edge of each column for the team-colour line; 0 when off. */
         final int line;
         final int head,advance,column,leftEnd,rightX,textX,textW,width,height,band;
-        /** The objective strip under the clock, or null when this sidebar has none. */
-        final Objectives.Strip strip;
-        final int stripX,stripY;
-        /** Compact objectives beside the clock, one per side, or null. */
-        final Objectives.Strip leftStrip,rightStrip;
-        final int leftStripX,rightStripX;
+        /** Objectives beside the clock, one line each, in sidebar order; empty when none. */
+        final List<Objectives.Strip> leftStrips,rightStrips;
+        final int leftStripX,rightStripX,leftStripW;
+        /** Top of the objective stack and its total height, both inside the bar. */
+        final int stripY,stripH;
         final Timer timer;
         final String label;
-        Bar(List<List<String>> left,List<List<String>> right,int head,int textW,Timer timer,String label){this(left,right,head,textW,timer,label,0,null);}
-        Bar(List<List<String>> left,List<List<String>> right,int head,int textW,Timer timer,String label,int line){this(left,right,head,textW,timer,label,line,null);}
-        Bar(List<List<String>> left,List<List<String>> right,int head,int textW,Timer timer,String label,int line,Objectives.Strip strip){
-            this(left,right,head,textW,timer,label,line,strip,null,null);
-        }
+        Bar(List<List<String>> left,List<List<String>> right,int head,int textW,Timer timer,String label){this(left,right,head,textW,timer,label,0,null,null);}
+        Bar(List<List<String>> left,List<List<String>> right,int head,int textW,Timer timer,String label,int line){this(left,right,head,textW,timer,label,line,null,null);}
         Bar(List<List<String>> left,List<List<String>> right,int head,int textW,Timer timer,String label,int line,
-            Objectives.Strip strip,Objectives.Strip leftStrip,Objectives.Strip rightStrip){
+            List<Objectives.Strip> leftStrips,List<Objectives.Strip> rightStrips){
             this.left=left;this.right=right;this.head=head;this.advance=advance(head);this.timer=timer;
-            this.line=line;this.strip=strip;this.leftStrip=leftStrip;this.rightStrip=rightStrip;
+            this.line=line;
+            this.leftStrips=leftStrips==null?Collections.<Objectives.Strip>emptyList():leftStrips;
+            this.rightStrips=rightStrips==null?Collections.<Objectives.Strip>emptyList():rightStrips;
             // Both columns take the widest row, so the clock keeps the exact centre of the bar
             // and does not shift when players join or leave one side.
             int w=0;
@@ -183,31 +183,35 @@ final class TeamBar {
             // The colour line sits on the outer edge, so the widest row plus the line is the column.
             this.column=w+line;
             this.textW=textW;
-            // The heads hug the clock: the objectives never widen the middle, so a long objective
-            // line cannot push the two teams apart. The bar is only as wide as the widest thing it
-            // holds, and the strip may sit wider than the heads, centred on the same centre.
-            // Compact objectives take the same room on both sides, so the clock stays centred.
-            int beside=Math.max(leftStrip==null?0:leftStrip.width+OBJECTIVE_GAP,
-                rightStrip==null?0:rightStrip.width+OBJECTIVE_GAP);
-            int heads=2*column+textW+2*GAP+2*beside;
-            this.width=Math.max(heads,strip==null?0:strip.width);
-            this.textX=width/2-textW/2;
-            this.stripX=width/2-(strip==null?0:strip.width)/2;
-            this.leftEnd=textX-GAP-beside;
-            this.rightX=textX+textW+GAP+beside;
-            // Each strip sits against the clock on its own side, right-aligned on the left.
+            // A side is as wide as its longest line, and each side's heads hug their own strip.
+            // The bar is sized for the wider side and the clock sits on its exact centre, so the
+            // narrower side just leaves its spare room on the outside instead of a gap by the clock.
+            int leftW=TeamBar.stripWidth(this.leftStrips),rightW=TeamBar.stripWidth(this.rightStrips);
+            this.leftStripW=leftW;
+            int leftRoom=column+GAP+(leftW==0?0:leftW+OBJECTIVE_GAP);
+            int rightRoom=column+GAP+(rightW==0?0:rightW+OBJECTIVE_GAP);
+            int half=Math.max(leftRoom,rightRoom);
+            this.width=2*half+textW;
+            this.textX=half;
+            this.leftEnd=textX-GAP-(leftW==0?0:leftW+OBJECTIVE_GAP);
+            this.rightX=textX+textW+GAP+(rightW==0?0:rightW+OBJECTIVE_GAP);
+            // Each line sits against the clock on its own side, right-aligned on the left.
             this.rightStripX=textX+textW+OBJECTIVE_GAP;
-            this.leftStripX=textX-OBJECTIVE_GAP-(leftStrip==null?0:leftStrip.width);
+            this.leftStripX=textX-OBJECTIVE_GAP-leftW;
             // Each row is drawn in a band at least nine pixels tall so the clock still fits.
             this.band=Math.max(head,9);
             int rows=Math.max(left.size(),right.size());
-            int stack=rows>0?rows*band+(rows-1)*ROW_GAP:0;
-            // The objectives take their own line under the clock and under every head row, so they
-            // are always clear of the heads even when they are wider than the bar.
-            this.stripY=stack>0?stack:band;
-            this.height=Math.max(stack,strip==null?0:stripY+Objectives.HEIGHT);
+            int stack=rows>0?rows*band+(rows-1)*ROW_GAP:band;
+            // The objective stack is centred on the clock's own row, so it never reads as
+            // lopsided, and the bar is tall enough to hold whichever of the two is taller.
+            int lines=Math.max(this.leftStrips.size(),this.rightStrips.size());
+            this.stripH=lines*STRIP_LINE;
+            this.height=Math.max(stack,stripH);
+            this.stripY=(height-stripH)/2;
             this.label=label;
         }
+        /** Left edge of one objective line, against the clock on its own side. */
+        int stripX(int side,Objectives.Strip one){return side==0?textX-OBJECTIVE_GAP-one.width:rightStripX;}
         /**
          * Where a right-column row starts: flush against the clock, growing outward to the right,
          * so an empty tail always falls on the bar's outside and never next to the clock.
@@ -448,10 +452,10 @@ final class TeamBar {
         int head=Math.max(MIN_HEAD,headSize(shown)*scale/100);
         ScaledResolution scaled=new ScaledResolution(mc);
         int screen=scaled.getScaledWidth(),screenH=scaled.getScaledHeight();
-        Objectives.Strip strip=null,leftStrip=null,rightStrip=null;
-        // Which side each team is on: the same fixed order the head columns use. Every match team
-        // gets a column, not just the ones with somebody online - PGM prints a team's objectives
-        // even when that team has nobody on it, and such a team still owns a side of the bar.
+        List<Objectives.Strip> leftStrips=null,rightStrips=null;
+        // Every match team's name, in the order the bar and PGM's sidebar use, with the column each
+        // one's heads take. A team with nobody online still has objectives printed, so it still
+        // needs to be known and still needs a side.
         List<String> allTeams=teamNames(mc,sides,teamOrder);
         Map<String,Integer> columns=new HashMap<>();
         for(int i=0;i<allTeams.size();i++){
@@ -459,13 +463,17 @@ final class TeamBar {
             columns.put(MapInfo.norm(allTeams.get(i)),rank<teamOrder.size()?rank:i);
         }
         if(UtilitySettings.teamBarObjectives){
-            if(UtilitySettings.teamBarObjectivesCompact){
-                // Compact: markers only, beside the clock on each team's own side.
-                Objectives.Strip[] beside=Objectives.compact(mc,allTeams,columns);
-                leftStrip=beside[0];rightStrip=beside[1];
-            }else strip=Objectives.strip(mc,allTeams);
+            // Each team's objectives sit on the same side of the clock as that team's heads, so a
+            // team's goals are always next to its own row. Compact mode keeps only the state icons.
+            // Each side may take a third of the room beside the clock, which fits a normal
+            // objective row on one line and still leaves the heads readable. Both sides get the
+            // same room, so the clock stays centred.
+            // shortcut: on a very narrow window a long objective row is dropped, not clipped
+            int max=Math.max(24,(screen-textW-2*GAP-8)/3);
+            List<List<Objectives.Strip>> beside=Objectives.strips(mc,allTeams,columns,UtilitySettings.teamBarObjectivesCompact,max);
+            leftStrips=beside.get(0);rightStrips=beside.get(1);
         }
-        int beside=Math.max(leftStrip==null?0:leftStrip.width+OBJECTIVE_GAP,rightStrip==null?0:rightStrip.width+OBJECTIVE_GAP);
+        int beside=Math.max(stripWidth(leftStrips)+OBJECTIVE_GAP,stripWidth(rightStrips)+OBJECTIVE_GAP);
         int perRow=perRow(head,line(head,ffa),textW+2*beside,screen);
         List<List<String>> left=new ArrayList<>(),right=new ArrayList<>();
         if(counting&&!preview){
@@ -511,10 +519,17 @@ final class TeamBar {
         }
         // Last resort, height only: a stack of many teams can still be taller than the screen.
         while(head>MIN_HEAD){
-            if(new Bar(left,right,head,textW,timer,label,line(head,ffa),strip,leftStrip,rightStrip).height<=screenH-8)break;
+            if(new Bar(left,right,head,textW,timer,label,line(head,ffa),leftStrips,rightStrips).height<=screenH-8)break;
             head--;
         }
-        return new Bar(left,right,head,textW,timer,label,line(head,ffa),strip,leftStrip,rightStrip);
+        return new Bar(left,right,head,textW,timer,label,line(head,ffa),leftStrips,rightStrips);
+    }
+
+    /** The width a side's objective stack needs: its longest line. */
+    static int stripWidth(List<Objectives.Strip> lines){
+        int w=0;
+        if(lines!=null)for(Objectives.Strip one:lines)w=Math.max(w,one.width);
+        return w;
     }
 
     /**
@@ -1007,10 +1022,15 @@ final class TeamBar {
      * is over a head, empty space, or nothing is drawn in compact mode.
      */
     static String objectiveAt(Bar bar,int x,int y,net.minecraft.client.gui.FontRenderer font){
-        if(bar.leftStrip==null&&bar.rightStrip==null)return null;
-        int top=(bar.band-Objectives.HEIGHT)/2;
-        String name=Objectives.at(bar.leftStrip,x-bar.leftStripX,y-top,font);
-        return name!=null?name:Objectives.at(bar.rightStrip,x-bar.rightStripX,y-top,font);
+        for(int side=0;side<2;side++){
+            List<Objectives.Strip> lines=side==0?bar.leftStrips:bar.rightStrips;
+            for(int i=0;i<lines.size();i++){
+                Objectives.Strip one=lines.get(i);
+                String name=Objectives.at(one,x-bar.stripX(side,one),y-bar.stripY-i*STRIP_LINE,font);
+                if(name!=null)return name;
+            }
+        }
+        return null;
     }
 
     static String headAt(Bar bar,int x,int y){
@@ -1075,25 +1095,17 @@ final class TeamBar {
             head(world,hover,hx-extra/2,hy-extra/2,bar.head+extra);
         }
         // The objective squares share the bar's quad pass; the text parts follow once the
-        // tessellator is done with the texture unit.
-        if(bar.strip!=null){
-            int px=x+bar.stripX,py=y+bar.stripY;
-            for(Objectives.Part part:bar.strip.parts){
-                px+=part.space;
-                if(part.text==null)wool(world,px,py,part.colour,part.state);
-                px+=part.width(mc.fontRendererObj);
-            }
-        }
-        // Compact objectives sit on the clock's own line, one strip on each side of it.
-        int besideY=y+(band-Objectives.HEIGHT)/2;
+        // tessellator is done with the texture unit. Each side stacks its own lines beside the clock.
         for(int side=0;side<2;side++){
-            Objectives.Strip beside=side==0?bar.leftStrip:bar.rightStrip;
-            if(beside==null)continue;
-            int px=x+(side==0?bar.leftStripX:bar.rightStripX);
-            for(Objectives.Part part:beside.parts){
-                px+=part.space;
-                if(part.text==null)wool(world,px,besideY,part.colour,part.state);
-                px+=part.width(mc.fontRendererObj);
+            List<Objectives.Strip> lines=side==0?bar.leftStrips:bar.rightStrips;
+            for(int i=0;i<lines.size();i++){
+                Objectives.Strip one=lines.get(i);
+                int px=x+bar.stripX(side,one),py=y+bar.stripY+i*STRIP_LINE;
+                for(Objectives.Part part:one.parts){
+                    px+=part.space;
+                    if(part.text==null)wool(world,px,py,part.colour,part.state);
+                    px+=part.width(mc.fontRendererObj);
+                }
             }
         }
         tessellator.draw();
@@ -1103,22 +1115,16 @@ final class TeamBar {
             // Sits on the first head row, not the middle of the stack, so extra teams stack below it.
             mc.fontRendererObj.drawStringWithShadow(bar.label,x+bar.textX,y+(band-8)/2,colour(bar.timer));
         }
-        if(bar.strip!=null){
-            int px=x+bar.stripX,py=y+bar.stripY;
-            for(Objectives.Part part:bar.strip.parts){
-                px+=part.space;
-                if(part.text!=null)mc.fontRendererObj.drawStringWithShadow(part.text,px,py,part.colour);
-                px+=part.width(mc.fontRendererObj);
-            }
-        }
         for(int side=0;side<2;side++){
-            Objectives.Strip beside=side==0?bar.leftStrip:bar.rightStrip;
-            if(beside==null)continue;
-            int px=x+(side==0?bar.leftStripX:bar.rightStripX);
-            for(Objectives.Part part:beside.parts){
-                px+=part.space;
-                if(part.text!=null)mc.fontRendererObj.drawStringWithShadow(part.text,px,besideY,part.colour);
-                px+=part.width(mc.fontRendererObj);
+            List<Objectives.Strip> lines=side==0?bar.leftStrips:bar.rightStrips;
+            for(int i=0;i<lines.size();i++){
+                Objectives.Strip one=lines.get(i);
+                int px=x+bar.stripX(side,one),py=y+bar.stripY+i*STRIP_LINE;
+                for(Objectives.Part part:one.parts){
+                    px+=part.space;
+                    if(part.text!=null)mc.fontRendererObj.drawStringWithShadow(part.text,px,py,part.colour);
+                    px+=part.width(mc.fontRendererObj);
+                }
             }
         }
     }
