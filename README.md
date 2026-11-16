@@ -14,7 +14,7 @@
 | **Reliable Chat** | Adds channel/PM tabs, drafts, scrollable history and optional team speech bubbles. |
 | **Map Preview** | Shows book/chat map previews, a searchable gallery and `/map` info cards. |
 | **Custom Votebook** | Replaces the vote book with map cards, Supervote, match stats and a match link. |
-| **Team Bar** | One row of heads per team at the top centre, stacked, with the match clock in the middle and PGM's objectives - wools, goals and scores - in a strip beneath it; hover a head for its name. |
+| **Team Bar** | One row of heads per team at the top centre, stacked, with the match clock in the middle and PGM's objectives - wools, goals and scores - in a strip beneath it, or as markers beside the clock in compact mode; hover a head or a marker for its name. |
 | **Prefered Hand** | Visually chooses the first-person hand for items, blocks, tools or weapons. |
 | **Kill Feed** | Displays deaths, causes and weapons with a configurable HUD and history. |
 | **Kill Confirm** | Shows queued kill tags, streaks and immediate EXP feedback. |

@@ -53,6 +53,8 @@ public final class UtilitySettings {
     public static boolean teamBarTeamColor=true;
     /** PGM's objective rows - wool states, goal statuses and scores - beside the match clock. */
     public static boolean teamBarObjectives=true;
+    /** Compact objectives: the markers only, beside the clock instead of named under it. */
+    public static boolean teamBarObjectivesCompact=false;
     public static boolean killFeed=true,hideKillChat=true;
     static KillFeedRules.HeadMode killFeedHeads=KillFeedRules.HeadMode.ONLY_ME;
     static KillFeedRules.FilterMode killFeedFilter=KillFeedRules.FilterMode.ALL;
@@ -142,6 +144,7 @@ public final class UtilitySettings {
         read(j,"team_bar_observer",e->teamBarObserver=e.getAsBoolean());
         read(j,"team_bar_team_color",e->teamBarTeamColor=e.getAsBoolean());
         read(j,"team_bar_objectives",e->teamBarObjectives=e.getAsBoolean());
+        read(j,"team_bar_objectives_compact",e->teamBarObjectivesCompact=e.getAsBoolean());
         read(j,"kill_feed",e->killFeed=e.getAsBoolean());
         read(j,"kill_feed_heads",e->killFeedHeads=KillFeedRules.HeadMode.parse(e.getAsString()));
         read(j,"kill_feed_filter",e->killFeedFilter=KillFeedRules.FilterMode.parse(e.getAsString()));
@@ -270,6 +273,7 @@ public final class UtilitySettings {
             j.addProperty("team_bar_observer",teamBarObserver);
         j.addProperty("team_bar_team_color",teamBarTeamColor);
         j.addProperty("team_bar_objectives",teamBarObjectives);
+        j.addProperty("team_bar_objectives_compact",teamBarObjectivesCompact);
             j.addProperty("kill_feed",killFeed);j.addProperty("hide_kill_chat",hideKillChat);
             j.addProperty("kill_feed_heads",killFeedHeads.name());
             j.addProperty("kill_feed_filter",killFeedFilter.name());

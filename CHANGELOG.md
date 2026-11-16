@@ -3,7 +3,8 @@
 ## v0.6.0 - 2026-11-16
 
 ### Added
-- **Team Bar objectives** (ON by default) - PGM's own sidebar objectives sit in a strip under the clock: Capture the Wool wools as coloured squares that change with their state (hollow untouched, half picked up, filled placed, each in the wool's colour), destroyables and other goals as their status glyph and name, and team scores as `12 Red` / `3/10 Blue`. A team's name is kept above its wools so you can tell whose they are. Everything is read from the sidebar PGM already draws, so a mode with no goals simply has no strip, and the strip is capped at half the screen width so it can never push the bar off screen.
+- **Team Bar objectives** (ON by default) - PGM's own sidebar objectives sit in a strip under the clock: Capture the Wool wools as coloured squares that change with their state (hollow untouched, half picked up, filled placed, each in the wool's colour), destroyables and other goals as their label and progress, and team scores as `12 Red` / `3/10 Blue`. A team's name is kept above its wools so you can tell whose they are. Everything is read from the sidebar PGM already draws, so a mode with no goals simply has no strip, and the strip is capped at half the screen width so it can never push the bar off screen. The strip and the clock always share the same centre, so the bar never sits lopsided.
+- **Compact objectives** (OFF by default) - drop the objective names and keep only the markers, moved beside the clock instead of under it: each team's objectives sit on that team's own side, to the left or the right of the time, with the clock still exactly centred. Open chat and hover a marker to see which objective it is.
 
 ## v0.5.0 - 2026-11-16
 
