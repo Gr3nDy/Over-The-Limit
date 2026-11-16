@@ -38,14 +38,15 @@ public class ObjectivesTest {
         assertEquals(2,parts.get(2).state);
     }
 
-    @Test public void aWoolPutsItsNameFirstThenTheSquareCarryingItsState(){
+    @Test public void aWoolPutsItsSquareFirstThenItsName(){
+        // The same order PGM's own sidebar prints: the wool's square, then its name.
         List<Objectives.Part> parts=one(" \u00a7f\u2B1C \u00a7cRed Wool");
         assertEquals(2,parts.size());
-        assertEquals("Red Wool",parts.get(0).text);
-        assertEquals(TeamBar.WHITE,parts.get(0).colour);
-        assertNull("a named wool lost its square",parts.get(1).text);
-        assertEquals(0,parts.get(1).state);
-        assertEquals(TeamBar.chatColour('f'),parts.get(1).colour);
+        assertNull("a named wool lost its square",parts.get(0).text);
+        assertEquals(0,parts.get(0).state);
+        assertEquals(TeamBar.chatColour('f'),parts.get(0).colour);
+        assertEquals("Red Wool",parts.get(1).text);
+        assertEquals(TeamBar.WHITE,parts.get(1).colour);
     }
 
     @Test public void scoreRowsKeepPgmOrderWithTheTeamsOwnColour(){
@@ -57,17 +58,17 @@ public class ObjectivesTest {
         assertEquals("3/10",one("\u00a7f3/10 \u00a79Blue").get(0).text);
     }
 
-    @Test public void aGoalIsItsNameThenItsProgressWithNoTickOrCross(){
+    @Test public void aGoalIsItsProgressThenItsNameWithNoTickOrCross(){
         // PGM's tick and cross say nothing at this size, so only the name is drawn.
         List<Objectives.Part> done=one("\u00a7a\u2714 \u00a7fNorth Monument");
         assertEquals(1,done.size());
         assertEquals("North Monument",done.get(0).text);
         assertEquals(1,one("\u00a7c\u2715 \u00a7fSouth Monument").size());
-        // Progress is text, not an icon, so it stays - after the name.
+        // Progress is text, not an icon, but it still leads the name, as PGM prints it.
         List<Objectives.Part> progress=one("\u00a7e50% \u00a7fSouth Monument");
-        assertEquals("South Monument",progress.get(0).text);
-        assertEquals("50%",progress.get(1).text);
-        assertEquals(TeamBar.chatColour('e'),progress.get(1).colour);
+        assertEquals("50%",progress.get(0).text);
+        assertEquals(TeamBar.chatColour('e'),progress.get(0).colour);
+        assertEquals("South Monument",progress.get(1).text);
     }
 
     @Test public void aLongGoalNameIsShortened(){
@@ -90,12 +91,12 @@ public class ObjectivesTest {
 
     @Test public void destroyableProgressIsAGoalNotAScore(){
         List<Objectives.Part> parts=one("\u00a7c0/2 \u00a7fNorth Monument");
-        assertEquals("North Monument",parts.get(0).text);
-        assertEquals("0/2",parts.get(1).text);
-        assertTrue("progress must survive compact mode",parts.get(1).marker);
+        assertEquals("0/2",parts.get(0).text);
+        assertTrue("progress must survive compact mode",parts.get(0).marker);
+        assertEquals("North Monument",parts.get(1).text);
         List<Objectives.Part> both=one("\u00a7c1/2 50% \u00a7fSouth Monument");
-        assertEquals("South Monument",both.get(0).text);
-        assertEquals("1/2 50%",both.get(1).text);
+        assertEquals("1/2 50%",both.get(0).text);
+        assertEquals("South Monument",both.get(1).text);
     }
 
     @Test public void rowsThatAreNotObjectivesAreIgnored(){
@@ -121,6 +122,21 @@ public class ObjectivesTest {
         assertEquals("red",entries.get(2).team);
         // A score row names its own team, whatever header came before it.
         assertEquals("blue",entries.get(4).team);
+    }
+
+    @Test public void compactPutsEachTeamOnItsOwnSideOfTheClock(){
+        List<Objectives.Entry> entries=Objectives.entries(Arrays.asList(
+            "\u00a7cRed"," \u00a7c\u2B1C",
+            "\u00a79Blue"," \u00a79\u2592",
+            "\u00a7aGreen"," \u00a7a\u2B1B"),Arrays.asList("red","blue","green"));
+        java.util.Map<String,Integer> columns=new java.util.HashMap<>();
+        columns.put("red",0);columns.put("blue",1);columns.put("green",2);
+        List<List<List<Objectives.Part>>> rows=Objectives.split(entries,columns);
+        // Even columns go left, odd go right - the same rule the head columns follow. A third
+        // team must not pile onto one side, or the clock ends up lopsided.
+        assertEquals("red",rows.get(0).get(0).get(0).name);
+        assertEquals("blue",rows.get(1).get(0).get(0).name);
+        assertEquals("green",rows.get(0).get(1).get(0).name);
     }
 
     @Test public void compactKeepsOnlyMarkersOnTheirOwnTeamsSide(){

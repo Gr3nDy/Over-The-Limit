@@ -1843,6 +1843,29 @@ public final class OtlSmoke {
                 TeamBar.Bar compact=TeamBar.INSTANCE.bar(mc,false);
                 require(compact.strip==null,"Compact objectives also drew a line under the clock");
                 require(compact.leftStrip!=null||compact.rightStrip!=null,"Compact objectives vanished");
+                // A team with nobody online still needs its own side of the clock: PGM keeps
+                // printing that team's goals, and with no column they all fell in on the left.
+                net.minecraft.scoreboard.Scoreboard sideBoard=mc.theWorld.getScoreboard();
+                net.minecraft.scoreboard.ScoreObjective sideObjective=sideBoard.getObjective("otl_teambar");
+                if(sideBoard.getTeam("playerless")==null)sideBoard.createTeam("playerless");
+                sidebarRow(sideBoard,sideObjective,"otl_side1","\u00a7aPlayerless",2);
+                sidebarRow(sideBoard,sideObjective,"otl_side2"," \u00a7a\u2B1C",1);
+                TeamBar.Bar withPlayerless=TeamBar.INSTANCE.bar(mc,false);
+                require(withPlayerless.rightStrip!=null,
+                    "A team with nobody online had its objectives dumped on the other side");
+                boolean onRight=false;
+                for(Objectives.Part part:withPlayerless.rightStrip.parts)if(part.name!=null&&part.name.equalsIgnoreCase("playerless"))onRight=true;
+                require(onRight,"A playerless team's wool was credited to another team");
+                // Drop only the fixture rows, so the objective strip stays for the checks below.
+                for(net.minecraft.scoreboard.Score score:new ArrayList<>(sideBoard.getSortedScores(sideObjective))){
+                    net.minecraft.scoreboard.ScorePlayerTeam holder=sideBoard.getPlayersTeam(score.getPlayerName());
+                    if(holder==null||!holder.getRegisteredName().startsWith("otl_side"))continue;
+                    sideBoard.removeObjectiveFromEntity(score.getPlayerName(),sideObjective);
+                    sideBoard.removePlayerFromTeam(score.getPlayerName(),holder);
+                }
+                sideBoard.removeTeam(sideBoard.getTeam("otl_side1"));
+                sideBoard.removeTeam(sideBoard.getTeam("otl_side2"));
+                sideBoard.removeTeam(sideBoard.getTeam("playerless"));
                 for(Objectives.Strip s:new Objectives.Strip[]{compact.leftStrip,compact.rightStrip}){
                     if(s==null)continue;
                     for(Objectives.Part part:s.parts)if(part.text!=null)

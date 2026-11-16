@@ -66,8 +66,8 @@ final class Objectives {
     }
 
     /** Every objective row under the clock, with its name, or null when there is none. */
-    static Strip strip(Minecraft mc,List<TeamBar.Side> sides){
-        List<Entry> entries=entries(TeamBar.sidebarRows(mc),names(sides));
+    static Strip strip(Minecraft mc,List<String> teams){
+        List<Entry> entries=entries(TeamBar.sidebarRows(mc),teams);
         List<List<Part>> rows=new ArrayList<>();
         for(Entry entry:entries){
             List<Part> named=new ArrayList<>();
@@ -83,8 +83,8 @@ final class Objectives {
      * two sides of the bar so each team's objectives sit beside the clock on that team's own side.
      * The caller gives the column of every team, since the bar decides which side a team is on.
      */
-    static Strip[] compact(Minecraft mc,List<TeamBar.Side> sides,Map<String,Integer> columns){
-        List<List<List<Part>>> rows=split(entries(TeamBar.sidebarRows(mc),names(sides)),columns);
+    static Strip[] compact(Minecraft mc,List<String> teams,Map<String,Integer> columns){
+        List<List<List<Part>>> rows=split(entries(TeamBar.sidebarRows(mc),teams),columns);
         // Half the screen each, so one busy side cannot swallow the other's room.
         int max=Math.max(24,new ScaledResolution(mc).getScaledWidth()/4);
         return new Strip[]{lay(mc,rows.get(0),max),lay(mc,rows.get(1),max)};
@@ -99,16 +99,12 @@ final class Objectives {
             List<Part> markers=new ArrayList<>();
             for(Part part:entry.parts)if(part.marker)markers.add(part);
             if(markers.isEmpty())continue;
+            // Same parity as the head columns: an even team goes left, an odd one right, so a
+            // third team or a team with nobody online cannot pile onto the wrong side.
             Integer column=entry.team==null?null:columns.get(MapInfo.norm(entry.team));
-            rows.get(column!=null&&column==1?1:0).add(markers);
+            rows.get(column!=null&&column%2==1?1:0).add(markers);
         }
         return rows;
-    }
-
-    private static List<String> names(List<TeamBar.Side> sides){
-        List<String> teams=new ArrayList<>();
-        for(TeamBar.Side side:sides)teams.add(side.name);
-        return teams;
     }
 
     /** The name of the compact objective at this point in the strip, or null. */
@@ -209,8 +205,8 @@ final class Objectives {
     }
 
     /**
-     * A goal row: its label first, then its state marker - a coloured wool square, or the progress
-     * number. PGM's tick and cross glyphs say nothing at this size, so they are dropped.
+     * A goal row: its state marker first, then its label, the same order PGM's sidebar uses. PGM's
+     * tick and cross glyphs say nothing at this size, so they are dropped from the named strip.
      */
     private static List<Part> goalRow(Line line,String text,Matcher goal){
         String status=goal.group(1);
@@ -218,7 +214,6 @@ final class Objectives {
         int state=status.length()==1?WOOL.indexOf(status.charAt(0)):-1;
         String name=label(goal.group(2));
         List<Part> parts=new ArrayList<>();
-        parts.add(new Part(name,TeamBar.WHITE,-1));
         // The wool square keeps the colour PGM gave the status, since that is the wool's own colour.
         if(state>=0)parts.add(new Part(null,TeamBar.chatColour(line.colourAt(at)),state,true,false,name));
         else if(!status.isEmpty()&&"\u2714\u2715".indexOf(status.charAt(0))<0)
@@ -227,6 +222,7 @@ final class Objectives {
             // A tick or a cross says nothing beside a name, but it is the goal's whole state when
             // the name is dropped, so it survives compact mode only.
             parts.add(new Part(status,TeamBar.chatColour(line.colourAt(at)),-1,true,true,name));
+        parts.add(new Part(name,TeamBar.WHITE,-1));
         return parts;
     }
 

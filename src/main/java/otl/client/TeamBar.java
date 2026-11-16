@@ -449,18 +449,21 @@ final class TeamBar {
         ScaledResolution scaled=new ScaledResolution(mc);
         int screen=scaled.getScaledWidth(),screenH=scaled.getScaledHeight();
         Objectives.Strip strip=null,leftStrip=null,rightStrip=null;
-        // Which side each team is on: the same fixed order the head columns use.
+        // Which side each team is on: the same fixed order the head columns use. Every match team
+        // gets a column, not just the ones with somebody online - PGM prints a team's objectives
+        // even when that team has nobody on it, and such a team still owns a side of the bar.
+        List<String> allTeams=teamNames(mc,sides,teamOrder);
         Map<String,Integer> columns=new HashMap<>();
-        for(int i=0;i<sides.size();i++){
-            int rank=teamRank(sides.get(i).name,teamOrder);
-            columns.put(MapInfo.norm(sides.get(i).name),rank<teamOrder.size()?rank:i);
+        for(int i=0;i<allTeams.size();i++){
+            int rank=teamRank(allTeams.get(i),teamOrder);
+            columns.put(MapInfo.norm(allTeams.get(i)),rank<teamOrder.size()?rank:i);
         }
         if(UtilitySettings.teamBarObjectives){
             if(UtilitySettings.teamBarObjectivesCompact){
                 // Compact: markers only, beside the clock on each team's own side.
-                Objectives.Strip[] beside=Objectives.compact(mc,sides,columns);
+                Objectives.Strip[] beside=Objectives.compact(mc,allTeams,columns);
                 leftStrip=beside[0];rightStrip=beside[1];
-            }else strip=Objectives.strip(mc,sides);
+            }else strip=Objectives.strip(mc,allTeams);
         }
         int beside=Math.max(leftStrip==null?0:leftStrip.width+OBJECTIVE_GAP,rightStrip==null?0:rightStrip.width+OBJECTIVE_GAP);
         int perRow=perRow(head,line(head,ffa),textW+2*beside,screen);
@@ -541,6 +544,35 @@ final class TeamBar {
         String key=MapInfo.norm(ChatRules.plain(name));
         for(int i=0;i<order.size();i++)if(key.equals(MapInfo.norm(ChatRules.plain(order.get(i)))))return i;
         return order.size();
+    }
+
+    /**
+     * Every match team's name, in the bar's fixed order: the teams with heads first, then the teams
+     * with nobody online. A team with no players draws no heads, but PGM still prints its
+     * objectives, so it still needs a side of its own instead of falling in with everyone else's.
+     */
+    static List<String> teamNames(Minecraft mc,List<Side> sides,List<String> order){
+        List<String> all=new ArrayList<>();
+        java.util.Set<String> seen=new java.util.HashSet<>();
+        for(Side side:sides)if(seen.add(MapInfo.norm(side.name)))all.add(side.name);
+        List<String> extra=new ArrayList<>();
+        if(mc.theWorld!=null){
+            try{
+                for(ScorePlayerTeam team:new ArrayList<>(mc.theWorld.getScoreboard().getTeams())){
+                    String name=team.getTeamName();
+                    if(name.contains("TabView")||OBSERVERS.matcher(ChatRules.plain(name)).matches())continue;
+                    if(seen.add(MapInfo.norm(name)))extra.add(name);
+                }
+            }catch(RuntimeException racing){
+                // Same netty race as sides(): the teams already found are still enough to place them.
+            }
+        }
+        extra.sort((a,b)->{
+            int rank=Integer.compare(teamRank(a,order),teamRank(b,order));
+            return rank!=0?rank:String.CASE_INSENSITIVE_ORDER.compare(a,b);
+        });
+        all.addAll(extra);
+        return all;
     }
 
     static void sortSides(List<Side> sides,List<String> order){
