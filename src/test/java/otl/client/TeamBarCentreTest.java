@@ -76,15 +76,38 @@ public class TeamBarCentreTest {
         assertCentred(bar,"uneven strips");
     }
 
-    @Test public void aTallStackIsCentredOnTheClock(){
-        // A side with several sidebar rows stacks downward, and the stack is centred on the clock's
-        // own row so the bar does not read as bottom-heavy.
+    @Test public void compactMarkersStayOnTheClocksRow(){
+        // Even when the bar is taller than one row, compact markers start beside the clock.
         TeamBar.Bar bar=bar(Collections.singletonList("A"),Collections.singletonList("B"),20,
             lines(strip(1,20),strip(1,20),strip(1,20)),lines(strip(1,20)));
         assertEquals(3*TeamBar.STRIP_LINE,bar.stripH);
-        assertEquals((bar.height-bar.stripH)/2,bar.stripY);
+        assertEquals((bar.band-(2*TeamBar.STRIP_LINE+Objectives.HEIGHT))/2,bar.stripTop(0));
+        assertEquals((bar.band-Objectives.HEIGHT)/2,bar.stripTop(1));
         assertTrue(bar.height>=bar.stripH);
         assertCentred(bar,"tall stack");
+    }
+
+    @Test public void twoCompactRowsShareTheHeadsAndClockCentreWhileTheOtherSideStaysSingle(){
+        TeamBar.Bar bar=bar(Collections.singletonList("A"),Collections.singletonList("B"),20,
+            lines(strip(2,30),strip(2,30)),lines(strip(2,12)));
+        int centre=bar.band/2;
+        assertEquals(centre,bar.stripTop(0)+(TeamBar.STRIP_LINE+Objectives.HEIGHT)/2);
+        assertEquals(centre,bar.stripTop(1)+Objectives.HEIGHT/2);
+        assertTrue(bar.stripTop(0)>=0);
+        assertTrue(bar.stripTop(0)+TeamBar.STRIP_LINE+Objectives.HEIGHT<=bar.band);
+        assertCentred(bar,"two compact rows");
+    }
+
+    @Test public void namedObjectivesStayBelowTheHeadsWithoutMovingThemApart(){
+        TeamBar.Bar plain=bar(Collections.singletonList("A"),Collections.singletonList("B"),20,null,null);
+        TeamBar.Bar named=new TeamBar.Bar(Collections.singletonList(Collections.singletonList("A")),
+            Collections.singletonList(Collections.singletonList("B")),16,20,null,"",7,
+            lines(strip(1,30),strip(2,60)),lines(strip(1,30),strip(2,60)),false);
+        assertTrue(named.stripY>=named.band);
+        assertEquals(plain.textX-plain.leftEnd,named.textX-named.leftEnd);
+        assertEquals(plain.rightX-plain.textX,named.rightX-named.textX);
+        assertEquals(named.width/2,named.textX+named.textW/2);
+        assertEquals(named.stripY+named.stripH,named.height);
     }
 
     @Test public void aBarWithNoObjectivesIsUnaffected(){
@@ -94,5 +117,23 @@ public class TeamBarCentreTest {
         assertTrue(bar.rightStrips.isEmpty());
         assertCentred(bar,"no objectives");
         assertEquals(bar.band,bar.height);
+    }
+
+    @Test public void controlPointsStayUnderTheirTeamOrExactlyUnderTheClock(){
+        for(boolean compact:new boolean[]{false,true}){
+            Objectives.Strip left=strip(2,60),right=strip(2,80),neutral=strip(2,101);
+            TeamBar.Bar bar=new TeamBar.Bar(Collections.singletonList(Collections.singletonList("A")),
+                Collections.singletonList(Collections.singletonList("B")),16,21,null,"",7,
+                lines(strip(1,12)),lines(strip(1,12)),compact,
+                Arrays.asList(lines(left),lines(right),lines(neutral,neutral)));
+            assertEquals(bar.width/2,bar.textX+bar.textW/2);
+            assertEquals(bar.width/2,bar.stripX(4,neutral)+neutral.width/2);
+            assertEquals(bar.leftEnd,bar.stripX(2,left)+left.width);
+            assertEquals(bar.rightX,bar.stripX(3,right));
+            assertTrue(bar.pointY>=bar.band);
+            assertTrue(bar.stripTop(4)>=bar.stripTop(2)+TeamBar.STRIP_LINE);
+            assertEquals(bar.stripTop(4)+2*TeamBar.STRIP_LINE,bar.height);
+            assertTrue(bar.stripX(2,left)>=0);assertTrue(bar.stripX(3,right)+right.width<=bar.width);
+        }
     }
 }

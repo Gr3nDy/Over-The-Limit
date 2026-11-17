@@ -1,5 +1,29 @@
 # Changelog
 
+## v0.6.1 - 2026-11-17
+
+### Added
+- **Team Bar head actions** — with chat open, click a player's head for View Profile (`https://oc.tc/PlayerName`, after a link-confirmation warning), Teleport to player (`/tp PlayerName`), Add Friend (`/friend add PlayerName`), or Message player, which opens that player's private chat tab. Menus follow the head, stay on screen, close when chat closes, and leave teleport/friend permissions to the server.
+- **Team Bar symbolic scores** — read PGM's circle, square, heart and pipe score displays as live numeric team scores, including Tom Brady-style Touchdown maps. Match each row's team-coloured arrow to its actual team; unknown/ambiguous teams are not guessed. Works with control point tracking disabled too.
+- **Two-row compact objectives** — one to three markers keep their existing layout; four or more form two balanced horizontal rows aligned vertically with the player's heads and clock.
+- **Team Bar: Control point tracking** (ON by default) — neutral control points and their capture progress are centred below the clock. Captured points appear below their controlling team's side and stay there during enemy capture attempts until PGM changes the point label's owner colour. Supports multiple points, retains live text colours/icons, and can be disabled per profile.
+- **Score display option** — a symbolic score can show as text (`2/5`), a horizontal bar, or a vertical bar. A bar fills with the team's colour toward the confirmed target and shows the number on hover; maps with no confirmed target keep the `2 pts` text.
+
+### Fixed
+- **Symbolic score targets** — show current/target when unfilled scoreboard slots confirm a target, retain that confirmed target through the final point, and clear it on a new match. Without a confirmed target, show points beside the normal clock instead of inventing a first-to score; supports zero-point time-based rows too.
+- **Pre-match Team Bar clock** — gold while waiting for the match and during its start countdown; live-match timer colours are unchanged.
+- **Hide arrow particles only worked on other players' arrows** — three separate gaps: the critical-hit flag was cleared at tick *end* (a tick after your own bow's sparkle had already been rendered), the particle filter was installed once and lost when Minecraft rebuilds its effect renderer on a world change, and server-broadcast sparkle packets were never filtered. The flag now clears at tick start, the filter reinstalls with each renderer, and matching crit-sparkle packets are dropped as well.
+- **Owned control-point layout** — site names fill horizontally beneath their team's heads before wrapping onto another row; neutral-point height is unchanged.
+- **Neutral point progress ordering** — the percentage leans toward the side of the team capturing the point (percentage first for a left-column team, name first for a right-column team), so the live progress sits on that team's own side of the clock.
+- **Team Bar scoreboard text colours** — preserve colour changes inside score fractions, progress and objective names in both modes, including PGM's white current score, dark-grey slash and grey target score.
+- **Custom Votebook missing player skins** — use player-list profiles for stats portraits when players are outside world-render distance. Keep previews while the GUI is open, allow pending skins/slim models to update, and match full account names instead of partial names. Loaded players still supply their available equipment.
+- **Team Bar objective layout** — compact markers stay beside the clock; named objectives stay below their team name, mirrored as `Name [icon]` on the left and `[icon] Name` on the right.
+- **Missing icons and cut-off names** — both modes keep the scoreboard's live state icon and colour. Non-compact names are kept in full and wrap when necessary instead of being shortened or dropped.
+- **Part-destroyed monuments were dropped entirely** — PGM's touch glyph (`✳`) was not a recognised state, so a DTM monument someone had started breaking disappeared from the strip until it was finished. That state now shows like PGM's ✔/✕, and a destroyable's precise breaks (`55% 11/20`) stay with the state instead of being read as part of the monument's name.
+- **Objective team grouping** — always follow the live scoreboard's team blocks, including multiple objectives and opposing-colour wool names. Objective names, colours and map XML no longer override the scoreboard grouping. Rows outside any team block are not guessed onto the left.
+- **Objectives disappearing on PGM** — normalize formatting prefixes in live team display names before matching scoreboard headers, keeping every objective in the matching team block.
+- **Normal Team Bar clock** — green instead of white; countdown and warning colours are unchanged.
+
 ## v0.6.0 - 2026-11-16
 
 ### Added

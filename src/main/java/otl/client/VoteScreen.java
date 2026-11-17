@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Locale;
 import java.util.UUID;
 import net.minecraft.client.entity.EntityOtherPlayerMP;
+import net.minecraft.client.network.NetworkPlayerInfo;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.inventory.GuiInventory;
@@ -37,6 +38,7 @@ final class VoteScreen extends GuiScreen {
     /** The exact name drawn per stat slot, for the smoke check. */
     private final String[] drawnName=new String[ROW.length];
     private boolean supervoteUsed,superReady;
+    private final java.util.Map<UUID,EntityPlayer> playerPreviews=new java.util.HashMap<>();
     /** Hover box and tie count per stat slot: {x0,y0,x1,y1,extra,slot}. */
     private final int[][] names=new int[ROW.length][];
     /** Row indices that have data this cycle, in ROW order. */
@@ -147,7 +149,7 @@ final class VoteScreen extends GuiScreen {
             int room=spacing-6;
             String local=mc.thePlayer==null?null:mc.thePlayer.getName();
             int pick=stat==null||stat.names.isEmpty()?0:VoteBook.pick(stat.names,local);
-            EntityPlayer player=stat==null||stat.names.isEmpty()?null:VoteBook.findPlayer(stat.names.get(pick));
+            EntityPlayer player=stat==null||stat.names.isEmpty()?null:player(stat.names.get(pick));
             GuiInventory.drawEntityOnScreen(cx,feetY,headScale,0,0,player!=null?player:placeholder());
             if(stat!=null&&!stat.names.isEmpty()){
                 int extra=stat.names.size()-1;
@@ -243,6 +245,33 @@ final class VoteScreen extends GuiScreen {
     }
 
     private static final ResourceLocation STEVE=new ResourceLocation("textures/entity/steve.png");
+    /** Player-list profiles/skins exist even when a player's world entity is out of range. */
+    EntityPlayer player(String displayedName){
+        EntityPlayer loaded=VoteBook.findPlayer(displayedName);
+        if(loaded!=null)return loaded;
+        String name=VoteBook.accountName(displayedName);
+        if(name==null||mc.theWorld==null)return null;
+        if(mc.getNetHandler()!=null)for(final NetworkPlayerInfo info:mc.getNetHandler().getPlayerInfoMap()){
+            GameProfile profile=info.getGameProfile();
+            if(!name.equalsIgnoreCase(profile.getName()))continue;
+            EntityPlayer preview=playerPreviews.get(profile.getId());
+            if(preview==null||preview.worldObj!=mc.theWorld){
+                preview=new EntityOtherPlayerMP(mc.theWorld,profile){
+                    @Override public ResourceLocation getLocationSkin(){return info.getLocationSkin();}
+                    @Override public String getSkinType(){return info.getSkinType();}
+                    @Override public int getBrightnessForRender(float partialTicks){return 15728880;}
+                };
+                preview.setAlwaysRenderNameTag(false);
+                playerPreviews.put(profile.getId(),preview);
+            }
+            return preview;
+        }
+        // Keep a profile already seen by this screen if its owner leaves the player list.
+        for(EntityPlayer preview:playerPreviews.values())
+            if(preview.worldObj==mc.theWorld&&name.equalsIgnoreCase(preview.getName()))return preview;
+        return null;
+    }
+
     private EntityPlayer placeholder;
     /** Default Steve player model for a player who is not in the world yet. */
     private EntityPlayer placeholder(){

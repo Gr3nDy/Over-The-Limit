@@ -2,9 +2,9 @@
 
 ![OVER THE LIMIT](docs/assets/otl-banner.svg)
 
-![beta](https://img.shields.io/badge/branch-beta-orange) ![release](https://img.shields.io/badge/release-v0.5.0-blue) ![Minecraft](https://img.shields.io/badge/Minecraft-1.8.9-green)
+![beta](https://img.shields.io/badge/branch-beta-orange) ![release](https://img.shields.io/badge/release-v0.6.1-blue) ![Minecraft](https://img.shields.io/badge/Minecraft-1.8.9-green)
 
-**Over The Limit (OTL)** is a client-side Forge 1.8.9 mod for the Overcast Community server. Press **P** for the HUD editor and modules (rebind or unbind Mod Menu in Controls); Face Rig is available from Mods. [Download the release](https://github.com/Gr3nDy/Over-The-Limit/releases/tag/v0.5.0) · [Wiki](docs/WIKI.md) · [What's new](CHANGELOG.md)
+**Over The Limit (OTL)** is a client-side Forge 1.8.9 mod for the Overcast Community server. Press **P** for the HUD editor and modules (rebind or unbind Mod Menu in Controls); Face Rig is available from Mods. [Download the release](https://github.com/Gr3nDy/Over-The-Limit/releases/tag/v0.6.1) · [Wiki](docs/WIKI.md) · [What's new](CHANGELOG.md)
 
 ## Modules
 
@@ -14,7 +14,7 @@
 | **Reliable Chat** | Adds channel/PM tabs, drafts, scrollable history and optional team speech bubbles. |
 | **Map Preview** | Shows book/chat map previews, a searchable gallery and `/map` info cards. |
 | **Custom Votebook** | Replaces the vote book with map cards, Supervote, match stats and a match link. |
-| **Team Bar** | One row of heads per team at the top centre, stacked, with the match clock in the middle and PGM's objectives - wools, goals and scores - beside it on each team's own side; hover a head or a marker for its name. |
+| **Team Bar** | Team heads around a centred match clock. Named objectives sit below the same team name as in the live scoreboard; compact markers sit on that team's side beside the clock. Icons and progress stay live. Hover a head or marker for its name. |
 | **Prefered Hand** | Visually chooses the first-person hand for items, blocks, tools or weapons. |
 | **Kill Feed** | Displays deaths, causes and weapons with a configurable HUD and history. |
 | **Kill Confirm** | Shows queued kill tags, streaks and immediate EXP feedback. |

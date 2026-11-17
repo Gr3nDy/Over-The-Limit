@@ -1,6 +1,5 @@
 package otl.client;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -11,13 +10,33 @@ import static org.junit.Assert.*;
 public class ObjectivesTest {
     private static final List<String> TEAMS=Arrays.asList("red","blue");
 
-    /** What the named strip shows for a row: everything except the compact-only markers. */
+    @Test public void compactMarkersKeepSmallLayoutAndBalanceLargerGroupsIntoExactlyTwoRows(){
+        for(int count=0;count<=12;count++){
+            List<List<Objectives.Part>> entries=new java.util.ArrayList<>();
+            for(int i=0;i<count;i++)entries.add(Collections.singletonList(new Objectives.Part(null,TeamBar.WHITE,0,true,"Goal "+i)));
+            List<List<List<Objectives.Part>>> rows=Objectives.compactRows(entries);
+            assertEquals(count>3?2:1,rows.size());
+            if(count<=3)assertSame(entries,rows.get(0));
+            List<Objectives.Part> recovered=new java.util.ArrayList<>();
+            for(List<List<Objectives.Part>> row:rows)for(List<Objectives.Part> entry:row)recovered.addAll(entry);
+            assertEquals(count,recovered.size());
+            for(int i=0;i<count;i++)assertEquals("Goal "+i,recovered.get(i).name);
+            if(count>3){
+                assertEquals((count+1)/2,rows.get(0).get(0).size());
+                assertEquals(count/2,rows.get(1).get(0).size());
+            }
+        }
+        List<Objectives.Part> wools=Arrays.asList(new Objectives.Part(null,TeamBar.WHITE,0,true),
+            new Objectives.Part(null,TeamBar.WHITE,1,true),new Objectives.Part(null,TeamBar.WHITE,2,true),
+            new Objectives.Part(null,TeamBar.WHITE,0,true));
+        assertEquals(2,Objectives.compactRows(Collections.singletonList(wools)).size());
+    }
+
+    /** Parsed state and name before left/right mirroring. */
     private static List<Objectives.Part> one(String row){
         List<Objectives.Entry> entries=Objectives.entries(Collections.singletonList(row),TEAMS);
         assertEquals("row was not read as an objective: "+row,1,entries.size());
-        List<Objectives.Part> named=new ArrayList<>();
-        for(Objectives.Part part:entries.get(0).parts)if(!part.beside)named.add(part);
-        return named;
+        return entries.get(0).parts;
     }
 
     private static String teamOf(String row){
@@ -46,7 +65,7 @@ public class ObjectivesTest {
         assertEquals(0,parts.get(0).state);
         assertEquals(TeamBar.chatColour('f'),parts.get(0).colour);
         assertEquals("Red Wool",parts.get(1).text);
-        assertEquals(TeamBar.WHITE,parts.get(1).colour);
+        assertEquals(TeamBar.chatColour('c'),parts.get(1).colour);
     }
 
     @Test public void scoreRowsKeepPgmOrderWithTheTeamsOwnColour(){
@@ -58,12 +77,40 @@ public class ObjectivesTest {
         assertEquals("3/10",one("\u00a7f3/10 \u00a79Blue").get(0).text);
     }
 
-    @Test public void aGoalIsItsProgressThenItsNameWithNoTickOrCross(){
-        // PGM's tick and cross say nothing at this size, so only the name is drawn.
+    @Test public void pgmScoreKeepsWhiteCurrentDarkGreySlashAndGreyLimitInBothModes(){
+        java.util.Map<String,Integer> columns=new java.util.HashMap<>();
+        columns.put("red",0);columns.put("blue",1);
+        for(boolean compact:new boolean[]{false,true}){
+            List<List<List<Objectives.Part>>> sides=Objectives.split(Objectives.entries(Arrays.asList(
+                "\u00a7f340\u00a78/\u00a77750 \u00a7cRed",
+                "\u00a7f254 \u00a78/\u00a77750 \u00a79Blue"),TEAMS),columns,compact);
+            Objectives.Part left=sides.get(0).get(0).get(compact?0:1),right=sides.get(1).get(0).get(0);
+            assertEquals("340\u00a78/\u00a77750",left.text);
+            assertEquals("254 \u00a78/\u00a77750",right.text);
+            assertEquals(TeamBar.WHITE,left.colour);assertEquals(TeamBar.WHITE,right.colour);
+            if(!compact){
+                assertEquals(TeamBar.chatColour('c'),sides.get(0).get(0).get(0).colour);
+                assertEquals(TeamBar.chatColour('9'),sides.get(1).get(0).get(1).colour);
+            }
+        }
+        assertEquals("1234\u00a78/\u00a771500",one("\u00a7f1234\u00a78/\u00a771500 \u00a7cRed").get(0).text);
+    }
+
+    @Test public void objectiveNamesAndProgressKeepColourChangesInsideTheirText(){
+        List<Objectives.Part> parts=one("\u00a7e50% \u00a7712% \u00a7cNorth \u00a79Monument");
+        assertEquals("50% \u00a7712%",parts.get(0).text);
+        assertEquals(TeamBar.chatColour('e'),parts.get(0).colour);
+        assertEquals("North \u00a79Monument",parts.get(1).text);
+        assertEquals(TeamBar.chatColour('c'),parts.get(1).colour);
+    }
+
+    @Test public void aGoalKeepsTheScoreboardsIconAndName(){
         List<Objectives.Part> done=one("\u00a7a\u2714 \u00a7fNorth Monument");
-        assertEquals(1,done.size());
-        assertEquals("North Monument",done.get(0).text);
-        assertEquals(1,one("\u00a7c\u2715 \u00a7fSouth Monument").size());
+        assertEquals(2,done.size());
+        assertEquals("\u2714",done.get(0).text);
+        assertEquals(TeamBar.chatColour('a'),done.get(0).colour);
+        assertEquals("North Monument",done.get(1).text);
+        assertEquals("\u2715",one("\u00a7c\u2715 \u00a7fSouth Monument").get(0).text);
         // Progress is text, not an icon, but it still leads the name, as PGM prints it.
         List<Objectives.Part> progress=one("\u00a7e50% \u00a7fSouth Monument");
         assertEquals("50%",progress.get(0).text);
@@ -71,11 +118,92 @@ public class ObjectivesTest {
         assertEquals("South Monument",progress.get(1).text);
     }
 
-    @Test public void aLongGoalNameIsShortened(){
+    @Test public void aDestroyableKeepsEveryStateItShowsBeforeItIsFinished(){
+        // PGM's touch glyph: a monument someone has broken blocks of but not destroyed.
+        List<Objectives.Part> touched=one("\u00a7e\u2733 \u00a7fNorth Monument");
+        assertEquals(2,touched.size());
+        assertEquals("\u2733",touched.get(0).text);
+        assertTrue(touched.get(0).marker);
+        assertEquals(TeamBar.chatColour('e'),touched.get(0).colour);
+        assertEquals("North Monument",touched.get(1).text);
+        // Progress shown as a percentage plus the precise breaks: both belong to the state, not the name.
+        List<Objectives.Part> precise=one("\u00a7e55% \u00a7755/100 \u00a7fNorth Monument");
+        assertEquals("55% \u00a7755/100",precise.get(0).text);
+        assertEquals("North Monument",precise.get(1).text);
+        assertTrue(precise.get(0).marker);
+        List<Objectives.Part> fraction=one("\u00a7e55% \u00a7711/20 \u00a7fSouth Monument");
+        assertEquals("55% \u00a7711/20",fraction.get(0).text);
+        assertEquals("South Monument",fraction.get(1).text);
+    }
+
+    @Test public void aLongGoalNameIsKeptInFull(){
         List<Objectives.Part> parts=one("\u00a7c\u2715 \u00a7fThe Very Long Monument Name");
-        assertEquals(1,parts.size());
-        assertTrue(parts.get(0).text.length()<=14);
-        assertTrue(parts.get(0).text.startsWith("The Very Long"));
+        assertEquals(2,parts.size());
+        assertEquals("The Very Long Monument Name",parts.get(1).text);
+    }
+
+    @Test public void iconChangesReachBothModesFromTheLatestScoreboardRows(){
+        java.util.Map<String,Integer> columns=new java.util.HashMap<>();
+        columns.put("blue",1);
+        for(boolean compact:new boolean[]{false,true}){
+            for(String icon:new String[]{"\u2715","\u2714","\u2715"}){
+                String colour="\u2714".equals(icon)?"\u00a7a":"\u00a7c";
+                List<List<List<Objectives.Part>>> rows=Objectives.split(Objectives.entries(
+                    Arrays.asList("Blue",colour+icon+" Red Monument"),TEAMS),columns,compact);
+                Objectives.Part marker=rows.get(1).get(compact?0:1).get(0);
+                assertEquals(icon,marker.text);
+                assertEquals(TeamBar.chatColour(colour.charAt(1)),marker.colour);
+                assertTrue(marker.marker);
+            }
+        }
+    }
+
+    @Test public void multipleObjectivesStayInTheirScoreboardBlocksInEitherColumnOrder(){
+        for(boolean compact:new boolean[]{false,true})for(boolean reversed:new boolean[]{false,true}){
+            java.util.Map<String,Integer> columns=new java.util.HashMap<>();
+            columns.put("red",reversed?1:0);columns.put("blue",reversed?0:1);
+            // Name/status colours contradict the team headers deliberately.
+            List<Objectives.Entry> goals=Objectives.entries(Arrays.asList(
+                "Red", "\u00a7e74% \u00a79North Monument", "\u00a7a100% \u00a79South Monument",
+                "Blue", "\u00a7c0% \u00a7cNorth Monument", "\u00a7c0% \u00a7cSouth Monument"),TEAMS);
+            assertEquals(6,goals.size());
+            assertEquals("red",goals.get(1).team);assertEquals("red",goals.get(2).team);
+            assertEquals("blue",goals.get(4).team);assertEquals("blue",goals.get(5).team);
+            List<List<List<Objectives.Part>>> sides=Objectives.split(goals,columns,compact);
+            assertEquals(compact?2:3,sides.get(0).size());assertEquals(compact?2:3,sides.get(1).size());
+            for(int side=0;side<2;side++){
+                boolean red=side==columns.get("red");
+                for(List<Objectives.Part> row:sides.get(side).subList(compact?0:1,sides.get(side).size())){
+                    Objectives.Part marker=row.get(compact||side==1?0:1);
+                    assertEquals(red?("North Monument".equals(marker.name)?"74%":"100%"):"0%",marker.text);
+                }
+            }
+            List<Objectives.Entry> changed=Objectives.entries(Arrays.asList(
+                "Red", "\u00a7a\u2714 \u00a79North Monument", "Blue", "\u00a7c\u2715 \u00a7cNorth Monument"),TEAMS);
+            assertEquals("red",changed.get(1).team);assertEquals("blue",changed.get(3).team);
+        }
+    }
+
+    @Test public void scoreboardHeadersOverrideContradictoryMonumentColours(){
+        List<Objectives.Entry> goals=Objectives.entries(Arrays.asList(
+            "Red", "\u00a7a100% \u00a79North Monument", "\u00a7c0% \u00a79South Monument",
+            "Blue", "\u00a7e74% \u00a7cNorth Monument", "\u00a7a\u2714 \u00a7cSouth Monument"),TEAMS);
+        assertEquals("red",goals.get(1).team);assertEquals("red",goals.get(2).team);
+        assertEquals("blue",goals.get(4).team);assertEquals("blue",goals.get(5).team);
+    }
+
+    @Test public void namedMonumentsKeepScoreboardIconsOnBothMirroredSides(){
+        java.util.Map<String,Integer> columns=new java.util.HashMap<>();
+        columns.put("red",0);columns.put("blue",1);
+        List<List<List<Objectives.Part>>> rows=Objectives.split(Objectives.entries(Arrays.asList(
+            "Red", "\u00a7c\u2715 Red Monument", "Blue", "\u00a7a\u2714 Blue Monument"),TEAMS),columns,false);
+        List<Objectives.Part> left=rows.get(0).get(1),right=rows.get(1).get(1);
+        assertEquals("Red Monument",left.get(0).text);
+        assertEquals("\u2715",left.get(1).text);
+        assertEquals(TeamBar.chatColour('c'),left.get(1).colour);
+        assertEquals("\u2714",right.get(0).text);
+        assertEquals(TeamBar.chatColour('a'),right.get(0).colour);
+        assertEquals("Blue Monument",right.get(1).text);
     }
 
     @Test public void aTeamNameAboveItsGoalsIsKeptSoWoolsStayAttributable(){
@@ -116,7 +244,7 @@ public class ObjectivesTest {
     @Test public void goalsBelongToTheTeamNamedAboveThem(){
         // PGM prints a team name, then that team's goals: that is how a compact marker is attributed.
         List<Objectives.Entry> entries=Objectives.entries(
-            Arrays.asList("\u00a7cRed"," \u00a7c\u2B1C \u00a79\u2592","\u00a7a\u2714 \u00a7fNorth Monument","\u00a79Blue","\u00a7f12 \u00a79Blue"),TEAMS);
+            Arrays.asList("\u00a7cRed"," \u00a7c\u2B1C \u00a79\u2592","\u00a7a\u2714 \u00a7cNorth Monument","\u00a79Blue","\u00a7f12 \u00a79Blue"),TEAMS);
         assertEquals(5,entries.size());
         assertEquals("red",entries.get(1).team);
         assertEquals("red",entries.get(2).team);
@@ -124,19 +252,17 @@ public class ObjectivesTest {
         assertEquals("blue",entries.get(4).team);
     }
 
-    @Test public void goalsBeforeTheirTeamNameStillBelongToThatTeam(){
-        // A sidebar that prints the first team's goals above its name left those rows with no
-        // team at all, and every one of them landed on the left side of the clock.
+    @Test public void goalsBeforeTheFirstTeamHeaderAreNotAssignedToAFutureBlock(){
         List<Objectives.Entry> entries=Objectives.entries(Arrays.asList(
             "\u00a7f\u2B1C \u00a7cRed Wool","\u00a7cRed",
             "\u00a79Blue","\u00a7f\u2592 \u00a79Blue Wool"),TEAMS);
         assertEquals(4,entries.size());
-        assertEquals("red",entries.get(0).team);
+        assertNull(entries.get(0).team);
         // A row under a header still takes that header, not the one below it.
         assertEquals("blue",entries.get(3).team);
     }
 
-    @Test public void aRowWithNoTeamAtAllIsStillPlaced(){
+    @Test public void aRowWithNoTeamAtAllStaysUnattributed(){
         // Nothing in this sidebar names a team, so nothing can say whose the goals are; they must
         // not silently pile onto one side.
         List<Objectives.Entry> entries=Objectives.entries(
@@ -174,6 +300,20 @@ public class ObjectivesTest {
         assertEquals("red",rows.get(1).get(0).get(0).name);
     }
 
+    @Test public void monumentNamesNeverOverrideTheirScoreboardHeader(){
+        List<Objectives.Entry> entries=Objectives.entries(Arrays.asList(
+            "Red", "\u2714 Blue Monument", "\u2715 Red Monument"),TEAMS);
+        assertEquals("red",entries.get(1).team);
+        assertEquals("red",entries.get(2).team);
+        java.util.Map<String,Integer> columns=new java.util.HashMap<>();
+        columns.put("blue",0);columns.put("red",1);
+        List<List<List<Objectives.Part>>> compact=Objectives.split(entries,columns,true);
+        assertTrue(compact.get(0).isEmpty());
+        assertEquals("Blue Monument",compact.get(1).get(0).get(0).name);
+        assertEquals("Red Monument",compact.get(1).get(1).get(0).name);
+        assertEquals("blue",Objectives.entries(Arrays.asList("Blue","\u2714 Redstone Vault"),TEAMS).get(1).team);
+    }
+
     @Test public void theIconsHugTheClockOnBothSides(){
         // The left strip is right-aligned against the clock and the right one left-aligned, so a
         // mirrored order puts the state markers nearest the time on both sides.
@@ -195,7 +335,7 @@ public class ObjectivesTest {
 
     @Test public void compactKeepsOnlyMarkersOnTheirOwnTeamsSide(){
         List<Objectives.Entry> entries=Objectives.entries(Arrays.asList(
-            "\u00a7cRed"," \u00a7c\u2B1C \u00a79\u2592","\u00a7a\u2714 \u00a7fNorth Monument",
+            "\u00a7cRed"," \u00a7c\u2B1C \u00a79\u2592","\u00a7a\u2714 \u00a7cNorth Monument",
             "\u00a79Blue","\u00a7f12 \u00a79Blue"),TEAMS);
         java.util.Map<String,Integer> columns=new java.util.HashMap<>();
         columns.put("red",0);columns.put("blue",1);
@@ -219,14 +359,69 @@ public class ObjectivesTest {
 
     @Test public void aCompactGoalKeepsItsNameForTheTooltip(){
         List<Objectives.Entry> entries=Objectives.entries(
-            Collections.singletonList("\u00a7a\u2714 \u00a7fNorth Monument"),TEAMS);
+            Arrays.asList("Red","\u00a7a\u2714 \u00a7cNorth Monument"),TEAMS);
         java.util.Map<String,Integer> columns=new java.util.HashMap<>();
+        columns.put("red",0);
         List<List<List<Objectives.Part>>> rows=Objectives.split(entries,columns,true);
         assertEquals("a completed goal vanished from compact mode",1,rows.get(0).size());
         Objectives.Part marker=rows.get(0).get(0).get(0);
         assertEquals("North Monument",marker.name);
-        // The tick is the goal's state, so it is drawn beside the clock but never in the named strip.
+        // The scoreboard's actual tick survives in both modes.
         assertEquals("\u2714",marker.text);
-        assertTrue(marker.beside);
+    }
+
+    @Test public void privateMapWithoutOwnershipEvidenceDoesNotDumpGoalsOnTheLeft(){
+        List<Objectives.Entry> entries=Objectives.entries(Collections.singletonList("\u00a7c0% \u00a7fMonument"),TEAMS);
+        java.util.Map<String,Integer> columns=new java.util.HashMap<>();
+        columns.put("red",0);columns.put("blue",1);
+        for(boolean compact:new boolean[]{false,true}){
+            List<List<List<Objectives.Part>>> sides=Objectives.split(entries,columns,compact);
+            assertTrue(sides.get(0).isEmpty());assertTrue(sides.get(1).isEmpty());
+        }
+    }
+
+    @Test public void screenshotBlueGetsRedWoolAndRedGetsBlueWoolInBothModes(){
+        java.util.Map<String,Integer> columns=new java.util.HashMap<>();
+        columns.put("red",0);columns.put("blue",1);
+        for(int state=0;state<3;state++)for(boolean compact:new boolean[]{false,true}){
+            List<Objectives.Entry> entries=Objectives.entries(Arrays.asList(
+                "\u00a79Blue", "\u00a7c"+Objectives.WOOL.charAt(state)+" \u00a7fRed Wool",
+                "\u00a7cRed", "\u00a79"+Objectives.WOOL.charAt(0)+" \u00a7fBlue Wool"),TEAMS);
+            assertEquals("blue",entries.get(1).team);assertEquals("red",entries.get(3).team);
+            List<List<List<Objectives.Part>>> rows=Objectives.split(entries,columns,compact);
+            List<Objectives.Part> red=rows.get(0).get(compact?0:1),blue=rows.get(1).get(compact?0:1);
+            Objectives.Part redMarker=red.get(compact?0:1),blueMarker=blue.get(0);
+            assertEquals("Blue Wool",redMarker.name);assertEquals("Red Wool",blueMarker.name);
+            assertEquals(TeamBar.chatColour('9'),redMarker.colour);
+            assertEquals(TeamBar.chatColour('c'),blueMarker.colour);
+            assertEquals(0,redMarker.state);assertEquals(state,blueMarker.state);
+            if(!compact){assertEquals("Blue Wool",red.get(0).text);assertEquals("Red Wool",blue.get(1).text);}
+        }
+    }
+
+    @Test public void livePgmPrefixedTeamNamesKeepAllObjectivesInBothModes(){
+        for(String prefix:new String[]{"\u00ba","\u00a7"}){
+            String red=prefix+"cRed",blue=prefix+"9Blue";
+            List<String> teams=Arrays.asList(red,blue);
+            java.util.Map<String,Integer> columns=new java.util.HashMap<>();
+            columns.put(MapInfo.norm(red),0);columns.put(MapInfo.norm(blue),1);
+            List<Objectives.Entry> entries=Objectives.entries(Arrays.asList(
+                "\u00a79Blue", "\u00a7c\u2592 \u00a7fRed Wool", "\u00a7e74% \u00a7fNorth Monument",
+                "\u00a7cRed", "\u00a79\u2B1C \u00a7fBlue Wool", "\u00a7a\u2714 \u00a7fSouth Monument"),teams);
+            assertEquals(6,entries.size());
+            assertEquals(blue,entries.get(1).team);assertEquals(blue,entries.get(2).team);
+            assertEquals(red,entries.get(4).team);assertEquals(red,entries.get(5).team);
+            for(boolean compact:new boolean[]{false,true}){
+                List<List<List<Objectives.Part>>> sides=Objectives.split(entries,columns,compact);
+                assertEquals(compact?2:3,sides.get(0).size());
+                assertEquals(compact?2:3,sides.get(1).size());
+                List<Objectives.Part> redWool=sides.get(1).get(compact?0:1);
+                assertEquals("Red Wool",redWool.get(0).name);
+                assertEquals(1,redWool.get(0).state);
+            }
+        }
+        assertTrue(Objectives.sameTeam("Marley","\u00bacMarley"));
+        assertTrue(Objectives.sameTeam("Eldia","\u00ba9Eldia"));
+        assertFalse(Objectives.sameTeam("Blue Wool","\u00ba9Blue"));
     }
 }

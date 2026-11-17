@@ -7,6 +7,16 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class VoteBookTest {
+    @Test public void previewUsesTheExactAccountAfterRankAndChatDecorations(){
+        assertEquals("Far_Player",VoteBook.accountName("\u00a76[MOD] \u00a7cFar_Player \u00a77(You: 12)"));
+        assertEquals("Far_Player",VoteBook.accountName("Far_Player"));
+        assertEquals("NotFar_Player",VoteBook.accountName("[VIP] NotFar_Player"));
+        assertNull(VoteBook.accountName(null));
+        assertNull(VoteBook.accountName(""));
+        assertNull(VoteBook.accountName("[MOD]"));
+        assertNull(VoteBook.accountName("ThisNameIsLongerThanSixteen"));
+    }
+
     @Before public void clear() {
         VoteBook.INSTANCE.reset();
     }

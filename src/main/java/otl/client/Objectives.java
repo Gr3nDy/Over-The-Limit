@@ -21,12 +21,84 @@ import net.minecraft.client.gui.FontRenderer;
 final class Objectives {
     /** Square size and spacing; the strip is exactly one text line tall. */
     static final int ICON=7,SPACE=2,ENTRY_GAP=8,HEIGHT=8;
+    /** Score bar sizes: horizontal beside a name, vertical in place of the number. */
+    static final int BAR_W=24,BAR_H=5,BAR_VW=5,BAR_VH=10;
     /** PGM's wool state glyphs in order: untouched, picked up, placed. */
     static final String WOOL="\u2B1C\u2592\u2B1B";
     /** PGM's score row: "5", "5/10", then the team's display name. */
-    private static final Pattern SCORE=Pattern.compile("^(\\d{1,3})(?:/(\\d{1,3}))?\\s+(\\S.*)$");
-    /** PGM's goal row: a status glyph, a progress fraction or a percentage, then the goal's name. */
-    private static final Pattern GOAL=Pattern.compile("^((?:\\u2714|\\u2715|[\\u2B1C\\u2592\\u2B1B]|\\d{1,3}/\\d{1,3}%?|\\d{1,3}%)(?:\\s+\\d{1,3}%)?)\\s+(\\S.*)$");
+    private static final Pattern SCORE=Pattern.compile("^(\\d+)(?:\\s*/\\s*(\\d+))?\\s+(\\S.*)$");
+    /**
+     * PGM's goal row: a status glyph, a progress fraction or percentage, then the goal's name.
+     * A destroyable prints the precise breaks after its percentage ("55% 11/20"), and a touched
+     * monument prints PGM's touch glyph (U+2733) until the progress display takes over.
+     */
+    private static final Pattern GOAL=Pattern.compile("^((?:\\u2714|\\u2715|\\u2733|[\\u29BE\\u29BF\\u2B1C\\u2592\\u2B1B]|\\d{1,3}/\\d{1,3}%?|\\d{1,3}%)(?:\\s+(?:\\d{1,3}%|\\d{1,3}/\\d{1,3}))?)\\s+(\\S.*)$");
+
+    static final class ScoreTracker {
+        int limit=-1;
+        void clear(){limit=-1;}
+        void observe(List<String> rows,Map<Character,String> colours){
+            int seen=-1;
+            for(String row:rows){
+                int[] score=TouchdownCard.scoreRow(row);
+                if(score==null||!colours.containsKey((char)score[0])||score[2]<=score[1])continue;
+                // Only grey, unfilled slots prove a target; filled symbols alone do not.
+                if(seen>0&&seen!=score[2]){limit=-1;return;}
+                seen=score[2];
+            }
+            if(seen>0)limit=seen;
+        }
+        String label(int points){return limit>0?points+"\u00a78/\u00a77"+limit:points+" pts";}
+        /** Scored share of a confirmed target; negative when there is no target to fill. */
+        float fraction(int points){return limit>0?Math.min(1F,(float)points/limit):-1F;}
+    }
+
+    /** PGM keeps the controller in the label colour even while another team captures the point. */
+    static final class PointTracker {
+        final java.util.Set<String> names=new java.util.HashSet<>();
+        final Map<Character,String> colours=new java.util.HashMap<>();
+        boolean pointMode;
+        void clear(){names.clear();colours.clear();pointMode=false;}
+        void prepare(Minecraft mc,Map<Character,String> palette){
+            colours.clear();
+            colours.putAll(palette);
+            if(mc.theWorld==null){pointMode=false;return;}
+            net.minecraft.scoreboard.Scoreboard board=mc.theWorld.getScoreboard();
+            net.minecraft.scoreboard.ScoreObjective sidebar=board.getObjectiveInDisplaySlot(1);
+            String title=sidebar==null?"":MapInfo.norm(ChatRules.plain(sidebar.getDisplayName()));
+            pointMode=title.contains("kingofthehill")||title.contains("koth")||title.contains("controlpoint")
+                ||title.contains("capturethepoint")||title.contains("controlthepoint");
+        }
+        boolean matches(String status,String name){
+            String key=MapInfo.norm(name);
+            boolean glyph=status.equals("\u29be")||status.equals("\u29bf");
+            if(glyph||(status.contains("%")&&(pointMode||names.contains(key)))){names.add(key);return true;}
+            return false;
+        }
+    }
+
+    /** Resolve only unambiguous live team colours; sidebar row holders are not match teams. */
+    static Map<Character,String> teamColours(Minecraft mc,List<String> teams){
+        Map<Character,String> colours=new java.util.HashMap<>();
+        if(mc.theWorld==null)return colours;
+        java.util.Set<Character> ambiguous=new java.util.HashSet<>();
+        for(net.minecraft.scoreboard.ScorePlayerTeam team:new ArrayList<>(mc.theWorld.getScoreboard().getTeams())){
+            String name=team.getTeamName();
+            if(!teams.contains(name))continue;
+            boolean players=false;
+            for(String member:team.getMembershipCollection())if(TeamBar.realPlayer(member)){players=true;break;}
+            if(!players&&!ChatRules.plain(team.getColorPrefix()).trim().isEmpty())continue;
+            Line styled=line(name.replace('\u00ba','\u00a7')+team.getColorPrefix()+"x");
+            char colour=styled.colourAt(styled.plain.length()-1);
+            if(colour=='f'&&team.getChatFormat()!=net.minecraft.util.EnumChatFormatting.RESET)
+                colour=team.getChatFormat().toString().charAt(1);
+            if(colour=='f'||"0123456789abcdef".indexOf(colour)<0)continue;
+            String previous=colours.put(colour,name);
+            if(previous!=null&&!previous.equals(name))ambiguous.add(colour);
+        }
+        for(Character colour:ambiguous)colours.remove(colour);
+        return colours;
+    }
 
     /** One piece of the strip: a wool square (text null) or a run of text in one colour. */
     static final class Part {
@@ -36,25 +108,38 @@ final class Objectives {
         final int state;
         /** True for the objective's own state, false for a name or a team header. */
         final boolean marker;
-        /** True when the part only belongs beside the clock (compact mode), never in the named strip. */
-        final boolean beside;
         /** What this part is, for the hover tooltip; null when it has no name of its own. */
         final String name;
         /** Pixels before this part; set when the strip is laid out. */
         int space;
-        Part(String text,int colour,int state,boolean marker,boolean beside,String name){
-            this.text=text;this.colour=colour;this.state=state;this.marker=marker;this.beside=beside;this.name=name;
+        /** 0..1 when this part is a score bar, -1 for text and wool squares. */
+        final float fraction;
+        Part(String text,int colour,int state,boolean marker,String name){
+            this(text,colour,state,marker,name,-1F);
         }
-        Part(String text,int colour,int state,boolean marker){this(text,colour,state,marker,false,null);}
-        Part(String text,int colour,int state){this(text,colour,state,false,false,null);}
-        int width(FontRenderer font){return text==null?ICON:font.getStringWidth(text);}
+        Part(String text,int colour,int state,boolean marker,String name,float fraction){
+            this.text=text;this.colour=colour;this.state=state;this.marker=marker;this.name=name;this.fraction=fraction;
+        }
+        Part(String text,int colour,int state,boolean marker){this(text,colour,state,marker,null);}
+        Part(String text,int colour,int state){this(text,colour,state,false,null);}
+        int width(FontRenderer font){
+            if(fraction>=0)return UtilitySettings.teamBarScoreStyle==2?BAR_VW:BAR_W;
+            return text==null?ICON:font.getStringWidth(text);
+        }
     }
 
     /** One sidebar row, and the team it belongs to (null when the row names no team). */
     static final class Entry {
         final List<Part> parts;
         final String team;
-        Entry(List<Part> parts,String team){this.parts=parts;this.team=team;}
+        final boolean controlPoint;
+        /** The team currently capturing a control point; null when none or unknown. */
+        final String capturer;
+        Entry(List<Part> parts,String team){this(parts,team,false);}
+        Entry(List<Part> parts,String team,boolean controlPoint){this(parts,team,controlPoint,null);}
+        Entry(List<Part> parts,String team,boolean controlPoint,String capturer){
+            this.parts=parts;this.team=team;this.controlPoint=controlPoint;this.capturer=capturer;
+        }
     }
 
     static final class Strip {
@@ -67,21 +152,58 @@ final class Objectives {
      * One line per sidebar row, in the sidebar's own order, so a team's objectives read exactly
      * like its sidebar block. Compact mode has no names, so its rows pack onto one line.
      */
-    static List<List<Strip>> strips(Minecraft mc,List<String> teams,Map<String,Integer> columns,boolean compact,int max){
-        List<List<List<Part>>> sides=split(entries(TeamBar.sidebarRows(mc),teams),columns,compact);
+    static List<List<Strip>> strips(Minecraft mc,List<String> teams,Map<String,Integer> columns,boolean compact,int max,int pointMax,PointTracker points){
+        Map<Character,String> colours=teamColours(mc,teams);
+        if(points!=null)points.prepare(mc,colours);
+        List<List<List<Part>>> sides=split(entries(TeamBar.sidebarRows(mc),teams,points,colours,TeamBar.INSTANCE.symbolicScores),columns,compact);
         List<List<Strip>> out=new ArrayList<>();
-        for(int side=0;side<2;side++){
+        for(int side=0;side<5;side++){
             List<Strip> lines=new ArrayList<>();
-            if(compact){
-                Strip one=lay(mc,sides.get(side),max);
-                if(one!=null)lines.add(one);
-            }else for(List<Part> entry:sides.get(side)){
-                Strip one=lay(mc,Collections.singletonList(entry),max);
-                if(one!=null)lines.add(one);
+            if(compact&&side<2){
+                for(List<List<Part>> row:compactRows(sides.get(side))){
+                    Strip one=lay(mc,row,max);
+                    if(one!=null)lines.add(one);
+                }
+            }else{
+                int limit=side==2||side==3?Math.max(24,pointMax-(compact?TeamBar.stripWidth(out.get(side-2))+TeamBar.OBJECTIVE_GAP:0)):max;
+                for(List<Part> entry:sides.get(side))lines.addAll(namedLines(mc,entry,limit));
+                if(side==2||side==3)lines=packPointLines(lines,limit);
             }
             out.add(lines);
         }
         return out;
+    }
+
+    /** Owned site names fill the available team-side width before using another line. */
+    static List<Strip> packPointLines(List<Strip> entries,int max){
+        List<Strip> lines=new ArrayList<>();
+        List<Part> parts=new ArrayList<>();
+        int width=0;
+        for(Strip entry:entries){
+            int gap=parts.isEmpty()?0:ENTRY_GAP;
+            if(!parts.isEmpty()&&width+gap+entry.width>max){
+                lines.add(new Strip(parts,width));parts=new ArrayList<>();width=0;gap=0;
+            }
+            for(int i=0;i<entry.parts.size();i++){
+                Part original=entry.parts.get(i);
+                Part copy=new Part(original.text,original.colour,original.state,original.marker,original.name);
+                copy.space=i==0?gap:original.space;
+                parts.add(copy);
+            }
+            width+=gap+entry.width;
+        }
+        if(!parts.isEmpty())lines.add(new Strip(parts,width));
+        return lines;
+    }
+
+    /** Preserve the small-strip layout exactly; larger strips use two balanced marker rows. */
+    static List<List<List<Part>>> compactRows(List<List<Part>> entries){
+        List<Part> markers=new ArrayList<>();
+        for(List<Part> entry:entries)markers.addAll(entry);
+        if(markers.size()<=3)return Collections.singletonList(entries);
+        int half=(markers.size()+1)/2;
+        return Arrays.asList(Collections.singletonList(markers.subList(0,half)),
+            Collections.singletonList(markers.subList(half,markers.size())));
     }
 
     /**
@@ -90,14 +212,14 @@ final class Objectives {
      */
     static List<List<List<Part>>> split(List<Entry> entries,Map<String,Integer> columns,boolean compact){
         List<List<List<Part>>> sides=new ArrayList<>();
-        sides.add(new ArrayList<List<Part>>());
-        sides.add(new ArrayList<List<Part>>());
+        for(int i=0;i<5;i++)sides.add(new ArrayList<List<Part>>());
         for(Entry entry:entries){
             Integer column=entry.team==null?null:columns.get(MapInfo.norm(entry.team));
-            int side=column!=null&&column%2==1?1:0;
+            if(column==null&&!entry.controlPoint)continue;
+            int side=entry.controlPoint?(column==null?4:2+column%2):column%2;
             List<Part> parts=new ArrayList<>();
-            for(Part part:entry.parts)if(compact||!part.beside)parts.add(part);
-            if(compact){
+            parts.addAll(entry.parts);
+            if(compact&&!entry.controlPoint){
                 List<Part> row=new ArrayList<>();
                 for(Part part:parts)if(part.marker)row.add(part);
                 parts=row;
@@ -105,7 +227,14 @@ final class Objectives {
             if(parts.isEmpty())continue;
             // Mirror: the right side leads with the marker and the left with the name, so each
             // row's state markers always end up nearest the clock.
-            sides.get(side).add(order(parts,side==1));
+            boolean markersFirst=side==1||side==3||side==4;
+            // A neutral point sits under the clock, so its progress leans toward the team that is
+            // capturing it: percentage first for a left team, name first for a right one.
+            if(side==4&&entry.capturer!=null){
+                Integer capturerColumn=columns.get(MapInfo.norm(entry.capturer));
+                if(capturerColumn!=null)markersFirst=capturerColumn%2==0;
+            }
+            sides.get(side).add(order(parts,markersFirst));
         }
         return sides;
     }
@@ -116,6 +245,34 @@ final class Objectives {
         for(Part part:parts)if(part.marker==markersFirst)out.add(part);
         for(Part part:parts)if(part.marker!=markersFirst)out.add(part);
         return out;
+    }
+
+    /** Wrap the full name in the space left after its state marker, rather than dropping the row. */
+    static List<Strip> namedLines(Minecraft mc,List<Part> entry,int max){
+        List<Strip> lines=new ArrayList<>();
+        Part name=null;
+        int markers=0;
+        for(Part part:entry){
+            if(!part.marker)name=part;
+            else markers+=part.width(mc.fontRendererObj)+(markers==0?0:SPACE);
+        }
+        if(name==null){
+            Strip one=lay(mc,Collections.singletonList(entry),max);
+            if(one!=null)lines.add(one);
+            return lines;
+        }
+        int room=Math.max(1,max-markers-(markers==0?0:SPACE));
+        List<String> wrapped=mc.fontRendererObj.listFormattedStringToWidth(name.text,room);
+        for(int i=0;i<wrapped.size();i++){
+            List<Part> row=new ArrayList<>();
+            for(Part part:entry){
+                if(part==name)row.add(new Part(wrapped.get(i),part.colour,part.state,false,name.text));
+                else if(i==0)row.add(part);
+            }
+            Strip one=lay(mc,Collections.singletonList(row),max);
+            if(one!=null)lines.add(one);
+        }
+        return lines;
     }
 
     /** Lays entries out left to right, dropping any that would not fit in max pixels. */
@@ -138,33 +295,54 @@ final class Objectives {
         return parts.isEmpty()?null:new Strip(parts,width);
     }
 
-    /**
-     * Objective rows from a sidebar snapshot, top to bottom, one entry per row. A row belongs to
-     * the team header nearest it, above or below, so a layout that puts a team's goals before its
-     * name still attributes them - a row that fell through to "no team" used to land on the left
-     * side and pile every team's objectives there.
-     */
+    /** The live sidebar's team headers define the blocks; objective names/colours never move rows. */
     static List<Entry> entries(List<String> rows,List<String> teams){
-        List<Line> lines=new ArrayList<>();
-        List<String> texts=new ArrayList<>();
-        List<Integer> heads=new ArrayList<>();
+        return entries(rows,teams,null);
+    }
+
+    static List<Entry> entries(List<String> rows,List<String> teams,PointTracker points){
+        return entries(rows,teams,points,points==null?Collections.<Character,String>emptyMap():points.colours);
+    }
+
+    static List<Entry> entries(List<String> rows,List<String> teams,PointTracker points,Map<Character,String> colours){
+        return entries(rows,teams,points,colours,new ScoreTracker());
+    }
+
+    static List<Entry> entries(List<String> rows,List<String> teams,PointTracker points,Map<Character,String> colours,ScoreTracker scores){
+        scores.observe(rows,colours);
+        List<Entry> found=new ArrayList<>();
+        String owner=null;
         for(String row:rows){
             Line line=line(row);
             String text=line.plain.trim();
-            lines.add(line);texts.add(text);
-            heads.add(text.isEmpty()||TeamBar.clock(text)?-1:header(text,teams));
-        }
-        List<Entry> found=new ArrayList<>();
-        for(int i=0;i<texts.size();i++){
-            String text=texts.get(i);
             if(text.isEmpty()||TeamBar.clock(text))continue;
-            Line line=lines.get(i);
-            int head=heads.get(i);
-            if(head>=0){
-                found.add(new Entry(Arrays.<Part>asList(new Part(text,TeamBar.chatColour(line.colourAt(0)),-1)),teams.get(head)));
+            int[] symbolic=TouchdownCard.scoreRow(row);
+            if(symbolic!=null){
+                String scoringTeam=colours.get((char)symbolic[0]);
+                if(scoringTeam!=null){
+                    String name=ChatRules.plain(scoringTeam.replace('\u00ba','\u00a7'));
+                    int colour=TeamBar.chatColour((char)symbolic[0]);
+                    String label=scores.label(symbolic[1]);
+                    float fraction=scores.fraction(symbolic[1]);
+                    // A bar hides the number, so its hover tooltip carries it instead.
+                    boolean bar=UtilitySettings.teamBarScoreStyle!=0&&fraction>=0;
+                    found.add(new Entry(Arrays.asList(
+                        bar?new Part(null,colour,-1,true,name+" "+ChatRules.plain(label),fraction)
+                           :new Part(label,colour,-1,true,name),
+                        new Part(name,colour,-1)),scoringTeam));
+                }
                 continue;
             }
-            String team=nearest(i,heads,teams);
+            int head=header(text,teams);
+            if(head>=0){
+                owner=teams.get(head);
+                int start=line.plain.indexOf(text);
+                found.add(new Entry(Arrays.<Part>asList(new Part(line.coloured(start,start+text.length()),TeamBar.chatColour(line.colourAt(start)),-1)),owner));
+                continue;
+            }
+            String team=owner;
+            boolean controlPoint=false;
+            String capturer=null;
             List<Part> parts=null;
             if(woolRow(text))parts=wools(line,team);
             else{
@@ -177,23 +355,19 @@ final class Objectives {
                     }
                 }
                 Matcher goalMatch=GOAL.matcher(text);
-                if(parts==null&&goalMatch.matches())parts=goalRow(line,text,goalMatch);
+                if(parts==null&&goalMatch.matches()){
+                    parts=goalRow(line,text,goalMatch);
+                    controlPoint=points!=null&&points.matches(goalMatch.group(1),goalMatch.group(2));
+                    if(controlPoint){
+                        team=points.colours.get(line.colourAt(line.plain.indexOf(text)+goalMatch.start(2)));
+                        // PGM prints the progress in the capturer's colour while the point is neutral.
+                        capturer=points.colours.get(line.colourAt(line.plain.indexOf(text)+goalMatch.start(1)));
+                    }
+                }
             }
-            if(parts!=null&&!parts.isEmpty())found.add(new Entry(parts,team));
+            if(parts!=null&&!parts.isEmpty())found.add(new Entry(parts,team,controlPoint,capturer));
         }
         return found;
-    }
-
-    /**
-     * The team a row belongs to: the nearest header above it, since PGM prints a team's name over
-     * its goals. Only when no header sits above the row does the nearest one below count, which
-     * covers a sidebar that prints the goals first - those rows used to fall through to "no team"
-     * and every one of them landed on the left side of the clock.
-     */
-    private static String nearest(int row,List<Integer> heads,List<String> teams){
-        for(int at=row-1;at>=0;at--)if(heads.get(at)>=0)return teams.get(heads.get(at));
-        for(int at=row+1;at<heads.size();at++)if(heads.get(at)>=0)return teams.get(heads.get(at));
-        return null;
     }
 
     /** A compact wool row: nothing but PGM's three state glyphs, one per wool. */
@@ -212,7 +386,7 @@ final class Objectives {
         List<Part> parts=new ArrayList<>();
         for(int i=0;i<line.plain.length();i++){
             int state=WOOL.indexOf(line.plain.charAt(i));
-            if(state>=0)parts.add(new Part(null,TeamBar.chatColour(line.colourAt(i)),state,true,false,team));
+            if(state>=0)parts.add(new Part(null,TeamBar.chatColour(line.colourAt(i)),state,true,team));
         }
         return parts;
     }
@@ -220,35 +394,32 @@ final class Objectives {
     /** "5 Red": the score, then the team's own coloured name. */
     private static List<Part> scoreRow(Line line,Matcher score,String team){
         String name=score.group(3).trim();
+        int at=line.plain.indexOf(score.group());
+        int numberStart=at+score.start(1),numberEnd=at+(score.group(2)==null?score.end(1):score.end(2));
+        int nameStart=at+score.start(3);
         List<Part> parts=new ArrayList<>();
-        parts.add(new Part(score.group(1)+(score.group(2)==null?"":"/"+score.group(2)),TeamBar.WHITE,-1,true,false,team));
-        parts.add(new Part(name,TeamBar.chatColour(line.colourOf(name)),-1));
+        parts.add(new Part(line.coloured(numberStart,numberEnd),TeamBar.chatColour(line.colourAt(numberStart)),-1,true,team));
+        parts.add(new Part(line.coloured(nameStart,nameStart+name.length()),TeamBar.chatColour(line.colourAt(nameStart)),-1));
         return parts;
     }
 
     /**
-     * A goal row: its state marker then its label, the order PGM's sidebar uses. PGM's tick and
-     * cross glyphs say nothing beside a name, so they are dropped from the named strip; they are
-     * the goal's whole state once the name is gone, so compact mode keeps them.
+     * A goal row: preserve PGM's state marker and colour in both modes; compact hides only names.
      */
     private static List<Part> goalRow(Line line,String text,Matcher goal){
         String status=goal.group(1);
         int at=line.plain.indexOf(text);
         int state=status.length()==1?WOOL.indexOf(status.charAt(0)):-1;
-        String name=label(goal.group(2));
+        String name=goal.group(2);
         List<Part> parts=new ArrayList<>();
         // The wool square keeps the colour PGM gave the status, since that is the wool's own colour.
-        if(state>=0)parts.add(new Part(null,TeamBar.chatColour(line.colourAt(at)),state,true,false,name));
-        else if(!status.isEmpty()&&"\u2714\u2715".indexOf(status.charAt(0))<0)
-            parts.add(new Part(status,TeamBar.chatColour(line.colourAt(at)),-1,true,false,name));
+        if(state>=0)parts.add(new Part(null,TeamBar.chatColour(line.colourAt(at)),state,true,name));
         else if(!status.isEmpty())
-            parts.add(new Part(status,TeamBar.chatColour(line.colourAt(at)),-1,true,true,name));
-        parts.add(new Part(name,TeamBar.WHITE,-1));
+            parts.add(new Part(line.coloured(at,at+status.length()),TeamBar.chatColour(line.colourAt(at)),-1,true,name));
+        int nameStart=at+goal.start(2);
+        parts.add(new Part(line.coloured(nameStart,nameStart+name.length()),TeamBar.chatColour(line.colourAt(nameStart)),-1));
         return parts;
     }
-
-    /** A goal name kept short, so one long name cannot push the strip off the screen. */
-    private static String label(String text){return text.length()>14?text.substring(0,13)+".":text;}
 
     /** Index of the team a row names; PGM prints the team's display name, not its id. */
     private static int team(String name,List<String> teams){
@@ -271,14 +442,20 @@ final class Objectives {
      * Whether a sidebar label names a team. PGM prints the team's display name ("Red Team") while
      * the scoreboard team is keyed by its id ("red"), so the trailing "team" word is ignored.
      */
-    private static boolean sameTeam(String label,String team){
-        String a=MapInfo.norm(label),b=MapInfo.norm(team);
+    static boolean sameTeam(String label,String team){
+        String a=teamKey(label),b=teamKey(team);
         if(a.isEmpty()||b.isEmpty())return false;
         if(a.equals(b))return true;
         // "Red Team" and "red" are the same team; PGM's display name carries the word, the
         // scoreboard team does not.
         a=withoutTeamWord(a);b=withoutTeamWord(b);
         return !a.isEmpty()&&a.equals(b);
+    }
+
+    private static String teamKey(String name){
+        if(name==null)return "";
+        // Live PGM display names use a masculine-ordinal marker in place of the section sign.
+        return MapInfo.norm(ChatRules.plain(name).replaceAll("(?i)\u00ba[0-9a-fk-or]",""));
     }
 
     private static String withoutTeamWord(String key){
@@ -306,9 +483,16 @@ final class Objectives {
         private final char[] colours;
         Line(String plain,char[] colours){this.plain=plain;this.colours=colours;}
         char colourAt(int index){return index>=0&&index<colours.length?colours[index]:'f';}
-        char colourOf(String text){
-            int at=plain.indexOf(text);
-            return colourAt(at);
+        /** The part's base colour supplies its first character; retain every later colour change. */
+        String coloured(int start,int end){
+            StringBuilder text=new StringBuilder();
+            char colour=colourAt(start);
+            for(int i=start;i<end;i++){
+                char next=colourAt(i);
+                if(next!=colour){text.append('\u00a7').append(next);colour=next;}
+                text.append(plain.charAt(i));
+            }
+            return text.toString();
         }
     }
 

@@ -2,6 +2,7 @@ package otl.client;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -12,6 +13,9 @@ import java.util.regex.Pattern;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.gui.Gui;
+import net.minecraft.client.gui.GuiChat;
+import net.minecraft.client.gui.GuiConfirmOpenLink;
+import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.WorldRenderer;
@@ -23,7 +27,10 @@ import net.minecraft.scoreboard.ScoreObjective;
 import net.minecraft.scoreboard.ScorePlayerTeam;
 import net.minecraft.scoreboard.Scoreboard;
 import net.minecraft.util.IChatComponent;
+import net.minecraft.util.ChatComponentText;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
+import net.minecraftforge.client.event.GuiOpenEvent;
+import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.event.world.WorldEvent;
 import net.minecraftforge.fml.common.eventhandler.EventPriority;
@@ -54,7 +61,7 @@ final class TeamBar {
     /** The sixteen chat colour codes as RGB, for the team-colour line. */
     private static final int[] COLOURS={0xFF000000,0xFF0000AA,0xFF00AA00,0xFF00AAAA,0xFFAA0000,0xFFAA00AA,0xFFFFAA00,0xFFAAAAAA,
         0xFF555555,0xFF5555FF,0xFF55FF55,0xFF55FFFF,0xFFFF5555,0xFFFF55FF,0xFFFFFF55,0xFFFFFFFF};
-    static final int WHITE=0xFFFFFFFF,YELLOW=0xFFFFD34F,RED=0xFFFF5555;
+    static final int WHITE=0xFFFFFFFF,GREEN=0xFF55FF55,GOLD=0xFFFFAA00,YELLOW=0xFFFFD34F,RED=0xFFFF5555;
     /** A time limit turns red in its last stretch, so the end of the match reads at a glance. */
     static final int LOW_TIME=25;
     private static final int FALLBACK=0xFF8A8A8A,DEAD_FALLBACK=0xFF5A5A5A;
@@ -125,6 +132,32 @@ final class TeamBar {
     /** FFA slots retain their left/right assignment until a player leaves. */
     private static final List<String> ffaSlots=new ArrayList<>();
     private List<String> teamOrder=Collections.emptyList();
+    private final Objectives.PointTracker controlPoints=new Objectives.PointTracker();
+    final Objectives.ScoreTracker symbolicScores=new Objectives.ScoreTracker();
+    private HeadMenu headMenu;
+
+    static final class HeadMenu {
+        static final int ROW=18;
+        static final String[] LABELS={"View Profile","Teleport to player","Add Friend","Message player"};
+        static final int HEIGHT=ROW*LABELS.length;
+        static int width(Minecraft mc){int w=0;for(String label:LABELS)w=Math.max(w,mc.fontRendererObj.getStringWidth(label));return w+12;}
+        final String player;
+        final int x,y,width;
+        HeadMenu(String player,int headX,int headBottom,int headWidth,int width,int screenWidth,int screenHeight){
+            this.player=player;
+            this.width=Math.min(width,Math.max(1,screenWidth-8));
+            this.x=Math.max(4,Math.min(headX+headWidth/2-this.width/2,screenWidth-this.width-4));
+            this.y=Math.max(4,Math.min(headBottom+3,screenHeight-HEIGHT-4));
+        }
+        int actionAt(int mx,int my){
+            return mx>=x&&mx<x+width&&my>=y&&my<y+HEIGHT?(my-y)/ROW:-1;
+        }
+    }
+
+    static String profileUrl(String player){return validMenuPlayer(player)?"https://oc.tc/"+player:null;}
+    static String teleportCommand(String player){return validMenuPlayer(player)?"/tp "+player:null;}
+    static String friendCommand(String player){return validMenuPlayer(player)?"/friend add "+player:null;}
+    private static boolean validMenuPlayer(String player){return player!=null&&player.matches("[A-Za-z0-9_]{1,16}");}
     private int mapLookup;
     private String teamMap="",welcomeTitle;
     /** A map has been announced and its match has not ended: outside that, the hub's teams mean nothing. */
@@ -147,7 +180,7 @@ final class TeamBar {
         final String label;
         final int seconds;
         final boolean countdown;
-        /** Match-start countdown: shown in red, before the real clock exists. */
+        /** Pre-match clock/countdown: shown in gold, before the real clock exists. */
         final boolean starting;
         Timer(String label,int seconds,boolean countdown,boolean starting){
             this.label=label;this.seconds=seconds;this.countdown=countdown;this.starting=starting;
@@ -160,8 +193,11 @@ final class TeamBar {
         /** Space reserved on the outer edge of each column for the team-colour line; 0 when off. */
         final int line;
         final int head,advance,column,leftEnd,rightX,textX,textW,width,height,band;
-        /** Objectives beside the clock, one line each, in sidebar order; empty when none. */
+        /** Compact markers beside the clock, or named rows below the heads; empty when none. */
         final List<Objectives.Strip> leftStrips,rightStrips;
+        final List<List<Objectives.Strip>> pointStrips;
+        final int pointY,neutralPointY;
+        final boolean compact;
         final int leftStripX,rightStripX,leftStripW;
         /** Top of the objective stack and its total height, both inside the bar. */
         final int stripY,stripH;
@@ -171,10 +207,20 @@ final class TeamBar {
         Bar(List<List<String>> left,List<List<String>> right,int head,int textW,Timer timer,String label,int line){this(left,right,head,textW,timer,label,line,null,null);}
         Bar(List<List<String>> left,List<List<String>> right,int head,int textW,Timer timer,String label,int line,
             List<Objectives.Strip> leftStrips,List<Objectives.Strip> rightStrips){
+            this(left,right,head,textW,timer,label,line,leftStrips,rightStrips,true);
+        }
+        Bar(List<List<String>> left,List<List<String>> right,int head,int textW,Timer timer,String label,int line,
+            List<Objectives.Strip> leftStrips,List<Objectives.Strip> rightStrips,boolean compact){
+            this(left,right,head,textW,timer,label,line,leftStrips,rightStrips,compact,null);
+        }
+        Bar(List<List<String>> left,List<List<String>> right,int head,int textW,Timer timer,String label,int line,
+            List<Objectives.Strip> leftStrips,List<Objectives.Strip> rightStrips,boolean compact,List<List<Objectives.Strip>> points){
             this.left=left;this.right=right;this.head=head;this.advance=advance(head);this.timer=timer;
+            this.compact=compact;
             this.line=line;
             this.leftStrips=leftStrips==null?Collections.<Objectives.Strip>emptyList():leftStrips;
             this.rightStrips=rightStrips==null?Collections.<Objectives.Strip>emptyList():rightStrips;
+            this.pointStrips=points==null?Arrays.asList(Collections.<Objectives.Strip>emptyList(),Collections.<Objectives.Strip>emptyList(),Collections.<Objectives.Strip>emptyList()):points;
             // Both columns take the widest row, so the clock keeps the exact centre of the bar
             // and does not shift when players join or leave one side.
             int w=0;
@@ -188,30 +234,47 @@ final class TeamBar {
             // narrower side just leaves its spare room on the outside instead of a gap by the clock.
             int leftW=TeamBar.stripWidth(this.leftStrips),rightW=TeamBar.stripWidth(this.rightStrips);
             this.leftStripW=leftW;
-            int leftRoom=column+GAP+(leftW==0?0:leftW+OBJECTIVE_GAP);
-            int rightRoom=column+GAP+(rightW==0?0:rightW+OBJECTIVE_GAP);
+            int leftRoom=compact?column+GAP+(leftW==0?0:leftW+OBJECTIVE_GAP):Math.max(column+GAP,leftW+OBJECTIVE_GAP);
+            int rightRoom=compact?column+GAP+(rightW==0?0:rightW+OBJECTIVE_GAP):Math.max(column+GAP,rightW+OBJECTIVE_GAP);
             int half=Math.max(leftRoom,rightRoom);
+            half=Math.max(half,TeamBar.stripWidth(pointStrips.get(0))+GAP+(compact&&leftW>0?leftW+OBJECTIVE_GAP:0));
+            half=Math.max(half,TeamBar.stripWidth(pointStrips.get(1))+GAP+(compact&&rightW>0?rightW+OBJECTIVE_GAP:0));
+            half=Math.max(half,(TeamBar.stripWidth(pointStrips.get(2))-textW+1)/2);
             this.width=2*half+textW;
             this.textX=half;
-            this.leftEnd=textX-GAP-(leftW==0?0:leftW+OBJECTIVE_GAP);
-            this.rightX=textX+textW+GAP+(rightW==0?0:rightW+OBJECTIVE_GAP);
+            this.leftEnd=textX-GAP-(!compact||leftW==0?0:leftW+OBJECTIVE_GAP);
+            this.rightX=textX+textW+GAP+(!compact||rightW==0?0:rightW+OBJECTIVE_GAP);
             // Each line sits against the clock on its own side, right-aligned on the left.
             this.rightStripX=textX+textW+OBJECTIVE_GAP;
             this.leftStripX=textX-OBJECTIVE_GAP-leftW;
             // Each row is drawn in a band at least nine pixels tall so the clock still fits.
-            this.band=Math.max(head,9);
+            int lines=Math.max(this.leftStrips.size(),this.rightStrips.size());
+            this.band=Math.max(Math.max(head,9),compact&&lines>1?lines*STRIP_LINE:0);
             int rows=Math.max(left.size(),right.size());
             int stack=rows>0?rows*band+(rows-1)*ROW_GAP:band;
-            // The objective stack is centred on the clock's own row, so it never reads as
-            // lopsided, and the bar is tall enough to hold whichever of the two is taller.
-            int lines=Math.max(this.leftStrips.size(),this.rightStrips.size());
+            // Only compact markers share the clock's row; named team blocks stay underneath.
             this.stripH=lines*STRIP_LINE;
-            this.height=Math.max(stack,stripH);
-            this.stripY=(height-stripH)/2;
+            this.stripY=compact?(band-(lines==0?Objectives.HEIGHT:(lines-1)*STRIP_LINE+Objectives.HEIGHT))/2:stack+OBJECTIVE_GAP;
+            int standardHeight=compact?Math.max(stack,stripH):stripH==0?stack:stripY+stripH;
+            this.pointY=standardHeight+OBJECTIVE_GAP;
+            int ownedRows=Math.max(pointStrips.get(0).size(),pointStrips.get(1).size());
+            int neutralRows=pointStrips.get(2).size();
+            this.neutralPointY=pointY+ownedRows*STRIP_LINE+(ownedRows>0&&neutralRows>0?OBJECTIVE_GAP:0);
+            this.height=ownedRows==0&&neutralRows==0?standardHeight:neutralPointY+neutralRows*STRIP_LINE;
             this.label=label;
         }
         /** Left edge of one objective line, against the clock on its own side. */
-        int stripX(int side,Objectives.Strip one){return side==0?textX-OBJECTIVE_GAP-one.width:rightStripX;}
+        int stripX(int side,Objectives.Strip one){
+            if(side==2)return leftEnd-one.width;
+            if(side==3)return rightX;
+            if(side==4)return width/2-one.width/2;
+            return side==0?textX-OBJECTIVE_GAP-one.width:rightStripX;
+        }
+        List<Objectives.Strip> strips(int side){return side==0?leftStrips:side==1?rightStrips:pointStrips.get(side-2);}
+        int stripTop(int side){
+            if(side<2)return stripY+(compact?(Math.max(leftStrips.size(),rightStrips.size())-strips(side).size())*STRIP_LINE/2:0);
+            return side==4?neutralPointY:pointY;
+        }
         /**
          * Where a right-column row starts: flush against the clock, growing outward to the right,
          * so an empty tail always falls on the bar's outside and never next to the clock.
@@ -270,6 +333,8 @@ final class TeamBar {
 
     /** A new map has loaded: nothing has carried a clock yet, so the middle starts again at 0:00. */
     private void reset(long now){
+        symbolicScores.clear();
+        controlPoints.clear();
         ended=false;started=false;overtime=false;timeLimitSeen=false;frozenSeconds=-1;preMatch=true;baseSeconds=0;baseNanos=now;direction=0;clockSource=0;
         ffaSlots.clear();
         teamOrder=Collections.emptyList();teamMap="";welcomeTitle=null;mapLookup++;
@@ -305,6 +370,9 @@ final class TeamBar {
     @SubscribeEvent public void unload(WorldEvent.Unload event){if(event.world.isRemote)clear();}
 
     private void clear(){actionBar=null;baseSeconds=-1;direction=0;ended=false;started=false;overtime=false;timeLimitSeen=false;frozenSeconds=-1;world=null;preMatch=false;clockSource=0;forgetSources();lastMembers.clear();goneAt.clear();tabSeen.clear();ffaSlots.clear();lastSides=new ArrayList<>();
+        symbolicScores.clear();
+        headMenu=null;
+        controlPoints.clear();
         // Hub and match are separate worlds, so this also runs on the teleport INTO a match, where
         // the "Playing" line has already arrived. Only a match end means we are going back out.
         if(matchOver)announced=false;matchOver=false;}
@@ -441,7 +509,7 @@ final class TeamBar {
         if(!preview&&!announced)return null;
         if(!preview)updateFfaSlots(ffaSlots,sides);
         // Heads are a match thing: the hub keeps scoreboard teams and runs its own countdown, so
-        // only a match clock earns a bar. The pre-match count-in draws the clock alone, in red,
+        // only a match clock earns a bar. The pre-match count-in draws the clock alone, in gold,
         // and the heads come back when the match really starts.
         // shortcut: a no-limit map joined mid-match shows no heads until the kickoff line
         if(timer==null&&!preview)return null;
@@ -453,6 +521,7 @@ final class TeamBar {
         ScaledResolution scaled=new ScaledResolution(mc);
         int screen=scaled.getScaledWidth(),screenH=scaled.getScaledHeight();
         List<Objectives.Strip> leftStrips=null,rightStrips=null;
+        List<List<Objectives.Strip>> pointStrips=null;
         // Every match team's name, in the order the bar and PGM's sidebar use, with the column each
         // one's heads take. A team with nobody online still has objectives printed, so it still
         // needs to be known and still needs a side.
@@ -465,15 +534,15 @@ final class TeamBar {
         if(UtilitySettings.teamBarObjectives){
             // Each team's objectives sit on the same side of the clock as that team's heads, so a
             // team's goals are always next to its own row. Compact mode keeps only the state icons.
-            // Each side may take a third of the room beside the clock, which fits a normal
-            // objective row on one line and still leaves the heads readable. Both sides get the
-            // same room, so the clock stays centred.
-            // shortcut: on a very narrow window a long objective row is dropped, not clipped
-            int max=Math.max(24,(screen-textW-2*GAP-8)/3);
-            List<List<Objectives.Strip>> beside=Objectives.strips(mc,allTeams,columns,UtilitySettings.teamBarObjectivesCompact,max);
+            // Named blocks are below the heads, so they can use the full half-width and wrap.
+            int max=Math.max(24,(screen-textW-2*GAP-8)/(UtilitySettings.teamBarObjectivesCompact?3:2));
+            int pointMax=Math.max(24,(screen-textW-2*GAP-8)/2);
+            List<List<Objectives.Strip>> beside=Objectives.strips(mc,allTeams,columns,UtilitySettings.teamBarObjectivesCompact,max,pointMax,
+                UtilitySettings.teamBarControlPoints?controlPoints:null);
             leftStrips=beside.get(0);rightStrips=beside.get(1);
+            pointStrips=beside.subList(2,5);
         }
-        int beside=Math.max(stripWidth(leftStrips)+OBJECTIVE_GAP,stripWidth(rightStrips)+OBJECTIVE_GAP);
+        int beside=UtilitySettings.teamBarObjectivesCompact?Math.max(stripWidth(leftStrips)+OBJECTIVE_GAP,stripWidth(rightStrips)+OBJECTIVE_GAP):0;
         int perRow=perRow(head,line(head,ffa),textW+2*beside,screen);
         List<List<String>> left=new ArrayList<>(),right=new ArrayList<>();
         if(counting&&!preview){
@@ -519,10 +588,10 @@ final class TeamBar {
         }
         // Last resort, height only: a stack of many teams can still be taller than the screen.
         while(head>MIN_HEAD){
-            if(new Bar(left,right,head,textW,timer,label,line(head,ffa),leftStrips,rightStrips).height<=screenH-8)break;
+            if(new Bar(left,right,head,textW,timer,label,line(head,ffa),leftStrips,rightStrips,UtilitySettings.teamBarObjectivesCompact,pointStrips).height<=screenH-8)break;
             head--;
         }
-        return new Bar(left,right,head,textW,timer,label,line(head,ffa),leftStrips,rightStrips);
+        return new Bar(left,right,head,textW,timer,label,line(head,ffa),leftStrips,rightStrips,UtilitySettings.teamBarObjectivesCompact,pointStrips);
     }
 
     /** The width a side's objective stack needs: its longest line. */
@@ -666,8 +735,9 @@ final class TeamBar {
         return new Timer(format(seconds),seconds,direction<0,preMatch);
     }
 
-    /** A match has started with no server clock: count up from 0:00 in white until one arrives. */
+    /** A match has started with no server clock: count up from 0:00 in green until one arrives. */
     private void begin(long now){
+        symbolicScores.clear();
         ended=false;started=true;overtime=false;timeLimitSeen=false;frozenSeconds=-1;preMatch=false;
         baseSeconds=0;baseNanos=now;direction=1;
         forgetSources();
@@ -683,6 +753,7 @@ final class TeamBar {
                 // A new countdown only follows a match end (or a fresh join), so a line left over
                 // from the countdown that just finished cannot restart the clock. // shortcut: relies on PGM always announcing the end first
                 if(raw>0){
+                    if(!preMatch||ended)symbolicScores.clear();
                     // The pre-match countdown is authoritative: re-anchor when the server repeats it.
                     if(!preMatch||baseSeconds<0||raw!=baseSeconds){baseSeconds=raw;baseNanos=now;}
                     preMatch=true;direction=-1;ended=false;frozenSeconds=-1;
@@ -1012,6 +1083,95 @@ final class TeamBar {
         }
     }
 
+    @SubscribeEvent public void menuScreenChanged(GuiOpenEvent event){headMenu=null;}
+
+    private Bar menuBar(Minecraft mc){
+        if(!(mc.currentScreen instanceof GuiChat)||!UtilitySettings.teamBar||mc.thePlayer==null||mc.theWorld==null
+            ||mc.gameSettings.hideGUI||(UtilitySettings.teamBarHideOnTab&&playerListVisible(mc)))return null;
+        try{return bar(mc,false);}catch(RuntimeException unavailable){return null;}
+    }
+
+    HeadMenu positionHeadMenu(Bar bar,HudLayout.Rect box,String player,int width,int screenWidth,int screenHeight){
+        if(!validMenuPlayer(player))return null;
+        int[] head=headBounds(bar,player);
+        return head==null?null:new HeadMenu(player,box.x+head[0],box.y+head[1]+bar.head,bar.head,width,screenWidth,screenHeight);
+    }
+
+    @SubscribeEvent(priority=EventPriority.HIGHEST) public void headClick(GuiScreenEvent.MouseInputEvent.Pre event){
+        if(!(event.gui instanceof GuiChat)||Mouse.getEventButton()!=0||!Mouse.getEventButtonState())return;
+        Minecraft mc=MinecraftAccess.get();Bar bar=menuBar(mc);
+        if(bar==null){headMenu=null;return;}
+        ScaledResolution sr=new ScaledResolution(mc);
+        int mx=Mouse.getEventX()*sr.getScaledWidth()/mc.displayWidth;
+        int my=sr.getScaledHeight()-Mouse.getEventY()*sr.getScaledHeight()/mc.displayHeight-1;
+        if(headMenu!=null){
+            int action=headMenu.actionAt(mx,my);
+            String target=headMenu.player;headMenu=null;
+            if(action>=0){
+                event.setCanceled(true);
+                if(headBounds(bar,target)==null)return;
+                if(action==0)confirmProfile(target);
+                else if(action==1)mc.thePlayer.sendChatMessage(teleportCommand(target));
+                else if(action==2)mc.thePlayer.sendChatMessage(friendCommand(target));
+                else ReliableChat.openPrivate(target);
+                return;
+            }
+        }
+        HudLayout.Rect box=placed(bar);
+        String target=headAt(bar,mx-box.x,my-box.y);
+        if(target==null)return;
+        headMenu=positionHeadMenu(bar,box,target,HeadMenu.width(mc),
+            sr.getScaledWidth(),sr.getScaledHeight());
+        if(headMenu!=null)event.setCanceled(true);
+    }
+
+    @SubscribeEvent(priority=EventPriority.LOWEST) public void headMenuDraw(GuiScreenEvent.DrawScreenEvent.Post event){
+        if(headMenu==null)return;
+        Minecraft mc=MinecraftAccess.get();Bar bar=menuBar(mc);
+        if(bar==null){headMenu=null;return;}
+        ScaledResolution sr=new ScaledResolution(mc);
+        headMenu=positionHeadMenu(bar,placed(bar),headMenu.player,HeadMenu.width(mc),
+            sr.getScaledWidth(),sr.getScaledHeight());
+        if(headMenu==null)return;
+        Gui.drawRect(headMenu.x-1,headMenu.y-1,headMenu.x+headMenu.width+1,headMenu.y+HeadMenu.HEIGHT+1,0xFF777777);
+        for(int action=0;action<HeadMenu.LABELS.length;action++){
+            int y=headMenu.y+action*HeadMenu.ROW;
+            Gui.drawRect(headMenu.x,y,headMenu.x+headMenu.width,y+HeadMenu.ROW,
+                headMenu.actionAt(event.mouseX,event.mouseY)==action?0xFF364B68:0xF0101010);
+            String label=HeadMenu.LABELS[action];
+            mc.fontRendererObj.drawStringWithShadow(mc.fontRendererObj.trimStringToWidth(label,headMenu.width-10),headMenu.x+5,y+5,WHITE);
+        }
+    }
+
+    void confirmProfile(String player){
+        final String url=profileUrl(player);
+        if(url==null)return;
+        final Minecraft mc=MinecraftAccess.get();
+        final GuiScreen parent=mc.currentScreen;
+        mc.displayGuiScreen(new GuiConfirmOpenLink((confirmed,id)->{
+            mc.displayGuiScreen(parent);
+            if(!confirmed)return;
+            try{
+                if(!java.awt.Desktop.isDesktopSupported())throw new IllegalStateException("Desktop browsing unavailable");
+                java.awt.Desktop.getDesktop().browse(java.net.URI.create(url));
+            }catch(Exception unavailable){
+                if(mc.thePlayer!=null)mc.thePlayer.addChatMessage(new ChatComponentText("\u00a7cCould not open the player profile in your browser."));
+            }
+        },url,0,false));
+    }
+
+    static int[] headBounds(Bar bar,String player){
+        for(int side=0;side<2;side++){
+            List<List<String>> rows=side==0?bar.left:bar.right;
+            for(int row=0;row<rows.size();row++){
+                List<String> members=rows.get(row);int index=members.indexOf(player);
+                if(index>=0)return new int[]{(side==0?bar.leftStart(members):bar.rightStart(members))+index*bar.advance,
+                    row*(bar.band+ROW_GAP)+(bar.band-bar.head)/2};
+            }
+        }
+        return null;
+    }
+
     static boolean playerListVisible(Minecraft mc){
         return mc.gameSettings.keyBindPlayerList.isKeyDown()&&(!mc.isIntegratedServerRunning()
             ||mc.thePlayer.sendQueue.getPlayerInfoMap().size()>1||mc.theWorld.getScoreboard().getObjectiveInDisplaySlot(0)!=null);
@@ -1022,11 +1182,11 @@ final class TeamBar {
      * is over a head, empty space, or nothing is drawn in compact mode.
      */
     static String objectiveAt(Bar bar,int x,int y,net.minecraft.client.gui.FontRenderer font){
-        for(int side=0;side<2;side++){
-            List<Objectives.Strip> lines=side==0?bar.leftStrips:bar.rightStrips;
+        for(int side=0;side<5;side++){
+            List<Objectives.Strip> lines=bar.strips(side);
             for(int i=0;i<lines.size();i++){
                 Objectives.Strip one=lines.get(i);
-                String name=Objectives.at(one,x-bar.stripX(side,one),y-bar.stripY-i*STRIP_LINE,font);
+                String name=Objectives.at(one,x-bar.stripX(side,one),y-bar.stripTop(side)-i*STRIP_LINE,font);
                 if(name!=null)return name;
             }
         }
@@ -1096,14 +1256,15 @@ final class TeamBar {
         }
         // The objective squares share the bar's quad pass; the text parts follow once the
         // tessellator is done with the texture unit. Each side stacks its own lines beside the clock.
-        for(int side=0;side<2;side++){
-            List<Objectives.Strip> lines=side==0?bar.leftStrips:bar.rightStrips;
+        for(int side=0;side<5;side++){
+            List<Objectives.Strip> lines=bar.strips(side);
             for(int i=0;i<lines.size();i++){
                 Objectives.Strip one=lines.get(i);
-                int px=x+bar.stripX(side,one),py=y+bar.stripY+i*STRIP_LINE;
+                int px=x+bar.stripX(side,one),py=y+bar.stripTop(side)+i*STRIP_LINE;
                 for(Objectives.Part part:one.parts){
                     px+=part.space;
-                    if(part.text==null)wool(world,px,py,part.colour,part.state);
+                    if(part.fraction>=0)scoreBar(world,px,py,part.colour,part.fraction);
+                    else if(part.text==null)wool(world,px,py,part.colour,part.state);
                     px+=part.width(mc.fontRendererObj);
                 }
             }
@@ -1115,17 +1276,34 @@ final class TeamBar {
             // Sits on the first head row, not the middle of the stack, so extra teams stack below it.
             mc.fontRendererObj.drawStringWithShadow(bar.label,x+bar.textX,y+(band-8)/2,colour(bar.timer));
         }
-        for(int side=0;side<2;side++){
-            List<Objectives.Strip> lines=side==0?bar.leftStrips:bar.rightStrips;
+        for(int side=0;side<5;side++){
+            List<Objectives.Strip> lines=bar.strips(side);
             for(int i=0;i<lines.size();i++){
                 Objectives.Strip one=lines.get(i);
-                int px=x+bar.stripX(side,one),py=y+bar.stripY+i*STRIP_LINE;
+                int px=x+bar.stripX(side,one),py=y+bar.stripTop(side)+i*STRIP_LINE;
                 for(Objectives.Part part:one.parts){
                     px+=part.space;
                     if(part.text!=null)mc.fontRendererObj.drawStringWithShadow(part.text,px,py,part.colour);
                     px+=part.width(mc.fontRendererObj);
                 }
             }
+        }
+    }
+
+    /**
+     * A symbolic score as a bar: a dim track with the scored share filled in the team's colour.
+     * Vertical fills upward from the line's bottom; horizontal fills left to right.
+     */
+    private static void scoreBar(WorldRenderer world,int x,int y,int argb,float fraction){
+        int filled=Math.round(Math.max(0F,Math.min(1F,fraction))*(UtilitySettings.teamBarScoreStyle==2?Objectives.BAR_VH:Objectives.BAR_W));
+        int track=(argb&0xFFFFFF)|0x55000000;
+        if(UtilitySettings.teamBarScoreStyle==2){
+            quad(world,x,y,x+Objectives.BAR_VW,y+Objectives.BAR_VH,track);
+            if(filled>0)quad(world,x,y+Objectives.BAR_VH-filled,x+Objectives.BAR_VW,y+Objectives.BAR_VH,argb);
+        }else{
+            int top=y+(STRIP_LINE-Objectives.BAR_H)/2;
+            quad(world,x,top,x+Objectives.BAR_W,top+Objectives.BAR_H,track);
+            if(filled>0)quad(world,x,top,x+filled,top+Objectives.BAR_H,argb);
         }
     }
 
@@ -1152,14 +1330,14 @@ final class TeamBar {
     }
 
     /**
-     * Clock colour: red for the match-start count-in, red for the last 25 seconds of a time limit,
-     * yellow for a limit that still has time left, white for a count-up.
+     * Clock colour: gold before match start, red for the last 25 seconds of a time limit,
+     * yellow for a limit that still has time left, green for a normal/count-up clock.
      */
     static int colour(Timer timer){
-        if(timer==null)return WHITE;
-        if(timer.starting)return RED;
+        if(timer==null)return GREEN;
+        if(timer.starting)return GOLD;
         if(timer.countdown)return timer.seconds<=LOW_TIME?RED:YELLOW;
-        return WHITE;
+        return GREEN;
     }
 
     /** A row's team colour, taken from the scoreboard prefix PGM puts on the team. */

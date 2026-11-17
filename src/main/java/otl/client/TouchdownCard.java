@@ -136,7 +136,7 @@ final class TouchdownCard {
             &&caught>=thrown&&caught-thrown<=THROW_WINDOW&&now>=caught&&now-caught<=CATCH_WINDOW;
     }
 
-    /** PGM's symbolic sidebar: a team-coloured arrow, coloured points, then grey empty slots. */
+    /** PGM's symbolic sidebar: {team colour, scored points, total displayed slots}. */
     static int[] scoreRow(String formatted){
         char color='r',team='r',symbol=0;boolean arrow=false;int points=0,total=0;
         for(int i=0;i<formatted.length();i++){
@@ -154,7 +154,7 @@ final class TouchdownCard {
                 else if(color!='7')return null;
             }
         }
-        return arrow&&total>0&&team!='7'&&team!='8'&&team!='r'?new int[]{team,points}:null;
+        return arrow&&team!='7'&&team!='8'&&team!='r'?new int[]{team,points,total}:null;
     }
 
     /** Returns the viewer's team first, just like the PGM score announcement. */

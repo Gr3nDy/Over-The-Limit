@@ -18,9 +18,10 @@ public class TouchdownPlayerCardTest {
         assertEquals("Score unavailable",TouchdownCard.scoreLabel(null));
     }
     @Test public void readsOnlyUnambiguousPgmSymbolicScoreRows(){
-        assertArrayEquals(new int[]{'c',2},TouchdownCard.scoreRow("\u00a7c\u2794 \u2b24\u2b24\u00a77\u2b24\u2b24\u2b24"));
-        assertArrayEquals(new int[]{'9',5},TouchdownCard.scoreRow("\u00a79\u2794 \u2b24\u2b24\u2b24\u2b24\u2b24"));
-        assertArrayEquals(new int[]{'c',0},TouchdownCard.scoreRow("\u00a7c\u2794 \u00a77\u2b24\u2b24\u2b24\u2b24\u2b24"));
+        assertArrayEquals(new int[]{'c',2,5},TouchdownCard.scoreRow("\u00a7c\u2794 \u2b24\u2b24\u00a77\u2b24\u2b24\u2b24"));
+        assertArrayEquals(new int[]{'9',5,5},TouchdownCard.scoreRow("\u00a79\u2794 \u2b24\u2b24\u2b24\u2b24\u2b24"));
+        assertArrayEquals(new int[]{'c',0,5},TouchdownCard.scoreRow("\u00a7c\u2794 \u00a77\u2b24\u2b24\u2b24\u2b24\u2b24"));
+        assertArrayEquals(new int[]{'9',0,0},TouchdownCard.scoreRow("\u00a79\u2794 "));
         assertNull(TouchdownCard.scoreRow("\u00a77\u2794 \u2b24\u2b24"));
         assertNull(TouchdownCard.scoreRow("\u00a7c\u2794 \u2b24\u00a79\u2b24"));
         assertNull(TouchdownCard.scoreRow("\u00a7cFlag \u2b24"));

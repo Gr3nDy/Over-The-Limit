@@ -177,6 +177,14 @@ public final class ReliableChat {
         Minecraft mc=MinecraftAccess.get();
         if(mc.currentScreen==null)mc.displayGuiScreen(new ReliableChatScreen(""));
     }
+    /** Opens (or creates) this player's private-message tab, so the next line is sent to them. */
+    static void openPrivate(String player){
+        if(player==null||!player.matches("[A-Za-z0-9_]{1,16}"))return;
+        String key="pm:"+player.toLowerCase(Locale.ROOT);
+        if(!active()||!fullChat()){MinecraftAccess.get().displayGuiScreen(new GuiChat("/msg "+player+" "));return;}
+        session().pm(key,player);
+        openChannel(key);
+    }
     static void restoreTemporaryChannel(){
         Session s=session();String key=s.temporaryReturn;s.temporaryReturn=null;
         if(key!=null&&s.views.containsKey(key))s.select(key);

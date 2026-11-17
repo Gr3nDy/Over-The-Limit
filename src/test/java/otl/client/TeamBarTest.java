@@ -5,6 +5,15 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class TeamBarTest {
+    @Test public void normalClockIsGreenWithoutChangingCountdownWarnings(){
+        assertEquals(TeamBar.GREEN,TeamBar.colour(null));
+        assertEquals(TeamBar.GREEN,TeamBar.colour(new TeamBar.Timer("1:05",65,false,false)));
+        assertEquals(TeamBar.YELLOW,TeamBar.colour(new TeamBar.Timer("1:05",65,true,false)));
+        assertEquals(TeamBar.RED,TeamBar.colour(new TeamBar.Timer("0:25",25,true,false)));
+        assertEquals(TeamBar.GOLD,TeamBar.colour(new TeamBar.Timer("0:10",10,false,true)));
+        assertEquals(TeamBar.GOLD,TeamBar.colour(new TeamBar.Timer("0:00",0,false,true)));
+        assertEquals(TeamBar.GOLD,TeamBar.colour(new TeamBar.Timer("1:00",60,true,true)));
+    }
     @Test public void hoverUsesOriginalHeadBoundsOnBothSidesAndRows(){
         java.util.List<java.util.List<String>> left=java.util.Arrays.asList(java.util.Arrays.asList("Alex","Sam"),java.util.Collections.singletonList("Pat"));
         java.util.List<java.util.List<String>> right=java.util.Collections.singletonList(java.util.Collections.singletonList("Kai"));

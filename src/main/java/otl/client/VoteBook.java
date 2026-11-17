@@ -443,25 +443,25 @@ final class VoteBook {
         for(IChatComponent child:component.getSiblings())flatten(child,effective,effectiveHover,out);
     }
 
-    /** World player for a Match Stats name; decorations around real names are stripped for the match. */
-    static EntityPlayer findPlayer(String chatName){
-        Minecraft mc=MinecraftAccess.get();
-        if(mc.theWorld==null||chatName==null||chatName.isEmpty())return null;
-        EntityPlayer exact=mc.theWorld.getPlayerEntityByName(chatName);
-        if(exact!=null)return exact;
-        String want=strip(chatName);
-        if(want.length()<3)return null;
-        EntityPlayer partial=null;
-        for(Object o:mc.theWorld.playerEntities){
-            EntityPlayer p=(EntityPlayer)o;
-            String have=strip(p.getName());
-            if(have.equalsIgnoreCase(want))return p;
-            if(partial==null&&!have.isEmpty()&&(have.contains(want)||want.contains(have)))partial=p;
-        }
-        return partial;
+    /** The account at the end of a decorated stats name; never a partial username match. */
+    static String accountName(String chatName){
+        if(chatName==null)return null;
+        Matcher match=Pattern.compile("(?<![A-Za-z0-9_])([A-Za-z0-9_]{1,16})$")
+            .matcher(withoutYouTag(ChatRules.plain(chatName)).trim());
+        return match.find()?match.group(1):null;
     }
 
-    private static String strip(String name){return name.replaceAll("[^A-Za-z0-9_]","");}
+    /** Loaded world player, when available, so the preview can retain their equipment. */
+    static EntityPlayer findPlayer(String chatName){
+        Minecraft mc=MinecraftAccess.get();
+        String name=accountName(chatName);
+        if(mc.theWorld==null||name==null)return null;
+        for(Object o:mc.theWorld.playerEntities){
+            EntityPlayer p=(EntityPlayer)o;
+            if(p.getName().equalsIgnoreCase(name))return p;
+        }
+        return null;
+    }
 
     private static final class Pending {
         final StringBuilder text;final ClickEvent click;final HoverEvent hover;

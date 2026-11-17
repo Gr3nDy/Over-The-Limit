@@ -55,6 +55,9 @@ public final class UtilitySettings {
     public static boolean teamBarObjectives=true;
     /** Compact objectives: the markers only, beside the clock instead of named under it. */
     public static boolean teamBarObjectivesCompact=false;
+    public static boolean teamBarControlPoints=true;
+    /** Symbolic score display: 0 text "2/5", 1 horizontal bar, 2 vertical bar. */
+    public static int teamBarScoreStyle=0;
     public static boolean killFeed=true,hideKillChat=true;
     static KillFeedRules.HeadMode killFeedHeads=KillFeedRules.HeadMode.ONLY_ME;
     static KillFeedRules.FilterMode killFeedFilter=KillFeedRules.FilterMode.ALL;
@@ -145,6 +148,8 @@ public final class UtilitySettings {
         read(j,"team_bar_team_color",e->teamBarTeamColor=e.getAsBoolean());
         read(j,"team_bar_objectives",e->teamBarObjectives=e.getAsBoolean());
         read(j,"team_bar_objectives_compact",e->teamBarObjectivesCompact=e.getAsBoolean());
+        read(j,"team_bar_control_points",e->teamBarControlPoints=e.getAsBoolean());
+        read(j,"team_bar_score_style",e->teamBarScoreStyle=Math.max(0,Math.min(2,e.getAsInt())));
         read(j,"kill_feed",e->killFeed=e.getAsBoolean());
         read(j,"kill_feed_heads",e->killFeedHeads=KillFeedRules.HeadMode.parse(e.getAsString()));
         read(j,"kill_feed_filter",e->killFeedFilter=KillFeedRules.FilterMode.parse(e.getAsString()));
@@ -274,6 +279,8 @@ public final class UtilitySettings {
         j.addProperty("team_bar_team_color",teamBarTeamColor);
         j.addProperty("team_bar_objectives",teamBarObjectives);
         j.addProperty("team_bar_objectives_compact",teamBarObjectivesCompact);
+        j.addProperty("team_bar_control_points",teamBarControlPoints);
+        j.addProperty("team_bar_score_style",teamBarScoreStyle);
             j.addProperty("kill_feed",killFeed);j.addProperty("hide_kill_chat",hideKillChat);
             j.addProperty("kill_feed_heads",killFeedHeads.name());
             j.addProperty("kill_feed_filter",killFeedFilter.name());

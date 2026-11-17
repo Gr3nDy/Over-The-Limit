@@ -6,6 +6,18 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class UtilitySettingsProfileTest {
+    @Test public void controlPointTrackingDefaultsOnPersistsAndResets(){
+        boolean before=UtilitySettings.teamBarControlPoints;
+        try{
+            assertTrue(UtilitySettings.DEFAULTS.get("team_bar_control_points").getAsBoolean());
+            JsonObject setting=new JsonObject();setting.addProperty("team_bar_control_points",false);
+            UtilitySettings.read(setting);
+            assertFalse(UtilitySettings.teamBarControlPoints);
+            assertFalse(UtilitySettings.snapshot().get("team_bar_control_points").getAsBoolean());
+            UtilitySettings.restore("team_bar_control_points");
+            assertTrue(UtilitySettings.teamBarControlPoints);
+        }finally{UtilitySettings.teamBarControlPoints=before;}
+    }
     @Test public void deadHeadOpacityPersistsClampsAndResets(){
         int before=UtilitySettings.teamBarDeadOpacity;
         try{
