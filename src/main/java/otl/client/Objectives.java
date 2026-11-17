@@ -145,7 +145,10 @@ final class Objectives {
     static final class Strip {
         final List<Part> parts;
         final int width;
-        Strip(List<Part> parts,int width){this.parts=parts;this.width=width;}
+        /** The team block this line belongs to; null for compact markers and unowned rows. */
+        final String team;
+        Strip(List<Part> parts,int width){this(parts,width,null);}
+        Strip(List<Part> parts,int width,String team){this.parts=parts;this.width=width;this.team=team;}
     }
 
     /**
@@ -155,18 +158,25 @@ final class Objectives {
     static List<List<Strip>> strips(Minecraft mc,List<String> teams,Map<String,Integer> columns,boolean compact,int max,int pointMax,PointTracker points){
         Map<Character,String> colours=teamColours(mc,teams);
         if(points!=null)points.prepare(mc,colours);
-        List<List<List<Part>>> sides=split(entries(TeamBar.sidebarRows(mc),teams,points,colours,TeamBar.INSTANCE.symbolicScores),columns,compact);
+        List<List<Entry>> sides=splitEntries(entries(TeamBar.sidebarRows(mc),teams,points,colours,TeamBar.INSTANCE.symbolicScores),columns,compact);
         List<List<Strip>> out=new ArrayList<>();
         for(int side=0;side<5;side++){
             List<Strip> lines=new ArrayList<>();
             if(compact&&side<2){
-                for(List<List<Part>> row:compactRows(sides.get(side))){
+                List<List<Part>> ledger=new ArrayList<>();
+                for(Entry entry:sides.get(side))ledger.add(entry.parts);
+                for(List<List<Part>> row:compactRows(ledger)){
                     Strip one=lay(mc,row,max);
                     if(one!=null)lines.add(one);
                 }
             }else{
                 int limit=side==2||side==3?Math.max(24,pointMax-(compact?TeamBar.stripWidth(out.get(side-2))+TeamBar.OBJECTIVE_GAP:0)):max;
-                for(List<Part> entry:sides.get(side))lines.addAll(namedLines(mc,entry,limit));
+                for(Entry entry:sides.get(side)){
+                    List<Strip> block=namedLines(mc,entry.parts,limit);
+                    // Named blocks remember their team, so each sits under that team's own heads.
+                    if(side<2)for(Strip one:block)lines.add(new Strip(one.parts,one.width,entry.team));
+                    else lines.addAll(block);
+                }
                 if(side==2||side==3)lines=packPointLines(lines,limit);
             }
             out.add(lines);
@@ -212,7 +222,18 @@ final class Objectives {
      */
     static List<List<List<Part>>> split(List<Entry> entries,Map<String,Integer> columns,boolean compact){
         List<List<List<Part>>> sides=new ArrayList<>();
-        for(int i=0;i<5;i++)sides.add(new ArrayList<List<Part>>());
+        for(List<Entry> side:splitEntries(entries,columns,compact)){
+            List<List<Part>> rows=new ArrayList<>();
+            for(Entry entry:side)rows.add(entry.parts);
+            sides.add(rows);
+        }
+        return sides;
+    }
+
+    /** As split(), but keeps each row's team so a named block can sit under its own heads. */
+    static List<List<Entry>> splitEntries(List<Entry> entries,Map<String,Integer> columns,boolean compact){
+        List<List<Entry>> sides=new ArrayList<>();
+        for(int i=0;i<5;i++)sides.add(new ArrayList<Entry>());
         for(Entry entry:entries){
             Integer column=entry.team==null?null:columns.get(MapInfo.norm(entry.team));
             if(column==null&&!entry.controlPoint)continue;
@@ -234,7 +255,7 @@ final class Objectives {
                 Integer capturerColumn=columns.get(MapInfo.norm(entry.capturer));
                 if(capturerColumn!=null)markersFirst=capturerColumn%2==0;
             }
-            sides.get(side).add(order(parts,markersFirst));
+            sides.get(side).add(new Entry(order(parts,markersFirst),entry.team,entry.controlPoint,entry.capturer));
         }
         return sides;
     }

@@ -7,6 +7,7 @@
 
 ### Fixed
 - **Team Bar clock colour** — the live/count-up clock is gold instead of green, matching the pre-match clock. A time limit stays yellow and turns red in its last 25 seconds.
+- **Team Bar objectives on 3+ team maps** — each team's block is now followed by that team's own objectives, so on a four-team bar a score can never sit under another team's row. Teams with nobody online still print theirs below the stack.
 
 ## v0.6.1 - 2026-11-17
 

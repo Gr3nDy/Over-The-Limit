@@ -15,6 +15,12 @@ public class TeamBarCentreTest {
         return new Objectives.Strip(list,width);
     }
 
+    private static Objectives.Strip strip(String team,int parts,int width){
+        List<Objectives.Part> list=new ArrayList<>();
+        for(int i=0;i<parts;i++)list.add(new Objectives.Part("x",TeamBar.WHITE,-1));
+        return new Objectives.Strip(list,width,team);
+    }
+
     private static List<Objectives.Strip> lines(Objectives.Strip... strips){
         return Arrays.asList(strips);
     }
@@ -110,8 +116,28 @@ public class TeamBarCentreTest {
         assertEquals(named.stripY+named.stripH,named.height);
     }
 
-    @Test public void aBarWithNoObjectivesIsUnaffected(){
-        TeamBar.Bar bar=new TeamBar.Bar(Collections.singletonList(Collections.singletonList("A")),
+    @Test public void onAFourTeamBarEachTeamsObjectivesFollowItsOwnHeads(){
+        // Left column: Alpha then Charlie. Right: Bravo then Delta. Every block of heads owns the
+        // objectives printed under it, so a team's score can never sit under another team's row.
+        List<List<String>> left=Arrays.asList(Collections.singletonList("A1"),Collections.singletonList("C1"));
+        List<List<String>> right=Arrays.asList(Collections.singletonList("B1"),Collections.singletonList("D1"));
+        TeamBar.Bar bar=new TeamBar.Bar(left,right,16,20,null,"",7,
+            lines(strip("Alpha",1,30),strip("Charlie",1,30)),lines(strip("Bravo",1,30),strip("Delta",1,30)),false,
+            Arrays.asList(Collections.<Objectives.Strip>emptyList(),Collections.<Objectives.Strip>emptyList(),Collections.<Objectives.Strip>emptyList()),
+            null,0,Arrays.asList("Alpha","Charlie"),Arrays.asList("Bravo","Delta"));
+        assertEquals("Alpha's objectives left its own block",bar.band+TeamBar.OBJECTIVE_GAP,bar.stripTop(0,0));
+        assertEquals("Charlie's heads did not clear Alpha's objectives",
+            bar.stripTop(0,0)+TeamBar.STRIP_LINE+TeamBar.ROW_GAP,bar.rowTop(0,1));
+        assertEquals("Charlie's objectives did not follow its own heads",
+            bar.rowTop(0,1)+bar.band+TeamBar.OBJECTIVE_GAP,bar.stripTop(0,1));
+        assertEquals("Delta's objectives did not follow its own heads",
+            bar.rowTop(1,1)+bar.band+TeamBar.OBJECTIVE_GAP,bar.stripTop(1,1));
+        assertEquals("The four-team stack lost a line",bar.stripTop(0,1)+TeamBar.STRIP_LINE,bar.height);
+        // Named blocks sit below the heads, so only the clock's centring applies here.
+        assertEquals("The four-team bar pushed the clock off centre",bar.width/2,bar.textX+bar.textW/2);
+    }
+
+    @Test public void aBarWithNoObjectivesIsUnaffected(){        TeamBar.Bar bar=new TeamBar.Bar(Collections.singletonList(Collections.singletonList("A")),
             Collections.singletonList(Collections.singletonList("B")),16,20,null,"");
         assertTrue(bar.leftStrips.isEmpty());
         assertTrue(bar.rightStrips.isEmpty());
