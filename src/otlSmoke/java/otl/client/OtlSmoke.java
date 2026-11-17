@@ -2242,8 +2242,8 @@ public final class OtlSmoke {
                 tabEntry(mc,"RedPlayer0","\u00a7cRedPlayer0");
                 require(!TeamBar.dead("RedPlayer0"),"A respawned player stayed greyed out");
                 TeamBar.Timer up=TeamBar.INSTANCE.timer(mc);
-                require(up!=null&&!up.countdown&&up.seconds>=42&&TeamBar.colour(up)==TeamBar.GREEN,
-                    "A count-up clock was not green: "+(up==null?"none":up.label));
+                require(up!=null&&!up.countdown&&up.seconds>=42&&TeamBar.colour(up)==TeamBar.GOLD,
+                    "A count-up clock was not gold: "+(up==null?"none":up.label));
                 sidebar(mc.theWorld.getScoreboard(),mc.theWorld.getScoreboard().getObjective("otl_teambar"),"Players: 24");
                 net.minecraft.entity.boss.BossStatus.bossName=null;
                 line("Playing Allure");
@@ -2305,13 +2305,43 @@ public final class OtlSmoke {
                 TeamBar.Timer handedOver=TeamBar.INSTANCE.timer(mc,now+12_000_000_000L);
                 require(handedOver!=null&&"9:20".equals(handedOver.label),"The clock did not hand over to the next source: "+(handedOver==null?"none":handedOver.label));
                 sidebar(mc.theWorld.getScoreboard(),mc.theWorld.getScoreboard().getObjective("otl_teambar"),"Players: 24");
-                // Clock colours: gold count-in, yellow limit, red in the last 25 seconds, green count-up.
+                // Clock colours: gold count-in and live clock, yellow limit, red in the last 25 seconds.
                 require(TeamBar.colour(next)==TeamBar.GOLD,"The count-in was not gold");
                 require(TeamBar.colour(new TeamBar.Timer("5:00",300,true,false))==TeamBar.YELLOW,"A limit with time left was not yellow");
                 require(TeamBar.colour(new TeamBar.Timer("0:26",26,true,false))==TeamBar.YELLOW,"A limit just above 25 seconds turned red too early");
                 require(TeamBar.colour(new TeamBar.Timer("0:25",25,true,false))==TeamBar.RED,"25 seconds left was not red");
                 require(TeamBar.colour(new TeamBar.Timer("0:00",0,true,false))==TeamBar.RED,"The last second was not red");
-                require(TeamBar.colour(new TeamBar.Timer("0:25",25,false,false))==TeamBar.GREEN,"A count-up clock was not green");
+                require(TeamBar.colour(new TeamBar.Timer("0:25",25,false,false))==TeamBar.GOLD,"A count-up clock was not gold");
+                require(TeamBar.colour(null)==TeamBar.GOLD,"A clock with no timer was not gold");
+                // Header above the clock: off by default; the map name or the sidebar's own gamemode,
+                // with the other value and the author on hover.
+                net.minecraft.scoreboard.ScoreObjective headerObjective=mc.theWorld.getScoreboard().getObjective("otl_teambar");
+                String oldTitle=headerObjective.getDisplayName();
+                headerObjective.setDisplayName("\u00a76Capture the Wool");
+                line("Playing Allure by jcane");
+                UtilitySettings.teamBarHeader=0;
+                int plainHeight=TeamBar.INSTANCE.bar(mc,false).height;
+                require(TeamBar.INSTANCE.bar(mc,false).header==null,"The header was on by default");
+                UtilitySettings.teamBarHeader=1;
+                TeamBar.Bar mapHeader=TeamBar.INSTANCE.bar(mc,false);
+                require(mapHeader.header!=null&&"Allure".equals(mapHeader.header.text)
+                    &&"Capture the Wool by jcane".equals(mapHeader.header.hover),
+                    "The map-name header lost its name or its hover: "+(mapHeader.header==null?"none":mapHeader.header.hover));
+                require(mapHeader.header.colour==TeamBar.AQUA,"The map name was not the server's aqua");
+                require(mapHeader.height==plainHeight+TeamBar.HEADER_H,"The header did not take its own line above the heads");
+                require("Capture the Wool by jcane".equals(TeamBar.headerAt(mapHeader,mapHeader.width/2,1,mc.fontRendererObj)),
+                    "Hovering the header did not name the gamemode and author");
+                require(TeamBar.headerAt(mapHeader,mapHeader.width/2,TeamBar.HEADER_H+2,mc.fontRendererObj)==null,
+                    "The header hover reached down into the heads");
+                UtilitySettings.teamBarHeader=2;
+                TeamBar.Bar modeHeader=TeamBar.INSTANCE.bar(mc,false);
+                require(modeHeader.header!=null&&"Capture the Wool".equals(modeHeader.header.text),
+                    "The gamemode was not read from the sidebar title: "+(modeHeader.header==null?"none":modeHeader.header.text));
+                require("Allure by jcane".equals(modeHeader.header.hover),
+                    "The gamemode header did not name the map and author on hover: "+modeHeader.header.hover);
+                require(modeHeader.header.colour==TeamBar.chatColour('6'),"The gamemode lost the sidebar title's colour");
+                UtilitySettings.teamBarHeader=0;
+                headerObjective.setDisplayName(oldTitle);
                 // The sidebar wipes above dropped the objective rows; put them back so the next
                 // frame draws the compact strip and 82 can screenshot it.
                 sidebar(mc.theWorld.getScoreboard(),mc.theWorld.getScoreboard().getObjective("otl_teambar"),"Time Remaining: 9:50");

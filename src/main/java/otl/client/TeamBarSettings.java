@@ -22,6 +22,7 @@ public final class TeamBarSettings extends SettingsScreen {
         buttonList.add(new NeutralButton(10,panel.left(),panel.row(),panel.width(),20,"Compact objectives: "+(UtilitySettings.teamBarObjectivesCompact?"ON":"OFF"),false));
         buttonList.add(new NeutralButton(11,panel.left(),panel.row(),panel.width(),20,"Control point tracking: "+(UtilitySettings.teamBarControlPoints?"ON":"OFF"),false));
         buttonList.add(new NeutralButton(12,panel.left(),panel.row(),panel.width(),20,"Score display: "+scoreStyle(),false));
+        buttonList.add(new NeutralButton(13,panel.left(),panel.row(),panel.width(),20,"Above clock: "+headerMode(),false));
         buttonList.add(new PresetSlider(2,panel.left(),panel.row(),panel.width(),"Players shown: ","",PresetSlider.PLAYERS,UtilitySettings.teamBarPlayers,10,s->UtilitySettings.teamBarPlayers=s.getValueInt()));
         buttonList.add(new PresetSlider(3,panel.left(),panel.row(),panel.width(),"Size: ","%",PresetSlider.SIZE,UtilitySettings.teamBarSize,150,s->UtilitySettings.teamBarSize=s.getValueInt()));
         buttonList.add(new PresetSlider(7,panel.left(),panel.row(),panel.width(),"Dead head opacity: ","%",new int[]{25,50,75,100},UtilitySettings.teamBarDeadOpacity,50,s->UtilitySettings.teamBarDeadOpacity=s.getValueInt()));
@@ -29,6 +30,7 @@ public final class TeamBarSettings extends SettingsScreen {
         panel.note("Objectives shows PGM's wools, goal states and scores under the clock. Compact moves them beside the clock, markers only.");
         panel.note("Control points: neutral points below the clock; owned points below their team's side. Capture progress does not change the owner.");
         panel.note("Score display picks how a symbolic score (circle/square/heart maps) reads: text, or a bar with the number on hover.");
+        panel.note("Above clock shows the map name or the gamemode in bold; hover it for the other one and the map's author.");
         panel.note("Open chat to hover a head for its name, or click it for profile, teleport, friend and private-message actions.");
         back(4);
     }
@@ -45,11 +47,16 @@ public final class TeamBarSettings extends SettingsScreen {
         if(b.id==10)UtilitySettings.teamBarObjectivesCompact=!UtilitySettings.teamBarObjectivesCompact;
         if(b.id==11)UtilitySettings.teamBarControlPoints=!UtilitySettings.teamBarControlPoints;
         if(b.id==12)UtilitySettings.teamBarScoreStyle=(UtilitySettings.teamBarScoreStyle+1)%3;
+        if(b.id==13)UtilitySettings.teamBarHeader=(UtilitySettings.teamBarHeader+1)%3;
         UtilitySettings.save();initGui();
     }
     private static String scoreStyle(){
         return UtilitySettings.teamBarScoreStyle==1?"Bar (horizontal)"
             :UtilitySettings.teamBarScoreStyle==2?"Bar (vertical)":"Text";
+    }
+    private static String headerMode(){
+        return UtilitySettings.teamBarHeader==1?"Map name"
+            :UtilitySettings.teamBarHeader==2?"Gamemode":"OFF";
     }
     protected void mouseReleased(int mx,int my,int state){super.mouseReleased(mx,my,state);UtilitySettings.save();}
 }

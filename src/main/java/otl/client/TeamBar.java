@@ -61,7 +61,9 @@ final class TeamBar {
     /** The sixteen chat colour codes as RGB, for the team-colour line. */
     private static final int[] COLOURS={0xFF000000,0xFF0000AA,0xFF00AA00,0xFF00AAAA,0xFFAA0000,0xFFAA00AA,0xFFFFAA00,0xFFAAAAAA,
         0xFF555555,0xFF5555FF,0xFF55FF55,0xFF55FFFF,0xFFFF5555,0xFFFF55FF,0xFFFFFF55,0xFFFFFFFF};
-    static final int WHITE=0xFFFFFFFF,GREEN=0xFF55FF55,GOLD=0xFFFFAA00,YELLOW=0xFFFFD34F,RED=0xFFFF5555;
+    static final int WHITE=0xFFFFFFFF,GREEN=0xFF55FF55,GOLD=0xFFFFAA00,YELLOW=0xFFFFD34F,RED=0xFFFF5555,AQUA=0xFF55FFFF;
+    /** One bold line between the bar's top edge and the heads, for the map name or gamemode. */
+    static final int HEADER_H=10;
     /** A time limit turns red in its last stretch, so the end of the match reads at a glance. */
     static final int LOW_TIME=25;
     private static final int FALLBACK=0xFF8A8A8A,DEAD_FALLBACK=0xFF5A5A5A;
@@ -82,6 +84,8 @@ final class TeamBar {
     private static final long DEAD_TTL=250_000_000L;
     private String actionBar;
     private long actionBarAt;
+    /** The current map, from the server's "Playing <map> by <author>" line. */
+    private String mapName="",mapAuthor="";
     private Object world;
     /** Last server clock value and when it arrived; the display ticks on from there. */
     private int baseSeconds=-1;
@@ -203,6 +207,8 @@ final class TeamBar {
         final int stripY,stripH;
         final Timer timer;
         final String label;
+        /** Bold line above the heads, with its own hover text; null when the option is off. */
+        final Header header;
         Bar(List<List<String>> left,List<List<String>> right,int head,int textW,Timer timer,String label){this(left,right,head,textW,timer,label,0,null,null);}
         Bar(List<List<String>> left,List<List<String>> right,int head,int textW,Timer timer,String label,int line){this(left,right,head,textW,timer,label,line,null,null);}
         Bar(List<List<String>> left,List<List<String>> right,int head,int textW,Timer timer,String label,int line,
@@ -215,9 +221,15 @@ final class TeamBar {
         }
         Bar(List<List<String>> left,List<List<String>> right,int head,int textW,Timer timer,String label,int line,
             List<Objectives.Strip> leftStrips,List<Objectives.Strip> rightStrips,boolean compact,List<List<Objectives.Strip>> points){
+            this(left,right,head,textW,timer,label,line,leftStrips,rightStrips,compact,points,null,0);
+        }
+        Bar(List<List<String>> left,List<List<String>> right,int head,int textW,Timer timer,String label,int line,
+            List<Objectives.Strip> leftStrips,List<Objectives.Strip> rightStrips,boolean compact,List<List<Objectives.Strip>> points,
+            Header header,int headerW){
             this.left=left;this.right=right;this.head=head;this.advance=advance(head);this.timer=timer;
             this.compact=compact;
             this.line=line;
+            this.header=header;
             this.leftStrips=leftStrips==null?Collections.<Objectives.Strip>emptyList():leftStrips;
             this.rightStrips=rightStrips==null?Collections.<Objectives.Strip>emptyList():rightStrips;
             this.pointStrips=points==null?Arrays.asList(Collections.<Objectives.Strip>emptyList(),Collections.<Objectives.Strip>emptyList(),Collections.<Objectives.Strip>emptyList()):points;
@@ -240,6 +252,8 @@ final class TeamBar {
             half=Math.max(half,TeamBar.stripWidth(pointStrips.get(0))+GAP+(compact&&leftW>0?leftW+OBJECTIVE_GAP:0));
             half=Math.max(half,TeamBar.stripWidth(pointStrips.get(1))+GAP+(compact&&rightW>0?rightW+OBJECTIVE_GAP:0));
             half=Math.max(half,(TeamBar.stripWidth(pointStrips.get(2))-textW+1)/2);
+            // A long header widens the bar symmetrically, so the clock stays on the exact centre.
+            half=Math.max(half,(headerW-textW+1)/2);
             this.width=2*half+textW;
             this.textX=half;
             this.leftEnd=textX-GAP-(!compact||leftW==0?0:leftW+OBJECTIVE_GAP);
@@ -260,7 +274,8 @@ final class TeamBar {
             int ownedRows=Math.max(pointStrips.get(0).size(),pointStrips.get(1).size());
             int neutralRows=pointStrips.get(2).size();
             this.neutralPointY=pointY+ownedRows*STRIP_LINE+(ownedRows>0&&neutralRows>0?OBJECTIVE_GAP:0);
-            this.height=ownedRows==0&&neutralRows==0?standardHeight:neutralPointY+neutralRows*STRIP_LINE;
+            this.height=(ownedRows==0&&neutralRows==0?standardHeight:neutralPointY+neutralRows*STRIP_LINE)
+                +(header==null?0:HEADER_H);
             this.label=label;
         }
         /** Left edge of one objective line, against the clock on its own side. */
@@ -315,7 +330,14 @@ final class TeamBar {
             if(playing==0||(playing>0&&MapPreview.serverQuery(text.substring(playing))!=null)){
                 announced=true;matchOver=false;reset(System.nanoTime());
                 String query=MapPreview.serverQuery(text.substring(playing).trim());
-                if(query!=null)resolveTeamOrder(query);
+                if(query!=null){
+                    resolveTeamOrder(query);
+                    // The server prints "Playing <map> by <author>"; the map's name and author are
+                    // what the header above the clock shows and names on hover.
+                    mapName=query.trim();
+                    int by=text.lastIndexOf(" by ");
+                    mapAuthor=by<0?"":text.substring(by+4).trim();
+                }
                 return;
             }
             if(MatchEnd.kickoff(text)){announced=true;matchOver=false;if(!started||ended)begin(System.nanoTime());return;}
@@ -338,6 +360,7 @@ final class TeamBar {
         ended=false;started=false;overtime=false;timeLimitSeen=false;frozenSeconds=-1;preMatch=true;baseSeconds=0;baseNanos=now;direction=0;clockSource=0;
         ffaSlots.clear();
         teamOrder=Collections.emptyList();teamMap="";welcomeTitle=null;mapLookup++;
+        mapName="";mapAuthor="";
         // The old map's clock lines must not make a source look like it is still counting.
         forgetSources();
     }
@@ -381,7 +404,7 @@ final class TeamBar {
         if(world!=mc.theWorld)clear();
         world=mc.theWorld;
         // Leaving the server: nothing is announced any more.
-        if(mc.theWorld==null){announced=false;matchOver=false;teamOrder=Collections.emptyList();teamMap="";welcomeTitle=null;mapLookup++;}
+        if(mc.theWorld==null){announced=false;matchOver=false;teamOrder=Collections.emptyList();teamMap="";welcomeTitle=null;mapLookup++;mapName="";mapAuthor="";}
     }
 
     /** Every real team, most members first; the local head leads its own team. Observers, tab sorting and leavers are dropped. */
@@ -522,6 +545,21 @@ final class TeamBar {
         int screen=scaled.getScaledWidth(),screenH=scaled.getScaledHeight();
         List<Objectives.Strip> leftStrips=null,rightStrips=null;
         List<List<Objectives.Strip>> pointStrips=null;
+        // PGM renders the map's gamemode as the sidebar's title, in its own colour; keep that colour.
+        // Read it in both modes: the map-name header names it on hover.
+        String modeText="";
+        int modeColour=AQUA;
+        if(mc.theWorld!=null){
+            net.minecraft.scoreboard.ScoreObjective sidebar=mc.theWorld.getScoreboard().getObjectiveInDisplaySlot(1);
+            if(sidebar!=null){
+                String formatted=sidebar.getDisplayName();
+                modeText=ChatRules.plain(formatted).trim();
+                int code=formatted.indexOf('\u00a7');
+                if(code>=0&&code+1<formatted.length())modeColour=chatColour(formatted.charAt(code+1));
+            }
+        }
+        Header header=header(UtilitySettings.teamBarHeader,mapName,mapAuthor,modeText,modeColour);
+        int headerW=header==null?0:mc.fontRendererObj.getStringWidth("\u00a7l"+header.text);
         // Every match team's name, in the order the bar and PGM's sidebar use, with the column each
         // one's heads take. A team with nobody online still has objectives printed, so it still
         // needs to be known and still needs a side.
@@ -588,11 +626,35 @@ final class TeamBar {
         }
         // Last resort, height only: a stack of many teams can still be taller than the screen.
         while(head>MIN_HEAD){
-            if(new Bar(left,right,head,textW,timer,label,line(head,ffa),leftStrips,rightStrips,UtilitySettings.teamBarObjectivesCompact,pointStrips).height<=screenH-8)break;
+            if(new Bar(left,right,head,textW,timer,label,line(head,ffa),leftStrips,rightStrips,UtilitySettings.teamBarObjectivesCompact,pointStrips,header,headerW).height<=screenH-8)break;
             head--;
         }
-        return new Bar(left,right,head,textW,timer,label,line(head,ffa),leftStrips,rightStrips,UtilitySettings.teamBarObjectivesCompact,pointStrips);
+        return new Bar(left,right,head,textW,timer,label,line(head,ffa),leftStrips,rightStrips,UtilitySettings.teamBarObjectivesCompact,pointStrips,header,headerW);
     }
+
+    /** The line above the clock: shown text, its colour, and what hovering it says. */
+    static final class Header {
+        final String text,hover;final int colour;
+        Header(String text,int colour,String hover){this.text=text;this.colour=colour;this.hover=hover;}
+    }
+
+    /**
+     * Map name or gamemode above the clock, plus the other one and the author on hover. Values the
+     * server has not printed yet leave the line out instead of showing a placeholder.
+     */
+    static Header header(int mode,String mapName,String author,String modeText,int modeColour){
+        if(mode==0)return null;
+        boolean map=mode==1;
+        String text=text(map?mapName:modeText);
+        if(text.isEmpty())return null;
+        String other=text(map?modeText:mapName);
+        String by=text(author);
+        String hover=other.isEmpty()?by.isEmpty()?"":"by "+by
+            :by.isEmpty()?other:other+" by "+by;
+        return new Header(text,map?AQUA:modeColour,hover);
+    }
+
+    private static String text(String value){return value==null?"":value.trim();}
 
     /** The width a side's objective stack needs: its longest line. */
     static int stripWidth(List<Objectives.Strip> lines){
@@ -735,7 +797,7 @@ final class TeamBar {
         return new Timer(format(seconds),seconds,direction<0,preMatch);
     }
 
-    /** A match has started with no server clock: count up from 0:00 in green until one arrives. */
+    /** A match has started with no server clock: count up from 0:00 in gold until one arrives. */
     private void begin(long now){
         symbolicScores.clear();
         ended=false;started=true;overtime=false;timeLimitSeen=false;frozenSeconds=-1;preMatch=false;
@@ -1070,7 +1132,8 @@ final class TeamBar {
         ScaledResolution sr=new ScaledResolution(mc);
         int mx=Mouse.getX()*sr.getScaledWidth()/mc.displayWidth;
         int my=sr.getScaledHeight()-Mouse.getY()*sr.getScaledHeight()/mc.displayHeight-1;
-        String name=Mouse.isGrabbed()?null:headAt(bar,mx-box.x,my-box.y);
+        String name=Mouse.isGrabbed()?null:headerAt(bar,mx-box.x,my-box.y,mc.fontRendererObj);
+        if(name==null&&!Mouse.isGrabbed())name=headAt(bar,mx-box.x,my-box.y);
         // Compact objectives have no room for names, so hovering one shows what it is.
         if(name==null&&!Mouse.isGrabbed())name=objectiveAt(bar,mx-box.x,my-box.y,mc.fontRendererObj);
         if(!java.util.Objects.equals(name,hovered)){hovered=name;hoverSince=System.nanoTime();}
@@ -1161,12 +1224,13 @@ final class TeamBar {
     }
 
     static int[] headBounds(Bar bar,String player){
+        int y0=bar.header==null?0:HEADER_H;
         for(int side=0;side<2;side++){
             List<List<String>> rows=side==0?bar.left:bar.right;
             for(int row=0;row<rows.size();row++){
                 List<String> members=rows.get(row);int index=members.indexOf(player);
                 if(index>=0)return new int[]{(side==0?bar.leftStart(members):bar.rightStart(members))+index*bar.advance,
-                    row*(bar.band+ROW_GAP)+(bar.band-bar.head)/2};
+                    y0+row*(bar.band+ROW_GAP)+(bar.band-bar.head)/2};
             }
         }
         return null;
@@ -1177,11 +1241,20 @@ final class TeamBar {
             ||mc.thePlayer.sendQueue.getPlayerInfoMap().size()>1||mc.theWorld.getScoreboard().getObjectiveInDisplaySlot(0)!=null);
     }
 
+    /** The header line's hover text when the pointer is over it; null otherwise. */
+    static String headerAt(Bar bar,int x,int y,net.minecraft.client.gui.FontRenderer font){
+        if(bar.header==null||y<0||y>=HEADER_H)return null;
+        int w=font.getStringWidth("\u00a7l"+bar.header.text);
+        int left=bar.width/2-w/2;
+        return x>=left&&x<left+w?bar.header.hover:null;
+    }
+
     /**
      * The compact objective under a point in the bar, for the hover tooltip. Null when the pointer
      * is over a head, empty space, or nothing is drawn in compact mode.
      */
     static String objectiveAt(Bar bar,int x,int y,net.minecraft.client.gui.FontRenderer font){
+        y-=bar.header==null?0:HEADER_H;
         for(int side=0;side<5;side++){
             List<Objectives.Strip> lines=bar.strips(side);
             for(int i=0;i<lines.size();i++){
@@ -1194,6 +1267,7 @@ final class TeamBar {
     }
 
     static String headAt(Bar bar,int x,int y){
+        y-=bar.header==null?0:HEADER_H;
         for(int side=0;side<2;side++){
             List<List<String>> rows=side==0?bar.left:bar.right;
             for(int r=0;r<rows.size();r++){
@@ -1222,6 +1296,8 @@ final class TeamBar {
     }
 
     private static void draw(Minecraft mc,Bar bar,int x,int y,String hover,long since){
+        int barTop=y;
+        if(bar.header!=null)y+=HEADER_H;
         int band=bar.band;
         int hx=0,hy=0;boolean found=false;
         int lineW=bar.line>0?bar.line-LINE_GAP:0;
@@ -1272,6 +1348,11 @@ final class TeamBar {
         tessellator.draw();
         GlStateManager.enableTexture2D();
         GlStateManager.disableBlend();
+        if(bar.header!=null){
+            String line="\u00a7l"+bar.header.text;
+            mc.fontRendererObj.drawStringWithShadow(line,x+bar.width/2-mc.fontRendererObj.getStringWidth(line)/2,
+                barTop+(HEADER_H-8)/2,bar.header.colour);
+        }
         if(bar.textW>0){
             // Sits on the first head row, not the middle of the stack, so extra teams stack below it.
             mc.fontRendererObj.drawStringWithShadow(bar.label,x+bar.textX,y+(band-8)/2,colour(bar.timer));
@@ -1333,11 +1414,15 @@ final class TeamBar {
      * Clock colour: gold before match start, red for the last 25 seconds of a time limit,
      * yellow for a limit that still has time left, green for a normal/count-up clock.
      */
+    /**
+     * Clock colour: gold before match start and for the live clock, red for the last 25 seconds of
+     * a time limit, yellow for a limit that still has time left.
+     */
     static int colour(Timer timer){
-        if(timer==null)return GREEN;
+        if(timer==null)return GOLD;
         if(timer.starting)return GOLD;
         if(timer.countdown)return timer.seconds<=LOW_TIME?RED:YELLOW;
-        return GREEN;
+        return GOLD;
     }
 
     /** A row's team colour, taken from the scoreboard prefix PGM puts on the team. */

@@ -5,14 +5,28 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class TeamBarTest {
-    @Test public void normalClockIsGreenWithoutChangingCountdownWarnings(){
-        assertEquals(TeamBar.GREEN,TeamBar.colour(null));
-        assertEquals(TeamBar.GREEN,TeamBar.colour(new TeamBar.Timer("1:05",65,false,false)));
+    @Test public void normalClockIsGoldWithoutChangingCountdownWarnings(){
+        assertEquals(TeamBar.GOLD,TeamBar.colour(null));
+        assertEquals(TeamBar.GOLD,TeamBar.colour(new TeamBar.Timer("1:05",65,false,false)));
         assertEquals(TeamBar.YELLOW,TeamBar.colour(new TeamBar.Timer("1:05",65,true,false)));
         assertEquals(TeamBar.RED,TeamBar.colour(new TeamBar.Timer("0:25",25,true,false)));
         assertEquals(TeamBar.GOLD,TeamBar.colour(new TeamBar.Timer("0:10",10,false,true)));
         assertEquals(TeamBar.GOLD,TeamBar.colour(new TeamBar.Timer("0:00",0,false,true)));
         assertEquals(TeamBar.GOLD,TeamBar.colour(new TeamBar.Timer("1:00",60,true,true)));
+    }
+    @Test public void theHeaderShowsOneValueAndHoversTheOtherWithTheAuthor(){
+        TeamBar.Header mode=TeamBar.header(2,"Shingeki no Brady","Kazoha","Capture the Wool",TeamBar.AQUA);
+        assertEquals("Capture the Wool",mode.text);
+        assertEquals("Shingeki no Brady by Kazoha",mode.hover);
+        assertEquals(TeamBar.AQUA,mode.colour);
+        TeamBar.Header map=TeamBar.header(1,"Shingeki no Brady","Kazoha","Capture the Wool",0xFFAA00);
+        assertEquals("Shingeki no Brady",map.text);
+        assertEquals("Capture the Wool by Kazoha",map.hover);
+        assertEquals(TeamBar.AQUA,map.colour);
+        assertNull("A disabled header still took a line",TeamBar.header(0,"Shingeki no Brady","Kazoha","Capture the Wool",TeamBar.AQUA));
+        assertNull(TeamBar.header(1,"","Kazoha","Capture the Wool",TeamBar.AQUA));
+        assertNull("A title-less sidebar invented a gamemode",TeamBar.header(2,"Shingeki no Brady","Kazoha","",TeamBar.AQUA));
+        assertEquals("Shingeki no Brady",TeamBar.header(2,"Shingeki no Brady","","Capture the Wool",TeamBar.AQUA).hover);
     }
     @Test public void hoverUsesOriginalHeadBoundsOnBothSidesAndRows(){
         java.util.List<java.util.List<String>> left=java.util.Arrays.asList(java.util.Arrays.asList("Alex","Sam"),java.util.Collections.singletonList("Pat"));
