@@ -63,7 +63,7 @@ final class TeamBar {
         0xFF555555,0xFF5555FF,0xFF55FF55,0xFF55FFFF,0xFFFF5555,0xFFFF55FF,0xFFFFFF55,0xFFFFFFFF};
     static final int WHITE=0xFFFFFFFF,GREEN=0xFF55FF55,GOLD=0xFFFFAA00,YELLOW=0xFFFFD34F,RED=0xFFFF5555,AQUA=0xFF55FFFF;
     /** One bold line between the bar's top edge and the heads, for the map name or gamemode. */
-    static final int HEADER_H=10;
+    static final int HEADER_H=14;
     /** A time limit turns red in its last stretch, so the end of the match reads at a glance. */
     static final int LOW_TIME=25;
     private static final int FALLBACK=0xFF8A8A8A,DEAD_FALLBACK=0xFF5A5A5A;
@@ -322,6 +322,10 @@ final class TeamBar {
                 if(!MapInfo.norm(query).equals(MapInfo.norm(teamMap))){
                     announced=true;matchOver=false;reset(System.nanoTime());resolveTeamOrder(query);
                 }
+                // The welcome block names the map above "Created by ...", so this is where most
+                // announcements carry the map name; the author is the rest of this line.
+                mapName=query;
+                mapAuthor=text.substring("Created by ".length()).trim();
                 continue;
             }
             // "Playing <map>" is the map change itself: the last match's clock must not linger.
@@ -1350,8 +1354,9 @@ final class TeamBar {
         GlStateManager.disableBlend();
         if(bar.header!=null){
             String line="\u00a7l"+bar.header.text;
+            // Kept at the top of its line so the heads below it keep some breathing room.
             mc.fontRendererObj.drawStringWithShadow(line,x+bar.width/2-mc.fontRendererObj.getStringWidth(line)/2,
-                barTop+(HEADER_H-8)/2,bar.header.colour);
+                barTop+1,bar.header.colour);
         }
         if(bar.textW>0){
             // Sits on the first head row, not the middle of the stack, so extra teams stack below it.

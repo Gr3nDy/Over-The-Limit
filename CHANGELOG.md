@@ -3,7 +3,7 @@
 ## Unreleased
 
 ### Added
-- **Team Bar header above the clock** (OFF by default) — picks the map name or the gamemode, drawn bold in the server's own colour. Hovering it shows the other one plus the map's author. The map name and author come from the server's `Playing <map> by <author>` line; the gamemode is the sidebar title, which PGM renders as the map's mode.
+- **Team Bar header above the clock** (default None) — a three-way choice of None, map name or gamemode, drawn bold in the server's own colour. Hovering it shows the other one plus the map's author. The map name and author come from the server's welcome block and its `Playing <map> by <author>` line; the gamemode is the sidebar title, which PGM renders as the map's mode.
 
 ### Fixed
 - **Team Bar clock colour** — the live/count-up clock is gold instead of green, matching the pre-match clock. A time limit stays yellow and turns red in its last 25 seconds.

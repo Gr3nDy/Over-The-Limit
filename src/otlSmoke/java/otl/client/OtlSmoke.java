@@ -2340,6 +2340,14 @@ public final class OtlSmoke {
                 require("Allure by jcane".equals(modeHeader.header.hover),
                     "The gamemode header did not name the map and author on hover: "+modeHeader.header.hover);
                 require(modeHeader.header.colour==TeamBar.chatColour('6'),"The gamemode lost the sidebar title's colour");
+                // Overcast announces most maps through the welcome block, not a "Playing" line:
+                // the map name sits above "Created by ..." and must still reach the header.
+                UtilitySettings.teamBarHeader=1;
+                line("\u00a7m   \u00a7lShingeki no Brady\u00a7r   \u00a7m");
+                line("Created by Kazoha");
+                TeamBar.Bar welcomeHeader=TeamBar.INSTANCE.bar(mc,false);
+                require(welcomeHeader.header!=null&&"Shingeki no Brady".equals(welcomeHeader.header.text),
+                    "The welcome block's map name was lost: "+(welcomeHeader.header==null?"none":welcomeHeader.header.text));
                 UtilitySettings.teamBarHeader=0;
                 headerObjective.setDisplayName(oldTitle);
                 // The sidebar wipes above dropped the objective rows; put them back so the next
