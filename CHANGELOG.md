@@ -1,6 +1,9 @@
 # Changelog
 
-## Unreleased
+## v0.6.2 - 2026-11-17
+
+### Known issues
+- Score display has been reported not to work in some situations; the cause is not yet confirmed.
 
 ### Added
 - **Team Bar header above the clock** (default None) — a three-way choice of None, map name or gamemode, drawn bold in the server's own colour. Hovering it shows the other one plus the map's author. The map name and author come from the server's welcome block and its `Playing <map> by <author>` line; the gamemode is the sidebar title, which PGM renders as the map's mode.
