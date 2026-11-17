@@ -12,26 +12,31 @@ public final class TeamBarSettings extends SettingsScreen {
     protected String subtitle(){return "Top-centre heads with the match clock.";}
     protected void buildPanel(){
         resetButton("team_bar");
-        panel.section("TEAM BAR");
-        buttonList.add(new NeutralButton(0,panel.left(),panel.row(),panel.width(),20,"Team Bar: "+(UtilitySettings.teamBar?"ON":"OFF"),false));
-        buttonList.add(new NeutralButton(1,panel.left(),panel.row(),panel.width(),20,"Hide bossbar: "+(UtilitySettings.teamBarHideBoss?"ON":"OFF"),false));
-        buttonList.add(new NeutralButton(8,panel.left(),panel.row(),panel.width(),20,"Hide while player list is open: "+(UtilitySettings.teamBarHideOnTab?"ON":"OFF"),false));
-        buttonList.add(new NeutralButton(5,panel.left(),panel.row(),panel.width(),20,"Show in observer: "+(UtilitySettings.teamBarObserver?"ON":"OFF"),false));
-        buttonList.add(new NeutralButton(6,panel.left(),panel.row(),panel.width(),20,"Team colour line: "+(UtilitySettings.teamBarTeamColor?"ON":"OFF"),false));
-        buttonList.add(new NeutralButton(9,panel.left(),panel.row(),panel.width(),20,"Objectives: "+(UtilitySettings.teamBarObjectives?"ON":"OFF"),false));
-        buttonList.add(new NeutralButton(10,panel.left(),panel.row(),panel.width(),20,"Compact objectives: "+(UtilitySettings.teamBarObjectivesCompact?"ON":"OFF"),false));
+        panel.section("GENERAL");
+        int visible=panel.row();
+        buttonList.add(new NeutralButton(0,panel.columnX(2,0),visible,panel.columnWidth(2),20,"Team Bar: "+(UtilitySettings.teamBar?"ON":"OFF"),false));
+        buttonList.add(new NeutralButton(5,panel.columnX(2,1),visible,panel.columnWidth(2),20,"In observer: "+(UtilitySettings.teamBarObserver?"ON":"OFF"),false));
+        int quiet=panel.row();
+        buttonList.add(new NeutralButton(1,panel.columnX(2,0),quiet,panel.columnWidth(2),20,"Hide bossbar: "+(UtilitySettings.teamBarHideBoss?"ON":"OFF"),false));
+        buttonList.add(new NeutralButton(8,panel.columnX(2,1),quiet,panel.columnWidth(2),20,"Hide on player list: "+(UtilitySettings.teamBarHideOnTab?"ON":"OFF"),false));
+        panel.section("HEADS");
+        int sizing=panel.row();
+        buttonList.add(new PresetSlider(2,panel.columnX(2,0),sizing,panel.columnWidth(2),"Players: ","",PresetSlider.PLAYERS,UtilitySettings.teamBarPlayers,10,s->UtilitySettings.teamBarPlayers=s.getValueInt()));
+        buttonList.add(new PresetSlider(3,panel.columnX(2,1),sizing,panel.columnWidth(2),"Size: ","%",PresetSlider.SIZE,UtilitySettings.teamBarSize,150,s->UtilitySettings.teamBarSize=s.getValueInt()));
+        int fading=panel.row();
+        buttonList.add(new PresetSlider(7,panel.columnX(2,0),fading,panel.columnWidth(2),"Dead opacity: ","%",new int[]{25,50,75,100},UtilitySettings.teamBarDeadOpacity,50,s->UtilitySettings.teamBarDeadOpacity=s.getValueInt()));
+        buttonList.add(new NeutralButton(6,panel.columnX(2,1),fading,panel.columnWidth(2),20,"Team colour line: "+(UtilitySettings.teamBarTeamColor?"ON":"OFF"),false));
+        panel.note("Ten heads per row; extras wrap below. Dead players fade until respawn.");
+        panel.section("OBJECTIVES");
+        int shown=panel.row();
+        buttonList.add(new NeutralButton(9,panel.columnX(2,0),shown,panel.columnWidth(2),20,"Objectives: "+(UtilitySettings.teamBarObjectives?"ON":"OFF"),false));
+        buttonList.add(new NeutralButton(10,panel.columnX(2,1),shown,panel.columnWidth(2),20,"Compact: "+(UtilitySettings.teamBarObjectivesCompact?"ON":"OFF"),false));
         buttonList.add(new NeutralButton(11,panel.left(),panel.row(),panel.width(),20,"Control point tracking: "+(UtilitySettings.teamBarControlPoints?"ON":"OFF"),false));
-        buttonList.add(new NeutralButton(12,panel.left(),panel.row(),panel.width(),20,"Score display: "+scoreStyle(),false));
+        buttonList.add(new ChoiceButton(this,12,panel.left(),panel.choice(),panel.width(),"Score display",new String[]{"Text","Bar (horizontal)","Bar (vertical)"},UtilitySettings.teamBarScoreStyle,v->UtilitySettings.teamBarScoreStyle=v));
         buttonList.add(new ChoiceButton(this,13,panel.left(),panel.choice(),panel.width(),"Above clock",new String[]{"None","Map name","Gamemode"},UtilitySettings.teamBarHeader,v->UtilitySettings.teamBarHeader=v));
-        buttonList.add(new PresetSlider(2,panel.left(),panel.row(),panel.width(),"Players shown: ","",PresetSlider.PLAYERS,UtilitySettings.teamBarPlayers,10,s->UtilitySettings.teamBarPlayers=s.getValueInt()));
-        buttonList.add(new PresetSlider(3,panel.left(),panel.row(),panel.width(),"Size: ","%",PresetSlider.SIZE,UtilitySettings.teamBarSize,150,s->UtilitySettings.teamBarSize=s.getValueInt()));
-        buttonList.add(new PresetSlider(7,panel.left(),panel.row(),panel.width(),"Dead head opacity: ","%",new int[]{25,50,75,100},UtilitySettings.teamBarDeadOpacity,50,s->UtilitySettings.teamBarDeadOpacity=s.getValueInt()));
-        panel.note("Heads shrink for every five more players shown. Ten per row; extras wrap below. Dead players fade until respawn.");
-        panel.note("Objectives shows PGM's wools, goal states and scores under the clock. Compact moves them beside the clock, markers only.");
-        panel.note("Control points: neutral points below the clock; owned points below their team's side. Capture progress does not change the owner.");
-        panel.note("Score display picks how a symbolic score (circle/square/heart maps) reads: text, or a bar with the number on hover.");
-        panel.note("Above clock shows the map name or the gamemode in bold; hover it for the other one and the map's author.");
-        panel.note("Open chat to hover a head for its name, or click it for profile, teleport, friend and private-message actions.");
+        panel.note("Compact shows markers only, beside the clock. Control points stay with their owner until PGM confirms the capture.");
+        panel.note("Score display styles symbolic scores (circle/square/heart maps). Above clock shows the map name or gamemode in bold; hover it for the other value and the author.");
+        panel.note("In a match, hover a head for its name or click it for profile, teleport, friend and message actions.");
         back(4);
     }
     protected void actionPerformed(GuiButton b){
@@ -46,12 +51,7 @@ public final class TeamBarSettings extends SettingsScreen {
         if(b.id==9)UtilitySettings.teamBarObjectives=!UtilitySettings.teamBarObjectives;
         if(b.id==10)UtilitySettings.teamBarObjectivesCompact=!UtilitySettings.teamBarObjectivesCompact;
         if(b.id==11)UtilitySettings.teamBarControlPoints=!UtilitySettings.teamBarControlPoints;
-        if(b.id==12)UtilitySettings.teamBarScoreStyle=(UtilitySettings.teamBarScoreStyle+1)%3;
         UtilitySettings.save();initGui();
-    }
-    private static String scoreStyle(){
-        return UtilitySettings.teamBarScoreStyle==1?"Bar (horizontal)"
-            :UtilitySettings.teamBarScoreStyle==2?"Bar (vertical)":"Text";
     }
     protected void mouseReleased(int mx,int my,int state){super.mouseReleased(mx,my,state);UtilitySettings.save();}
 }
