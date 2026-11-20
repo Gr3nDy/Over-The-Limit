@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.7.1 - Nov 20 2026
 
 ### Changed
 - **Team Bar shared flags stay centred** - a flag both teams can capture is printed in one shared section, so it now sits under the clock in every state. Following the carrier made the row jump from the centre to a team's side each time the flag changed hands; the arrow still takes the carrier's team colour.
