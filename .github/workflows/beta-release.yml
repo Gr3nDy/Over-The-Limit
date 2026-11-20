@@ -7,7 +7,7 @@ on:
       - 'v*'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   release:
@@ -36,14 +36,5 @@ jobs:
         with:
           name: OTL-jars
           path: |
-            build/libs/OTL.jar
-            build/libs/OTL-source.jar
-      - name: Publish GitHub release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          name: OTL ${{ github.ref_name }}
-          body_path: CHANGELOG.md
-          files: |
             build/libs/OTL.jar
             build/libs/OTL-source.jar
