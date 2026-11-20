@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- **Delete profile confirmation** - clicking Yes deleted the profile but left the confirmation on screen. The menu was refreshed in place without being made the current screen again, so the dialog had nothing behind it and never went away.
+
 ## v0.7.0 - Nov 20 2026
 
 ### Added

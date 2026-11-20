@@ -41,6 +41,41 @@ final class OtlSmokeChecks {
     }
 
     /**
+     * Deleting a profile asks first. The Yes callback refreshed the menu without making it current
+     * again, so a successful delete left the confirmation sitting on screen with nothing behind it.
+     * This drives the real rail click and the real callback rather than rebuilding the dialog.
+     */
+    void profileDeleteDialog(Minecraft mc,ModulesScreen menu){
+        String home=UtilitySettings.profile,doomed="zz delete me";
+        try{UtilitySettings.write(Profiles.file(doomed),UtilitySettings.DEFAULTS);}
+        catch(Exception e){throw new AssertionError("Could not create the test profile: "+e.getMessage());}
+        menu.initGui();
+        java.util.List<String> rail=ReflectionHelper.getPrivateValue(ModulesScreen.class,menu,"profiles");
+        int index=rail.indexOf(doomed);
+        require(index>=0,"The test profile never reached the rail");
+        int x=ReflectionHelper.getPrivateValue(ModulesScreen.class,menu,"x");
+        int y=ReflectionHelper.getPrivateValue(ModulesScreen.class,menu,"y");
+        int h=ReflectionHelper.getPrivateValue(ModulesScreen.class,menu,"h");
+        int rows=Math.max(1,(h-104)/22);
+        // The rail shows only the first rows; scroll the new profile into view before clicking it.
+        int scroll=Math.max(0,Math.min(index,rail.size()-rows));
+        ReflectionHelper.setPrivateValue(ModulesScreen.class,menu,scroll,"railScroll");
+        int row=index-scroll;
+        require(row>=0&&row<rows,"The test profile could not be scrolled into the rail's view");
+        // The rail is 132 wide with 52 reserved for its actions: the X starts 32px into that.
+        try{menu.mouseClicked(x+8+120-52+34,y+30+row*22+5,0);}
+        catch(java.io.IOException e){throw new AssertionError("Rail click failed: "+e.getMessage());}
+        require(mc.currentScreen instanceof net.minecraft.client.gui.GuiYesNo,"Deleting a profile did not ask first");
+        net.minecraft.client.gui.GuiYesNo dialog=(net.minecraft.client.gui.GuiYesNo)mc.currentScreen;
+        net.minecraft.client.gui.GuiYesNoCallback callback=
+            ReflectionHelper.getPrivateValue(net.minecraft.client.gui.GuiYesNo.class,dialog,"parentScreen");
+        callback.confirmClicked(true,0);
+        require(mc.currentScreen instanceof ModulesScreen,"The delete confirmation stayed on screen after Yes");
+        require(!Profiles.profileNames().contains(doomed),"The profile was not deleted");
+        require(home.equals(UtilitySettings.profile),"Deleting a profile changed the active profile");
+    }
+
+    /**
      * The end-of-match sound, through Forge's own event object and the real handlers. On a client
      * whose chat PGM translates, this sound is the only end signal left, so it is checked with the
      * English lines out of the picture: no chat line is sent here, only the sound.

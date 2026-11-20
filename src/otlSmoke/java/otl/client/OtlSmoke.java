@@ -347,9 +347,16 @@ public final class OtlSmoke {
         for(TeamBar.Side side:sides)if(side.name.equals(name))return side;
         return null;
     }
-    /** Clicks the switch on a module card in the browser grid. */
+    /** Clicks the switch on a module card in the browser grid. The grid is sorted, ALL is not. */
     void cardToggle(ModulesScreen s,int index)throws java.io.IOException{
-        int[] box=s.cardBox(index);
+        OtlModule m=OtlModule.ALL.get(index);
+        int at=s.visibleIndex(m);
+        require(at>=0,"Module missing from the grid: "+m.id);
+        int columns=ReflectionHelper.getPrivateValue(ModulesScreen.class,s,"columns");
+        int row=at/columns,scroll=Math.min(row,Math.max(0,s.rowCount()-2));
+        ReflectionHelper.setPrivateValue(ModulesScreen.class,s,scroll,"scrollRow");
+        // cardBox() takes an index inside the current scroll window, not an absolute one.
+        int[] box=s.cardBox((row-scroll)*columns+at%columns);
         s.mouseClicked(box[0]+8,box[1]+box[3]-12,0);
     }
     List<ChatLine> chatHistory(String key){return ReflectionHelper.getPrivateValue(GuiNewChat.class,ReliableChat.session().views.get(key).hud,"chatLines","field_146252_h");}
@@ -892,6 +899,7 @@ public final class OtlSmoke {
                 require("".equals(ServerScope.host("localhost:25565")),"dev host not removed");
                 require("".equals(ServerScope.host("play.oc.tc.example.com")),"Scope suffix bypass");
                 require("".equals(ServerScope.host("localhost:abc")),"Scope bad port");
+                checks.profileDeleteDialog(mc,menu);
                 menu.drawScreen(0,0,0);
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-menu.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
             }else if(state==7){

@@ -248,8 +248,10 @@ final class ModulesScreen extends GuiScreen {
                 if(mx>=actionX()+32){
                     if(name.equals(UtilitySettings.profile)||name.equals("Default"))return;
                     mc.displayGuiScreen(new GuiYesNo((yes,id)->{
-                        if(yes&&Profiles.deleteProfile(name))initGui();
-                        else mc.displayGuiScreen(this);
+                        if(yes)Profiles.deleteProfile(name);
+                        // displayGuiScreen re-inits this screen, which reloads the rail. Refreshing
+                        // it in place left the dialog on screen with nothing behind it.
+                        mc.displayGuiScreen(this);
                     },"Delete profile \""+name+"\"?","This cannot be undone.",0));
                     return;
                 }
@@ -563,6 +565,8 @@ final class ModulesScreen extends GuiScreen {
 
     // smoke helpers: card geometry plus the module grid's scrollbar
     int visibleCount(){return visible().size();}
+    /** Position of a module in the grid as it is drawn; the grid is sorted, ALL is not. */
+    int visibleIndex(OtlModule m){return visible().indexOf(m);}
     int[] cardBox(int index){
         int row=scrollRow+index/columns,col=index%columns;
         return new int[]{cardX(col),cardY(row),cardW(),cardH()};
