@@ -2,9 +2,9 @@
 
 **Over The Limit (OTL)** is a client-side Forge 1.8.9 mod for the [Overcast Community](https://overcastcommunity.com/) PGM-style server family (`play.oc.tc`, `vanish.oc.tc`, `spectrum.oc.tc`).
 
-**Current release:** [v0.7.0](https://github.com/Gr3nDy/Over-The-Limit/releases/tag/v0.7.0) · **Source:** [github.com/Gr3nDy/Over-The-Limit](https://github.com/Gr3nDy/Over-The-Limit) (branch `beta`)
+**Latest release:** [download](https://github.com/Gr3nDy/Over-The-Limit/releases/latest) · **Source:** [github.com/Gr3nDy/Over-The-Limit](https://github.com/Gr3nDy/Over-The-Limit) (branch `beta`)
 
-**New in v0.7.0:** Team Bar that hides the vanilla scoreboard, works on non-English PGM servers, and reads a carried flag on its carrier's side; a middle-clickable player list with View Profile, Teleport, Add Friend and Message; a PGM settings page under `PGS` in the module browser header; a redesigned interface across every OTL menu; and the All tab sending plain chat. Full list in the [changelog](../CHANGELOG.md).
+**Recent highlights:** Team Bar that hides the vanilla scoreboard, works on non-English PGM servers, and reads a carried flag on its carrier's side; a middle-clickable player list with View Profile, Teleport, Add Friend and Message; a PGM settings page under `PGS` in the module browser header; a redesigned interface across every OTL menu; and the All tab sending plain chat. Full list in the [changelog](../CHANGELOG.md).
 
 ## Installing
 
