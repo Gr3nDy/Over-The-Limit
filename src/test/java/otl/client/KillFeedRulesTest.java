@@ -10,6 +10,25 @@ public class KillFeedRulesTest {
         return set::contains;
     }
 
+    @Test public void aGluedPossessiveStillNamesTheKiller(){
+        java.util.function.Predicate<String> players=known("Alex","Bob");
+        // PGM's German "{0} wurde durch {1}s {2} erschlagen" renders "Bobs", with no space before the s.
+        KillFeedRules.Death sword=KillFeedRules.parse("\u00a7fAlex \u00a77wurde durch \u00a7fBobs \u00a77Holzschwert erschlagen",players);
+        assertNotNull("A glued possessive lost the kill",sword);
+        assertEquals("Alex",sword.victim);
+        assertEquals("Bob",sword.killer);
+        assertTrue(sword.ownKill("Bob"));
+        // Dutch and Swedish glue theirs the same way, and Japanese can write both names with nothing between them.
+        KillFeedRules.Death dutch=KillFeedRules.parse("Alex werd gedood door Bobs zwaard",players);
+        assertEquals("Bob",dutch.killer);
+        KillFeedRules.Death japanese=KillFeedRules.parse("\u00a7fAlex\u00a77\u306f\u00a7fBob\u00a77\u306b\u5c04\u6bba\u3055\u308c\u307e\u3057\u305f",players);
+        assertEquals("Bob",japanese.killer);
+        // A name that merely starts with a known account name is still that account name.
+        java.util.function.Predicate<String> prefix=known("Alex","Bob","Bobby");
+        KillFeedRules.Death longest=KillFeedRules.parse("Alex wurde durch Bobbys Schwert get\u00f6tet",prefix);
+        assertEquals("Bobby",longest.killer);
+    }
+
     @Test public void translatedDeathsAreReadByTheirNames(){
         java.util.function.Predicate<String> players=known("Alex","Bob");
         // German, the shape PGM's own death_de_DE.properties produce.

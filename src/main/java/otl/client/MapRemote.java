@@ -204,7 +204,7 @@ final class MapRemote {
         return out;
     }
 
-    private static String downloadText(String url) throws Exception {
+    static String downloadText(String url) throws Exception {
         HttpURLConnection c = open(url);
         try (InputStream in = c.getInputStream()) {
             return new String(readLimited(in,16*1024*1024), StandardCharsets.UTF_8);

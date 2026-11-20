@@ -198,6 +198,11 @@ final class KillFeedRules {
      * there is a killer, names them too: reading the names instead of the words between them works
      * in any language. The cause is then unknown and drawn as a plain death.
      *
+     * The names are not always separate words. German, Dutch, Swedish, Danish and Afrikaans glue a
+     * possessive onto the killer ("{1}s" renders as "Bobs"), and Japanese can write the two names
+     * with nothing between them, so a name is matched as the longest known account name starting
+     * where the last one ended.
+     *
      * A victim on their own is not enough to go on - "Alex joined the game" has the same shape - so
      * a line with only one name is left alone rather than guessed at.
      */
@@ -208,22 +213,32 @@ final class KillFeedRules {
         return known==null?null:byNames(formatted,plain,known);
     }
 
-    private static final Pattern NAME=Pattern.compile("[A-Za-z0-9_]{1,16}");
-
     private static Death byNames(String formatted,String plain,java.util.function.Predicate<String> known){
         String text=plain.trim();
         if(text.length()<3||text.length()>200)return null;
         if(ChatRules.playerMessage(formatted))return null; // someone talking, not a death
         List<String> names=new ArrayList<>();List<Integer> at=new ArrayList<>();
-        Matcher word=NAME.matcher(text);
-        while(word.find()){
-            if(!known.test(word.group()))continue;
+        int after=-1;
+        for(int i=0;i<text.length();i++){
+            // A name starts a word, or continues the one just read when a suffix was glued to it.
+            if(i>0&&i!=after&&nameChar(text.charAt(i-1)))continue;
+            int length=nameAt(text,i,known);
+            if(length==0)continue;
             if(names.size()==4)return null; // more names than a kill line ever carries: prose
-            names.add(word.group());at.add(word.start());
+            names.add(text.substring(i,i+length));at.add(i);
+            after=i+length;i+=length-1;
         }
         if(names.size()<2||at.get(0)!=0)return null; // PGM always names the victim first
         return new Death(formatted,names.get(0),0,names.get(1),at.get(1));
     }
+
+    /** Length of the longest account name starting at i, or 0 when none does. */
+    private static int nameAt(String text,int i,java.util.function.Predicate<String> known){
+        for(int length=Math.min(16,text.length()-i);length>=3;length--)
+            if(known.test(text.substring(i,i+length)))return length;
+        return 0;
+    }
+    private static boolean nameChar(char c){return c<128&&(Character.isLetterOrDigit(c)||c=='_');}
 
     private static String group(Matcher m,String key){try{return m.group(key);}catch(IllegalArgumentException absent){return null;}}
     private static String colored(String formatted,int offset,String name){

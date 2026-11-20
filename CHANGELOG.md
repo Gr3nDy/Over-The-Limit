@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- **Kill feed on translated clients** - German, Dutch, Swedish, Danish and Afrikaans glue a possessive onto the killer's name (`{1}s` renders as `Bobs`), so a line read as words found no killer and the death was dropped. A name is now matched as the longest known account name starting where the previous one ended, which also covers Japanese, where PGM writes both names with nothing between them. Affected 49 of 83 German killer lines and every Korean one.
+- **Kill feed hover box** - a long translated death line could draw off the left or top of the screen. The box is now measured and clamped inside the screen on all four edges.
+
+### Added
+- **Update notice** - the first time you join a server in a session, OTL asks GitHub for the latest release and prints one chat line with a download link when yours is older. The check runs on its own thread, says nothing when it fails or is up to date, and can be turned off under PGM settings, CLIENT, "Update notice on join".
+
 ## v0.7.1 - Nov 20 2026
 
 ### Changed

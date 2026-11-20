@@ -356,11 +356,23 @@ final class KillFeed {
         GlStateManager.enableAlpha();GlStateManager.color(1,1,1,1);
     }
     private static final int GL12_RESCALE_NORMAL=32826;
+    /**
+     * The hovered line in full, in its own box. Vanilla's drawHoveringText only flips a tooltip that
+     * runs off the right and clamps one that runs off the bottom, so a long translated death line
+     * could still hang off the left or the top of the screen; this keeps the whole box inside it.
+     */
     private static final class Tooltip extends GuiScreen {
         void show(String text,int x,int y){
             Minecraft mc=MinecraftAccess.get();ScaledResolution sr=new ScaledResolution(mc);
             if(this.mc==null||width!=sr.getScaledWidth()||height!=sr.getScaledHeight())setWorldAndResolution(mc,sr.getScaledWidth(),sr.getScaledHeight());
-            drawHoveringText(fontRendererObj.listFormattedStringToWidth(text,Math.max(30,Math.min(360,width-24))),x,y);
+            java.util.List<String> lines=fontRendererObj.listFormattedStringToWidth(text,Math.max(30,Math.min(360,width-24)));
+            int w=0;for(String line:lines)w=Math.max(w,fontRendererObj.getStringWidth(line));
+            int h=8+(lines.size()>1?2+(lines.size()-1)*10:0);
+            int bx=Math.max(4,Math.min(x+12,width-w-16)),by=Math.max(4,Math.min(y-12,height-h-12));
+            Gui.drawRect(bx-4,by-4,bx+w+4,by+h+4,0xF0100010);
+            Gui.drawRect(bx-4,by-4,bx+w+4,by-3,0x505000FF);Gui.drawRect(bx-4,by+h+3,bx+w+4,by+h+4,0x505000FF);
+            Gui.drawRect(bx-4,by-3,bx-3,by+h+3,0x505000FF);Gui.drawRect(bx+w+3,by-3,bx+w+4,by+h+3,0x505000FF);
+            for(int i=0;i<lines.size();i++)fontRendererObj.drawStringWithShadow(lines.get(i),bx,by+i*10,0xFFFFFF);
         }
     }
 }

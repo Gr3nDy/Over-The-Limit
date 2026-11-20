@@ -30,7 +30,7 @@ final class PgmSettingsScreen extends SettingsScreen {
         Row(String key,String label,String...values){this.key=key;this.label=label;this.values=values;}
     }
     /** Client-side extras. Only one so far: the player list's middle-click menu. */
-    private static final int CLIENT_ID=30;
+    private static final int CLIENT_ID=30,NOTICE_ID=31;
 
     private final GuiScreen parent;
     private String status="";
@@ -65,6 +65,8 @@ final class PgmSettingsScreen extends SettingsScreen {
         buttonList.add(new NeutralButton(CLIENT_ID,panel.left(),panel.row(),panel.width(),20,
             "Player list middle-click: "+(UtilitySettings.tabPlayerMenu?"ON":"OFF"),false));
         panel.note("Middle-click while the player list is open, then click a name.");
+        buttonList.add(new NeutralButton(NOTICE_ID,panel.left(),panel.row(),panel.width(),20,
+            "Update notice on join: "+(UtilitySettings.updateNotice?"ON":"OFF"),false));
         panel.note("Every module's own options live under MODS.");
     }
 
@@ -114,6 +116,10 @@ final class PgmSettingsScreen extends SettingsScreen {
         }
         if(b.id==CLIENT_ID){
             UtilitySettings.tabPlayerMenu=!UtilitySettings.tabPlayerMenu;
+            UtilitySettings.save();initGui();
+        }
+        if(b.id==NOTICE_ID){
+            UtilitySettings.updateNotice=!UtilitySettings.updateNotice;
             UtilitySettings.save();initGui();
         }
     }

@@ -55,6 +55,8 @@ public final class UtilitySettings {
     public static boolean teamBarRoundedHeads=false;
     /** Middle-clicking the player list opens a clickable list with the same player actions. */
     public static boolean tabPlayerMenu=true;
+    /** One chat line on join when a newer release is on GitHub. */
+    public static boolean updateNotice=true;
     /** Keep showing the bar while watching as an observer. */
     public static boolean teamBarObserver=true;
     /** A thin vertical bar of the team's colour beside each team row. */
@@ -165,6 +167,7 @@ public final class UtilitySettings {
         read(j,"team_bar_hide_heads",e->teamBarHideHeads=e.getAsBoolean());
         read(j,"team_bar_rounded_heads",e->teamBarRoundedHeads=e.getAsBoolean());
         read(j,"tab_player_menu",e->tabPlayerMenu=e.getAsBoolean());
+        read(j,"update_notice",e->updateNotice=e.getAsBoolean());
         read(j,"team_bar_observer",e->teamBarObserver=e.getAsBoolean());
         read(j,"team_bar_team_color",e->teamBarTeamColor=e.getAsBoolean());
         read(j,"team_bar_objectives",e->teamBarObjectives=e.getAsBoolean());
@@ -303,7 +306,7 @@ public final class UtilitySettings {
             j.addProperty("team_bar_hide_vanilla_boss_health",teamBarHideVanillaBossHealth);
             j.addProperty("team_bar_hide_on_tab",teamBarHideOnTab);
     j.addProperty("team_bar_hide_scoreboard",teamBarHideScoreboard);
-            j.addProperty("team_bar_hide_heads",teamBarHideHeads);j.addProperty("tab_player_menu",tabPlayerMenu);
+            j.addProperty("team_bar_hide_heads",teamBarHideHeads);j.addProperty("tab_player_menu",tabPlayerMenu);j.addProperty("update_notice",updateNotice);
             j.addProperty("team_bar_rounded_heads",teamBarRoundedHeads);
             j.addProperty("team_bar_observer",teamBarObserver);
         j.addProperty("team_bar_team_color",teamBarTeamColor);
