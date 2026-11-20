@@ -20,7 +20,7 @@ public class ObjectivesTest {
             assertEquals("55%",percent.text);assertFalse(percent.stacked);
         }finally{UtilitySettings.teamBarScoreStyle=previous;}
     }
-    @Test public void sharedCarriedFlagsFollowTheCarryingTeamInBothLayouts(){
+    @Test public void sharedFlagsStayCentredWhateverTheirState(){
         int previous=UtilitySettings.teamBarScoreStyle;
         try{
             UtilitySettings.teamBarScoreStyle=0;
@@ -31,20 +31,20 @@ public class ObjectivesTest {
                     Objectives.PointTracker points=trackPoints?new Objectives.PointTracker():null;
                     java.util.List<Objectives.Entry> entries=Objectives.entries(java.util.Collections.singletonList("\u00a79\u2794 \u00a7fFootball"),TEAMS,points,colours);
                     java.util.List<java.util.List<java.util.List<Objectives.Part>>> sides=Objectives.split(entries,columns,compact);
-                    // Blue carries it, so the flag sits on blue's side with its arrow against the clock.
-                    assertTrue("A shared flag left its carrier's side",sides.get(0).isEmpty());
-                    assertEquals(1,sides.get(1).size());
-                    Objectives.Part arrow=sides.get(1).get(0).get(0);
-                    assertEquals("\u2794",arrow.text);assertTrue(arrow.mirror);assertEquals("Football",arrow.name);
-                    if(!compact)assertEquals("Football",sides.get(1).get(0).get(1).text);
+                    // Blue carries it, and it still sits under the clock: the row never changes sides.
+                    assertTrue("A shared flag left the centre",sides.get(0).isEmpty()&&sides.get(1).isEmpty());
+                    assertEquals(1,sides.get(4).size());
+                    Objectives.Part arrow=sides.get(4).get(0).get(0);
+                    assertEquals("\u2794",arrow.text);assertEquals("Football",arrow.name);
+                    if(!compact)assertEquals("Football",sides.get(4).get(0).get(1).text);
                 }
             }
             java.util.List<Objectives.Entry> unknown=Objectives.entries(java.util.Collections.singletonList("\u00a7e\u2794 \u00a7fFootball"),TEAMS,null,colours);
             assertTrue(unknown.get(0).shared);
             java.util.List<Objectives.Entry> left=Objectives.entries(java.util.Collections.singletonList("\u00a7c\u2794 \u00a7fFootball"),TEAMS,null,colours);
             java.util.List<java.util.List<java.util.List<Objectives.Part>>> leftSides=Objectives.split(left,columns,true);
-            assertEquals(1,leftSides.get(0).size());
-            Objectives.Part leftArrow=leftSides.get(0).get(0).get(0);
+            assertEquals(1,leftSides.get(4).size());
+            Objectives.Part leftArrow=leftSides.get(4).get(0).get(0);
             assertEquals("\u2794",leftArrow.text);assertFalse(leftArrow.mirror);
             java.util.List<Objectives.Entry> returned=Objectives.entries(java.util.Collections.singletonList("\u00a79\u2691 \u00a7fFootball"),TEAMS,null,colours);
             assertTrue(returned.get(0).shared);
@@ -82,10 +82,10 @@ public class ObjectivesTest {
             Objectives.entries(Collections.singletonList("\u00a79\u2794 \u00a7fFlag"),TEAMS,null,colours,tracker);
             List<Objectives.Entry> entries=Objectives.entries(Collections.singletonList("\u00a70\u2794 \u00a7fFlag"),TEAMS,null,colours,tracker);
             assertEquals("blue",entries.get(0).team);
-            List<Objectives.Part> row=Objectives.split(entries,columns,compact).get(1).get(0);
+            // The row stays centred, but the blinking arrow still takes the last carrier's colour.
+            List<Objectives.Part> row=Objectives.split(entries,columns,compact).get(4).get(0);
             Objectives.Part arrow=row.get(0);
             assertEquals("\u2794",arrow.text);assertEquals(TeamBar.chatColour('0'),arrow.colour);
-            assertTrue(arrow.mirror);
             if(!compact){assertEquals("Flag",row.get(1).text);assertEquals(TeamBar.WHITE,row.get(1).colour);}
         }
     }
@@ -100,15 +100,17 @@ public class ObjectivesTest {
             for(int i=0;i<rows.length;i++){
                 List<Objectives.Entry> entries=Objectives.entries(Collections.singletonList(rows[i]),TEAMS,null,colours,tracker);
                 assertEquals(teams[i],entries.get(0).team);
-                int side=teams[i].equals("red")?0:1;
-                assertEquals(1,Objectives.split(entries,columns,compact).get(side).size());
+                List<List<List<Objectives.Part>>> sides=Objectives.split(entries,columns,compact);
+                // The carrier is remembered, but the row itself never leaves the centre.
+                assertEquals(1,sides.get(4).size());
+                assertTrue(sides.get(0).isEmpty()&&sides.get(1).isEmpty());
             }
             tracker.clear();
             assertNull(Objectives.entries(Collections.singletonList("10 Flag"),TEAMS,null,colours,tracker).get(0).team);
         }
     }
 
-    @Test public void severalFlagsOnOneSideKeepEveryMarkerAgainstTheClock(){
+    @Test public void severalSharedFlagsStackInTheCentre(){
         java.util.Map<Character,String> colours=new java.util.HashMap<>();
         colours.put('c',"red");colours.put('9',"blue");
         java.util.Map<String,Integer> columns=new java.util.HashMap<>();
@@ -118,13 +120,11 @@ public class ObjectivesTest {
             "\u00a7c\u2794 \u00a7fRed Flag","\u00a7c\u2794 \u00a7fBlue Flag","\u00a79\u2794 \u00a7fGreen Flag"),TEAMS,null,colours);
         for(boolean compact:new boolean[]{false,true}){
             java.util.List<java.util.List<java.util.List<Objectives.Part>>> sides=Objectives.split(entries,columns,compact);
-            assertEquals(1,sides.get(1).size());
-            Objectives.Part right=sides.get(1).get(0).get(0);
-            assertEquals("\u2794",right.text);assertTrue(right.mirror);
-            // Both of red's flags stay on red's side, each with its arrow nearest the clock.
-            assertEquals(2,sides.get(0).size());
-            for(java.util.List<Objectives.Part> row:sides.get(0))
-                assertEquals("\u2794",row.get(row.size()-1).text);
+            assertTrue("A shared flag left the centre",sides.get(0).isEmpty()&&sides.get(1).isEmpty());
+            assertEquals(3,sides.get(4).size());
+            // Every flag keeps its own row, each with its arrow first.
+            for(java.util.List<Objectives.Part> row:sides.get(4))
+                assertEquals("\u2794",row.get(0).text);
         }
     }
 

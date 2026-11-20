@@ -18,9 +18,9 @@ import net.minecraft.client.gui.FontRenderer;
  * server did not send, and a mode with no goals simply has no strip. The glyphs and their colours
  * are PGM's own, which is why a Capture the Wool row turns into the same squares the sidebar shows.
  *
- * PGM prints a flag both teams can capture in a shared section with no team header. It is still
- * placed on its carrier's side, so its arrow hugs the clock like any other objective; one with no
- * known carrier stays centred under the clock.
+ * PGM prints a flag both teams can capture in a shared section with no team header. It stays
+ * centred under the clock whatever its state: following the carrier made the row jump sides
+ * every time the flag changed hands.
  */
 final class Objectives {
     /** Square size and spacing; the strip is exactly one text line tall. */
@@ -303,9 +303,8 @@ final class Objectives {
         for(Entry entry:entries){
             Integer column=entry.team==null?null:columns.get(MapInfo.norm(entry.team));
             if(column==null&&!entry.controlPoint&&!entry.shared)continue;
-            // A shared flag whose carrier is known belongs on that team's side, so its marker can
-            // hug the clock like every other objective. Only one with no known team stays centred.
-            int side=entry.controlPoint?(column==null?4:2+column%2):(entry.shared&&column==null?4:column%2);
+            // A shared flag belongs under the clock in every state, carried or not.
+            int side=entry.shared?4:entry.controlPoint?(column==null?4:2+column%2):column%2;
             List<Part> parts=new ArrayList<>();
             parts.addAll(entry.parts);
             if(compact&&!entry.controlPoint&&side<2){

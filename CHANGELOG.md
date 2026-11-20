@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Changed
+- **Team Bar shared flags stay centred** - a flag both teams can capture is printed in one shared section, so it now sits under the clock in every state. Following the carrier made the row jump from the centre to a team's side each time the flag changed hands; the arrow still takes the carrier's team colour.
+
 ### Fixed
 - **Delete profile confirmation** - clicking Yes deleted the profile but left the confirmation on screen. The menu was refreshed in place without being made the current screen again, so the dialog had nothing behind it and never went away.
 
