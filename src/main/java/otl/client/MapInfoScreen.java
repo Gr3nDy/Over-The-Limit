@@ -72,8 +72,7 @@ final class MapInfoScreen extends GuiScreen {
     public void drawScreen(int mx, int my, float partial) {
         drawDefaultBackground();
         drawRect(x + 3, y + 3, x + w + 3, y + h + 3, 0x55000000);
-        drawRect(x - 1, y - 1, x + w + 1, y + h + 1, 0xFF3C3C3C);
-        drawRect(x, y, x + w, y + h, 0xF5141414);
+        BedrockUi.panel(x,y,w,h);
         drawBanner();
         drawBody();
         super.drawScreen(mx, my, partial);
@@ -81,7 +80,7 @@ final class MapInfoScreen extends GuiScreen {
 
     private void drawBanner() {
         int bx = x + 8, by = y + 8, bw = banner;
-        drawRect(bx, by, bx + bw, by + banner, 0xFF1D1D1D);
+        BedrockUi.rounded(bx,by,bw,banner,2,BedrockUi.INSET);
         ResourceLocation texture = info == null ? null : info.texture();
         if (texture != null) {
             GlStateManager.enableTexture2D();
@@ -96,9 +95,9 @@ final class MapInfoScreen extends GuiScreen {
         String title = info == null ? query : info.name;
         String pill = fontRendererObj.trimStringToWidth(info == null ? "LOOKUP" : info.gamemode + (info.version.isEmpty() ? "" : "  " + info.version),bw-24);
         int pillWidth = fontRendererObj.getStringWidth(pill) + 12;
-        drawRect(bx + bw - pillWidth - 6, by + 6, bx + bw - 6, by + 20, 0xCC0F0F0F);
-        drawRect(bx + bw - pillWidth - 6, by + 6, bx + bw - pillWidth - 5, by + 20, 0xFFFFC94A);
-        drawString(fontRendererObj, pill, bx + bw - pillWidth, by + 9, 0xFFFFC94A);
+        BedrockUi.rounded(bx+bw-pillWidth-6,by+6,pillWidth,14,6,BedrockUi.PANEL);
+        BedrockUi.outline(bx+bw-pillWidth-6,by+6,pillWidth,14,BedrockUi.EDGE);
+        drawString(fontRendererObj, pill, bx + bw - pillWidth, by + 9, BedrockUi.ACCENT);
         GlStateManager.pushMatrix();
         GlStateManager.translate(bx + 8, by + banner - 24, 0);
         GlStateManager.scale(1.6f, 1.6f, 1f);
@@ -108,10 +107,13 @@ final class MapInfoScreen extends GuiScreen {
 
     private void drawBody() {
         List<String> lines=detailLines();
-        int visible=Math.max(1,(h-58)/10);
+        int left=x+banner+20,wid=w-banner-36;
+        BedrockUi.inset(left-8,y+8,wid+16,h-16);
+        BedrockUi.section(fontRendererObj,"MAP DETAILS",left,y+14,wid);
+        int visible=Math.max(1,(h-70)/10);
         scroll=Math.max(0,Math.min(scroll,Math.max(0,lines.size()-visible)));
-        for(int i=0;i<visible&&i+scroll<lines.size();i++)drawString(fontRendererObj,lines.get(i+scroll),x+banner+20,y+10+i*10,0xFFE8E8E8);
-        if(lines.size()>visible)drawString(fontRendererObj,fontRendererObj.trimStringToWidth("Mouse wheel: more details",w-banner-36),x+banner+20,y+h-44,0xFF9A9A9A);
+        for(int i=0;i<visible&&i+scroll<lines.size();i++)drawString(fontRendererObj,lines.get(i+scroll),left,y+28+i*10,BedrockUi.TEXT);
+        if(lines.size()>visible)drawString(fontRendererObj,fontRendererObj.trimStringToWidth("Mouse wheel: more details",wid),left,y+h-26,BedrockUi.DIM);
     }
 
     private List<String> detailLines(){

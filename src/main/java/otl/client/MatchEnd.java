@@ -18,4 +18,16 @@ final class MatchEnd {
     static boolean kickoff(String text){
         return text != null && (text.equalsIgnoreCase("The match has started!") || text.equalsIgnoreCase("Go!"));
     }
+
+    /**
+     * True for the sound PGM plays to every participant when a match finishes: the winners hear
+     * the wither die, the losers hear one spawn. The chat lines above are translated per player,
+     * so on a non-English client they never arrive in these words; the sound is the same in every
+     * language. A map that spawns a real wither would also match, which costs one wrong gg.
+     */
+    static boolean endedBySound(String name){
+        if(name == null) return false;
+        String sound = name.toLowerCase(java.util.Locale.ROOT);
+        return sound.endsWith("wither.death") || sound.endsWith("wither.spawn");
+    }
 }

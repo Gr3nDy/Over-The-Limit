@@ -11,6 +11,31 @@ import static org.junit.Assert.*;
 public class ControlPointTest {
     private static final List<String> TEAMS=Arrays.asList("red","blue");
 
+    @Test public void fourTeamHillOwnersUseTheScoreboardTeamColours(){
+        List<String> teams=Arrays.asList("Red","Blue","Green","Yellow");
+        List<String> rows=Arrays.asList("\u00a7f120/3000 \u00a74Red", "\u00a7f90/3000 \u00a79Blue",
+            "\u00a7f80/3000 \u00a72Green", "\u00a7f70/3000 \u00a7eYellow");
+        Map<Character,String> colours=new HashMap<>();
+        java.util.Set<Character> ambiguous=new java.util.HashSet<>();
+        java.util.Set<String> scored=new java.util.HashSet<>();
+        Objectives.scoreTeamColours(rows,teams,colours,ambiguous,scored);
+        assertEquals("Red",colours.get('4'));assertEquals("Blue",colours.get('9'));
+        assertEquals("Green",colours.get('2'));assertEquals("Yellow",colours.get('e'));
+        Objectives.PointTracker points=new Objectives.PointTracker();points.colours.putAll(colours);points.pointMode=true;
+        List<Objectives.Entry> goals=Objectives.entries(Arrays.asList(
+            "\u00a74\u29bf \u00a74Red Hill", "\u00a79\u29bf \u00a79Blue Hill",
+            "\u00a72\u29bf \u00a72Green Hill", "\u00a7e\u29bf \u00a7eYellow Hill",
+            "\u00a7490% \u00a7eMiddle"),teams,points,colours);
+        Map<String,Integer> columns=TeamBar.teamColumns(teams,teams);
+        for(boolean compact:new boolean[]{false,true}){
+            List<List<List<Objectives.Part>>> sides=Objectives.split(goals,columns,compact);
+            assertEquals(2,sides.get(2).size());
+            assertEquals(3,sides.get(3).size());
+            assertTrue("A right-team hill stayed neutral",sides.get(4).isEmpty());
+        }
+        assertEquals("Yellow",goals.get(4).team);
+    }
+
     private Objectives.PointTracker tracker(){
         Objectives.PointTracker tracker=new Objectives.PointTracker();
         tracker.colours.put('c',"red");tracker.colours.put('9',"blue");

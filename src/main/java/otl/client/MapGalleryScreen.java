@@ -47,14 +47,15 @@ final class MapGalleryScreen extends GuiScreen {
         String query=search==null?"":search.getText();
         grid=new Grid(width,height);
         int searchWidth=Math.min(300,width-188);
-        search=new GuiTextField(0,fontRendererObj,12,18,searchWidth,20);
+        search=new GuiTextField(0,fontRendererObj,16,24,searchWidth,20);
         search.setMaxStringLength(80);
+        search.setEnableBackgroundDrawing(false);
         search.setText(query);
         search.setFocused(true);
         buttonList.clear();
-        buttonList.add(new GuiButton(1,width/2-160,height-28,60,20,"Prev"));
-        buttonList.add(new GuiButton(2,width/2-40,height-28,80,20,"Back"));
-        buttonList.add(new GuiButton(3,width/2+100,height-28,60,20,"Next"));
+        buttonList.add(new NeutralButton(1,width/2-160,height-28,60,20,"Prev",false));
+        buttonList.add(new NeutralButton(2,width/2-40,height-28,80,20,"Back",false));
+        buttonList.add(new NeutralButton(3,width/2+100,height-28,60,20,"Next",false));
         buttonList.add(new NeutralButton(4,width-166,18,60,20,"All",!favoritesOnly));
         buttonList.add(new NeutralButton(5,width-102,18,90,20,"Favorites",favoritesOnly));
     }
@@ -158,8 +159,12 @@ final class MapGalleryScreen extends GuiScreen {
 
     public void drawScreen(int mx,int my,float partial){
         drawDefaultBackground();
-        drawString(fontRendererObj,"Map Gallery",12,6,0xFFFFFFFF);
-        drawString(fontRendererObj,fontRendererObj.trimStringToWidth(MapRemote.catalogStatus,width-110),108,6,0xFFAAAAAA);
+        drawRect(0,0,width,44,BedrockUi.PANEL);
+        drawRect(0,43,width,44,BedrockUi.EDGE);
+        drawString(fontRendererObj,"Map Gallery",12,7,BedrockUi.TEXT);
+        drawString(fontRendererObj,fontRendererObj.trimStringToWidth(MapRemote.catalogStatus,Math.max(0,width-200)),
+            118,7,BedrockUi.DIM);
+        BedrockUi.inset(12,18,search.width+8,20);
         search.drawTextBox();
 
         List<String> list=paths();
@@ -175,14 +180,18 @@ final class MapGalleryScreen extends GuiScreen {
 
             String path=list.get(idx);
             ResourceLocation tex=MapPreview.galleryTexture(path);
+            boolean hover=grid.indexAt(mx,my)==i;
+            int cx=x+2,cy=y+2,cw=cellW-4,ch=cellH-4;
 
-            // draw background rect (click hitbox)
-            drawRect(x+1,y+1,x+cellW-1,y+cellH-1,0xAA202020);
-            MapPreview.star(x+cellW-16,y+4,UtilitySettings.mapFavorites.contains(UtilitySettings.favoriteKey(path))?0xFFFFD34F:0xFF777777);
+            // Lunar card: dark fill, 1px outline, blue ring on hover.
+            BedrockUi.rounded(cx,cy,cw,ch,4,hover?BedrockTokens.STATE_HOVER:BedrockUi.SLOT);
+            BedrockUi.outline(cx,cy,cw,ch,BedrockUi.EDGE);
+            if(hover)BedrockUi.outline(cx,cy,cw,ch,BedrockTokens.STATE_SELECTED);
+            MapPreview.star(x+cellW-16,y+5,UtilitySettings.mapFavorites.contains(UtilitySettings.favoriteKey(path))?0xFFFFD34F:BedrockUi.DIM);
 
-            // draw square thumbnail (1:1 ratio)
-            int ix=x+(cellW-side)/2;
-            int iy=y+6;
+            // draw square thumbnail (1:1 ratio) in a recessed frame
+            int ix=x+(cellW-side)/2,iy=y+7;
+            BedrockUi.rounded(ix-2,iy-2,side+4,side+4,2,BedrockUi.INSET);
             if(tex!=null){
                 GlStateManager.enableTexture2D();
                 GlStateManager.enableBlend();
@@ -190,25 +199,17 @@ final class MapGalleryScreen extends GuiScreen {
                 mc.getTextureManager().bindTexture(tex);
                 Gui.drawModalRectWithCustomSizedTexture(ix,iy,0,0,side,side,side,side);
             } else {
-                drawRect(ix,iy,ix+side,iy+side,0x55000000);
+                drawRect(ix,iy,ix+side,iy+side,BedrockUi.PANEL);
             }
 
             // draw name below image
             String dir=path.substring(0,path.length()-8);
             String name=mapName(dir);
-            drawString(fontRendererObj,fontRendererObj.trimStringToWidth(name,cellW-8),x+4,y+side+12,0xFFFFFFFF);
-
-            // hover highlight (semi-transparent border, not fully covering)
-            if(grid.indexAt(mx,my)==i){
-                drawRect(x+1,y+1,x+cellW-1,y+2,0x80FFFFFF);
-                drawRect(x+1,y+cellH-2,x+cellW-1,y+cellH-1,0x80FFFFFF);
-                drawRect(x+1,y+1,x+2,y+cellH-1,0x80FFFFFF);
-                drawRect(x+cellW-2,y+1,x+cellW-1,y+cellH-1,0x80FFFFFF);
-            }
+            drawString(fontRendererObj,fontRendererObj.trimStringToWidth(name,cellW-12),x+6,y+side+11,0xFFFFFFFF);
         }
 
         // pagination info
-        drawCenteredString(fontRendererObj,"Page "+(page+1)+" / "+maxPage+"  ("+list.size()+" maps)",width/2,height-43,0xFFAAAAAA);
+        drawCenteredString(fontRendererObj,"Page "+(page+1)+" / "+maxPage+"  ("+list.size()+" maps)",width/2,height-41,BedrockUi.MUTED);
         for(GuiButton b:buttonList){if(b.id==1)b.enabled=page>0;else if(b.id==3)b.enabled=page<maxPage-1;}
         super.drawScreen(mx,my,partial);
     }

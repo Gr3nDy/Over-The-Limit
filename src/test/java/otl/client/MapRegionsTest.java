@@ -6,6 +6,23 @@ import org.junit.Test;
 
 /** Region extraction from map.xml shape elements. */
 public class MapRegionsTest {
+    @Test public void identifiesConfirmedFreeForAllFromMapXml(){
+        assertTrue(MapInfo.parse("<map><players max='30'/></map>","ffa/test",true,null,id->null).freeForAll);
+        assertFalse(MapInfo.parse("<map><teams><team>Red</team></teams></map>","tdm/test",true,null,id->null).freeForAll);
+        assertFalse(MapInfo.parse("<map><players max='30'/><include id='missing'/></map>","ffa/test",true,null,id->null).freeForAll);
+    }
+    @Test public void buildableRegionRequiresUnambiguousAllowAndGlobalDeny(){
+        String box="<cuboid id='build' min='1,2,3' max='4,5,6'/>";
+        String allow="<apply region='build' block='always'/>";
+        String deny="<apply region='everywhere' block='never'/>";
+        MapInfo map=MapInfo.parse("<map><regions>"+box+allow+deny+"</regions></map>","test",true,null,id->null);
+        assertNotNull(map.buildable);
+        assertArray(map.buildable.min,new double[]{1,2,3});
+        assertArray(map.buildable.max,new double[]{5,6,7});
+        assertNull(MapInfo.parse("<map><regions>"+box+deny+allow+"</regions></map>","test",true,null,id->null).buildable);
+        assertNull(MapInfo.parse("<map><regions>"+box+allow+deny+"<apply region='build' block='never'/></regions></map>","test",true,null,id->null).buildable);
+        assertNull(MapInfo.parse("<map><regions>"+box+"</regions></map>","test",true,null,id->null).buildable);
+    }
     @Test public void parsesShapesToBoundingBoxes(){
         String xml="<map><regions>"
             +"<cuboid id='a' min='1,2,3' max='4,5,6'/>"

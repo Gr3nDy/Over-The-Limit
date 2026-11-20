@@ -5,11 +5,96 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class TeamBarTest {
+    /** Rounded heads trim the four corners of the eight-by-eight face and keep the middle. */
+    @Test public void roundedHeadsKeepTheFaceAndDropItsCorners(){
+        for(int col=0;col<8;col++)for(int row=0;row<8;row++){
+            boolean inside=TeamBar.roundedTexel(col,row);
+            boolean corner=(col<2||col>5)&&(row<2||row>5);
+            if(corner)assertFalse("Corner texel "+col+","+row+" was kept",inside);
+            // The centre four-by-four must survive, or the face would be hollowed out.
+            if(col>=2&&col<=5&&row>=2&&row<=5)assertTrue("Centre texel "+col+","+row+" was dropped",inside);
+        }
+        // Symmetric in both axes, so the head does not look lopsided.
+        for(int col=0;col<8;col++)for(int row=0;row<8;row++){
+            assertEquals(TeamBar.roundedTexel(col,row),TeamBar.roundedTexel(7-col,row));
+            assertEquals(TeamBar.roundedTexel(col,row),TeamBar.roundedTexel(col,7-row));
+        }
+    }
+
+    @Test public void unseenLeaverExpiresOnlyAfterRosterIsAvailable(){
+        java.util.Map<String,Long> seen=new java.util.HashMap<>();
+        assertTrue(TeamBar.keepMissingPlayer(seen,"Alex",1L,false));
+        assertTrue(seen.isEmpty());
+        assertTrue(TeamBar.keepMissingPlayer(seen,"Alex",10L,true));
+        assertTrue(TeamBar.keepMissingPlayer(seen,"Alex",10L+TeamBar.LEFT_GRACE-1,true));
+        assertFalse(TeamBar.keepMissingPlayer(seen,"Alex",10L+TeamBar.LEFT_GRACE,true));
+    }
+    @Test public void confirmedTeamsOverrideFfaGuess(){
+        java.util.List<String> empty=java.util.Collections.emptyList(),teams=java.util.Arrays.asList("red","blue");
+        assertFalse(TeamBar.ffaMode(true,"koth",teams,empty,teams));
+        assertFalse(TeamBar.ffaMode(true,"koth",empty,java.util.Arrays.asList("Red","Blue"),teams));
+        assertTrue(TeamBar.ffaMode(true,"",empty,empty,teams));
+        assertTrue(TeamBar.ffaMode(false,"ffa",teams,empty,teams));
+    }
+    @Test public void renderedPlayerListSupportsToggleAndExpiresAfterClosing(){
+        long seen=1_000_000_000L;
+        assertTrue(TeamBar.recentlyRenderedPlayerList(seen,seen));
+        assertTrue(TeamBar.recentlyRenderedPlayerList(seen+100_000_000L,seen));
+        assertFalse(TeamBar.recentlyRenderedPlayerList(seen+150_000_000L,seen));
+        assertFalse(TeamBar.recentlyRenderedPlayerList(seen,0));
+        assertFalse(TeamBar.recentlyRenderedPlayerList(seen-1,seen));
+    }
+    @Test public void horizontalScoresFillFromEachTeamsOuterEdge(){
+        assertEquals(0,TeamBar.horizontalScoreStart(0,false));
+        assertEquals(Objectives.BAR_W,TeamBar.horizontalScoreStart(0,true));
+        assertEquals(0,TeamBar.horizontalScoreStart(6,false));
+        assertEquals(Objectives.BAR_W-6,TeamBar.horizontalScoreStart(6,true));
+        assertEquals(0,TeamBar.horizontalScoreStart(Objectives.BAR_W,true));
+        assertEquals(6,TeamBar.scoreTick(1));
+        assertEquals(12,TeamBar.scoreTick(2));
+        assertEquals(18,TeamBar.scoreTick(3));
+        assertEquals(4,TeamBar.verticalScoreTick(1));
+        assertEquals(9,TeamBar.verticalScoreTick(2));
+        assertEquals(13,TeamBar.verticalScoreTick(3));
+    }
+    @Test public void emptyAndUnknownTeamsNeverShareAReservedColumn(){
+        java.util.Map<String,Integer> columns=TeamBar.teamColumns(
+            java.util.Arrays.asList("Blue","Red","Green"),java.util.Arrays.asList("Red","Blue"));
+        assertEquals(Integer.valueOf(0),columns.get("red"));
+        assertEquals(Integer.valueOf(1),columns.get("blue"));
+        assertEquals(Integer.valueOf(2),columns.get("green"));
+        java.util.List<Objectives.Entry> entries=Objectives.entries(java.util.Arrays.asList(
+            "Red","\u2714 Red Monument","Blue","\u2715 Blue Monument"),java.util.Arrays.asList("Red","Blue"));
+        java.util.List<java.util.List<java.util.List<Objectives.Part>>> split=Objectives.split(entries,columns,false);
+        assertEquals("Red Monument",split.get(0).get(1).get(0).text);
+        assertEquals("Blue Monument",split.get(1).get(1).get(1).text);
+    }
+    @Test public void ffaScoresMatchOnlyTheNamedPlayerAndRowsAreCentred(){
+        java.util.List<String> players=java.util.Arrays.asList("Alex","Sam","Pat");
+        java.util.Map<String,String> scores=TeamBar.ffaScores(java.util.Arrays.asList(
+            "\u00a7f25\u00a78/\u00a77200 \u00a7cAlex","7 \u00a79Sam","99 AlexOther"),players);
+        assertEquals("25/200",scores.get("alex"));
+        assertEquals("7",scores.get("sam"));
+        assertFalse(scores.containsKey("pat"));
+        java.util.List<java.util.List<String>> rows=java.util.Arrays.asList(players.subList(0,2),players.subList(2,3));
+        TeamBar.Bar bar=new TeamBar.Bar(rows,16,24,30,null,"0:00",null,0,scores);
+        for(int i=0;i<rows.size();i++){
+            java.util.List<String> row=rows.get(i);
+            assertTrue(Math.abs(2*bar.leftStart(row)+(row.size()-1)*bar.advance+bar.head-bar.width)<=1);
+            int[] bounds=TeamBar.headBounds(bar,row.get(0));
+            assertEquals(row.get(0),TeamBar.headAt(bar,bounds[0]+1,bounds[1]+1));
+        }
+        assertTrue(bar.rowTop(0,0)>=12);
+        assertTrue(bar.rowTop(0,1)>=bar.rowTop(0,0)+bar.head+13);
+    }
     @Test public void normalClockIsGoldWithoutChangingCountdownWarnings(){
         assertEquals(TeamBar.GOLD,TeamBar.colour(null));
         assertEquals(TeamBar.GOLD,TeamBar.colour(new TeamBar.Timer("1:05",65,false,false)));
         assertEquals(TeamBar.YELLOW,TeamBar.colour(new TeamBar.Timer("1:05",65,true,false)));
         assertEquals(TeamBar.RED,TeamBar.colour(new TeamBar.Timer("0:25",25,true,false)));
+        assertEquals(TeamBar.RED,TeamBar.colour(new TeamBar.Timer("0:06",6,true,false)));
+        assertEquals(TeamBar.DARK_RED,TeamBar.colour(new TeamBar.Timer("0:05",5,true,false)));
+        assertEquals(TeamBar.DARK_RED,TeamBar.colour(new TeamBar.Timer("0:00",0,true,false)));
         assertEquals(TeamBar.GOLD,TeamBar.colour(new TeamBar.Timer("0:10",10,false,true)));
         assertEquals(TeamBar.GOLD,TeamBar.colour(new TeamBar.Timer("0:00",0,false,true)));
         assertEquals(TeamBar.GOLD,TeamBar.colour(new TeamBar.Timer("1:00",60,true,true)));
@@ -132,5 +217,23 @@ public class TeamBarTest {
         left.get(0).add("G"); // a player joins; the columns stay symmetric, so the clock cannot shift
         TeamBar.Bar grown=new TeamBar.Bar(left,right,16,24,null,"");
         assertEquals(grown.width/2,grown.textX+grown.textW/2);
+    }
+
+    /**
+     * The welcome block's heading is formatting, not words, so the map name survives a client whose
+     * chat PGM translates. Only the first line counts, and only when it is a strikethrough rule.
+     */
+    @Test public void theWelcomeHeadingNamesTheMapInAnyLanguage(){
+        assertEquals("Shingeki no Brady",TeamBar.welcomeHeading(
+            "\u00a78\u00a7m---------------- \u00a7b\u00a7lShingeki no Brady\u00a78\u00a7m ----------------"));
+        assertEquals("Shingeki no Brady",TeamBar.welcomeHeading(
+            "\u00a7m   \u00a7lShingeki no Brady\u00a7r   \u00a7m"));
+        assertEquals("Avalon",TeamBar.welcomeHeading(
+            "\u00a7m== \u00a7lAvalon\u00a7m ==\n\u00a77Control the wool!\n\u00a77Created by jcane"));
+        // Not a welcome block: no rule, a player talking, or a rule around no name.
+        assertNull(TeamBar.welcomeHeading("Avalon"));
+        assertNull(TeamBar.welcomeHeading("\u00a7m----------------\u00a7m"));
+        assertNull(TeamBar.welcomeHeading("\u00a7fAlex: \u00a7mhi\u00a7m"));
+        assertNull(TeamBar.welcomeHeading(null));
     }
 }

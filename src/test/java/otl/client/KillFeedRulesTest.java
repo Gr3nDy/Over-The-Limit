@@ -4,6 +4,41 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class KillFeedRulesTest {
+    /** The names a client can see, standing in for the tab list. */
+    private static java.util.function.Predicate<String> known(String... names){
+        java.util.Set<String> set=new java.util.HashSet<>(java.util.Arrays.asList(names));
+        return set::contains;
+    }
+
+    @Test public void translatedDeathsAreReadByTheirNames(){
+        java.util.function.Predicate<String> players=known("Alex","Bob");
+        // German, the shape PGM's own death_de_DE.properties produce.
+        KillFeedRules.Death german=KillFeedRules.parse("\u00a7fAlex \u00a77wurde von \u00a7fBob \u00a77aus 12 Bl\u00f6cken erschossen",players);
+        assertNotNull(german);
+        assertEquals("Alex",german.victim);
+        assertEquals("Bob",german.killer);
+        assertEquals(KillFeedRules.Cause.DEATH,german.cause);
+        assertFalse(german.suicide());
+        assertTrue(german.ownKill("Bob"));
+        // The same rule has to hold in a language with no Latin word order to lean on.
+        KillFeedRules.Death japanese=KillFeedRules.parse("\u00a7fAlex\u00a77\u306f\u00a7fBob\u00a77\u306b\u5c04\u6bba\u3055\u308c\u307e\u3057\u305f",players);
+        assertNotNull(japanese);
+        assertEquals("Bob",japanese.killer);
+    }
+
+    @Test public void aLoneNameIsNeverEnoughToInventADeath(){
+        java.util.function.Predicate<String> players=known("Alex","Bob");
+        // Joining, leaving and chatting all name exactly one player; none of them is a death.
+        assertNull(KillFeedRules.parse("\u00a7eAlex joined the game",players));
+        assertNull(KillFeedRules.parse("\u00a7eAlex left the game",players));
+        assertNull(KillFeedRules.parse("\u00a7fAlex: Bob is behind you",players));
+        assertNull(KillFeedRules.parse("\u00a79(Blue) \u00a7fAlex\u00a7f: Bob rushed mid",players));
+        // An English death still resolves through the template, not this fallback.
+        KillFeedRules.Death english=KillFeedRules.parse("Alex was shot by Bob from 12 blocks",players);
+        assertEquals(KillFeedRules.Cause.BOW,english.cause);
+        assertEquals("12",english.distance);
+    }
+
     @Test public void playerHeadsRespectModeAndRealPlayerNames(){
         KillFeedRules.Death duel=KillFeedRules.parse("Alex was slain by Bob's Wooden Sword");
         KillFeedRules.Death world=KillFeedRules.parse("Alex fell out of the world");

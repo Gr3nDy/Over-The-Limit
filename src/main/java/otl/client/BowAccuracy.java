@@ -86,6 +86,11 @@ public final class BowAccuracy {
         String percentage(int decimals){return BowAccuracy.percentage(accuracy(),decimals);}
         void notice(String formatted){
             if(ChatRules.playerMessage(formatted))return;
+            // The welcome block's heading is wrapped in a rule of dashes rather than words, so it
+            // names the map on a client in any language; the "Playing" line below only exists in
+            // English, which would leave the stats running on across every match.
+            String heading=TeamBar.welcomeHeading(formatted);
+            if(heading!=null&&(!heading.equals(map)||ended)){map=heading;reset();}
             for(String line:ChatRules.plain(formatted).split("[\\r\\n]+")){
                 String text=line.trim();
                 if(MatchEnd.is(text)){
@@ -169,6 +174,9 @@ public final class BowAccuracy {
         }
     }
     @SubscribeEvent(priority=EventPriority.LOWEST) public void hitSound(PlaySoundEvent event){
+        // The end of a match, by PGM's wither sound: the chat line that says so is translated, so
+        // on a non-English client this is what closes the match's tally.
+        if(MatchEnd.endedBySound(event.name)&&observing()){stats.reset();stats.ended=true;return;}
         if(!observing()||!UtilitySettings.bowHitSound||event.result==null||event.sound==null||!"random.successful_hit".equals(event.name))return;
         Minecraft mc=MinecraftAccess.get();
         if(mc.thePlayer==null||mc.thePlayer.getDistanceSq(event.sound.getXPosF(),event.sound.getYPosF()-mc.thePlayer.getEyeHeight(),event.sound.getZPosF())>.25)return;

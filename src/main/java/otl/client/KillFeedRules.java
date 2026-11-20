@@ -3,7 +3,7 @@ package otl.client;
 import java.util.*;
 import java.util.regex.*;
 
-/** English PGM death templates, not arbitrary prose containing player names. */
+/** English PGM death templates, plus a name-based fallback for the locales PGM translates them into. */
 final class KillFeedRules {
     enum HeadMode {
         ONLY_ME("Only Me"),ALL("ALL"),NONE("None");
@@ -44,6 +44,14 @@ final class KillFeedRules {
                 template.contains("slain")||template.contains("fists")||template.contains("punched")||template.contains("knocked")?Cause.MELEE:
                 template.contains("breathe")?Cause.DROWN:template.contains("cactus")?Cause.CACTUS:
                 template.contains("squash")?Cause.ANVIL:fall?Cause.FALL:Cause.DEATH;
+        }
+        /** A death recognised only by the two names in it, for a locale with no English template. */
+        Death(String original,String victim,int victimAt,String killer,int killerAt){
+            this.original=original;this.victim=victim;this.killer=killer;
+            this.weapon=null;this.distance=null;this.mob=null;
+            this.victimLabel=colored(original,victimAt,victim);
+            this.killerLabel=colored(original,killerAt,killer);
+            this.cause=Cause.DEATH;this.voidFall=false;this.lava=false;this.fall=false;
         }
         boolean ownKill(String name){return killer!=null&&killer.equalsIgnoreCase(name);}
         boolean suicide(){return killer==null?mob==null:killer.equalsIgnoreCase(victim);}
@@ -181,12 +189,42 @@ final class KillFeedRules {
     static int panelColor(boolean hovered,int opacity,float fade){return faded(hovered?0xEE202020:0xCC000000,Math.max(0,Math.min(100,opacity))/100F*fade);}
     static float slideOffset(long age,boolean enabled){float t=Math.max(0,Math.min(1,age/200000000F));return enabled?-22*(1-t)*(1-t)*(1-t):0;}
     static Death parse(String formatted){
+        return parse(formatted,null);
+    }
+
+    /**
+     * PGM translates a death line into each player's own language, so the English templates above
+     * only fire for English clients. Every one of those lines still names the victim first and, when
+     * there is a killer, names them too: reading the names instead of the words between them works
+     * in any language. The cause is then unknown and drawn as a plain death.
+     *
+     * A victim on their own is not enough to go on - "Alex joined the game" has the same shape - so
+     * a line with only one name is left alone rather than guessed at.
+     */
+    static Death parse(String formatted,java.util.function.Predicate<String> known){
         if(formatted==null||formatted.length()>1024)return null;
         String plain=ChatRules.plain(formatted);
-        // shortcut: English PGM templates only; add locale templates when localized servers are needed.
         for(Rule rule:RULES){Matcher m=rule.pattern.matcher(plain);if(m.matches())return new Death(formatted,m,rule.template);}
-        return null;
+        return known==null?null:byNames(formatted,plain,known);
     }
+
+    private static final Pattern NAME=Pattern.compile("[A-Za-z0-9_]{1,16}");
+
+    private static Death byNames(String formatted,String plain,java.util.function.Predicate<String> known){
+        String text=plain.trim();
+        if(text.length()<3||text.length()>200)return null;
+        if(ChatRules.playerMessage(formatted))return null; // someone talking, not a death
+        List<String> names=new ArrayList<>();List<Integer> at=new ArrayList<>();
+        Matcher word=NAME.matcher(text);
+        while(word.find()){
+            if(!known.test(word.group()))continue;
+            if(names.size()==4)return null; // more names than a kill line ever carries: prose
+            names.add(word.group());at.add(word.start());
+        }
+        if(names.size()<2||at.get(0)!=0)return null; // PGM always names the victim first
+        return new Death(formatted,names.get(0),0,names.get(1),at.get(1));
+    }
+
     private static String group(Matcher m,String key){try{return m.group(key);}catch(IllegalArgumentException absent){return null;}}
     private static String colored(String formatted,int offset,String name){
         char color='7';int plain=0;

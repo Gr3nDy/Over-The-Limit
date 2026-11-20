@@ -6,6 +6,31 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class UtilitySettingsProfileTest {
+    @Test public void vanillaBossHealthSettingDefaultsOffPersistsAndResets(){
+        boolean before=UtilitySettings.teamBarHideVanillaBossHealth;
+        try{
+            assertFalse(UtilitySettings.DEFAULTS.get("team_bar_hide_vanilla_boss_health").getAsBoolean());
+            JsonObject setting=new JsonObject();setting.addProperty("team_bar_hide_vanilla_boss_health",true);
+            UtilitySettings.read(setting);
+            assertTrue(UtilitySettings.snapshot().get("team_bar_hide_vanilla_boss_health").getAsBoolean());
+            UtilitySettings.restore("team_bar_hide_vanilla_boss_health");
+            assertFalse(UtilitySettings.teamBarHideVanillaBossHealth);
+        }finally{UtilitySettings.teamBarHideVanillaBossHealth=before;}
+    }
+    @Test public void hideHeadsAndStackedScorePersistAndReset(){
+        boolean heads=UtilitySettings.teamBarHideHeads;int style=UtilitySettings.teamBarScoreStyle;
+        try{
+            assertFalse(UtilitySettings.DEFAULTS.get("team_bar_hide_heads").getAsBoolean());
+            JsonObject settings=new JsonObject();
+            settings.addProperty("team_bar_hide_heads",true);settings.addProperty("team_bar_score_style",3);
+            UtilitySettings.read(settings);
+            assertTrue(UtilitySettings.teamBarHideHeads);assertEquals(3,UtilitySettings.teamBarScoreStyle);
+            assertTrue(UtilitySettings.snapshot().get("team_bar_hide_heads").getAsBoolean());
+            assertEquals(3,UtilitySettings.snapshot().get("team_bar_score_style").getAsInt());
+            UtilitySettings.restore("team_bar_hide_heads","team_bar_score_style");
+            assertFalse(UtilitySettings.teamBarHideHeads);assertEquals(0,UtilitySettings.teamBarScoreStyle);
+        }finally{UtilitySettings.teamBarHideHeads=heads;UtilitySettings.teamBarScoreStyle=style;}
+    }
     @Test public void controlPointTrackingDefaultsOnPersistsAndResets(){
         boolean before=UtilitySettings.teamBarControlPoints;
         try{

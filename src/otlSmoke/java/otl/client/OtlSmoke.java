@@ -22,6 +22,7 @@ public final class OtlSmoke {
     final boolean serverEnabled=Boolean.getBoolean("otl.smoke.server");
     final boolean serverOnly=Boolean.getBoolean("otl.smoke.serverOnly");
     final String scope=System.getProperty("otl.smoke.scope","all");
+    final OtlSmokeChecks checks=new OtlSmokeChecks(this);
     int scopeEnd=63;
     int ggBaseline;
     long serverStarted;
@@ -30,7 +31,7 @@ public final class OtlSmoke {
     final java.util.concurrent.atomic.AtomicInteger particlesBefore=new java.util.concurrent.atomic.AtomicInteger(),particlesAfter=new java.util.concurrent.atomic.AtomicInteger(),otherParticles=new java.util.concurrent.atomic.AtomicInteger();
     ResourceLocation allureTexture;
     boolean allureWasFavorite;
-    MapInfoScreen card,searchCard;String cardDir;long cardWait;
+    MapInfoScreen card,searchCard;String cardDir;long cardWait;int voteWaits,uiScale;
     final Map<String,Object> accuracyPreferences=new HashMap<>();
     ItemStack accuracyHeld;int accuracySlot,accuracyPerspective;HudLayout.Position accuracyPosition;
     ItemStack cardPreviewChest,cardPreviewHelmet;
@@ -40,6 +41,7 @@ public final class OtlSmoke {
     HudLayout.Position minimapPosition;double minimapX,minimapY,minimapZ;boolean minimapFlying;
     long minimapStarted,minimapFrames;
     final List<String> packets=Collections.synchronizedList(new ArrayList<String>());
+    String tabTarget;
     @Mod.EventHandler public void init(FMLInitializationEvent e){FMLCommonHandler.instance().bus().register(this);if(scope.startsWith("shingeki"))MinecraftForge.EVENT_BUS.register(this);}
     @SubscribeEvent(receiveCanceled=true) public void liveChat(net.minecraftforge.client.event.ClientChatReceivedEvent event){
         if(!scope.startsWith("shingeki"))return;
@@ -72,11 +74,18 @@ public final class OtlSmoke {
         MinecraftForge.EVENT_BUS.post(new net.minecraftforge.client.event.ClientChatReceivedEvent((byte)1,root));
     }
     List<GuiButton> buttons(GuiScreen screen){return ReflectionHelper.getPrivateValue(GuiScreen.class,screen,"buttonList","field_146292_n");}
+    GuiButton button(GuiScreen screen,int id){for(GuiButton b:buttons(screen))if(b.id==id)return b;throw new AssertionError("Missing button "+id+" on "+screen.getClass().getSimpleName());}
+    net.minecraftforge.fml.client.config.GuiSlider slider(GuiScreen screen,int id){return (net.minecraftforge.fml.client.config.GuiSlider)button(screen,id);}
+    boolean hasButton(GuiScreen screen,int id){for(GuiButton b:buttons(screen))if(b.id==id)return true;return false;}
+    boolean hasButton(GuiScreen screen,String label){for(GuiButton b:buttons(screen))if(label.equals(b.displayString))return true;return false;}
+    static OtlModule module(String id){for(OtlModule m:OtlModule.ALL)if(m.id.equals(id))return m;throw new AssertionError("Missing module "+id);}
     void click(int id){for(GuiButton b:buttons(face))if(b.id==id){face.actionPerformed(b);return;}throw new AssertionError("Missing button "+id);}
     /** Everything the team bar could read from a real match, printed so the live scope can be checked. */
     /** Raw chat text with § shown as & so colour codes survive the console. */
     static String visible(String text){return text==null?"null":text.replace('\u00a7','&').replace("\n","\\n").replace("\r","\\r");}
     static String codepoints(String text){StringBuilder out=new StringBuilder();for(char c:text.toCharArray())out.append(String.format("%04X ",(int)c));return out.toString();}
+    /** Formatting codes kept visible, so a name hidden behind §-codes is not mistaken for blank. */
+    static String escape(String text){return text==null?"null":text.replace("\u00a7","&");}
     void dumpMatch(Minecraft mc){
         net.minecraft.scoreboard.Scoreboard board=mc.theWorld.getScoreboard();
         net.minecraft.scoreboard.ScoreObjective sidebar=board.getObjectiveInDisplaySlot(1);
@@ -147,19 +156,201 @@ public final class OtlSmoke {
         if(gone!=null)map.remove(gone);
     }
     GuiButton find(GuiScreen s,String label){for(GuiButton b:buttons(s))if(b.displayString.equals(label))return b;throw new AssertionError("Missing button "+label);}
+
+    /** Rounded heads change the shape drawn, never the space a head takes. */
+    void checkRoundedHeads(Minecraft mc,TeamBarSettings headOptions){
+        GuiButton row=null;
+        for(GuiButton b:buttons(headOptions))
+            if(b.displayString.startsWith("Rounded heads:")){row=b;break;}
+        require(row!=null,"The team bar has no rounded-heads option");
+        boolean before=UtilitySettings.teamBarRoundedHeads;
+        int squareHead=TeamBar.INSTANCE.bar(mc,false).head;
+        headOptions.actionPerformed(row);
+        require(UtilitySettings.teamBarRoundedHeads!=before,"The rounded-heads option did not toggle");
+        require(TeamBar.INSTANCE.bar(mc,false).head==squareHead,"Rounded heads changed the head size");
+        headOptions.actionPerformed(row);
+        require(UtilitySettings.teamBarRoundedHeads==before,"The rounded-heads option did not toggle back");
+    }
+
+    /**
+     * Every extra team must still put its heads on the bar. The live server's own teams decide how
+     * many rows that takes, so the row count is not the contract - losing a team is.
+     */
+    void requireEveryAddedTeamStacked(TeamBar.Bar stacked){
+        java.util.Set<String> heads=new java.util.HashSet<>();
+        for(java.util.List<String> row:stacked.left)heads.addAll(row);
+        for(java.util.List<String> row:stacked.right)heads.addAll(row);
+        for(int i=0;i<24;i++)
+            require(heads.contains("Extra"+i+"P0"),
+                "Team extra"+i+" was dropped instead of stacked: only "+heads.size()+" heads shown");
+    }
+    /** One PGM gamemode's sidebar, in the shape PGM itself prints it. */
+    static final class Gamemode {
+        final String name,title;final boolean points,ffa;final String[] rows;
+        Gamemode(String name,String title,boolean points,boolean ffa,String...rows){
+            this.name=name;this.title=title;this.points=points;this.ffa=ffa;this.rows=rows;
+        }
+    }
+
+    /**
+     * Every PGM gamemode family, with the sidebar rows each one really prints: a team header over
+     * that team's wools, monuments, core, control point or flag, or a bare score row for the
+     * score-based modes. The bar has to mirror these: one team's objectives beside that team's
+     * own heads, the other team's on the far side of the clock, both the same width and gap.
+     */
+    static final Gamemode[] GAMEMODES={
+        new Gamemode("CTW","\u00a7b\u00a7lCapture the Wool",false,false,
+            "\u00a7cRed","\u00a7c\u2B1C \u00a7e\u2592 \u00a7a\u2B1B",
+            "\u00a79Blue","\u00a79\u2B1C \u00a79\u2592 \u00a79\u2B1B"),
+        new Gamemode("DTM","\u00a76\u00a7lDestroy the Monument",false,false,
+            "\u00a7cRed","\u00a7a\u2714 \u00a7cNorth Monument","\u00a7c\u2717 \u00a7cSouth Monument",
+            "\u00a79Blue","\u00a7a\u2714 \u00a79North Monument","\u00a7c\u2717 \u00a79South Monument"),
+        new Gamemode("DTC","\u00a7e\u00a7lDestroy the Core",false,false,
+            "\u00a7cRed","\u00a7f12\u00a77/\u00a7f20 \u00a7cCore",
+            "\u00a79Blue","\u00a7f8\u00a77/\u00a7f20 \u00a79Core"),
+        new Gamemode("KOTH","\u00a7a\u00a7lKing of the Hill",true,false,
+            "\u00a7c25% \u00a7cRed Hill",
+            "\u00a7950% \u00a79Blue Hill"),
+        // A carried flag names its carrier through the arrow's colour; one with no carrier is neutral.
+        new Gamemode("CTF","\u00a7d\u00a7lCapture the Flag",false,false,
+            "\u00a7c\u2794 \u00a7fRed Flag",
+            "\u00a79\u2794 \u00a7fBlue Flag",
+            "\u00a7f\u2690 \u00a7fNeutral Flag"),
+        new Gamemode("TDM","\u00a7c\u00a7lTeam Deathmatch",false,false,
+            "\u00a7f12 \u00a7cRed","\u00a7f9 \u00a79Blue"),
+        new Gamemode("Blitz","\u00a7e\u00a7lBlitz",false,false,
+            "\u00a7f3 \u00a7cRed","\u00a7f3 \u00a79Blue"),
+        new Gamemode("Rage","\u00a7d\u00a7lRage",false,false,
+            "\u00a7f150 \u00a7cRed","\u00a7f120 \u00a79Blue"),
+        new Gamemode("FFA","\u00a7d\u00a7lFree for All",false,true,
+            "\u00a7f12 \u00a7bRedGm0","\u00a7f9 \u00a7bBlueGm0")
+    };
+
+    /**
+     * Clears the previous gamemode's sidebar before the next one is built. PGM replaces a match's
+     * sidebar and teams between matches; a fixture that left them behind would hand the bar stale
+     * teams with no players, which is a fixture artefact, not something the bar has to survive.
+     */
+    private java.util.List<String> gmTeams=new java.util.ArrayList<>();
+    private net.minecraft.scoreboard.ScoreObjective gmObjective;
+
+    void clearGamemode(Minecraft mc){
+        net.minecraft.scoreboard.Scoreboard board=mc.theWorld.getScoreboard();
+        if(gmObjective!=null){
+            for(net.minecraft.scoreboard.Score score:new ArrayList<>(board.getSortedScores(gmObjective)))
+                board.removeObjectiveFromEntity(score.getPlayerName(),gmObjective);
+            board.removeObjective(gmObjective);
+            gmObjective=null;
+        }
+        for(String name:gmTeams)board.removeTeam(board.getTeam(name));
+        gmTeams.clear();
+    }
+
+    /** Builds one gamemode's sidebar on top of the fixture teams. */
+    void buildGamemode(Minecraft mc,Gamemode gm){
+        clearGamemode(mc);
+        net.minecraft.scoreboard.Scoreboard board=mc.theWorld.getScoreboard();
+        net.minecraft.scoreboard.ScoreObjective objective=board.addScoreObjective(
+            "otl_gm_"+gm.name.toLowerCase(java.util.Locale.ROOT),net.minecraft.scoreboard.IScoreObjectiveCriteria.DUMMY);
+        gmObjective=objective;
+        objective.setDisplayName(gm.title);
+        board.setObjectiveInDisplaySlot(1,objective);
+        UtilitySettings.teamBarControlPoints=gm.points;
+        // Highest score first, the way a sidebar prints: the row list is already top-down.
+        for(int i=0;i<gm.rows.length;i++){
+            String team="gm"+gm.name+i;
+            gmTeams.add(team);
+            sidebarRow(board,objective,team,gm.rows[i],gm.rows.length-i);
+        }
+    }
+
+
+    /** Asserts one gamemode's bar is mirrored about the clock, in named and compact mode. */
+    void assertMirrored(Minecraft mc,Gamemode gm,TeamBar.Bar bar,boolean compact){
+        String mode=gm.name+(compact?" (compact)":"");
+        require(bar!=null,mode+": no team bar was built");
+        require(bar.textX+bar.textW/2==bar.width/2,mode+": the clock is off centre");
+        require(bar.height<=new ScaledResolution(mc).getScaledHeight()-8,mode+": the bar spills off the screen");
+        if(gm.ffa){
+            require(bar.ffa,mode+": free for all was not recognised");
+            require(bar.leftStrips.isEmpty()&&bar.rightStrips.isEmpty(),mode+": a team objective survived in free for all");
+            return;
+        }
+        require(!bar.ffa,mode+": was read as free for all");
+        require(!bar.left.isEmpty()&&!bar.right.isEmpty(),mode+": a team lost its heads");
+        String left=bar.owner(0,0),right=bar.owner(1,0);
+        require(left!=null&&right!=null,mode+": a head row lost its team");
+        require(!Objectives.sameTeam(left,right),mode+": both columns hold "+left);
+        for(Objectives.Strip s:bar.leftStrips)
+            require(s.team==null||Objectives.sameTeam(s.team,left),
+                mode+": "+s.team+"'s objective sat in "+left+"'s column");
+        for(Objectives.Strip s:bar.rightStrips)
+            require(s.team==null||Objectives.sameTeam(s.team,right),
+                mode+": "+s.team+"'s objective sat in "+right+"'s column");
+        int leftW=TeamBar.stripWidth(bar.leftStrips),rightW=TeamBar.stripWidth(bar.rightStrips);
+        // A team may have more goals than its opponent, so the two blocks need not be the same
+        // width - but each must sit against the clock at the same distance, and start at the same
+        // height, or the bar is lopsided.
+        if(leftW>0){
+            require(bar.leftStripX>=0&&bar.leftStripX+leftW<=bar.width,
+                mode+": the left objectives spill outside the bar");
+            require(bar.rightStripX>=0&&bar.rightStripX+rightW<=bar.width,
+                mode+": the right objectives spill outside the bar");
+        }
+        if(leftW>0&&rightW>0){
+            int gapLeft=bar.textX-(bar.leftStripX+leftW),gapRight=bar.rightStripX-(bar.textX+bar.textW);
+            require(gapLeft==gapRight,mode+": objectives are not mirrored about the clock ("+gapLeft+" vs "+gapRight+")");
+            require(bar.stripTop(0,0)==bar.stripTop(1,0),mode+": the objective blocks start at different heights");
+        }
+        if(gm.points){
+            // A control point belongs to the team whose colour owns it, so each side gets one.
+            require(!bar.pointStrips.get(0).isEmpty()&&!bar.pointStrips.get(1).isEmpty(),
+                mode+": a control point lost its side of the clock");
+            Objectives.Strip l=bar.pointStrips.get(0).get(0),r=bar.pointStrips.get(1).get(0);
+            int gapLeft=bar.textX-(bar.stripX(2,l)+l.width),gapRight=bar.stripX(3,r)-(bar.textX+bar.textW);
+            require(gapLeft==gapRight,mode+": control points are not mirrored about the clock ("+gapLeft+" vs "+gapRight+")");
+            require(l.parts.get(0).colour!=r.parts.get(0).colour,mode+": both control points took one team's colour");
+        }
+        for(Objectives.Strip neutral:bar.pointStrips.get(2))
+            require(bar.stripX(4,neutral)+neutral.centre==bar.width/2,
+                mode+": a neutral objective is not centred under the clock");
+    }
+
+    /** One state of the gamemode sweep: shoot the previous frame, then build and check the next. */
+    void gamemodeState(Minecraft mc,int index){
+        if(index>0)
+            ScreenShotHelper.saveScreenshot(mc.mcDataDir,
+                "otl-team-bar-"+GAMEMODES[index-1].name.toLowerCase(java.util.Locale.ROOT)+".png",
+                mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+        if(index>=GAMEMODES.length)return;
+        Gamemode gm=GAMEMODES[index];
+        buildGamemode(mc,gm);
+        TeamBar.Bar bar=TeamBar.INSTANCE.bar(mc,true);
+        assertMirrored(mc,gm,bar,false);
+        UtilitySettings.teamBarObjectivesCompact=true;
+        try{
+            assertMirrored(mc,gm,TeamBar.INSTANCE.bar(mc,true),true);
+        }finally{
+            UtilitySettings.teamBarObjectivesCompact=false;
+        }
+        System.out.println("OTL_GAMEMODE: "+gm.name
+            +" left="+bar.owner(0,0)+" right="+bar.owner(1,0)
+            +" strips="+bar.leftStrips.size()+"/"+bar.rightStrips.size()
+            +(gm.ffa?"":" gap="+(bar.textX-(bar.leftStripX+TeamBar.stripWidth(bar.leftStrips)))+"/"
+            +(bar.rightStripX-(bar.textX+bar.textW)))
+            +" points="+bar.pointStrips.get(0).size()+"/"+bar.pointStrips.get(1).size()
+            +"/"+bar.pointStrips.get(2).size());
+    }
+
     /** One named team from a sides() result, or null. */
     TeamBar.Side side(java.util.List<TeamBar.Side> sides,String name){
         for(TeamBar.Side side:sides)if(side.name.equals(name))return side;
         return null;
     }
-    /** Clicks the ON/OFF strip of a module card in the browser grid (tab ALL). */
+    /** Clicks the switch on a module card in the browser grid. */
     void cardToggle(ModulesScreen s,int index)throws java.io.IOException{
-        int w=Math.min(470,s.width-16),h=Math.min(272,s.height-16),x=(s.width-w)/2,y=(s.height-h)/2;
-        int contentX=x+132+8,cardW=Math.max(70,(x+w-14-contentX-12)/3);
-        int cardH=Math.max(64,((y+h-32)-10-(y+52))/2);
-        int scrollRow=ReflectionHelper.getPrivateValue(ModulesScreen.class,s,"scrollRow");
-        int cx=contentX+(index%3)*(cardW+4),cy=y+52+((index/3)-scrollRow)*(cardH+4);
-        s.mouseClicked(cx+cardW/2,cy+cardH-10,0);
+        int[] box=s.cardBox(index);
+        s.mouseClicked(box[0]+8,box[1]+box[3]-12,0);
     }
     List<ChatLine> chatHistory(String key){return ReflectionHelper.getPrivateValue(GuiNewChat.class,ReliableChat.session().views.get(key).hud,"chatLines","field_146252_h");}
     final java.util.concurrent.CountDownLatch metadataBlocked=new java.util.concurrent.CountDownLatch(1),releaseMetadata=new java.util.concurrent.CountDownLatch(1);
@@ -282,7 +473,7 @@ public final class OtlSmoke {
         options.actionPerformed(find(options,"Bow-Kill Sound: OFF"));require(UtilitySettings.bowKillSound,"Bow kill sound toggle did not enable");
         options.actionPerformed(find(options,"Optimization: ON"));require(!BowOptimizer.active(),"Inner optimizer toggle did not disable optimization");
         options.actionPerformed(find(options,"Bow Hit Sound: OFF"));options.actionPerformed(find(options,"Hit Marker: OFF"));
-        net.minecraftforge.fml.client.config.GuiSlider marker=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==10).findFirst().get();
+        net.minecraftforge.fml.client.config.GuiSlider marker=slider(options,10);
         marker.setValue(150);marker.updateSlider();
         options.actionPerformed(find(options,"Bow Accuracy"));
         require(find(options,"Mode: Always")!=null&&find(options,"Animate Percentage: ON")!=null,"Accuracy presentation defaults missing");
@@ -300,12 +491,12 @@ public final class OtlSmoke {
         require(find(options,"Decimal places: 2")!=null,"Accuracy did not default to two decimals");
         options.actionPerformed(find(options,"Decimal places: 2"));require(UtilitySettings.bowAccuracyDecimals==0,"Whole-percent option missing");
         options.actionPerformed(find(options,"Decimal places: 0"));options.actionPerformed(find(options,"Decimal places: 1"));
-        net.minecraftforge.fml.client.config.GuiSlider opacity=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==3).findFirst().get();
+        net.minecraftforge.fml.client.config.GuiSlider opacity=slider(options,3);
         opacity.setValue(65);opacity.updateSlider();
-        net.minecraftforge.fml.client.config.GuiSlider size=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==5).findFirst().get();
+        net.minecraftforge.fml.client.config.GuiSlider size=slider(options,5);
         size.setValue(125);size.updateSlider();
-        net.minecraftforge.fml.client.config.GuiSlider fadeIn=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==15).findFirst().get();
-        net.minecraftforge.fml.client.config.GuiSlider fadeOut=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==16).findFirst().get();
+        net.minecraftforge.fml.client.config.GuiSlider fadeIn=slider(options,15);
+        net.minecraftforge.fml.client.config.GuiSlider fadeOut=slider(options,16);
         require(fadeIn.getValueInt()==0&&fadeOut.getValueInt()==50,"Bow fade slider defaults changed");
         fadeIn.setValue(75);fadeIn.updateSlider();fadeOut.setValue(25);fadeOut.updateSlider();
         UtilitySettings.hudPositions.put(HudLayout.BOW,new HudLayout.Position(.75,.25));UtilitySettings.save();
@@ -397,8 +588,8 @@ public final class OtlSmoke {
         UtilitySettings.minimapHideUnavailable=false;options.initGui();
         options.actionPerformed(find(options,"Hide unavailable map: OFF"));
         require(UtilitySettings.minimapHideUnavailable,"Unavailable-map option did not turn on");
-        net.minecraftforge.fml.client.config.GuiSlider size=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==1).findFirst().get();
-        net.minecraftforge.fml.client.config.GuiSlider opacity=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==2).findFirst().get();
+        net.minecraftforge.fml.client.config.GuiSlider size=slider(options,1);
+        net.minecraftforge.fml.client.config.GuiSlider opacity=slider(options,2);
         size.setValue(120);size.updateSlider();opacity.setValue(65);opacity.updateSlider();
         options.actionPerformed(find(options,"Display"));
         int plain=Minimap.bounds().w;
@@ -450,7 +641,7 @@ public final class OtlSmoke {
         }
     }
     void checkBow(Minecraft mc){
-        OtlModule module=OtlModule.ALL.stream().filter(m->m.id.equals("bow_optimizer")).findFirst().get();
+        OtlModule module=module("bow_optimizer");
         boolean enabled=UtilitySettings.bowOptimizer,left=UtilitySettings.leftHand,optimization=UtilitySettings.bowOptimization;int perspective=mc.gameSettings.thirdPersonView;
         int slot=mc.thePlayer.inventory.currentItem;ItemStack oldHeld=mc.thePlayer.getHeldItem();BowSounds sounds=new BowSounds();
         MinecraftForge.EVENT_BUS.register(sounds);
@@ -556,8 +747,14 @@ public final class OtlSmoke {
             case "minimap":state=59;scopeEnd=63;return;
             case "vote":state=69;scopeEnd=78;return;
             case "teambar":state=79;scopeEnd=89;UtilitySettings.teamBar=true;return;
+            case "gamemodes":state=145;scopeEnd=154;prepareGamemodes(mc);return;
             case "live":state=90;scopeEnd=110;UtilitySettings.teamBar=true;UtilitySettings.devHosts.add("localhost");return;
             case "touchdown":state=111;scopeEnd=116;UtilitySettings.touchdown=true;UtilitySettings.touchdownFootball3d=true;UtilitySettings.touchdownHideBallParticles=false;mc.gameSettings.thirdPersonView=0;return;
+            case "uishot":state=130;scopeEnd=133;mc.displayGuiScreen(new ModulesScreen(null));return;
+            case "tabmenu":state=134;scopeEnd=138;sniffPackets(mc);return;
+            case "pgmlist":state=139;scopeEnd=144;UtilitySettings.tabPlayerMenu=true;
+                UtilitySettings.devHosts.add("localhost");return;
+            case "pgm":state=127;scopeEnd=129;mc.displayGuiScreen(new PgmSettingsScreen(null));return;
             default:throw new IllegalArgumentException("Unknown smoke scope: "+scope);
         }
     }
@@ -565,6 +762,24 @@ public final class OtlSmoke {
         UtilitySettings.tabBackgroundOpacity=0;UtilitySettings.typingTabBackgroundOpacity=0;
         mc.displayGuiScreen(new GuiChat());((ReliableChatScreen)mc.currentScreen).select("team");
         require(ReliableChat.session().selected.equals("team"),"Selected channel did not change with transparent tabs");
+    }
+    /** Two real teams with tab entries, so every gamemode fixture has heads to mirror. */
+    void prepareGamemodes(Minecraft mc){
+        UtilitySettings.teamBar=true;UtilitySettings.teamBarObjectives=true;
+        UtilitySettings.teamBarControlPoints=false;UtilitySettings.teamBarObjectivesCompact=false;
+        UtilitySettings.teamBarHideHeads=false;UtilitySettings.teamBarPlayers=5;UtilitySettings.teamBarSize=100;
+        net.minecraft.scoreboard.Scoreboard board=mc.theWorld.getScoreboard();
+        for(String team:new String[]{"red","blue"})if(board.getTeam(team)==null)board.createTeam(team);
+        board.getTeam("red").setNamePrefix("\u00a7c");
+        board.getTeam("blue").setNamePrefix("\u00a79");
+        for(int i=0;i<3;i++){
+            for(String[] pair:new String[][]{{"RedGm"+i,"red"},{"BlueGm"+i,"blue"}}){
+                board.addPlayerToTeam(pair[0],pair[1]);
+                tabEntry(mc,pair[0],("red".equals(pair[1])?"\u00a7c":"\u00a79")+pair[0]);
+            }
+        }
+        // The editor draws the bar every frame from the preview, which is what the shots capture.
+        mc.displayGuiScreen(new HudEditor());
     }
     @SubscribeEvent public void tick(TickEvent.ClientTickEvent e){
         if(e.phase!=TickEvent.Phase.END)return;Minecraft mc=Minecraft.getMinecraft();
@@ -606,6 +821,13 @@ public final class OtlSmoke {
             }else if(state==2){
                 require(count("/t")==0,"Unexpected automatic /t count");ReliableChatScreen ui=(ReliableChatScreen)mc.currentScreen;ReliableChat.session().select("team");ui.updateScreen();ui.sendChatMessage("team message",true);
                 ReliableChat.session().select("all");ui.updateScreen();ui.sendChatMessage("global message",true);
+                // The tab, and only the tab, decides the channel: sending on All leaves it on All.
+                require("bare text".equals(ReliableChat.send("bare text")),"All did not send bare text");
+                require(ReliableChat.session().selected.equals("all"),"Sending on All moved the chat tab");
+                int teamLines=ReliableChat.session().views.get("team").totalLines();
+                line("\u00a79(Blue Team) Alex: team hello");
+                require(ReliableChat.session().views.get("team").totalLines()>teamLines,
+                    "A team line never reached the Team tab");
                 ReliableChat.session().select("party");ui.updateScreen();ui.sendChatMessage("party message",true);
                 ui.cycleNext();ui.drawScreen(0,0,0);ui.mouseClicked(10,ui.height-27,0);
                 ui.sendChatMessage("/msg Alice hello",true);line("To Alice: hello");ui.sendChatMessage("/r reply",true);line("To Bob: reply");line("From Bob: incoming");
@@ -613,7 +835,7 @@ public final class OtlSmoke {
                 MinecraftForge.EVENT_BUS.post(new net.minecraftforge.event.world.WorldEvent.Load(mc.theWorld));require(ReliableChat.fullChat(),"World change hid tabs");line("Created by OtherMaker");
             }else if(state==3){
                 require(count("/t")==0&&count("/g")==0&&count("/party chat")==0,"Tab/map sent bare command: "+packets);
-                require(packets.containsAll(Arrays.asList("/t team message","/g global message","/party chat party message","/msg Alice hello","/r reply")),"Missing routed sends: "+packets);
+                require(packets.containsAll(Arrays.asList("/t team message","global message","/party chat party message","/msg Alice hello","/r reply")),"Missing routed sends: "+packets);
                 ReliableChat.session().clear("party");ReliableChat.session().clear("all");ReliableChat.session().select("team");ReliableChat.noteSend(null);
                 line("\u00a7cYou are not in a party.");
                 List<ChatLine> partyHistory=ReflectionHelper.getPrivateValue(GuiNewChat.class,ReliableChat.session().views.get("party").hud,"chatLines","field_146252_h");
@@ -626,8 +848,8 @@ public final class OtlSmoke {
                 require(buttons(face).stream().noneMatch(b->b.displayString.contains("Advanced")||b.displayString.contains("Expression")),"Obsolete controls");
             }else if(state==4){
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-face-rig.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
-                click(11);require(buttons(face).stream().anyMatch(b->b.displayString.equals("Save")),"Editor save missing");
-                require(buttons(face).stream().noneMatch(b->b.id==23),"Removed Brow tool still present");
+                click(11);require(hasButton(face,"Save"),"Editor save missing");
+                require(!hasButton(face,23),"Removed Brow tool still present");
                 require(find(face,"Auto-detect")!=null,"Auto-detect tool missing");
             }else if(state==5){
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-editor.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
@@ -974,13 +1196,18 @@ public final class OtlSmoke {
                 line("<Alex>: \u26a0 quoted warning");require(chatHistory("party").size()==partyBefore+1,"Quoted player warning leaked to originating channel");
                 ReliableChat.expirePending(System.nanoTime()+9000000000L);line("\u26a0 Unrelated later warning");
                 require(chatHistory("party").size()==partyBefore+1,"Expired command context captured a later warning");ReliableChat.session().select("all");
-                KillFeed.history.clear();UtilitySettings.killFeed=true;UtilitySettings.hideKillChat=false;
+            ReliableChat.session().select(ChatRules.TEAM);int teamBefore=chatHistory("team").size(),allTeamBefore=chatHistory("all").size();
+            ReliableChat.send("plain team text");
+            line("\u00a7c\u26a0 You are not on a team");
+            require(chatHistory("team").size()==teamBefore+1&&chatHistory("all").size()==allTeamBefore,"A tab that sent plain text lost its warning to All");
+            ReliableChat.expirePending(System.nanoTime()+10_000_000_000L);ReliableChat.session().select("all");
+                KillFeed.history.clear();UtilitySettings.killFeed=true;UtilitySettings.hideKillChat=false;UtilitySettings.killFeedSlide=false;
                 ModulesScreen menu=new ModulesScreen(null);mc.displayGuiScreen(menu);
                 require(OtlModule.byId("kill_feed")!=null&&OtlModule.byId("kill_feed").available(),"Kill Feed missing from the module browser");
                 KillFeedSettings options=new KillFeedSettings(menu);mc.displayGuiScreen(options);
-                net.minecraftforge.fml.client.config.GuiSlider count=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==14).findFirst().get();
+                net.minecraftforge.fml.client.config.GuiSlider count=slider(options,14);
                 count.setValue(1);count.updateSlider();require(KillFeed.rows()==1,"Visible Kill Feed limit did not apply");count.setValue(5);count.updateSlider();
-                net.minecraftforge.fml.client.config.GuiSlider life=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==15).findFirst().get();
+                net.minecraftforge.fml.client.config.GuiSlider life=slider(options,15);
                 life.setValue(12);life.updateSlider();require(UtilitySettings.killFeedSeconds==12,"Fade duration did not apply");life.setValue(10);life.updateSlider();
                 require(UtilitySettings.killFeedFilter==KillFeedRules.FilterMode.ALL,"Kill Feed filter should default ALL");
                 options.actionPerformed(find(options,"Show entries: ALL"));require(UtilitySettings.killFeedFilter==KillFeedRules.FilterMode.ONLY_ME,"Only Me filter did not apply");
@@ -993,14 +1220,17 @@ public final class OtlSmoke {
                 KillFeed.history.clear();UtilitySettings.killFeedHeads=KillFeedRules.HeadMode.NONE;
                 line("AssistTarget was slain by Archer's Wooden Sword");int beforeAssist=KillFeed.bounds().w;
                 line("+3 raindrops | Kill Assist");
-                require(KillFeed.history.entries.size()==1&&KillFeed.history.entries.get(0).assist&&KillFeed.bounds().w>beforeAssist,"Assist did not update Kill Feed row width");
-                require(KillFeed.history.entries.get(0).border(mc.thePlayer.getName(),UtilitySettings.killBorderColor,UtilitySettings.deathBorderColor,UtilitySettings.assistBorderColor,100)==0xFF55FFFF,"Assist border did not use its own color");
+                require(KillFeed.history.entries.size()==1&&!KillFeed.history.entries.get(0).assist&&KillFeed.bounds().w==beforeAssist,"An assist reward incorrectly changed a Kill Feed row");
                 KillFeed.history.clear();
                 line("+3 raindrops | Kill Assist");line("LateTarget was slain by Archer's Bow");
-                require(KillFeed.history.entries.get(0).assist,"Reward-first assist did not attach to the next death");
+                require(KillFeed.history.entries.size()==1&&!KillFeed.history.entries.get(0).assist,"A reward-first assist incorrectly claimed the next death");
+                MinecraftForge.EVENT_BUS.post(new net.minecraftforge.client.event.ClientChatReceivedEvent((byte)2,new ChatComponentText("+3 raindrops | Kill Assist")));
+                require(!KillFeed.history.entries.get(0).assist,"An action-bar assist incorrectly changed a Kill Feed row");
                 line("\u00a7eYou joined \u00a79Blue\u00a7r team!");
                 require(TeamBubbles.teamColor()=='9',"Team color was not captured for the assist label");
                 require(KillFeedRules.assistLabel(mc.thePlayer.getName(),TeamBubbles.teamColor()).equals("\u00a79\u00a7l"+mc.thePlayer.getName()+"\u00a7r"),"Assist label did not use the local name and team color");
+                KillFeed.history.clear();
+                line("LateTarget was slain by "+mc.thePlayer.getName()+"'s Wooden Sword");
                 UtilitySettings.killFeedHeads=KillFeedRules.HeadMode.ONLY_ME;
                 options.actionPerformed(find(options,"Hide deaths in chat: ON"));
                 require(!UtilitySettings.killFeedSlide,"Slide animation should default OFF");options.actionPerformed(find(options,"Slide animation: OFF"));
@@ -1013,10 +1243,10 @@ public final class OtlSmoke {
                 require(UtilitySettings.killFeedHeads==KillFeedRules.HeadMode.NONE&&KillFeed.bounds().w<meWidth,"None did not remove heads from row width");
                 options.actionPerformed(find(options,"Player heads: None"));
                 require(UtilitySettings.killFeedHeads==KillFeedRules.HeadMode.ONLY_ME,"Head mode did not cycle back to Only Me");
-                net.minecraftforge.fml.client.config.GuiSlider size=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==4).findFirst().get();
-                net.minecraftforge.fml.client.config.GuiSlider opacity=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==5).findFirst().get();
+                net.minecraftforge.fml.client.config.GuiSlider size=slider(options,4);
+                net.minecraftforge.fml.client.config.GuiSlider opacity=slider(options,5);
                 size.setValue(125);size.updateSlider();opacity.setValue(25);opacity.updateSlider();
-                net.minecraftforge.fml.client.config.GuiSlider outline=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==16).findFirst().get();outline.setValue(60);outline.updateSlider();
+                net.minecraftforge.fml.client.config.GuiSlider outline=slider(options,16);outline.setValue(60);outline.updateSlider();
                 options.actionPerformed(find(options,"Colors"));
                 GuiTextField killColor=ReflectionHelper.getPrivateValue(KillFeedSettings.class,options,"killColor"),deathColor=ReflectionHelper.getPrivateValue(KillFeedSettings.class,options,"deathColor"),assistColor=ReflectionHelper.getPrivateValue(KillFeedSettings.class,options,"assistColor");
                 killColor.setText("123456");deathColor.setText("654321");assistColor.setText("FEDCBA");options.onGuiClosed();
@@ -1024,25 +1254,25 @@ public final class OtlSmoke {
                  require(UtilitySettings.killFeedSize==125&&UtilitySettings.killBackgroundOpacity==25&&UtilitySettings.killBorderOpacity==60&&UtilitySettings.killFeedSlide&&UtilitySettings.killBorderColor==0x123456&&UtilitySettings.deathBorderColor==0x654321&&UtilitySettings.assistBorderColor==0xFEDCBA&&UtilitySettings.killFeedHeads==KillFeedRules.HeadMode.ONLY_ME&&UtilitySettings.killFeedFilter==KillFeedRules.FilterMode.ALL,"Kill Feed appearance did not persist");
                 killColor.setText("INVALID");options.onGuiClosed();require(UtilitySettings.killBorderColor==0x123456,"Invalid hex color replaced saved color");
                 options.actionPerformed(find(options,"Reset colors"));options.actionPerformed(find(options,"Appearance"));
-                net.minecraftforge.fml.client.config.GuiSlider sizeReset=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==4).findFirst().get();
-                net.minecraftforge.fml.client.config.GuiSlider opacityReset=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==5).findFirst().get();
-                net.minecraftforge.fml.client.config.GuiSlider outlineReset=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==16).findFirst().get();
+                net.minecraftforge.fml.client.config.GuiSlider sizeReset=slider(options,4);
+                net.minecraftforge.fml.client.config.GuiSlider opacityReset=slider(options,5);
+                net.minecraftforge.fml.client.config.GuiSlider outlineReset=slider(options,16);
                 sizeReset.mousePressed(mc,sizeReset.xPosition+sizeReset.width-5,sizeReset.yPosition+8);
                 opacityReset.mousePressed(mc,opacityReset.xPosition+opacityReset.width-5,opacityReset.yPosition+8);
                 outlineReset.mousePressed(mc,outlineReset.xPosition+outlineReset.width-5,outlineReset.yPosition+8);
                 require(UtilitySettings.killFeedSize==96&&UtilitySettings.killBackgroundOpacity==25&&UtilitySettings.killBorderOpacity==100&&UtilitySettings.killBorderColor==0xFFBD45&&UtilitySettings.deathBorderColor==0xFF5555&&UtilitySettings.assistBorderColor==0x55FFFF,String.format("Appearance resets failed: size=%d bg=%d outline=%d colors=%06X/%06X/%06X",UtilitySettings.killFeedSize,UtilitySettings.killBackgroundOpacity,UtilitySettings.killBorderOpacity,UtilitySettings.killBorderColor,UtilitySettings.deathBorderColor,UtilitySettings.assistBorderColor));
                 options.actionPerformed(find(options,"Appearance"));
-                net.minecraftforge.fml.client.config.GuiSlider sizeSnap=(net.minecraftforge.fml.client.config.GuiSlider)buttons(options).stream().filter(b->b.id==4).findFirst().get();
+                net.minecraftforge.fml.client.config.GuiSlider sizeSnap=slider(options,4);
                 int snapTrack=sizeSnap.width-22,snapX=sizeSnap.xPosition+4+(int)(snapTrack*0.7D);
                 sizeSnap.mousePressed(mc,snapX,sizeSnap.yPosition+8);sizeSnap.mouseReleased(snapX,sizeSnap.yPosition+8);
                 require(UtilitySettings.killFeedSize==125,"Preset slider did not snap to a preset");
                 sizeSnap.mousePressed(mc,sizeSnap.xPosition+sizeSnap.width-5,sizeSnap.yPosition+8);
                 require(UtilitySettings.killFeedSize==96,"Preset slider reset glyph failed");
                 options.actionPerformed(find(options,"General"));options.actionPerformed(find(options,"Slide animation: ON"));options.actionPerformed(find(options,"Colors"));
-                options.actionPerformed(buttons(options).stream().filter(b->b.id==19).findFirst().get());require(mc.currentScreen instanceof ColorSwatches,"Color swatches did not open");
+                options.actionPerformed(button(options,19));require(mc.currentScreen instanceof ColorSwatches,"Color swatches did not open");
                 ((ColorSwatches)mc.currentScreen).actionPerformed(buttons(mc.currentScreen).get(4));
                 require(mc.currentScreen==options&&UtilitySettings.killBorderColor==ColorSwatches.COLORS[4],"Swatch selection did not apply/return");options.actionPerformed(find(options,"Reset colors"));
-                options.actionPerformed(buttons(options).stream().filter(b->b.id==24).findFirst().get());
+                options.actionPerformed(button(options,24));
                 ((ColorSwatches)mc.currentScreen).actionPerformed(buttons(mc.currentScreen).get(12));
                 require(mc.currentScreen==options&&UtilitySettings.assistBorderColor==ColorSwatches.COLORS[12],"Assist swatch selection did not apply");options.actionPerformed(find(options,"Reset colors"));
                 net.minecraftforge.client.event.ClientChatReceivedEvent normal=new net.minecraftforge.client.event.ClientChatReceivedEvent((byte)0,new ChatComponentText("Target was shot out of the world by Archer from 50 blocks"));
@@ -1126,7 +1356,7 @@ public final class OtlSmoke {
                 String imported=Profiles.importProfile(json);
                 require(imported!=null&&imported.equals(UtilitySettings.profile),"Profile import did not activate a new profile");
                 Profiles.switchProfile(home);require(Profiles.deleteProfile(imported),"Could not delete an imported profile");
-                OtlModule minimapModule=OtlModule.ALL.stream().filter(m->m.id.equals("minimap")).findFirst().get();
+                OtlModule minimapModule=module("minimap");
                 UtilitySettings.minimap=true;UtilitySettings.minimapSize=125;UtilitySettings.minimapOpacity=75;
                 minimapModule.reset();
                 require(UtilitySettings.minimapSize==100&&UtilitySettings.minimapOpacity==25&&!UtilitySettings.minimap,"Card reset did not restore module defaults");
@@ -1193,8 +1423,8 @@ public final class OtlSmoke {
                 require(!UtilitySettings.killConfirmSounds,"Kill/assist sounds should default OFF");
                 require(!UtilitySettings.totalExpKills,"Life recap should default OFF");
                 require(!UtilitySettings.killConfirmPlayerHead,"Kill Confirm should default to the skull icon");
-                net.minecraftforge.fml.client.config.GuiSlider confirmSize=(net.minecraftforge.fml.client.config.GuiSlider)buttons(confirmOptions).stream().filter(b->b.id==1).findFirst().get();
-                net.minecraftforge.fml.client.config.GuiSlider confirmOpacity=(net.minecraftforge.fml.client.config.GuiSlider)buttons(confirmOptions).stream().filter(b->b.id==3).findFirst().get();
+                net.minecraftforge.fml.client.config.GuiSlider confirmSize=slider(confirmOptions,1);
+                net.minecraftforge.fml.client.config.GuiSlider confirmOpacity=slider(confirmOptions,3);
                 confirmSize.setValue(125);confirmSize.updateSlider();confirmOpacity.setValue(40);confirmOpacity.updateSlider();confirmOptions.actionPerformed(find(confirmOptions,"Hide rewards in chat: OFF"));confirmOptions.actionPerformed(find(confirmOptions,"Kill/assist sounds: OFF"));confirmOptions.actionPerformed(find(confirmOptions,"Total EXP, Kills & Assists: OFF"));confirmOptions.actionPerformed(find(confirmOptions,"Kill icon: Skull"));confirmOptions.onGuiClosed();
                 UtilitySettings.killConfirm=false;UtilitySettings.killConfirmSize=75;UtilitySettings.killConfirmOpacity=0;UtilitySettings.hideKillConfirmChat=false;UtilitySettings.killConfirmSounds=false;UtilitySettings.totalExpKills=false;UtilitySettings.killConfirmPlayerHead=false;
                 ReflectionHelper.setPrivateValue(UtilitySettings.class,null,false,"loaded");UtilitySettings.load();require(confirm.enabled()&&UtilitySettings.killConfirmSize==125&&UtilitySettings.killConfirmOpacity==40&&UtilitySettings.hideKillConfirmChat&&UtilitySettings.killConfirmSounds&&UtilitySettings.totalExpKills&&UtilitySettings.killConfirmPlayerHead,"Kill Confirm preferences did not persist");
@@ -1202,7 +1432,7 @@ public final class OtlSmoke {
                 confirmOptions.actionPerformed(find(confirmOptions,"Kill/assist sounds: ON"));require(!UtilitySettings.killConfirmSounds,"Kill/assist sounds did not toggle OFF");
                 confirmOptions.actionPerformed(find(confirmOptions,"Total EXP, Kills & Assists: ON"));require(!UtilitySettings.totalExpKills,"Life recap did not toggle OFF");
                 confirmOptions.actionPerformed(find(confirmOptions,"Kill icon: Player Head"));require(!UtilitySettings.killConfirmPlayerHead,"Skull icon did not toggle back");
-                net.minecraftforge.fml.client.config.GuiSlider confirmReset=(net.minecraftforge.fml.client.config.GuiSlider)buttons(confirmOptions).stream().filter(b->b.id==1).findFirst().get();
+                net.minecraftforge.fml.client.config.GuiSlider confirmReset=slider(confirmOptions,1);
                 confirmReset.mousePressed(mc,confirmReset.xPosition+confirmReset.width-5,confirmReset.yPosition+8);require(UtilitySettings.killConfirmSize==75,"Small default size did not reset");
                 UtilitySettings.hudPositions.put(HudLayout.CONFIRM,new HudLayout.Position(0,0));confirmOptions.actionPerformed(find(confirmOptions,"Reset position"));
                 HudLayout.Rect confirmBox=KillConfirm.bounds();ScaledResolution confirmResolution=new ScaledResolution(mc);
@@ -1231,8 +1461,8 @@ public final class OtlSmoke {
                 UtilitySettings.killFeed=true;UtilitySettings.killConfirmSounds=false;UtilitySettings.save();
                 require(org.lwjgl.opengl.GL11.glGetError()==0,"Kill Confirm left a GL error");
                 UtilityScreen appearance=new UtilityScreen();mc.displayGuiScreen(appearance);appearance.actionPerformed(find(appearance,"Appearance"));
-                net.minecraftforge.fml.client.config.GuiSlider tabs=(net.minecraftforge.fml.client.config.GuiSlider)buttons(appearance).stream().filter(b->b.id==16).findFirst().get();
-                net.minecraftforge.fml.client.config.GuiSlider typingTabs=(net.minecraftforge.fml.client.config.GuiSlider)buttons(appearance).stream().filter(b->b.id==17).findFirst().get();
+                net.minecraftforge.fml.client.config.GuiSlider tabs=slider(appearance,16);
+                net.minecraftforge.fml.client.config.GuiSlider typingTabs=slider(appearance,17);
                 tabs.setValue(35);tabs.updateSlider();typingTabs.setValue(70);typingTabs.updateSlider();appearance.onGuiClosed();
                 UtilitySettings.tabBackgroundOpacity=100;UtilitySettings.typingTabBackgroundOpacity=100;ReflectionHelper.setPrivateValue(UtilitySettings.class,null,false,"loaded");UtilitySettings.load();
                 require(UtilitySettings.tabBackgroundOpacity==35&&UtilitySettings.typingTabBackgroundOpacity==70,"Typing/idle tab opacity did not persist independently");
@@ -1414,7 +1644,7 @@ public final class OtlSmoke {
                 require(find(importer,"Paste from Clipboard")!=null,"Import action missing");
                 importer.drawScreen(0,0,0);
                 mc.displayGuiScreen(browser);
-                require(buttons(browser).stream().noneMatch(b->b.displayString.equals("EDIT HUD LAYOUT")),"Old HUD footer still present");
+                require(!hasButton(browser,"EDIT HUD LAYOUT"),"Old HUD footer still present");
                 // The module grid scrolls past two rows: the scrollbar must actually move it.
                 require(browser.rowCount()>2,"The module grid has nothing to scroll");
                 int tx=browser.trackLeft();
@@ -1438,6 +1668,13 @@ public final class OtlSmoke {
                 browser.scrollWheel(gridX,browser.trackTopY()+40,-120);
                 browser.drawScreen(0,0,0);
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-modules-scrolled.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+                // Search: a query filters across every category, and the chips go quiet.
+                ReflectionHelper.setPrivateValue(ModulesScreen.class,browser,"bow","query");
+                browser.initGui();browser.drawScreen(0,0,0);
+                require(browser.visibleCount()==1,"Module search did not filter the grid: "+browser.visibleCount());
+                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-modules-search.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+                ReflectionHelper.setPrivateValue(ModulesScreen.class,browser,"","query");
+                browser.initGui();
                 int bx=ReflectionHelper.getPrivateValue(ModulesScreen.class,browser,"x"),by=ReflectionHelper.getPrivateValue(ModulesScreen.class,browser,"y");
                 browser.mouseClicked(bx+10,by+10,0);
                 require(mc.currentScreen instanceof HudEditor,"Top-left back arrow did not open HUD editor");
@@ -1615,7 +1852,7 @@ public final class OtlSmoke {
                 for(int i=0;i<maps.length;i++){
                     page.append(",{\"text\":\"").append(i==1?"\u2714":"\u2715").append("\",\"color\":\"dark_green\","
                         +"\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/votenext -o ").append(maps[i]).append("\"},"
-                        +"\"hoverEvent\":{\"action\":\"show_text\",\"value\":{\"text\":\"Classic Casual\"}},"
+                        +"\"hoverEvent\":{\"action\":\"show_text\",\"value\":{\"text\":\""+(i==2?"Classic Casual\\n+ Sponsored by Alice":"Classic Casual")+"\"}},"
                         +"\"extra\":[{\"text\":\" \"},{\"text\":\"").append(maps[i]).append("\",\"color\":\"gold\",\"bold\":true}]}");
                 }
                 page.append("]}");
@@ -1626,13 +1863,20 @@ public final class OtlSmoke {
                 require(mc.currentScreen instanceof VoteScreen,"Custom votebook did not replace the vanilla book");
                 require(((VoteScreen)mc.currentScreen).cardCount()==5,"Book vote cards were not parsed");
                 require(((VoteScreen)mc.currentScreen).votedCount()==1,"Book vote symbol was not read");
+                VoteBook.Book sponsoredBook=ReflectionHelper.getPrivateValue(VoteScreen.class,(VoteScreen)mc.currentScreen,"book");
+                require("Alice".equals(sponsoredBook.cards.get(2).sponsor)&&sponsoredBook.cards.get(0).sponsor==null,
+                    "The sponsor hover was lost or assigned to another map");
                 mc.displayGuiScreen(null);
             }else if(state==72){
                 // In-game Reliable Chat cancels every server line; the vote list must still be read.
                 String[] plain={"Home by the Sea","Avalon","Deciduous Nights","Cherry City","Hallows"};
                 for(int i=0;i<plain.length;i++)cancelledLine((i==1?"\u2714":"\u2715")+" \u00a76\u00a7l"+plain[i]);
             }else if(state==73){
-                require(mc.currentScreen instanceof VoteScreen,"Clickless vote list did not open the custom votebook");
+                if(!(mc.currentScreen instanceof VoteScreen)){
+                    // The book opens on a 600 ms wall-clock settle; a fast smoke tick can outrun it.
+                    require(++voteWaits<5,"Clickless vote list did not open the custom votebook");
+                    return;
+                }
                 VoteScreen vote=(VoteScreen)mc.currentScreen;
                 require(vote.cardCount()==5,"Clickless vote cards were not parsed: "+vote.cardCount());
                 require(vote.votedCount()==1,"Clickless vote symbol was not read");
@@ -1711,10 +1955,21 @@ public final class OtlSmoke {
                 line("The match has started!");
                 require(ReflectionHelper.getPrivateValue(AutoGg.class,AutoGg.INSTANCE,"sendAt").equals(0L),
                     "A new match did not cancel the pending gg");
+                checks.matchEndSound();
                 UtilitySettings.autoGg=false;
                 UtilitySettings.autoGgDelay=0;UtilitySettings.autoGgRandom=false;
                 AutoGg.INSTANCE.settle=5_000_000_000L;
             }else if(state==79){
+                net.minecraft.util.ResourceLocation lateSkin=new net.minecraft.util.ResourceLocation("otl","missing-smoke-skin");
+                java.util.Map<String,Long> retry=ReflectionHelper.getPrivateValue(SkinFace.class,null,"RETRY_AT");
+                java.util.Map<String,int[]> cached=ReflectionHelper.getPrivateValue(SkinFace.class,null,"CACHE");
+                String skinKey="f:"+lateSkin;
+                for(int attempt=0;attempt<4;attempt++){
+                    retry.remove(skinKey);
+                    SkinFace.facePixels(lateSkin);
+                }
+                require(!cached.containsKey(skinKey),"A slow-loading skin was permanently marked as missing");
+                retry.remove(skinKey);
                 // Team Bar: own team, a much larger second team, a third team, and a six-player observer team.
                 net.minecraft.scoreboard.Scoreboard board=mc.theWorld.getScoreboard();
                 for(String team:new String[]{"red","blue","green","observers"})if(board.getTeam(team)==null)board.createTeam(team);
@@ -1756,6 +2011,7 @@ public final class OtlSmoke {
                 line("\u00a7f\u00a7m           \u00a7r \u00a7b\u00a7lAllure\u00a7r \u00a7f\u00a7m           ");
                 line("Created by Kazoha");
                 require("Allure".equals(ReflectionHelper.getPrivateValue(TeamBar.class,TeamBar.INSTANCE,"teamMap")),"A mid-match welcome did not identify the map");
+                require(TeamBar.INSTANCE.bar(mc,false)!=null,"The Team Bar did not return after rejoining the same map");
                 line("Playing Allure");
                 line("The match has started!");
                 require(TeamBar.INSTANCE.bar(mc,false)!=null,"The Team Bar did not return after leaving the lobby");
@@ -1801,17 +2057,21 @@ public final class OtlSmoke {
                 String menuTarget=bar.left.get(0).get(0);
                 ScaledResolution menuResolution=new ScaledResolution(mc);
                 TeamBar.HeadMenu headActions=TeamBar.INSTANCE.positionHeadMenu(bar,placed,menuTarget,
-                    TeamBar.HeadMenu.width(mc),menuResolution.getScaledWidth(),menuResolution.getScaledHeight());
-                require(headActions!=null&&headActions.actionAt(headActions.x+2,headActions.y+2)==0
-                    &&headActions.actionAt(headActions.x+2,headActions.y+20)==1
-                    &&headActions.actionAt(headActions.x+2,headActions.y+38)==2
-                    &&headActions.actionAt(headActions.x+2,headActions.y+56)==3
-                    &&headActions.actionAt(headActions.x+2,headActions.y+71)==3
-                    &&headActions.actionAt(headActions.x+2,headActions.y+72)==-1,"Head menu options were missing or misordered");
+                    TeamBar.HeadMenu.width(mc,menuTarget),menuResolution.getScaledWidth(),menuResolution.getScaledHeight());
+                int headTop=headActions==null?0:headActions.y+TeamBar.HeadMenu.TITLE;
+                require(headActions!=null&&headActions.actionAt(headActions.x+2,headTop+2)==0
+                    &&headActions.actionAt(headActions.x+2,headTop+20)==1
+                    &&headActions.actionAt(headActions.x+2,headTop+38)==2
+                    &&headActions.actionAt(headActions.x+2,headTop+56)==3
+                    &&headActions.actionAt(headActions.x+2,headTop+71)==3
+                    &&headActions.actionAt(headActions.x+2,headTop+72)==-1,"Head menu options were missing or misordered");
                 require(("https://oc.tc/"+menuTarget).equals(TeamBar.profileUrl(menuTarget))
                     &&("/tp "+menuTarget).equals(TeamBar.teleportCommand(menuTarget))
                     &&("/friend add "+menuTarget).equals(TeamBar.friendCommand(menuTarget)),"Head menu targeted a decorated or different player");
                 net.minecraft.client.gui.GuiScreen beforeHeadMenu=mc.currentScreen;
+                mc.displayGuiScreen(new net.minecraft.client.gui.GuiChat());
+                TeamBar.teleportFromHeadMenu(mc,"MissingPlayer");
+                require(mc.currentScreen==null,"Teleport from a player head did not close chat");
                 mc.displayGuiScreen(new net.minecraft.client.gui.GuiChat());
                 ReliableChat.openPrivate(menuTarget);
                 String pmKey="pm:"+menuTarget.toLowerCase(java.util.Locale.ROOT);
@@ -1946,6 +2206,23 @@ public final class OtlSmoke {
                     &&"55% 55/100".equals(ChatRules.plain(redSide.get(5).parts.get(1).text)),
                     "A part-destroyed monument folded its precise progress into its name: "
                         +(redSide.get(5).parts.get(1).text==null?"none":ChatRules.plain(redSide.get(5).parts.get(1).text)));
+                UtilitySettings.teamBarHideHeads=false;
+                TeamBarSettings headOptions=new TeamBarSettings(null);headOptions.setWorldAndResolution(mc,854,480);
+                for(boolean compactHeads:new boolean[]{false,true}){
+                    UtilitySettings.teamBarObjectivesCompact=compactHeads;
+                    TeamBar.Bar headsVisible=TeamBar.INSTANCE.bar(mc,false);
+                    headOptions.actionPerformed(find(headOptions,"Hide player heads: OFF"));
+                    TeamBar.Bar headsHidden=TeamBar.INSTANCE.bar(mc,false);
+                    require(headsHidden.head==0&&TeamBar.headAt(headsHidden,0,0)==null,"The hide-heads setting left player heads visible");
+                    require(!headsHidden.leftStrips.isEmpty()||!headsHidden.rightStrips.isEmpty(),"Hiding heads removed objectives");
+                    require(headsHidden.height<=headsVisible.height,"Hiding heads did not reclaim their vertical space");
+                    headOptions.actionPerformed(find(headOptions,"Hide player heads: ON"));
+                    require(!UtilitySettings.teamBarHideHeads,"Player heads did not return after turning the option off");
+                }
+                UtilitySettings.teamBarObjectivesCompact=false;
+                checkRoundedHeads(mc,headOptions);
+                // Left on so the next state's frame shows the rounded shape; reset there.
+                UtilitySettings.teamBarRoundedHeads=true;
                 String longGoal="The Very Long Monument Name Beside The Northern Bridge";
                 java.util.List<Objectives.Part> longObjectiveRow=java.util.Arrays.asList(
                     new Objectives.Part(longGoal,TeamBar.WHITE,-1),
@@ -2068,6 +2345,21 @@ public final class OtlSmoke {
                     TeamBar.drawPreview();
                     require(org.lwjgl.opengl.GL11.glGetError()==0,"Score bar rendering left a GL error");
                 }
+                UtilitySettings.teamBarScoreStyle=3;
+                boolean previousCompact=UtilitySettings.teamBarObjectivesCompact;
+                for(boolean compactScores:new boolean[]{false,true}){
+                    UtilitySettings.teamBarObjectivesCompact=compactScores;
+                    TeamBar.Bar stackedScores=TeamBar.INSTANCE.bar(mc,false);
+                    int stacked=0;
+                    for(int sideIndex=0;sideIndex<2;sideIndex++)for(Objectives.Strip line:stackedScores.strips(sideIndex))
+                        for(Objectives.Part part:line.parts)if(part.stacked){
+                            stacked++;require(part.text!=null&&ChatRules.plain(part.text).endsWith("/5"),"Stacked score lost its numbers");
+                        }
+                    require(stacked==2&&stackedScores.stripLine>=Objectives.STACK_H,"Stacked scores were missing or overlapped");
+                    TeamBar.drawPreview();
+                    require(org.lwjgl.opengl.GL11.glGetError()==0,"Stacked score rendering left a GL error");
+                }
+                UtilitySettings.teamBarObjectivesCompact=previousCompact;
                 UtilitySettings.teamBarScoreStyle=0;
                 TeamBar.INSTANCE.symbolicScores.clear();
                 sidebarRow(objBoard,objSidebar,"otl_symB","\u00a79\u2794 \u2b24\u2b24",9);
@@ -2197,8 +2489,7 @@ public final class OtlSmoke {
                     many.addPlayerToTeam("Extra"+i+"P1",extra);
                 }
                 TeamBar.Bar stacked=TeamBar.INSTANCE.bar(mc,false);
-                int rows=Math.max(stacked.left.size(),stacked.right.size());
-                require(rows==14,"Twenty-seven teams were not stacked one row each: "+rows);
+                requireEveryAddedTeamStacked(stacked);
                 require(stacked.height<=new ScaledResolution(mc).getScaledHeight()-8,"The team stack spills off the screen: "+stacked.height);
                 for(int i=0;i<24;i++)if(many.getTeam("extra"+i)!=null)many.removeTeam(many.getTeam("extra"+i));
                 // Respawn: the server puts the team colour back, so the head must clear itself.
@@ -2233,6 +2524,10 @@ public final class OtlSmoke {
             }else if(state==81){
                 // The frame drawn during the wait above carries the named objectives: keep it.
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-team-bar-objectives.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+                // Rounded heads were switched on at the end of the previous state, so this frame has them.
+                System.out.println("OTL_SMOKE: rounded heads at capture="+UtilitySettings.teamBarRoundedHeads);
+                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-team-bar-rounded.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+                UtilitySettings.teamBarRoundedHeads=false;
                 // The frame drawn during the wait above used the 150% bar; keep it as evidence.
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-team-bar-large.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
                 // Compact for the next frame, so 82 can screenshot it with its markers drawn.
@@ -2310,7 +2605,9 @@ public final class OtlSmoke {
                 require(TeamBar.colour(new TeamBar.Timer("5:00",300,true,false))==TeamBar.YELLOW,"A limit with time left was not yellow");
                 require(TeamBar.colour(new TeamBar.Timer("0:26",26,true,false))==TeamBar.YELLOW,"A limit just above 25 seconds turned red too early");
                 require(TeamBar.colour(new TeamBar.Timer("0:25",25,true,false))==TeamBar.RED,"25 seconds left was not red");
-                require(TeamBar.colour(new TeamBar.Timer("0:00",0,true,false))==TeamBar.RED,"The last second was not red");
+                require(TeamBar.colour(new TeamBar.Timer("0:06",6,true,false))==TeamBar.RED,"Six seconds left was not red");
+                require(TeamBar.colour(new TeamBar.Timer("0:05",5,true,false))==TeamBar.DARK_RED,"Five seconds left was not dark red");
+                require(TeamBar.colour(new TeamBar.Timer("0:00",0,true,false))==TeamBar.DARK_RED,"The final time was not dark red");
                 require(TeamBar.colour(new TeamBar.Timer("0:25",25,false,false))==TeamBar.GOLD,"A count-up clock was not gold");
                 require(TeamBar.colour(null)==TeamBar.GOLD,"A clock with no timer was not gold");
                 // Header above the clock: off by default; the map name or the sidebar's own gamemode,
@@ -2374,10 +2671,17 @@ public final class OtlSmoke {
                 for(String row:new String[]{"otl_obj1","otl_obj2","otl_obj3","otl_obj4"})if(gone.getTeam(row)!=null)gone.removeTeam(gone.getTeam(row));
                 require(TeamBar.INSTANCE.bar(mc,false).leftStrips.isEmpty()&&TeamBar.INSTANCE.bar(mc,false).rightStrips.isEmpty(),"The objective rows outlived their sidebar lines");
                 net.minecraft.entity.boss.BossStatus.bossName="Time Remaining: 9:50";
-                UtilitySettings.teamBarHideBoss=true;
-                require(TeamBar.hidesBossBar(mc),"Hide bossbar did not hide a PGM clock");
                 UtilitySettings.teamBarHideBoss=false;
-                require(!TeamBar.hidesBossBar(mc),"Hide bossbar stayed on after being turned off");
+                require(TeamBar.hidesBossBar(mc),"Team Bar did not automatically hide Time Remaining");
+                net.minecraft.entity.boss.BossStatus.bossName="Flag will respawn in 4 seconds";
+                require(!TeamBar.hidesBossBar(mc),"A flag countdown boss bar was hidden");
+                net.minecraft.entity.boss.BossStatus.bossName="Overtime 0:30";
+                require(!TeamBar.hidesBossBar(mc),"An unrelated timed boss bar was hidden");
+                UtilitySettings.teamBar=false;
+                net.minecraft.entity.boss.BossStatus.bossName="Time Remaining: 9:50";
+                require(!TeamBar.hidesBossBar(mc),"The timer boss bar was hidden with Team Bar disabled");
+                UtilitySettings.teamBar=true;
+                checks.scoreboardToggle(mc);
                 // A line that never moves is not the clock. PGM's sidebar carries the map's
                 // configured limit ("Time Limit: 10:00") while the live time is elsewhere; locking
                 // onto whichever appeared first pinned the bar to the static one.
@@ -2556,13 +2860,12 @@ public final class OtlSmoke {
                 UtilitySettings.teamBarObserver=false;
                 require(TeamBar.INSTANCE.bar(mc,false)==null,"The bar stayed visible in observer with the option OFF");
                 require(TeamBar.INSTANCE.bar(mc,true)!=null,"The HUD editor preview followed the observer option");
-                // The server's own timer goes with the bar: with the bar hidden in observer, the
-                // boss-bar clock must not be left on screen on its own.
+                // Keep the server timer if the Team Bar is hidden while observing.
                 net.minecraft.entity.boss.BossStatus.bossName="Time Remaining: 4:31";
                 UtilitySettings.teamBarHideBoss=false;
-                require(TeamBar.hidesBossBar(mc),"The server timer stayed on screen while the bar was hidden in observer");
+                require(!TeamBar.hidesBossBar(mc),"The server timer was hidden while Team Bar was hidden in observer");
                 UtilitySettings.teamBarObserver=true;
-                require(!TeamBar.hidesBossBar(mc),"The server timer was hidden while the bar was shown in observer");
+                require(TeamBar.hidesBossBar(mc),"The duplicate timer stayed visible while Team Bar was shown in observer");
                 net.minecraft.entity.boss.BossStatus.bossName=null;
                 UtilitySettings.teamBarObserver=true;
                 mc.theWorld.getScoreboard().addPlayerToTeam(mc.thePlayer.getName(),"red");
@@ -2615,6 +2918,10 @@ public final class OtlSmoke {
                 deathBoard.addPlayerToTeam("OtherPlayer","red");
                 long deathAt=System.nanoTime();
                 TeamBar.sides(mc,deathAt);
+                // PGM's synthetic tab row remains even if the real profile is absent.
+                removeTabEntry(mc,"OtherPlayer");
+                require(side(TeamBar.sides(mc,deathAt+TeamBar.LEFT_GRACE+1),"red").members.contains("OtherPlayer"),
+                    "A player still visible in PGM's grey tab row was treated as a leaver");
                 deathBoard.removePlayerFromTeam("OtherPlayer",deathBoard.getTeam("red"));
                 TeamBar.sides(mc,deathAt+1);
                 require(side(TeamBar.sides(mc,deathAt+TeamBar.KEEP_DEAD+1_000_000_000L),"red").members.contains("OtherPlayer"),"A grey online player disappeared during a long respawn");
@@ -2659,8 +2966,7 @@ public final class OtlSmoke {
                 HudLayout.Rect where=TeamBar.placed(alone);
                 require(Math.abs(where.x+alone.textX+alone.textW/2-sw/2)<=3,
                     "The clock is off centre while observing: "+(where.x+alone.textX+alone.textW/2)+" vs "+sw/2);
-                // FFA: PGM gives every player their own one-member team so each name gets its own
-                // colour. That is not a team: the bar must pool the heads and draw no colour line.
+                // FFA: one centred player grid, with a horizontal colour line and score per head.
                 net.minecraft.scoreboard.ScorePlayerTeam watching=board.getPlayersTeam(mc.thePlayer.getName());
                 if(watching!=null)board.removePlayerFromTeam(mc.thePlayer.getName(),watching);
                 int shownBefore=UtilitySettings.teamBarPlayers;
@@ -2673,8 +2979,18 @@ public final class OtlSmoke {
                 }
                 java.util.List<TeamBar.Side> ffaSides=TeamBar.sides(mc);
                 require(TeamBar.isFfa(ffaSides),"FFA was not recognised from one-member teams: "+ffaSides.size());
+                net.minecraft.scoreboard.ScoreObjective ffaScoreboard=board.getObjective("otl_teambar");
+                sidebarRow(board,ffaScoreboard,"otl_ffascore1","\u00a7f12/200 \u00a79FfaPlayer1",14);
+                sidebarRow(board,ffaScoreboard,"otl_ffascore2","\u00a7f7 \u00a7cFfaPlayer2",13);
                 TeamBar.Bar ffa=TeamBar.INSTANCE.bar(mc,false);
                 require(ffa!=null,"The FFA bar vanished");
+                require(ffa.ffa&&"12/200".equals(ffa.ffaScores.get("ffaplayer1"))&&"7".equals(ffa.ffaScores.get("ffaplayer2")),"FFA scores were not matched to their players");
+                UtilitySettings.teamBarHideHeads=true;
+                TeamBar.Bar ffaHidden=TeamBar.INSTANCE.bar(mc,false);
+                require(ffaHidden.head==0&&"12/200".equals(ffaHidden.ffaScores.get("ffaplayer1"))&&ffaHidden.height<ffa.height,
+                    "Hiding FFA heads removed scores or failed to reclaim their space");
+                require(TeamBar.headBounds(ffaHidden,"FfaPlayer1")==null,"A hidden FFA head remained clickable");
+                UtilitySettings.teamBarHideHeads=false;
                 require(ffa.line==0,"FFA still drew a team-colour line: "+ffa.line);
                 int heads=0;
                 for(java.util.List<String> members:ffa.left)heads+=members.size();
@@ -2688,15 +3004,15 @@ public final class OtlSmoke {
                     for(java.util.List<String> members:column)
                         for(String name:members)require(seenNames.add(name.toLowerCase(java.util.Locale.ROOT)),
                             "A head was drawn on both sides of the FFA bar: "+name);
-                // Alternating sides: the two columns hold the same number of heads, not ten and two.
-                int leftHeads=0,rightHeads=0;
-                for(java.util.List<String> members:ffa.left)leftHeads+=members.size();
-                for(java.util.List<String> members:ffa.right)rightHeads+=members.size();
-                require(Math.abs(leftHeads-rightHeads)<=1,
-                    "FFA heads were not dealt left and right: "+leftHeads+" vs "+rightHeads);
-                require(Math.abs(ffa.left.size()-ffa.right.size())<=1,
-                    "FFA rows are lopsided: "+ffa.left.size()+" vs "+ffa.right.size());
-                require(ffa.textX+ffa.textW/2==ffa.width/2,"The clock is not centred in the FFA bar");
+                for(int r=0;r<ffa.left.size();r++){
+                    java.util.List<String> members=ffa.left.get(r);
+                    int start=ffa.leftStart(members);
+                    require(Math.abs((2*start+(members.size()-1)*ffa.advance+ffa.head)-ffa.width)<=1,"An FFA head row was not centred");
+                    require(ffa.rowTop(0,r)>=12,"FFA heads overlapped the clock");
+                    int[] target=TeamBar.headBounds(ffa,members.get(0));
+                    require(members.get(0).equals(TeamBar.headAt(ffa,target[0]+1,target[1]+1)),"FFA head hover did not follow the grid");
+                }
+                require(Math.abs(2*ffa.textX+ffa.textW-ffa.width)<=1,"The clock is not centred in the FFA bar");
                 // A party in FFA keeps its players on one team, so not every side is a single.
                 // That must not turn the bar back into a team map with a colour line.
                 UtilitySettings.teamBarPlayers=20; // the pool must not be cut, or the count below proves nothing
@@ -2730,8 +3046,8 @@ public final class OtlSmoke {
                     TeamBar.INSTANCE.bar(mc,false);
                 }
                 TeamBar.Bar joined=TeamBar.INSTANCE.bar(mc,false);
-                require(joined.left.get(0).equals(java.util.Arrays.asList("Zed","Mia"))&&joined.right.get(0).equals(java.util.Arrays.asList("Aaron")),
-                    "FFA did not alternate by join order: "+joined.left+" / "+joined.right);
+                require(joined.left.get(0).equals(java.util.Arrays.asList("Zed","Aaron","Mia"))&&joined.right.isEmpty(),
+                    "FFA did not retain join order in its centred grid: "+joined.left+" / "+joined.right);
                 UtilitySettings.teamBarPlayers=shownBefore;
             }else if(state==90){
                 // Real PGM match on the local server: dump what the scoreboard actually carries.
@@ -2743,6 +3059,8 @@ public final class OtlSmoke {
                 require(mc.thePlayer!=null&&mc.theWorld!=null,"Not connected to the local server");
                 // Join the running match so the bar has real teams and a real clock.
                 mc.thePlayer.sendChatMessage("/join");
+                // Rounded heads on, so the live screenshot one state later proves the option draws.
+                UtilitySettings.teamBarRoundedHeads=true;
             }else if(state>=92&&state<=98){
                 dumpMatch(mc);
                 if(state==95)ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-team-bar-live.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
@@ -2888,15 +3206,15 @@ public final class OtlSmoke {
                 require(model.isBuiltInRenderer(),"Snowball did not switch to the football renderer");
                 TouchdownSettings touchdownOptions=new TouchdownSettings(null);
                 touchdownOptions.setWorldAndResolution(mc,854,480);
-                touchdownOptions.actionPerformed(buttons(touchdownOptions).stream().filter(b->b.id==1).findFirst().get());
+                touchdownOptions.actionPerformed(button(touchdownOptions,1));
                 require(!UtilitySettings.touchdownFootball3d&&!model.isBuiltInRenderer()&&Touchdown.active(),"3D football option did not restore the vanilla model independently");
                 require(!UtilitySettings.snapshot().get("touchdown_football_3d").getAsBoolean(),"3D football option was not included in saved settings");
-                touchdownOptions.actionPerformed(buttons(touchdownOptions).stream().filter(b->b.id==1).findFirst().get());
+                touchdownOptions.actionPerformed(button(touchdownOptions,1));
                 require(UtilitySettings.touchdownFootball3d&&model.isBuiltInRenderer(),"3D football option did not restore the model");
-                touchdownOptions.actionPerformed(buttons(touchdownOptions).stream().filter(b->b.id==2).findFirst().get());
+                touchdownOptions.actionPerformed(button(touchdownOptions,2));
                 require(UtilitySettings.touchdownHideBallParticles,"Hide ball particles option did not turn on");
                 require(UtilitySettings.snapshot().get("touchdown_hide_ball_particles").getAsBoolean(),"Hide ball particles option was not included in saved settings");
-                touchdownOptions.actionPerformed(buttons(touchdownOptions).stream().filter(b->b.id==2).findFirst().get());
+                touchdownOptions.actionPerformed(button(touchdownOptions,2));
                 require(!UtilitySettings.touchdownHideBallParticles,"Hide ball particles option did not turn off");
                 require(FootballMesh.quads()>=192,"Football mesh is too small: "+FootballMesh.quads());
                 // The look the user asked for: dark leather with a white stripe near each tip, so
@@ -3085,7 +3403,7 @@ public final class OtlSmoke {
                 require("4 - 1".equals(TouchdownCard.current().score),"Score arriving after the scorer was lost");
                 TouchdownSettings cardOptions=new TouchdownSettings(null,true);cardOptions.setWorldAndResolution(mc,854,480);
                 require(find(cardOptions,"Touchdown player card: ON")!=null,"Player card toggle missing from card tab");
-                require(buttons(cardOptions).stream().anyMatch(b->b.id==5)&&buttons(cardOptions).stream().noneMatch(b->b.id==6),"Combined card animation option missing");
+                require(hasButton(cardOptions,5)&&!hasButton(cardOptions,6),"Combined card animation option missing");
                 cardBoard.removeTeam(cardBlue);
                 ItemStack oldChest=mc.thePlayer.inventory.armorInventory[2],oldHelmet=mc.thePlayer.inventory.armorInventory[3];
                 try{
@@ -3120,6 +3438,301 @@ public final class OtlSmoke {
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-touchdown-player-card.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
                 require(org.lwjgl.opengl.GL11.glGetError()==0,"Touchdown card rendering left a GL error");
                 System.out.println("OTL_SMOKE: Ball trail contrail and Touchdown player card PASS");
+            }
+            if(state==131){
+                // The screen was displayed on the previous state, so this captures a real frame.
+                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-modules-new.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+                ModulesScreen browser=(ModulesScreen)mc.currentScreen;
+                browser.keyTyped('b',org.lwjgl.input.Keyboard.KEY_B);
+                browser.keyTyped('o',org.lwjgl.input.Keyboard.KEY_O);
+                browser.keyTyped('w',org.lwjgl.input.Keyboard.KEY_W);
+            }else if(state==132){
+                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-modules-search.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+                require(((ModulesScreen)mc.currentScreen).visibleCount()==1,
+                    "Module search did not filter the grid: "+((ModulesScreen)mc.currentScreen).visibleCount());
+                ModulesScreen browser=(ModulesScreen)mc.currentScreen;
+                browser.keyTyped('\0',org.lwjgl.input.Keyboard.KEY_ESCAPE);
+                require(browser.visibleCount()==OtlModule.ALL.size(),"Escape did not clear module search");
+                int bx=ReflectionHelper.getPrivateValue(ModulesScreen.class,browser,"x");
+                int by=ReflectionHelper.getPrivateValue(ModulesScreen.class,browser,"y");
+                int bh=ReflectionHelper.getPrivateValue(ModulesScreen.class,browser,"h");
+                browser.mouseClicked(bx+150,by+bh-16,0);
+                require(browser.visibleCount()==OtlModule.ALL.stream().filter(m->m.enabled()).count(),
+                    "Enabled-only filter includes disabled modules or omits enabled modules");
+                browser.mouseClicked(bx+150,by+bh-16,0);
+                require(browser.visibleCount()==OtlModule.ALL.size(),"Enabled-only filter did not clear");
+                // The header strip carries the PGM settings section; it must open the shared settings page.
+                browser.mouseClicked(browser.settingsNavX()+4,browser.navTop()+10,0);
+                require(mc.currentScreen instanceof PgmSettingsScreen,"Settings header did not open the PGM page");
+                ((PgmSettingsScreen)mc.currentScreen).actionPerformed(find(mc.currentScreen,"Back"));
+                require(mc.currentScreen==browser,"PGM settings did not return to the module browser");
+                int[] box=browser.cardBox(0);
+                boolean before=OtlModule.ALL.get(0).enabled();
+                browser.mouseClicked(box[0]+box[2]/2,box[1]+8,0);
+                require(mc.currentScreen!=browser,"Module body did not open settings");
+                require(OtlModule.ALL.get(0).enabled()==before,"Opening module settings toggled its state");
+                uiScale=mc.gameSettings.guiScale;mc.gameSettings.guiScale=1;
+                mc.displayGuiScreen(browser);
+            }else if(state==133){
+                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-modules-large.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+                mc.gameSettings.guiScale=uiScale;
+                require(org.lwjgl.opengl.GL11.glGetError()==0,"Module artwork left an OpenGL error");
+                System.out.println("OTL_SMOKE: search typing, Escape, enabled filter and card navigation PASS");
+            }
+            if(state==134){
+                for(String name:new String[]{"TabAlpha","TabBravo","TabCharlie"})tabEntry(mc,name,"\u00a7a"+name);
+                // PGM pads its list with entries like "|95-80f34791e431"; they must not take a row.
+                tabEntry(mc,"|95-80f34791e431","|95-80f34791e431");
+                TabListMenu tabs=TabListMenu.INSTANCE;
+                // The list takes the mouse, so it must take the keyboard too: a player walking when
+                // they middle-click must stop under the cursor, not run off while they pick a name.
+                mc.thePlayer.movementInput.moveForward=1;mc.thePlayer.movementInput.moveStrafe=1;
+                tabs.begin(mc);
+                require(mc.thePlayer.movementInput.moveForward==0&&mc.thePlayer.movementInput.moveStrafe==0,
+                    "Opening the player list left the player walking");
+                require(tabs.browsing,"Middle-clicking the player list did not start browsing");
+                require(mc.currentScreen==null,"The player list opened a screen instead of staying on the HUD");
+                require(tabs.layout(mc).rows>0&&tabs.layout(mc).columns>0,"The clickable player list laid out no rows");
+                // PGM's blank padding rows must keep their place but never open a menu.
+                TabListMenu.Layout padded=tabs.layout(mc);
+                int pad=-1;
+                for(int i=0;i<padded.players.size();i++)
+                    if(padded.players.get(i).getGameProfile().getName().startsWith("|"))pad=i;
+                require(pad>=0,"The padding entry was dropped, so every row below it shifted");
+                tabs.click(mc,padded.x(pad)+1,padded.y(pad)+1);
+                // A blank row may answer the nearest real name (a client can shift rows by a pixel),
+                // but it must never open a menu for the blank entry itself.
+                require(tabs.menu==null||!tabs.menu.player.startsWith("|"),
+                    "A blank padding row opened a menu for the padding entry: "
+                        +(tabs.menu==null?"none":tabs.menu.player));
+                tabs.begin(mc);
+                // Leaving the list hands the mouse back: a held list closes when its key is let go,
+                // and a toggled one closes on the next press of the same key.
+                tabs.mustHold=true;tabs.keyWasDown=true;
+                require(!tabs.keyLeft(true),"A held list closed while its key was still down");
+                require(tabs.keyLeft(false),"Letting go of a held list did not leave it");
+                tabs.mustHold=false;tabs.keyWasDown=false;
+                require(!tabs.keyLeft(false),"A toggled list closed on its own");
+                require(tabs.keyLeft(true),"Pressing the key again did not close a toggled list");
+                // The same button closes it again.
+                tabs.mustHold=false;tabs.keyWasDown=false;
+                tabs.poll(mc,0,0,false,false);
+                tabs.poll(mc,0,0,false,true);
+                require(!tabs.browsing,"A second middle-click did not close the player list");
+                require(mc.inGameHasFocus,"Closing the list did not hand the mouse back to the game");
+                tabs.begin(mc);
+                tabTarget=null;
+            }else if(state==135){
+                // The list is the client's own; only the hover and the popup are ours.
+                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-player-list.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+                TabListMenu tabs=TabListMenu.INSTANCE;
+                TabListMenu.Layout layout=tabs.layout(mc);
+                require(layout.indexAt(layout.x(0)+1,layout.y(0)+1)==0,"The first row was not under the pointer");
+                require(layout.indexAt(layout.x(0)+1,layout.y(0)+8)==0,"A row was only clickable on its first pixel");
+                // Every row's band answers with a player from that band, whichever column is widest.
+                int below=layout.indexAt(layout.x(0)+1,layout.y(0)+9);
+                require(layout.players.size()>1?below==1:below==-1,"The row band after the first answered "+below);
+                require(layout.indexAt(layout.x(0)+1,layout.y(0)-30)==-1,"The space above the list answered a click");
+                // Half a row of slack either side of a name still answers that name.
+                require(layout.indexAt(layout.x(0)+1,layout.y(0)+2)==0,"A click above a name's line answered nothing");
+                require(layout.indexAt(layout.x(0)+1,layout.y(0)+12)==(layout.players.size()>1?1:0),
+                    "A click below a name's line picked the wrong player");
+                // A decoration row shows nothing. One directly beside a name may answer that name
+                // (a client can shift rows by a pixel), but a blank row must never open a menu for
+                // the blank entry itself. The real-server scope covers a long blank block.
+                int padRow=-1;
+                for(int i=0;i<layout.players.size();i++)
+                    if(layout.target(i)==null){padRow=i;break;}
+                require(padRow>=0,"The padding row was dropped, so every row below it shifted");
+                int padHit=layout.indexAt(layout.x(padRow)+1,layout.y(padRow)+4);
+                require(padHit<0||layout.target(padHit)!=null,
+                    "A blank padding row answered as a blank entry: "+padHit);
+                String first=layout.target(0);
+                // A held button must not click twice, and the pointer the highlight uses is the one
+                // the click reads.
+                tabs.poll(mc,layout.x(0)+1,layout.y(0)+1,true,false);
+                require(tabs.menu!=null&&tabs.menu.player.equals(first),"Clicking a name did not open its options");
+                int openX=tabs.menu.x;
+                tabs.poll(mc,layout.x(0)+1,layout.y(0)+1,true,false);
+                require(tabs.menu!=null&&tabs.menu.x==openX,"Holding the button moved or reopened the menu");
+            }else if(state==136){
+                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-player-list-menu.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+                // Every action must be clickable and do its thing; two of them open their own screen.
+                TabListMenu tabs=TabListMenu.INSTANCE;
+                String target=null;
+                for(int action=0;action<TeamBar.HeadMenu.LABELS.length;action++){
+                    tabs.begin(mc);
+                    TabListMenu.Layout layout=tabs.layout(mc);
+                    String first=layout.target(0);
+                    if(target==null)target=first;
+                    tabs.poll(mc,layout.x(0)+1,layout.y(0)+1,true,false);
+                    require(tabs.menu!=null,TeamBar.HeadMenu.LABELS[action]+": clicking a name opened nothing");
+                    int rowY=tabs.menu.y+TeamBar.HeadMenu.TITLE+action*TeamBar.HeadMenu.ROW+2;
+                    require(tabs.menu.actionAt(tabs.menu.x+2,rowY)==action,
+                        TeamBar.HeadMenu.LABELS[action]+": the option row is not where it draws");
+                    // Release, then press on the option, exactly as a mouse does.
+                    tabs.poll(mc,tabs.menu.x+2,rowY,false,false);
+                    tabs.poll(mc,tabs.menu.x+2,rowY,true,false);
+                    require(tabs.menu==null&&!tabs.browsing,TeamBar.HeadMenu.LABELS[action]+": the menu stayed open");
+                    if(action==0)require(mc.currentScreen instanceof net.minecraft.client.gui.GuiConfirmOpenLink,
+                        "View Profile did not ask before opening the browser: "+mc.currentScreen);
+                    if(action==3)require(mc.currentScreen instanceof net.minecraft.client.gui.GuiChat,
+                        "Message player did not open the chat: "+mc.currentScreen);
+                    mc.displayGuiScreen(null);
+                }
+                tabTarget=target;
+            }else if(state==137){
+                // Chat packets leave on the network thread, so they are read a tick later.
+                require(packets.contains("/tp "+tabTarget),"Teleport did not send the command: "+packets);
+                require(packets.contains("/friend add "+tabTarget),"Add Friend did not send the command: "+packets);
+                mc.displayGuiScreen(new PgmSettingsScreen(null));
+                PgmSettingsScreen pgm=(PgmSettingsScreen)mc.currentScreen;
+                pgm.showClient();
+                require(buttons(pgm).size()==2,"The client page still lists rows it no longer has: "+buttons(pgm).size());
+                pgm.actionPerformed(find(pgm,"Player list middle-click: ON"));
+                require(!UtilitySettings.tabPlayerMenu,"The player list middle-click option did not turn off");
+                pgm.actionPerformed(find(pgm,"Player list middle-click: OFF"));
+                require(UtilitySettings.tabPlayerMenu,"The player list middle-click option did not turn back on");
+                UtilitySettings.save();
+            }else if(state==138){
+                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-pgm-client.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+                mc.displayGuiScreen(null);
+                System.out.println("OTL_SMOKE: player list middle-click PASS");
+            }
+            if(state==139){
+                // The real thing: the PGM server's own tab list, with its header, scores and teams.
+                mc.displayGuiScreen(new net.minecraft.client.multiplayer.GuiConnecting(new GuiMainMenu(),mc,
+                    new net.minecraft.client.multiplayer.ServerData("Local PGM","localhost:25565",false)));
+            }else if(state==140){
+                require(mc.thePlayer!=null&&mc.theWorld!=null,"Not connected to the local PGM server");
+                sniffPackets(mc);
+                // A server can push its own screen on join; the list is what this scope tests.
+                mc.displayGuiScreen(null);
+                // Hold the list key so the client draws the list the way it does in a match.
+                net.minecraft.client.settings.KeyBinding.setKeyBindState(
+                    mc.gameSettings.keyBindPlayerList.getKeyCode(),true);
+            }else if(state==141){
+                // This frame was drawn with the screen gone and the key held, so the shot is the
+                // list as the client really paints it - the geometry the hit test has to match.
+                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-pgm-list.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+                TabListMenu tabs=TabListMenu.INSTANCE;
+                TabListMenu.Layout layout=tabs.layout(mc);
+                net.minecraft.util.IChatComponent hdr=TabListMenu.headerOf(mc);
+                net.minecraft.util.IChatComponent ftr=TabListMenu.footerOf(mc);
+                int screenW=new ScaledResolution(mc).getScaledWidth();
+                System.out.println("OTL_PGMLIST: header='"
+                    +(hdr==null?"none":escape(hdr.getFormattedText()))+"' lines="
+                    +(hdr==null?0:TabListMenu.lines(mc,hdr,screenW))
+                    +" footer='"+(ftr==null?"none":escape(ftr.getFormattedText()))+"'");
+                System.out.println("OTL_PGMLIST: slots="+TabListMenu.usingServerSlots(mc)
+                    +" vanillaOrder="+TabListMenu.usingVanillaOrder()
+                    +" players="+layout.players.size()+" columns="+layout.columns
+                    +" rows="+layout.rows+" left="+layout.left+" top="+layout.top+" cell="+layout.cell
+                    +" objective="+(mc.theWorld.getScoreboard().getObjectiveInDisplaySlot(0)==null?"none"
+                    :mc.theWorld.getScoreboard().getObjectiveInDisplaySlot(0).getName()));
+                // What each drawn row holds, in the order it is drawn: compared against the shot.
+                for(int i=0;i<Math.min(layout.players.size(),layout.rows);i++)
+                    System.out.println("OTL_PGMLIST: row "+i+" y="+layout.y(i)+" -> "
+                        +layout.target(i)+"  ["+escape(TabListMenu.drawnName(mc,layout.players.get(i)))+"]");
+                int dumped=0;
+                for(net.minecraft.client.network.NetworkPlayerInfo info:mc.getNetHandler().getPlayerInfoMap()){
+                    net.minecraft.scoreboard.ScorePlayerTeam team=info.getPlayerTeam();
+                    String shown=info.getDisplayName()==null?"none":escape(info.getDisplayName().getFormattedText());
+                    if(dumped++<2||!shown.equals("&r"))
+                        System.out.println("OTL_PGMLIST: entry '"+info.getGameProfile().getName()+"' display="+shown
+                            +" team="+(team==null?"none":"'"+team.getTeamName()+"'"));
+                }
+                require(!layout.players.isEmpty(),"The PGM player list is empty");
+                // Every named row must answer a click on its own line, and every decoration row
+                // must answer nothing. This is checked against the text the client paints, so a
+                // wrong sort or a wrong row height shows up as a row that answers its neighbour.
+                int named=0;
+                for(int i=0;i<layout.players.size();i++){
+                    String shown=TabListMenu.drawnName(mc,layout.players.get(i));
+                    String expect=layout.target(i);
+                    int hit=layout.indexAt(layout.x(i)+2,layout.y(i)+4);
+                    if(expect==null){
+                        require(hit==-1||layout.target(hit)!=null,
+                            "Decoration row "+i+" answered a click");
+                        continue;
+                    }
+                    named++;
+                    require(expect.equals(TabListMenu.target(shown,layout.players.get(i).getGameProfile().getName())),
+                        "Row "+i+" names "+expect+" but paints "+escape(shown));
+                    require(hit==i,"Row "+i+" ("+expect+") answered row "+hit
+                        +" ("+(hit<0?"nothing":layout.target(hit))+")");
+                }
+                require(named>0,"The PGM list showed no real player to click");
+                // Rows must come from somewhere authoritative: PGM's own TabView slot numbers, or
+                // the client's own sort. A copied comparator is what let rows answer their neighbour.
+                require(TabListMenu.usingServerSlots(mc)||TabListMenu.usingVanillaOrder(),
+                    "The list fell back to a copied sort order, so rows can answer their neighbour");
+                int real=-1;
+                String realName=null;
+                for(int i=0;i<layout.players.size();i++)
+                    if(layout.target(i)!=null){real=i;realName=layout.target(i);break;}
+                System.out.println("OTL_PGMLIST: first real row "+real+" is "+realName);
+                tabs.begin(mc);
+                require(tabs.browsing,"Middle-clicking on PGM did not start browsing");
+                tabs.poll(mc,layout.x(real)+2,layout.y(real)+4,true,false);
+                require(tabs.menu!=null,"Clicking a name on the PGM list opened no menu");
+                require(realName.equals(tabs.menu.player),
+                    "The menu opened for "+tabs.menu.player+" instead of "+realName);
+                System.out.println("OTL_PGMLIST: menu for "+tabs.menu.player);
+                tabTarget=realName;
+            }else if(state==142){
+                // A frame later, so the shot shows the list and the menu as they are drawn.
+                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-player-list-pgm.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+                TabListMenu tabs=TabListMenu.INSTANCE;
+                require(tabs.menu!=null,"The menu closed on its own on PGM");
+                // View Profile: the option that "did nothing" in a match.
+                int rowY=tabs.menu.y+TeamBar.HeadMenu.TITLE+2;
+                tabs.poll(mc,tabs.menu.x+2,rowY,false,false);
+                tabs.poll(mc,tabs.menu.x+2,rowY,true,false);
+                require(mc.currentScreen instanceof net.minecraft.client.gui.GuiConfirmOpenLink,
+                    "View Profile on PGM opened nothing: "+mc.currentScreen);
+                System.out.println("OTL_PGMLIST: view profile PASS");
+                mc.displayGuiScreen(null);
+                // Teleport: the other option that sends a command.
+                TabListMenu.Layout layout=tabs.layout(mc);
+                int real=-1;
+                for(int i=0;i<layout.players.size();i++)
+                    if(TabListMenu.target(layout.players.get(i))!=null){real=i;break;}
+                require(real>=0,"The PGM list lost its player rows between ticks");
+                tabs.begin(mc);
+                tabs.poll(mc,layout.x(real)+2,layout.y(real)+4,true,false);
+                require(tabs.menu!=null,"Reopening the menu on PGM failed");
+                int tpY=tabs.menu.y+TeamBar.HeadMenu.TITLE+TeamBar.HeadMenu.ROW+2;
+                tabs.poll(mc,tabs.menu.x+2,tpY,false,false);
+                tabs.poll(mc,tabs.menu.x+2,tpY,true,false);
+                require(!tabs.browsing,"Teleport left the list in browse mode");
+            }else if(state==143){
+                require(packets.contains("/tp "+tabTarget),
+                    "Teleport on PGM sent the wrong command: "+packets);
+                System.out.println("OTL_PGMLIST: teleport PASS "+packets);
+                mc.thePlayer.sendChatMessage("/leave");
+                net.minecraft.client.settings.KeyBinding.setKeyBindState(
+                    mc.gameSettings.keyBindPlayerList.getKeyCode(),false);
+            }else if(state==144){
+                System.out.println("OTL_SMOKE: player list on a real PGM server PASS");
+            }else if(state>=145&&state<=154){
+                gamemodeState(mc,state-145);
+                if(state==154)System.out.println("OTL_SMOKE: team bar mirrored in every gamemode PASS");
+            }
+            if(state==127){
+                // prepareScope set this screen on this same tick, so the frame is not drawn yet.
+                PgmSettingsScreen pgm=(PgmSettingsScreen)mc.currentScreen;
+                require(buttons(pgm).size()==12,"PGM settings page is missing rows");
+                boolean live=ServerScope.active();
+                require(buttons(pgm).stream().filter(b->b instanceof ChoiceButton).allMatch(b->b.enabled==live),
+                    "PGM settings page ignores the server scope");
+                UtilitySettings.pgmSettings.put("chat",2);UtilitySettings.save();
+                com.google.gson.JsonObject saved=UtilitySettings.profileSnapshot();
+                UtilitySettings.pgmSettings.clear();UtilitySettings.read(saved);
+                require(Integer.valueOf(2).equals(UtilitySettings.pgmSettings.get("chat")),"PGM setting choice was not persisted");
+                UtilitySettings.pgmSettings.clear();UtilitySettings.save();
+            }else if(state==128){
+                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-pgm-settings.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
             }
             if(state==scopeEnd){
                 if(!scope.equals("all"))System.out.println("OTL_SMOKE: PASS - "+scope);

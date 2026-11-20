@@ -46,7 +46,15 @@ public final class UtilitySettings {
     /** Heads per side (1-75) and the bar's scale; below 10 heads they stay full size. */
     public static int teamBarPlayers=10,teamBarSize=150,teamBarDeadOpacity=50;
     public static boolean teamBarHideBoss=false;
+    public static boolean teamBarHideVanillaBossHealth=false;
     public static boolean teamBarHideOnTab=false;
+    /** Hide the vanilla sidebar, which repeats the clock and objectives the bar already shows. */
+    public static boolean teamBarHideScoreboard=false;
+    public static boolean teamBarHideHeads=false;
+    /** Draw each head as a rounded tile instead of a square one. */
+    public static boolean teamBarRoundedHeads=false;
+    /** Middle-clicking the player list opens a clickable list with the same player actions. */
+    public static boolean tabPlayerMenu=true;
     /** Keep showing the bar while watching as an observer. */
     public static boolean teamBarObserver=true;
     /** A thin vertical bar of the team's colour beside each team row. */
@@ -56,7 +64,7 @@ public final class UtilitySettings {
     /** Compact objectives: the markers only, beside the clock instead of named under it. */
     public static boolean teamBarObjectivesCompact=false;
     public static boolean teamBarControlPoints=true;
-    /** Symbolic score display: 0 text "2/5", 1 horizontal bar, 2 vertical bar. */
+    /** Team score display with a known target: 0 text, 1 horizontal bar, 2 vertical bar, 3 stacked text. */
     public static int teamBarScoreStyle=0;
     /** Line above the clock: 0 off, 1 the map name, 2 the gamemode from the sidebar title. */
     public static int teamBarHeader=0;
@@ -102,6 +110,7 @@ public final class UtilitySettings {
     /** Spread the wait anywhere up to the delay instead of always using exactly it. */
     static boolean autoGgRandom=true;
     public static boolean regionHud=false;
+    public static boolean regionBuildable=false;
     static boolean regionHudPrefix=true;
     static int regionHudBackground=25;
     static int bubbleCharacters=80, bubbleSeconds=4;
@@ -114,6 +123,11 @@ public final class UtilitySettings {
     static final Set<String> devHosts=new LinkedHashSet<>();
     /** Set when an unreadable settings file could not be backed up, so saving cannot overwrite it. */
     private static boolean corrupt;
+    /**
+     * Last value OTL sent for each PGM server setting, keyed by PGM's setting name. The server holds
+     * the real value; this only drives the highlighted choice on the PGM settings page.
+     */
+    static final Map<String,Integer> pgmSettings=new TreeMap<>();
     static Path path(){return ConfigDir.parts("settings.json").toPath();}
     static void load(){
         if(loaded)return;loaded=true;
@@ -145,13 +159,18 @@ public final class UtilitySettings {
         read(j,"team_bar_size",e->teamBarSize=Math.max(50,Math.min(150,e.getAsInt())));
         read(j,"team_bar_dead_opacity",e->teamBarDeadOpacity=Math.max(25,Math.min(100,e.getAsInt())));
         read(j,"team_bar_hide_boss",e->teamBarHideBoss=e.getAsBoolean());
+        read(j,"team_bar_hide_vanilla_boss_health",e->teamBarHideVanillaBossHealth=e.getAsBoolean());
         read(j,"team_bar_hide_on_tab",e->teamBarHideOnTab=e.getAsBoolean());
+    read(j,"team_bar_hide_scoreboard",e->teamBarHideScoreboard=e.getAsBoolean());
+        read(j,"team_bar_hide_heads",e->teamBarHideHeads=e.getAsBoolean());
+        read(j,"team_bar_rounded_heads",e->teamBarRoundedHeads=e.getAsBoolean());
+        read(j,"tab_player_menu",e->tabPlayerMenu=e.getAsBoolean());
         read(j,"team_bar_observer",e->teamBarObserver=e.getAsBoolean());
         read(j,"team_bar_team_color",e->teamBarTeamColor=e.getAsBoolean());
         read(j,"team_bar_objectives",e->teamBarObjectives=e.getAsBoolean());
         read(j,"team_bar_objectives_compact",e->teamBarObjectivesCompact=e.getAsBoolean());
         read(j,"team_bar_control_points",e->teamBarControlPoints=e.getAsBoolean());
-        read(j,"team_bar_score_style",e->teamBarScoreStyle=Math.max(0,Math.min(2,e.getAsInt())));
+        read(j,"team_bar_score_style",e->teamBarScoreStyle=Math.max(0,Math.min(3,e.getAsInt())));
         read(j,"team_bar_header",e->teamBarHeader=Math.max(0,Math.min(2,e.getAsInt())));
         read(j,"kill_feed",e->killFeed=e.getAsBoolean());
         read(j,"kill_feed_heads",e->killFeedHeads=KillFeedRules.HeadMode.parse(e.getAsString()));
@@ -215,6 +234,7 @@ public final class UtilitySettings {
         read(j,"minimap_alt_zoom",e->minimapAltZoom=Math.max(1,Math.min(5,e.getAsInt())));
         read(j,"minimap_head_size",e->minimapHeadSize=Math.max(50,Math.min(150,e.getAsInt())));
         read(j,"region_overlay",e->regionOverlay=e.getAsBoolean());
+        read(j,"region_buildable",e->regionBuildable=e.getAsBoolean());
         read(j,"region_hud",e->regionHud=e.getAsBoolean());
         read(j,"region_hud_prefix",e->regionHudPrefix=e.getAsBoolean());
         read(j,"region_hud_background",e->regionHudBackground=Math.max(0,Math.min(100,e.getAsInt())));
@@ -256,6 +276,9 @@ public final class UtilitySettings {
         if(j.has("dev_hosts"))for(JsonElement e:j.getAsJsonArray("dev_hosts")){
             String v=e.getAsString().trim().toLowerCase(java.util.Locale.ROOT);if(!v.isEmpty())devHosts.add(v);
         }
+        if(j.has("pgm_settings"))for(Map.Entry<String,JsonElement> e:j.getAsJsonObject("pgm_settings").entrySet()){
+            pgmSettings.put(e.getKey(),Math.max(0,e.getValue().getAsInt()));
+        }
     }
     private static void read(JsonObject j,String key,Consumer<JsonElement> apply){
         try{
@@ -277,7 +300,11 @@ public final class UtilitySettings {
             j.addProperty("team_bar_players",teamBarPlayers);j.addProperty("team_bar_size",teamBarSize);
             j.addProperty("team_bar_dead_opacity",teamBarDeadOpacity);
             j.addProperty("team_bar_hide_boss",teamBarHideBoss);
+            j.addProperty("team_bar_hide_vanilla_boss_health",teamBarHideVanillaBossHealth);
             j.addProperty("team_bar_hide_on_tab",teamBarHideOnTab);
+    j.addProperty("team_bar_hide_scoreboard",teamBarHideScoreboard);
+            j.addProperty("team_bar_hide_heads",teamBarHideHeads);j.addProperty("tab_player_menu",tabPlayerMenu);
+            j.addProperty("team_bar_rounded_heads",teamBarRoundedHeads);
             j.addProperty("team_bar_observer",teamBarObserver);
         j.addProperty("team_bar_team_color",teamBarTeamColor);
         j.addProperty("team_bar_objectives",teamBarObjectives);
@@ -332,6 +359,7 @@ public final class UtilitySettings {
             j.addProperty("minimap_alt_zoom",minimapAltZoom);
             j.addProperty("minimap_head_size",minimapHeadSize);
             j.addProperty("region_overlay",regionOverlay);
+            j.addProperty("region_buildable",regionBuildable);
             j.addProperty("region_hud",regionHud);
             j.addProperty("region_hud_prefix",regionHudPrefix);
             j.addProperty("region_hud_background",regionHudBackground);
@@ -359,6 +387,7 @@ public final class UtilitySettings {
             JsonArray order=new JsonArray();for(String n:Profiles.profileOrder)order.add(new JsonPrimitive(n));j.add("profile_order",order);
             JsonObject channels=new JsonObject();selected.forEach(channels::addProperty);j.add("selected_channels",channels);
             JsonArray hosts=new JsonArray();for(String h:devHosts)hosts.add(new JsonPrimitive(h));j.add("dev_hosts",hosts);
+            JsonObject pgm=new JsonObject();pgmSettings.forEach(pgm::addProperty);j.add("pgm_settings",pgm);
             return j;
     }
     /** Restores only the given keys from the factory snapshot, leaving other modules alone. */

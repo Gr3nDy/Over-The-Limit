@@ -332,7 +332,7 @@ final class VoteBook {
             String text=ChatRules.plain(run.text.getUnformattedText()).trim();
             boolean votable=run.click!=null&&run.click.getAction()==ClickEvent.Action.RUN_COMMAND&&run.click.getValue().contains("votenext");
             if(!votable){pending=null;continue;}
-            if(pending!=null&&pending.same(run.click)){pending.text.append(' ').append(text);continue;}
+            if(pending!=null&&pending.same(run.click)){pending.text.append(' ').append(text);pending.addHover(run.hover);continue;}
             if(pending!=null)cards.add(pending.card());
             pending=new Pending(text,run.click,run.hover);
         }
@@ -386,7 +386,7 @@ final class VoteBook {
                 if(pending==null&&book.title.isEmpty()&&text.toLowerCase(Locale.ROOT).contains("vote"))book.title=text;
                 pending=null;continue;
             }
-            if(pending!=null&&pending.same(run.click)){pending.text.append(text);continue;}
+            if(pending!=null&&pending.same(run.click)){pending.text.append(text);pending.addHover(run.hover);continue;}
             if(pending!=null)book.cards.add(pending.card());
             pending=new Pending(text,run.click,run.hover);
         }
@@ -464,9 +464,10 @@ final class VoteBook {
     }
 
     private static final class Pending {
-        final StringBuilder text;final ClickEvent click;final HoverEvent hover;
+        final StringBuilder text;final ClickEvent click;HoverEvent hover;
         Pending(String text,ClickEvent click,HoverEvent hover){this.text=new StringBuilder(text);this.click=click;this.hover=hover;}
         boolean same(ClickEvent other){return other.getAction()==click.getAction()&&other.getValue().equals(click.getValue());}
+        void addHover(HoverEvent next){if(next!=null&&(hover==null||sponsor(next)!=null))hover=next;}
         Card card(){
             Card card=new Card();
             String label=text.toString().trim();
@@ -481,8 +482,17 @@ final class VoteBook {
             card.action=click.getAction();
             card.click=click.getValue();
             card.tags=hover==null||hover.getAction()!=HoverEvent.Action.SHOW_TEXT?"":ChatRules.plain(hover.getValue().getUnformattedText()).replace('\n',' ').trim();
+            card.sponsor=sponsor(hover);
             return card;
         }
+    }
+
+    /** Community's vote-book hover adds a separate "+ Sponsored by <player>" line. */
+    static String sponsor(HoverEvent hover){
+        if(hover==null||hover.getAction()!=HoverEvent.Action.SHOW_TEXT||hover.getValue()==null)return null;
+        String text=ChatRules.plain(hover.getValue().getUnformattedText());
+        Matcher match=Pattern.compile("(?im)^\\s*\\+\\s*Sponsored by\\s+([^\\r\\n]+)").matcher(text);
+        return match.find()?match.group(1).trim():null;
     }
 
     static final class Card {
@@ -490,6 +500,7 @@ final class VoteBook {
         ClickEvent.Action action;
         int count=-1;
         boolean voted;
+        String sponsor;
     }
 
     static final class Book {

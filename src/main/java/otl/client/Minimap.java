@@ -72,7 +72,10 @@ final class Minimap {
                 }
                 Matcher match=TITLE.matcher(line);
                 if(match.matches()){title=match.group(1);titleAt=now;continue;}
-                if(text.startsWith("Created by ")&&title!=null&&now>=titleAt&&now-titleAt<=5000000000L){found=title;clear();}
+                // The block closes on a rule of dashes or on the author line; the rule carries no
+                // words, so a client whose chat is translated still ends its block in the right place.
+                if(title!=null&&now>=titleAt&&now-titleAt<=5000000000L
+                    &&(text.startsWith("Created by ")||ChatRules.welcomeEnd(text))){found=title;clear();}
             }
             return found;
         }

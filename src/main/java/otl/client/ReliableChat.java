@@ -243,10 +243,15 @@ public final class ReliableChat {
     static String send(String text){
         if(!fullChat()){noteSend(null);recentCommand=null;return text;}
         Session s=session();String result=ChatRules.outgoing(s.selected,text);
-        recentCommand=text.startsWith("/")?new SendContext(s.selected):null;
-        String channel=ChatRules.commandChannel(result);if(channel!=null)s.select(channel);
+        // A tab that turns plain text into /t or /party chat is still the tab that spoke, so its
+        // warnings belong there. Without this the warning fell through to All and vanished from
+        // the channel the user was typing in.
+        recentCommand=text.startsWith("/")||!result.equals(text)?new SendContext(s.selected):null;
+        // The tab decides the channel, and only the tab. A typed "/t" is PGM's to interpret; OTL
+        // used to move the visible tab as well, so the next message went somewhere the user had
+        // not chosen while the strip still said All.
+        noteSend(!text.startsWith("/")?s.selected:null);
         Matcher m=SEND_PM.matcher(result);
-        noteSend(channel!=null?channel:!text.startsWith("/")?s.selected:null);
         if(m.matches()){
             String key="pm:"+m.group(1).toLowerCase(Locale.ROOT);int id=localId--;
             noteSend(key);

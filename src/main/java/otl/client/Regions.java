@@ -71,7 +71,7 @@ final class Regions {
         MapRemote.lookup(target,found->{
             if(request!=token)return;
             // No metadata, or a map without regions: nothing to draw.
-            map=found!=null&&!found.regions.isEmpty()?found:null;
+            map=found!=null&&(!found.regions.isEmpty()||found.buildable!=null)?found:null;
         });
     }
 
@@ -145,7 +145,7 @@ final class Regions {
         UtilitySettings.load();
         MapInfo selected=map;
         Minecraft mc=MinecraftAccess.get();
-        if(!UtilitySettings.regionOverlay||selected==null||selected.regions.isEmpty()||mc.theWorld==null)return;
+        if(!UtilitySettings.regionOverlay||selected==null||mc.theWorld==null)return;
         Entity camera=mc.getRenderViewEntity();
         if(camera==null)return;
         float partial=event.partialTicks;
@@ -160,7 +160,10 @@ final class Regions {
             Tessellator tess=Tessellator.getInstance();WorldRenderer wr=tess.getWorldRenderer();
             wr.begin(GL11.GL_LINES,DefaultVertexFormats.POSITION_COLOR);
             int radius=(mc.gameSettings.renderDistanceChunks+1)*16;
-            for(MapInfo.Region r:selected.regions){
+            java.util.List<MapInfo.Region> visible=UtilitySettings.regionBuildable
+                ?selected.buildable==null?java.util.Collections.<MapInfo.Region>emptyList():java.util.Collections.singletonList(selected.buildable)
+                :selected.regions;
+            for(MapInfo.Region r:visible){
                 if(Math.abs((r.min[0]+r.max[0])/2-cx)>radius||Math.abs((r.min[2]+r.max[2])/2-cz)>radius)continue;
                 box(wr,r,color(r.name));
             }

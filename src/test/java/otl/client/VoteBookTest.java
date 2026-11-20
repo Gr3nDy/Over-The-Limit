@@ -7,6 +7,14 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class VoteBookTest {
+    @Test public void sponsoredMapsUseCommunityVoteBookHover(){
+        net.minecraft.event.HoverEvent hover=new net.minecraft.event.HoverEvent(net.minecraft.event.HoverEvent.Action.SHOW_TEXT,
+            new net.minecraft.util.ChatComponentText("Capture the Wool\n\u00a76\u00a7l+ \u00a77Sponsored by \u00a7b[VIP] Alice"));
+        assertEquals("[VIP] Alice",VoteBook.sponsor(hover));
+        assertNull(VoteBook.sponsor(new net.minecraft.event.HoverEvent(net.minecraft.event.HoverEvent.Action.SHOW_TEXT,
+            new net.minecraft.util.ChatComponentText("Map sponsored by Alice"))));
+        assertNull(VoteBook.sponsor(null));
+    }
     @Test public void previewUsesTheExactAccountAfterRankAndChatDecorations(){
         assertEquals("Far_Player",VoteBook.accountName("\u00a76[MOD] \u00a7cFar_Player \u00a77(You: 12)"));
         assertEquals("Far_Player",VoteBook.accountName("Far_Player"));

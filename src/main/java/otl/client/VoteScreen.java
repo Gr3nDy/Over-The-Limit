@@ -106,22 +106,26 @@ final class VoteScreen extends GuiScreen {
 
     public void drawScreen(int mx,int my,float f){
         layout();
-        drawRect(0,0,width,height,0x50000000);
-        drawCenteredString(fontRendererObj,"Click on all of the maps you want to play:",width/2,titleY,0xFFFFD34F);
+        drawRect(0,0,width,height,0x40101010);
+        drawCenteredString(fontRendererObj,"Click on all of the maps you want to play:",width/2,titleY,BedrockUi.TEXT);
         for(int i=0;i<visible();i++){
             VoteBook.Card card=book.cards.get(i);
             resolve(i,card);
             int x=x0+i*(cardSize+6);
             boolean voted=card.voted||(card.click!=null&&card.click.equals(VoteBook.votedCommand));
             boolean hover=mx>=x&&mx<x+cardSize&&my>=cardTop&&my<cardTop+cardSize;
-            if(voted)drawRect(x-2,cardTop-2,x+cardSize+2,cardTop+cardSize+2,0xFFFFFFFF);
-            else if(hover)drawRect(x-1,cardTop-1,x+cardSize+1,cardTop+cardSize+1,0xFFFFFFFF);
+            BedrockUi.rounded(x,cardTop,cardSize,cardSize,3,textures[i]==null?BedrockUi.SLOT:BedrockUi.INSET);
             if(textures[i]!=null){
-                drawRect(x,cardTop,x+cardSize,cardTop+cardSize,0xFF1A1A1A);
+                drawRect(x,cardTop,x+cardSize,cardTop+cardSize,0xFF1A1D24);
                 GlStateManager.color(1f,1f,1f,1f);
                 mc.getTextureManager().bindTexture(textures[i]);
                 Gui.drawModalRectWithCustomSizedTexture(x,cardTop,0,0,cardSize,cardSize,cardSize,cardSize);
-            }else drawRect(x,cardTop,x+cardSize,cardTop+cardSize,0xFF232323);
+            }
+            // 1px Lunar frame: gold for a sponsored map, blue once voted, light on hover.
+            if(card.sponsor!=null)BedrockUi.outline(x-2,cardTop-2,cardSize+4,cardSize+4,0xFFFFAA00);
+            if(voted)BedrockUi.outline(x-1,cardTop-1,cardSize+2,cardSize+2,BedrockTokens.STATE_SELECTED);
+            else if(hover)BedrockUi.outline(x-1,cardTop-1,cardSize+2,cardSize+2,0xFFFFFFFF);
+            else if(card.sponsor==null)BedrockUi.outline(x,cardTop,cardSize,cardSize,BedrockUi.EDGE);
             Integer count=countOf(i,card);
             if(count!=null){
                 drawRect(x,cardTop+cardSize-12,x+cardSize,cardTop+cardSize,0x90000000);
@@ -133,8 +137,9 @@ final class VoteScreen extends GuiScreen {
         int superCount=VoteBook.superVotes>=0?VoteBook.superVotes:book.superVotes;
         String superLabel=superLabel();
         superReady=!supervoteUsed&&superCount!=0&&hasVote();
-        drawRect(superX,superY,superX+superW,superY+superH,superReady?0xFF7A3FB5:0xFF4A4A4A);
-        drawCenteredString(fontRendererObj,superLabel,width/2,superY+6,superReady?0xFFFFFFFF:0xFFA0A0A0);
+        BedrockUi.rounded(superX,superY,superW,superH,6,superReady?BedrockTokens.STATE_SELECTED:BedrockUi.INSET);
+        BedrockUi.outline(superX,superY,superW,superH,superReady?BedrockTokens.STATE_SELECTED:BedrockUi.EDGE);
+        drawCenteredString(fontRendererObj,superLabel,width/2,superY+6,superReady?0xFFFFFFFF:BedrockUi.MUTED);
         // Match Stats row: only categories that arrived, centred as one group.
         int spacing=Math.max(64,Math.min(118,(width-20)/Math.max(1,shownCount)));
         int feetY=statY+headH,nameY=feetY+6,labelY=nameY+10,moreY=labelY+10;
@@ -173,7 +178,8 @@ final class VoteScreen extends GuiScreen {
                 drawCenteredString(fontRendererObj,"Loading...",cx,nameY,0xFFAAAAAA);
             }
         }
-        drawRect(doneX,doneY,doneX+doneW,doneY+doneH,0xFF555555);
+        BedrockUi.rounded(doneX,doneY,doneW,doneH,4,BedrockUi.hit(mx,my,doneX,doneY,doneW,doneH)?BedrockTokens.STATE_HOVER:BedrockUi.SLOT);
+        BedrockUi.outline(doneX,doneY,doneW,doneH,BedrockUi.EDGE);
         drawCenteredString(fontRendererObj,"Done",width/2,doneY+6,0xFFFFFFFF);
         if(book.matchLink!=null){
             String label="\u00a7n\u00a7bMatch link";
@@ -182,6 +188,14 @@ final class VoteScreen extends GuiScreen {
             drawCenteredString(fontRendererObj,label,width/2,linkY,0xFFFFFFFF);
         }
         super.drawScreen(mx,my,f);
+        for(int i=0;i<visible();i++){
+            int x=x0+i*(cardSize+6);
+            VoteBook.Card card=book.cards.get(i);
+            if(card.sponsor!=null&&mx>=x&&mx<x+cardSize&&my>=cardTop&&my<cardTop+cardSize){
+                drawHoveringText(java.util.Collections.singletonList("\u00a76Sponsored by \u00a7f"+card.sponsor),mx,my);
+                break;
+            }
+        }
         // Tied players: the row shows "<name> and N more..."; hovering lists them all.
         for(int[] box:names){
             if(box==null||box[4]<=0||mx<box[0]-2||mx>box[2]+2||my<box[1]||my>box[3])continue;

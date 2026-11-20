@@ -13,9 +13,9 @@ import net.minecraft.client.renderer.entity.RenderPlayer;
 import net.minecraft.client.resources.*;
 import org.lwjgl.input.Keyboard;
 
-@Mod(modid="otl",name="Over The Limit",version="0.6.2",clientSideOnly=true,acceptedMinecraftVersions="[1.8.9]",acceptableRemoteVersions="*")
+@Mod(modid="otl",name="Over The Limit",version="0.7.0",clientSideOnly=true,acceptedMinecraftVersions="[1.8.9]",acceptableRemoteVersions="*")
 public final class Otl {
-    static final String VERSION="0.6.2";
+    static final String VERSION="0.7.0";
     private final KeyBinding modules=new KeyBinding("key.otl.modules",Keyboard.KEY_P,"key.categories.otl");
     private final KeyBinding teamChat=new KeyBinding("key.otl.team_chat",Keyboard.KEY_Y,"key.categories.otl");
     private final KeyBinding partyChat=new KeyBinding("key.otl.party_chat",Keyboard.KEY_NONE,"key.categories.otl");
@@ -60,6 +60,8 @@ public final class Otl {
         FMLCommonHandler.instance().bus().register(BallParticles.INSTANCE);
         MinecraftForge.EVENT_BUS.register(ArrowParticles.INSTANCE);
         FMLCommonHandler.instance().bus().register(ArrowParticles.INSTANCE);
+        MinecraftForge.EVENT_BUS.register(TabListMenu.INSTANCE);
+        FMLCommonHandler.instance().bus().register(TabListMenu.INSTANCE);
         installTouchdown();
         FMLCommonHandler.instance().bus().register(this);MinecraftForge.EVENT_BUS.register(this);
         net.minecraft.client.renderer.entity.RenderManager rm=MinecraftAccess.get().getRenderManager();
@@ -67,6 +69,15 @@ public final class Otl {
         ((IReloadableResourceManager)MinecraftAccess.get().getResourceManager()).registerReloadListener(resources->{SkinFace.clear();FaceMarks.clearCache();KillFeed.clearHeads();});
     }
     /** Reliable Chat cancels the lines it absorbs, so this must still see them. */
+    /** Menus replace the game HUD: Lunar's chrome does not show the hotbar and crosshair through its panels. */
+    @SubscribeEvent(priority=net.minecraftforge.fml.common.eventhandler.EventPriority.HIGHEST)
+    public void hideHudBehindMenus(net.minecraftforge.client.event.RenderGameOverlayEvent.Pre event){
+        Minecraft mc=MinecraftAccess.get();
+        if(mc==null)return;
+        // Cancelling the ALL pass skips the whole frame, screens included; only drop element passes.
+        if(event.type==net.minecraftforge.client.event.RenderGameOverlayEvent.ElementType.ALL)return;
+        if(mc.currentScreen instanceof ModulesScreen||mc.currentScreen instanceof SettingsScreen)event.setCanceled(true);
+    }
     @SubscribeEvent(priority=net.minecraftforge.fml.common.eventhandler.EventPriority.LOWEST,receiveCanceled=true)
     public void chat(net.minecraftforge.client.event.ClientChatReceivedEvent event){
         if(event.type!=2)ServerScope.observe(ChatRules.plain(event.message.getFormattedText()));

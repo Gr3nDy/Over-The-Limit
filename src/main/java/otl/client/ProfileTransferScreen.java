@@ -51,7 +51,8 @@ final class ProfileTransferScreen extends GuiScreen {
     }
     public void drawScreen(int mx,int my,float partial){
         drawDefaultBackground();BedrockUi.panel(x,y,w,h);
-        BedrockUi.header(fontRendererObj,name==null?"Import Profile":"Export Profile: "+name,x,y,w);
+        drawRect(x+2,y+25,x+w-2,y+26,BedrockUi.EDGE);
+        BedrockUi.plainCentered(fontRendererObj,name==null?"Import Profile":"Export Profile: "+name,x+w/2,y+9,BedrockUi.TEXT);
         BedrockUi.inset(x+12,y+32,w-24,h-112);
         lines=new ArrayList<>();
         if(name==null)lines.addAll(fontRendererObj.listFormattedStringToWidth("Paste profile JSON from your clipboard. Import creates and activates a separate profile.",w-40));
@@ -59,8 +60,8 @@ final class ProfileTransferScreen extends GuiScreen {
         scroll=Math.min(scroll,maxScroll());
         for(int i=0;i<rows()&&i+scroll<lines.size();i++)fontRendererObj.drawString(lines.get(i+scroll),x+18,y+38+i*10,BedrockUi.MUTED);
         if(lines.size()>rows()){
-            drawRect(x+w-21,y+36,x+w-15,y+36+trackH(),0xFF171819);
-            drawRect(x+w-19,thumbY(),x+w-17,thumbY()+thumbH(),overTrack(mx,my)?0xFFFFFFFF:0xFFD0D1D4);
+            BedrockUi.rounded(x+w-21,y+36,8,trackH()-4,2,BedrockUi.INSET);
+            BedrockUi.rounded(x+w-19,thumbY(),8,thumbH(),2,overTrack(mx,my)?BedrockTokens.STATE_SELECTED:0xFF3A414C);
         }
         drawString(fontRendererObj,fontRendererObj.trimStringToWidth(status,w-24),x+12,y+h-72,BedrockUi.MUTED);
         super.drawScreen(mx,my,partial);

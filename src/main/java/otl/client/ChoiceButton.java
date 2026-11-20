@@ -13,7 +13,7 @@ final class ChoiceButton extends GuiButton {
     private final IntConsumer change;
     private final GuiScreen screen;
     ChoiceButton(GuiScreen screen,int id,int x,int y,int w,String title,String[] choices,int selected,IntConsumer change){
-        super(id,x,y,w,34,title+": "+choices[selected]);
+        super(id,x,y,w,34,title+": "+choices[Math.max(0,selected)]);
         this.screen=screen;this.title=title;this.choices=choices;this.selected=selected;this.change=change;
     }
     public void drawButton(Minecraft mc,int mx,int my){
@@ -25,9 +25,8 @@ final class ChoiceButton extends GuiButton {
             String label=mc.fontRendererObj.trimStringToWidth(choices[i],Math.max(4,right-left-8));
             BedrockUi.button(mc.fontRendererObj,left,yPosition+12,right-left,20,i==selected?"":label,hover,enabled);
             if(i==selected){
-                drawRect(left+2,yPosition+14,right-2,yPosition+29,enabled?0xFF3C8527:BedrockUi.INSET);
-                BedrockUi.centered(mc.fontRendererObj,label,(left+right)/2,yPosition+18,BedrockUi.TEXT);
-                drawRect(left+4,yPosition+29,right-4,yPosition+30,BedrockUi.ACCENT);
+                BedrockUi.rounded(left+2,yPosition+14,right-left-4,15,enabled?BedrockTokens.STATE_SELECTED:BedrockUi.INSET);
+                BedrockUi.centered(mc.fontRendererObj,label,(left+right)/2,yPosition+18,0xFFFFFFFF);
             }
         }
     }

@@ -10,16 +10,19 @@ public class TeamBarHeadMenuTest {
         TeamBar.HeadMenu menu=new TeamBar.HeadMenu("Player_1",120,40,16,120,427,240);
         assertEquals(43,menu.y);
         assertEquals(4,TeamBar.HeadMenu.LABELS.length);
-        assertEquals(72,TeamBar.HeadMenu.HEIGHT);
-        assertEquals(0,menu.actionAt(menu.x+1,menu.y));
-        assertEquals(0,menu.actionAt(menu.x+1,menu.y+17));
-        assertEquals(1,menu.actionAt(menu.x+1,menu.y+18));
-        assertEquals(2,menu.actionAt(menu.x+1,menu.y+36));
-        assertEquals(3,menu.actionAt(menu.x+1,menu.y+54));
-        assertEquals(3,menu.actionAt(menu.x+1,menu.y+71));
-        assertEquals(-1,menu.actionAt(menu.x-1,menu.y));
-        assertEquals(-1,menu.actionAt(menu.x+menu.width,menu.y));
-        assertEquals(-1,menu.actionAt(menu.x,menu.y+72));
+        int top=menu.y+TeamBar.HeadMenu.TITLE;
+        assertEquals(72,TeamBar.HeadMenu.HEIGHT-TeamBar.HeadMenu.TITLE);
+        // The title row names the player and is not an action.
+        assertEquals(-1,menu.actionAt(menu.x+1,menu.y+2));
+        assertEquals(0,menu.actionAt(menu.x+1,top));
+        assertEquals(0,menu.actionAt(menu.x+1,top+17));
+        assertEquals(1,menu.actionAt(menu.x+1,top+18));
+        assertEquals(2,menu.actionAt(menu.x+1,top+36));
+        assertEquals(3,menu.actionAt(menu.x+1,top+54));
+        assertEquals(3,menu.actionAt(menu.x+1,top+71));
+        assertEquals(-1,menu.actionAt(menu.x-1,top));
+        assertEquals(-1,menu.actionAt(menu.x+menu.width,top));
+        assertEquals(-1,menu.actionAt(menu.x,menu.y+TeamBar.HeadMenu.HEIGHT));
     }
 
     @Test public void menuStaysOnScreenAtEitherEdge(){

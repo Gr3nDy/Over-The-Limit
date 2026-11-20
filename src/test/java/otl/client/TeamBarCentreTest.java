@@ -137,6 +137,86 @@ public class TeamBarCentreTest {
         assertEquals("The four-team bar pushed the clock off centre",bar.width/2,bar.textX+bar.textW/2);
     }
 
+    @Test public void aShuffledSidebarStillPutsObjectivesUnderTheirOwnHeads(){
+        // PGM sorts the sidebar by score, the bar sorts by the map's team order: on a four-team
+        // map the two orders disagree, so the lines arrive shuffled. Matching must be by name.
+        List<List<String>> left=Arrays.asList(Collections.singletonList("A1"),Collections.singletonList("C1"));
+        List<List<String>> right=Arrays.asList(Collections.singletonList("B1"),Collections.singletonList("D1"));
+        TeamBar.Bar bar=new TeamBar.Bar(left,right,16,20,null,"",7,
+            lines(strip("Charlie",1,30),strip("Alpha",1,30)),
+            lines(strip("Delta",1,30),strip("Bravo",1,30)),false,
+            Arrays.asList(Collections.<Objectives.Strip>emptyList(),Collections.<Objectives.Strip>emptyList(),Collections.<Objectives.Strip>emptyList()),
+            null,0,Arrays.asList("Alpha","Charlie"),Arrays.asList("Bravo","Delta"));
+        // Alpha's line arrived second but still belongs to the first block of heads.
+        assertEquals(bar.band+TeamBar.OBJECTIVE_GAP,bar.stripTop(0,1));
+        assertEquals("Charlie's line did not follow its own heads",
+            bar.rowTop(0,1)+bar.band+TeamBar.OBJECTIVE_GAP,bar.stripTop(0,0));
+        assertEquals("Delta's line did not follow its own heads",
+            bar.rowTop(1,1)+bar.band+TeamBar.OBJECTIVE_GAP,bar.stripTop(1,0));
+        assertEquals("The shuffled stack lost a line",bar.stripTop(1,0)+TeamBar.STRIP_LINE,bar.height);
+    }
+
+    @Test public void theColourLineNamesItsTeamOnHover(){
+        List<List<String>> left=Arrays.asList(Collections.singletonList("A1"));
+        TeamBar.Bar bar=new TeamBar.Bar(left,Collections.<List<String>>emptyList(),16,20,null,"",10,
+            null,null,true,null,null,0,Arrays.asList("Alpha"),Collections.<String>emptyList());
+        int lineX=bar.leftLine(left.get(0)),lineY=bar.rowTop(0,0)+2;
+        assertEquals("Alpha",TeamBar.lineAt(bar,lineX+2,lineY));
+        assertNull("The line hover spilled onto empty space",TeamBar.lineAt(bar,lineX-12,lineY));
+        TeamBar.Bar off=new TeamBar.Bar(left,Collections.<List<String>>emptyList(),16,20,null,"",0,
+            null,null,true,null,null,0,Arrays.asList("Alpha"),Collections.<String>emptyList());
+        assertNull("A bar with no colour line still answered its hover",TeamBar.lineAt(off,lineX+2,lineY));
+    }
+
+    @Test public void stackedScoresReserveEnoughHeight(){
+        int previous=UtilitySettings.teamBarScoreStyle;
+        try{
+            UtilitySettings.teamBarScoreStyle=3;
+            Objectives.Part score=new Objectives.Part("2/5",TeamBar.RED,-1,true,"Red",-1F,false,true);
+            Objectives.Strip strip=new Objectives.Strip(Collections.singletonList(score),12);
+            TeamBar.Bar bar=new TeamBar.Bar(Collections.singletonList(Collections.singletonList("A")),
+                Collections.singletonList(Collections.singletonList("B")),16,20,null,"",0,
+                lines(strip,strip),Collections.<Objectives.Strip>emptyList(),true);
+            assertEquals(Objectives.STACK_H+2,bar.stripLine);
+            assertTrue(bar.stripTop(0,1)>=bar.stripTop(0,0)+Objectives.STACK_H);
+            assertTrue(bar.stripTop(0,1)+Objectives.STACK_H<=bar.height);
+        }finally{UtilitySettings.teamBarScoreStyle=previous;}
+    }
+
+    @Test public void stackedScoresDoNotSpreadControlPointRows(){
+        int previous=UtilitySettings.teamBarScoreStyle;
+        try{
+            UtilitySettings.teamBarScoreStyle=3;
+            Objectives.Strip score=new Objectives.Strip(Collections.singletonList(
+                new Objectives.Part("2/5",TeamBar.RED,-1,true,"Red",-1F,false,true)),12);
+            Objectives.Strip point=strip(2,40);
+            TeamBar.Bar bar=new TeamBar.Bar(Collections.singletonList(Collections.singletonList("A")),
+                Collections.singletonList(Collections.singletonList("B")),16,20,null,"",0,
+                lines(score),Collections.<Objectives.Strip>emptyList(),true,
+                Arrays.asList(Collections.<Objectives.Strip>emptyList(),Collections.<Objectives.Strip>emptyList(),lines(point,point)));
+            assertEquals(Objectives.STACK_H+2,bar.stripLine);
+            assertEquals(TeamBar.STRIP_LINE,bar.stripTop(4,1)-bar.stripTop(4,0));
+            assertEquals(TeamBar.STRIP_LINE,bar.lineHeight(4));
+        }finally{UtilitySettings.teamBarScoreStyle=previous;}
+    }
+
+    @Test public void verticalScoreBarsHaveRoomForTheirFullHeight(){
+        int previous=UtilitySettings.teamBarScoreStyle;
+        try{
+            UtilitySettings.teamBarScoreStyle=2;
+            Objectives.Part score=new Objectives.Part(null,TeamBar.RED,-1,true,"Red 1/2",.5F);
+            Objectives.Strip strip=new Objectives.Strip(Collections.singletonList(score),Objectives.BAR_VW);
+            TeamBar.Bar bar=new TeamBar.Bar(Collections.singletonList(Collections.singletonList("A")),
+                Collections.singletonList(Collections.singletonList("B")),16,20,null,"",0,
+                lines(strip,strip),Collections.<Objectives.Strip>emptyList(),true);
+            assertEquals(Objectives.BAR_VH+2,bar.stripLine);
+            assertTrue(bar.stripTop(0,1)>=bar.stripTop(0,0)+Objectives.BAR_VH);
+            assertTrue(bar.stripTop(0,1)+Objectives.BAR_VH<=bar.height);
+            assertEquals("Red 1/2",Objectives.at(strip,1,Objectives.BAR_VH-1,null,bar.stripLine));
+            assertNull(Objectives.at(strip,1,Objectives.BAR_VH,null,bar.stripLine));
+        }finally{UtilitySettings.teamBarScoreStyle=previous;}
+    }
+
     @Test public void aBarWithNoObjectivesIsUnaffected(){        TeamBar.Bar bar=new TeamBar.Bar(Collections.singletonList(Collections.singletonList("A")),
             Collections.singletonList(Collections.singletonList("B")),16,20,null,"");
         assertTrue(bar.leftStrips.isEmpty());

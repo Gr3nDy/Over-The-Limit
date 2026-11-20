@@ -37,7 +37,7 @@ public final class KillFeedSettings extends SettingsScreen {
             panel.section("BORDER COLORS");
             killY=panel.label("Your kills");
             deathY=panel.label("Your deaths");
-            assistY=panel.label("Your assists");
+            assistY=panel.label("Your assists (disabled)");
             killColor=colorField(20,killY,UtilitySettings.killBorderColor);
             deathColor=colorField(21,deathY,UtilitySettings.deathBorderColor);
             assistColor=colorField(23,assistY,UtilitySettings.assistBorderColor);

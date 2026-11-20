@@ -1,5 +1,48 @@
 # Changelog
 
+## v0.7.0 - Nov 20 2026
+
+### Added
+- **Team Bar hide vanilla scoreboard** - an option to hide the sidebar while the bar is up, so the clock and objectives are not drawn twice.
+- **Non-English servers** - PGM translates its own chat per player, so an English-only matcher saw nothing on a German or Japanese client. Three language-free signals replace it: a death line is read from the two account names it carries (the victim first, the killer second) rather than the words between them; the end of a match is read from the wither sound PGM plays to every participant; and the welcome block's map name comes from its heading, which is wrapped in a rule of dashes rather than words, so the block ends on that rule instead of on the translated author line. A death with only one name in it - a fall, a starve - is deliberately not guessed at, because a join message has the same shape.
+- **Menu header** - the module browser now opens with `MODS` and `SETTINGS` sections in the header, like the launcher's own strip. `SETTINGS` holds PGM's `CLIENT` tab and `SERVER` tab, so the profile rail no longer needs a separate PGM button.
+- **Clickable player list** - middle-clicking while the player list is up frees the cursor and keeps the real list on screen, so clicking a name lands on the row you can see. The menu offers View Profile, Teleport to player, Add Friend and Message player; middle-click again closes it. The CLIENT tab of the `SETTINGS` page holds the single on/off switch for it.
+- **Team Bar rounded heads** - an option to draw each head as a rounded tile instead of a square one.
+- **Reliable Chat global channel** — the All tab sends plain chat, the same text vanilla would send, instead of prefixing `/g`. Team, Party and private tabs keep their command prefixes.
+- **PGM settings page** — the `SETTINGS` header section opens PGM's own server settings (chat, death messages, picker, join, DMs, observers, sounds, vote book, stats, effects, time). CLIENT/SERVER tabs match the `/settings` menu; picking a value sends the same `/toggle` the server expects, so the server stays the source of truth. The server page is disabled until a PGM server is detected.
+- **Redesigned interface** - every OTL menu now shares one dark surface (`#12141B`) and a blue accent (`#3B82F6`), green/red switches, blue slider fills, rounded panels with 1px outlines, filter chips, and module cards with an icon slot, OPTIONS button and a coloured ENABLED/DISABLED/LOCKED pill. The module grid drops to two columns when three would truncate names; the map gallery cards, map card, vote book cards and Face Rig panes use the same 1px `#2A2E38` frame with recessed thumbnails and a blue hover ring.
+- **Vanilla boss health bar** — optionally hide the vanilla health bar while keeping its name visible.
+- **Team Bar hide player heads** - optionally remove the heads and reclaim their space while keeping the clock and objectives; the team-colour line stays on its own.
+- **Team Bar colour line** - hovering it names the team it belongs to, so the line is usable without heads.
+- **Team Bar stacked text** — an optional score display with the current value over the target and a divider between them.
+- **Custom Vote Book** — sponsored maps have a gold border; hover to see who sponsored them when the server supplies that information.
+- **FFA Team Bar** — player heads are centred beneath the clock, with a horizontal player-colour line and the player's live numeric score beneath each head.
+
+### Fixed
+- **Command warnings stay in the tab that sent them** - a `⚠` line from the server now lands in the channel you typed in, not in All. A tab that turns plain text into `/t` or `/party chat` had not recorded itself as the speaker, so its warning fell through to All.
+- **Your own messages no longer count as unread** - a rank or guild tag on either side of your name (`(Blue) Alex [VIP]: hi`, `[VIP] <Alex> hi`) hid the fact that the line was yours, so All showed an unread badge for it. Those lines also route to Team instead of All now.
+- **Reliable Chat tab and channel stay together** - sending a message never moves the visible tab. A typed `/t` used to switch the strip to Team as a side effect, so the next message went to team while the strip still said All; the tab is now the only thing that decides a channel.
+- **Player list stops the player** - middle-clicking the list while walking no longer lets the player run on under the cursor: the list releases the movement keys and holds them released until it closes.
+- **Ranked names in the player list** - a rank or guild tag around a name no longer hides the player: the click resolves the account name inside the row instead of requiring the whole row to be a bare name, and a row like `0/75 Red` still cannot pass itself off as a player.
+- **Player list rows under a client that subclasses the tab overlay** - the header is now read from the overlay's real class, so its height is counted and rows are no longer hit-tested one row high. Ordering comes from PGM's own `TabView` slot numbers when the server provides them, and a click within one row of a name opens that name instead of doing nothing.
+- **Clickable player list on PGM** - PGM draws its tab list from fake entries whose visible text is the real name, and pads it with score rows. The click now resolves the name the row is actually showing, so View Profile and Teleport work in a match instead of opening nothing or the wrong player. Blank rows keep their place but never open a menu, and the hover highlight covers the whole name cell instead of a name-width sliver. Rows are ordered and named by the client's own tab overlay rather than a copy of its sort, and the popup is drawn after the list instead of underneath it.
+- **Clickable player list exit** — leaving the list hands the mouse back: a list held open by the key closes when the key is let go, and a toggled one closes on the next press of the same key.
+- **Team Bar on three- and four-team maps** — a team's objectives now find their own block of heads by team name instead of the order PGM printed them. The sidebar sorts teams by score while the bar sorts by the map's team order, so a shuffled sidebar used to drop goals under another team's row or pile them at the bottom. Compact markers are also grouped per team, so one team's icons never sit on the line that belongs to the block above it.
+- **Team Bar reconnect** — the bar can reappear when a welcome returns to the same map after leaving a match.
+- **Team Bar shared flags** — a carried flag sits on its carrier's side of the clock like any other objective, so its arrow hugs the time instead of drifting to the outer edge. Several flags on one team each repeat that, and compact mode keeps only their markers on that side.
+- **Team Bar control points** — match ownership colours against live team score labels when available, including four-team KOTH maps such as Toca.
+- **Team Bar** — selecting Teleport to player closes chat after sending the command.
+- **Team Bar hide on player list** — also detects player-list render events for toggle-style clients, with the held key as a fallback.
+- **Team Bar objective progress** — percentage-based objectives, including cores and control points, use the selected text or bar style; hover a bar for its name and exact progress.
+- **Team Bar score bars** — right-side horizontal bars fill from right to left, mirroring left-side bars; both styles have rounded pixel corners and quarter markers.
+- **Team Bar with empty teams** — reserve distinct team columns and ignore synthetic sidebar row teams, so a single populated team cannot absorb other teams' objectives.
+- **Team Bar clock** — the time-limit countdown turns dark red at five seconds remaining.
+- **Team Bar** — automatically hide only the duplicate `Time Remaining` boss bar while Team Bar is visible; other boss bars are unaffected.
+- **Kill Feed** — temporarily disabled unreliable assist attribution; kill/death entries and Kill Confirm assist rewards remain available. Lava and fire use Minecraft's lava-bucket and fire textures.
+- **Team Bar score display** — the optional horizontal and vertical bars also work for numeric team scores with an explicit target, such as `100/200`; hover a bar for the team name and exact score. Scores without a target remain text.
+- **Team Bar respawning players** — recognize PGM's synthetic tab-list entries when checking whether a player is still online, so their head can remain faded during long respawn waits.
+- **Team Bar shared flag objectives** — show PGM's shared flag state and numeric countdown in compact and named layouts, independently of control point tracking. A flag with no confirmed carrier stays centred beneath the clock.
+
 ## v0.6.2 - 2026-11-17
 
 ### Known issues

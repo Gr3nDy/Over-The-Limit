@@ -35,14 +35,16 @@ final class Touchdown {
         if(event.type==2)return;
         String formatted=event.message.getFormattedText();
         String text=ChatRules.plain(formatted);
-        if(formatted.contains("\u00a7m")&&formatted.contains("\u00a7l")&&!ChatRules.playerMessage(formatted)){
-            String title=text.trim();
-            if(!title.isEmpty()&&!title.contains("\n"))welcomeTitle=title;
+        // The welcome block closes on its rule of dashes as well as on an English author line, so
+        // a translated block still names the map it was announcing.
+        if(!ChatRules.playerMessage(formatted)){
+            String heading=TeamBar.welcomeHeading(formatted);
+            if(heading!=null)welcomeTitle=heading;
         }
         // PGM decorates the line with a strikethrough rule and may send it inside the welcome
         // block, so look for it anywhere rather than only at the start of the first line.
         for(String raw:text.split("[\\r\\n]+")){
-            if(raw.trim().startsWith("Created by ")&&welcomeTitle!=null&&!ChatRules.playerMessage(formatted)){
+            if(welcomeTitle!=null&&(raw.trim().startsWith("Created by ")||ChatRules.welcomeEnd(raw))){
                 String query=welcomeTitle;welcomeTitle=null;reset();resolve(query);return;
             }
             int at=raw.indexOf("Playing ");

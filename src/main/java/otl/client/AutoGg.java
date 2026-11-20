@@ -2,6 +2,7 @@ package otl.client;
 
 import net.minecraft.client.Minecraft;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
+import net.minecraftforge.client.event.sound.PlaySoundEvent;
 import net.minecraftforge.fml.common.eventhandler.EventPriority;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
@@ -36,8 +37,7 @@ final class AutoGg {
     @SubscribeEvent(priority=EventPriority.LOWEST,receiveCanceled=true)
     public void receive(ClientChatReceivedEvent event){
         if(event.type==2)return; // action bar
-        Minecraft mc=MinecraftAccess.get();
-        if(world!=mc.theWorld){world=mc.theWorld;sendAt=0;sent=false;armed=false;startedAt=0;}
+        sync();
         for(String line:ChatRules.plain(event.message.getUnformattedText()).split("[\\r\\n]+")){
             String text=line.trim();
             // Start lines come first: one of them can look like a result and must never say gg.
@@ -50,6 +50,23 @@ final class AutoGg {
             if(System.nanoTime()-startedAt<settle)continue; // the map start, not its end
             if(!sent){sent=true;sendAt=System.nanoTime()+delayNanos();}
         }
+    }
+
+    /**
+     * The wither sound PGM plays at the end of a match. Unlike a chat line it cannot be a leftover
+     * from the previous match, so it needs no arming and works on a client whose chat is translated.
+     */
+    @SubscribeEvent(priority=EventPriority.LOWEST) public void sound(PlaySoundEvent event){
+        if(!MatchEnd.endedBySound(event.name))return;
+        sync();
+        if(sent)return;
+        sent=true;sendAt=System.nanoTime()+delayNanos();
+    }
+
+    /** A new world means a new match: nothing seen so far may carry over. */
+    private void sync(){
+        Minecraft mc=MinecraftAccess.get();
+        if(world!=mc.theWorld){world=mc.theWorld;sendAt=0;sent=false;armed=false;startedAt=0;}
     }
 
     @SubscribeEvent public void tick(TickEvent.ClientTickEvent event){

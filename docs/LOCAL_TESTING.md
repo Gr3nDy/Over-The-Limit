@@ -92,6 +92,8 @@ Use `-PotlSmokeServerOnly` instead of `-PotlSmokeServer` for direct localhost ch
 
 `-PotlSmokeScope=live` joins the running match on `localhost:25565`, dumps the real sidebar, boss bar, scoreboard teams and team-bar sides twice, saves `run/screenshots/otl-team-bar-live.png`, then asserts that the boss-bar clock PGM sends (`Time Remaining: m:ss`) is the one Team Bar shows, and leaves. It needs the local server up; run `-PotlSmokeScope=teambar` for the fixture version.
 
+`-PotlSmokeScope=gamemodes` builds each PGM gamemode's sidebar in turn (CTW, DTM, DTC, KOTH, CTF, TDM, Blitz, Rage, FFA) on two fixture teams and asserts the bar mirrors it about the clock: each team's objectives on that team's own side, the same gap either side of the clock, the same top, nothing spilling outside the bar, and neutral objectives centred under it. Each mode is checked in named and compact form and saved as `run/screenshots/otl-team-bar-<mode>.png`.
+
 The direct checks also hover a gold `/map` link through real chat hit testing in both Reliable Chat and vanilla chat, saving `otl-gold-chat-hover.png` and `otl-gold-vanilla-hover.png`. Unit tests reject plain gold text, non-map commands, bare `/map`, and non-gold links, and cover inherited styles and Unicode separators.
 
 After smoke testing, run `.\gradlew.bat clean build --offline --no-daemon`. Only `build/libs/OTL.jar` is the verified manual-copy release; never install the jar in `build/dev-libs/`. Build tasks do not copy into any client mods folder.

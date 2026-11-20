@@ -35,21 +35,39 @@ final class KillFeed {
     @SubscribeEvent(priority=EventPriority.HIGH,receiveCanceled=true) public void receive(ClientChatReceivedEvent event){
         if(!active()||MinecraftAccess.get().thePlayer==null)return;
         String message=event.message.getFormattedText();
-        if(event.type==2){
-            KillConfirmRules.Reward reward=KillConfirmRules.parse(message);
-            if(reward!=null&&reward.assist)history.assist(MinecraftAccess.get().thePlayer.getName(),System.nanoTime(),teammatePredicate());
-            return;
-        }
-        KillFeedRules.Death death=KillFeedRules.parse(message);
-        // shortcut: no victim in assist rewards; skip reward-first or crowded death bursts rather than crediting the wrong player.
-        if(death==null){KillConfirmRules.Reward reward=KillConfirmRules.parse(message);if(reward!=null&&reward.assist)history.assist(MinecraftAccess.get().thePlayer.getName(),System.nanoTime(),teammatePredicate());return;}
+        if(event.type==2)return;
+        KillFeedRules.Death death=KillFeedRules.parse(message,nameCache::contains);
+        // shortcut: assist rewards have no victim; restore attribution only when the server identifies one.
+        if(death==null)return;
         history.add(death);if(scroll>0&&visible(death))scroll=Math.min(scroll+1,Math.max(0,visibleEntries().size()-rows()));
         if(UtilitySettings.hideKillChat)event.setCanceled(true);
+    }
+
+    /**
+     * Account names a translated death line can be read by. Built on the client thread only and
+     * swapped in whole: chat arrives on the netty thread, where the tab list is not safe to walk.
+     */
+    private static volatile java.util.Set<String> nameCache=java.util.Collections.emptySet();
+    private static long namesAt;
+
+    private static void refreshNames(){
+        Minecraft mc=MinecraftAccess.get();
+        java.util.Set<String> next=new java.util.HashSet<>();
+        if(mc.thePlayer!=null)next.add(mc.thePlayer.getName());
+        if(mc.getNetHandler()!=null)
+            for(NetworkPlayerInfo info:mc.getNetHandler().getPlayerInfoMap())
+                if(info.getGameProfile()!=null&&info.getGameProfile().getName()!=null)next.add(info.getGameProfile().getName());
+        if(mc.theWorld!=null)
+            for(net.minecraft.scoreboard.ScorePlayerTeam team:mc.theWorld.getScoreboard().getTeams())
+                for(String member:team.getMembershipCollection())next.add(member);
+        nameCache=next;
+        namesAt=System.nanoTime();
     }
     @SubscribeEvent public void unload(WorldEvent.Unload event){if(event.world.isRemote){history.clear();clearHeads();rowCache.clear();scroll=0;dragging=false;}}
     /** A resource reload re-samples every skin, so the remembered pixels belong to the old pack. */
     static void clearHeads(){heads.clear();headSkins.clear();}
     @SubscribeEvent public void overlay(RenderGameOverlayEvent.Post event){
+        if(System.nanoTime()-namesAt>250_000_000L)refreshNames();
         if(event.type==RenderGameOverlayEvent.ElementType.CHAT&&!(MinecraftAccess.get().currentScreen instanceof GuiChat)&&!(MinecraftAccess.get().currentScreen instanceof HudEditor))draw(-1,-1,false);
     }
     @SubscribeEvent public void screen(GuiScreenEvent.DrawScreenEvent.Post event){
@@ -73,12 +91,6 @@ final class KillFeed {
         Minecraft mc=MinecraftAccess.get();String local=mc.thePlayer.getName();
         net.minecraft.scoreboard.ScorePlayerTeam team=mc.theWorld==null?null:mc.theWorld.getScoreboard().getPlayersTeam(local);
         return UtilitySettings.killFeedFilter.shows(death,local,name->team!=null&&team==mc.theWorld.getScoreboard().getPlayersTeam(name));
-    }
-    private static java.util.function.Predicate<String> teammatePredicate(){
-        Minecraft mc=MinecraftAccess.get();
-        net.minecraft.scoreboard.ScorePlayerTeam team=mc.theWorld==null||mc.thePlayer==null?null:mc.theWorld.getScoreboard().getPlayersTeam(mc.thePlayer.getName());
-        // No team context means there is no teammate to filter; with one, assists only claim teammate deaths.
-        return name->team==null||mc.theWorld==null||team==mc.theWorld.getScoreboard().getPlayersTeam(name);
     }
     private static List<KillFeedRules.Death> visibleEntries(){
         if(UtilitySettings.killFeedFilter==KillFeedRules.FilterMode.ALL)return history.entries;
@@ -148,7 +160,6 @@ final class KillFeed {
                 KillFeedRules.parse(own+" was shot by \u00a79Archer\u00a7r from 50 blocks"),
                 KillFeedRules.parse("\u00a79Target\u00a7r was punched into lava by \u00a79Archer\u00a7r"),
                 KillFeedRules.parse(own+" went up in flames"),KillFeedRules.parse(own+" fell out of the world"));
-            preview.get(2).assist=true;
         }
         return preview;
     }
@@ -243,16 +254,14 @@ final class KillFeed {
             case VOID:fallIcon(x+3,y+2,true,opacity);break;
             case FALL:fallIcon(x+3,y+2,false,opacity);break;
             case LAVA:
-                Gui.drawRect(x+1,y+6,x+15,y+13,KillFeedRules.faded(0xFFDA4D0E,opacity));
-                Gui.drawRect(x+3,y+4,x+12,y+6,KillFeedRules.faded(0xFFFF901A,opacity));
-                Gui.drawRect(x+2,y+8,x+7,y+10,KillFeedRules.faded(0xFFFFCF45,opacity));
-                Gui.drawRect(x+9,y+10,x+14,y+12,KillFeedRules.faded(0xFFFFCF45,opacity));break;
+                drawItem(new ItemStack(Items.lava_bucket),x,y,opacity);break;
             case FIRE:
-                Gui.drawRect(x+3,y+5,x+13,y+12,KillFeedRules.faded(0xFFF56B13,opacity));
-                Gui.drawRect(x+6,y+1,x+10,y+6,KillFeedRules.faded(0xFFFF8C19,opacity));
-                Gui.drawRect(x+1,y+8,x+15,y+12,KillFeedRules.faded(0xFFF56B13,opacity));
-                Gui.drawRect(x+4,y+12,x+12,y+15,KillFeedRules.faded(0xFFFFA320,opacity));
-                Gui.drawRect(x+6,y+7,x+10,y+14,KillFeedRules.faded(0xFFFFE06A,opacity));break;
+                Minecraft mc=MinecraftAccess.get();
+                mc.getTextureManager().bindTexture(net.minecraft.client.renderer.texture.TextureMap.locationBlocksTexture);
+                GlStateManager.enableTexture2D();GlStateManager.disableAlpha();GlStateManager.enableBlend();
+                GlStateManager.tryBlendFuncSeparate(770,771,1,0);GlStateManager.color(1,1,1,opacity);
+                sprites.drawTexturedModalRect(x,y,mc.getTextureMapBlocks().getAtlasSprite("minecraft:blocks/fire_layer_0"),16,16);
+                GlStateManager.enableAlpha();GlStateManager.color(1,1,1,1);break;
             default:drawItem(icon(death),x,y,opacity);
         }
     }

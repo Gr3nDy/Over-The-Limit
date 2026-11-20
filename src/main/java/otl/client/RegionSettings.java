@@ -11,6 +11,7 @@ public final class RegionSettings extends SettingsScreen {
     protected String subtitle(){return "Shows the region you are standing in.";}
     protected void buildPanel(){
         resetButton("region_overlay");
+        buttonList.add(new NeutralButton(5,panel.left(),panel.row(),panel.width(),20,"Buildable area only: "+(UtilitySettings.regionBuildable?"ON":"OFF"),UtilitySettings.regionBuildable));
         buttonList.add(new NeutralButton(1,panel.left(),panel.row(),panel.width(),20,"Region text: "+(UtilitySettings.regionHud?"ON":"OFF"),UtilitySettings.regionHud));
         NeutralButton prefix=new NeutralButton(2,panel.left(),panel.row(),panel.width(),20,"Prefix: "+(UtilitySettings.regionHudPrefix?"ON":"OFF"),UtilitySettings.regionHudPrefix);
         prefix.enabled=UtilitySettings.regionHud; // the prefix only matters while the text is on
@@ -24,6 +25,7 @@ public final class RegionSettings extends SettingsScreen {
         if(b.id==1){UtilitySettings.regionHud=!UtilitySettings.regionHud;UtilitySettings.save();initGui();return;}
         if(b.id==2){UtilitySettings.regionHudPrefix=!UtilitySettings.regionHudPrefix;UtilitySettings.save();initGui();return;}
         if(b.id==3)return;
+        if(b.id==5){UtilitySettings.regionBuildable=!UtilitySettings.regionBuildable;UtilitySettings.save();initGui();return;}
         if(b.id==4)mc.displayGuiScreen(parent);
     }
     public void onGuiClosed(){UtilitySettings.save();}

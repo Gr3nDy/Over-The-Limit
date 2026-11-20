@@ -60,14 +60,31 @@ public class ChatRulesTest {
         assertEquals("all",ChatRules.classify("Announcement (Blue): game starts").key);
         assertEquals("all",ChatRules.classify("(Restart) in 10 seconds").key);
     }
+    @Test public void pgmChannelsLandInTheirOwnTab(){
+        // The shapes PGM's own channel formatters produce: team chat is "(<party name>) <name>: text"
+        // in the party's colour, global is "<name>: text", private is "To/From <name>: text".
+        assertEquals("team",ChatRules.classify("\u00a7c(Red) \u00a7fAlex\u00a7f: hello").key);
+        assertEquals("team",ChatRules.classify("\u00a79(Blue) \u00a7fAlex\u00a7f: hello").key);
+        assertEquals("team",ChatRules.classify("\u00a77(Obs) \u00a7fAlex\u00a7f: hello").key);
+        assertEquals("team",ChatRules.classify("\u00a7a(Green) \u00a7f[VIP] Alex\u00a7f: hello").key);
+        assertEquals("all",ChatRules.classify("\u00a7f<Alex>: hello").key);
+        assertEquals("pm:alex",ChatRules.classify("\u00a77To \u00a7fAlex\u00a7f: hello").key);
+        assertEquals("pm:alex",ChatRules.classify("\u00a77From \u00a7fAlex\u00a7f: hello").key);
+        // A name whose rank tag sits inside the brackets is still the same line.
+        assertEquals("team",ChatRules.classify("\u00a7c(Red) \u00a7fAlex\u00a7f: gg \u00a7cwell played").key);
+    }
     @Test public void commandsAreExactAndNeverPrivatePrefixed(){
-        assertEquals("all",ChatRules.commandChannel("/g"));assertEquals("team",ChatRules.commandChannel("/t"));assertEquals("team",ChatRules.commandChannel("/team"));assertEquals("party",ChatRules.commandChannel("/party chat"));
-        assertNull(ChatRules.commandChannel("/give"));assertNull(ChatRules.commandChannel("hello /g"));assertNull(ChatRules.commandChannel("/party chat hello"));
-        assertEquals("/msg alex hello",ChatRules.outgoing("pm:alex","hello"));assertEquals("/spawn",ChatRules.outgoing("pm:alex","/spawn"));assertEquals("/t hello",ChatRules.outgoing("team","hello"));assertEquals("/g hello",ChatRules.outgoing("all","hello"));assertEquals("/party chat hello",ChatRules.outgoing("party","hello"));
+        assertEquals("/msg alex hello",ChatRules.outgoing("pm:alex","hello"));assertEquals("/spawn",ChatRules.outgoing("pm:alex","/spawn"));assertEquals("/t hello",ChatRules.outgoing("team","hello"));assertEquals("hello",ChatRules.outgoing("all","hello"));assertEquals("/party chat hello",ChatRules.outgoing("party","hello"));
+        // The tab decides the channel: All is always bare text, and a typed command is never rewritten.
+        assertEquals("/t",ChatRules.outgoing("all","/t"));assertEquals("/g",ChatRules.outgoing("team","/g"));
     }
     @Test public void ownMessagesDoNotCountUnread(){
         assertTrue(ChatRules.authoredBy("To: Alex hello","Me"));assertTrue(ChatRules.authoredBy("(Blue) Me: hello","Me"));assertTrue(ChatRules.authoredBy("\u00a7e(Party) Me: hello","Me"));
         assertFalse(ChatRules.authoredBy("From: Alex hello","Me"));assertFalse(ChatRules.authoredBy("(Blue) Alex: hello","Me"));
+        // Rank and guild tags sit on either side of the name; none of them hide the sender.
+        assertTrue(ChatRules.authoredBy("(Blue) Me [VIP]: hello","Me"));assertTrue(ChatRules.authoredBy("[VIP] <Me> hello","Me"));
+        assertTrue(ChatRules.authoredBy("(Blue) [VIP] Me [MOD]: hello","Me"));
+        assertEquals("team",ChatRules.classify("(Blue) Me [VIP]: hello").key);
     }
     @Test public void serverProseNeverCreatesPhantomPrivateTabs(){for(String s:new String[]{"to your monument!","\u00a79\u00a7oto your monument!","From the start of the match","To win capture the wool"})assertEquals(s,"all",ChatRules.classify(s).key);}
 }

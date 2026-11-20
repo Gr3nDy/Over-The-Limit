@@ -101,11 +101,13 @@ public final class FaceScreen extends GuiScreen {
     private void cancel(){FaceMarks.replace(skin(),original,false);editing=false;dirty=false;}
     private void drawPanel(int mx,int my,float partial){
         drawDefaultBackground();
+        BedrockUi.panel(contentX-5,60,leftWidth+10,Math.max(1,height-98));
         drawCenteredString(fontRendererObj,editing?"FACE MAPPING":"FACE RIG",width/2,14,0xFFFFFFFF);
         int px=contentX+leftWidth+16,pw=contentW-leftWidth-16;
-        drawCenteredString(fontRendererObj,editing?"TOOLS":"SETTINGS",contentX+leftWidth/2,30,0xFFE0E0E0);
-        drawCenteredString(fontRendererObj,editing?"LIVE PREVIEW":"PREVIEW",px+pw/2,30,0xFFE0E0E0);
-        if(!editing&&(scroll>0||height<278))drawString(fontRendererObj,"Scroll for more settings",contentX,44,0xFF8B8C8D);
+        BedrockUi.panel(px,60,pw,Math.max(1,height-98));
+        drawCenteredString(fontRendererObj,editing?"TOOLS":"SETTINGS",contentX+leftWidth/2,30,BedrockUi.MUTED);
+        drawCenteredString(fontRendererObj,editing?"LIVE PREVIEW":"PREVIEW",px+pw/2,30,BedrockUi.MUTED);
+        if(!editing&&(scroll>0||height<278))drawString(fontRendererObj,"Scroll for more settings",contentX,44,BedrockUi.DIM);
         FaceDoll.preview=true;FaceDoll.hat=true;
         try{
             FaceDoll.head(px+pw/2,editing?(height+24)/2:(height+60)/2,Math.max(24,Math.min(pw-18,height-(editing?145:112))),mc.thePlayer);

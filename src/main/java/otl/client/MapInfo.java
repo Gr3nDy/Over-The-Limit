@@ -26,6 +26,8 @@ final class MapInfo {
     final List<String> teamOrder;
     /** Named and anonymous regions from the map's <regions> block, as bounding boxes. */
     final java.util.List<Region> regions;
+    Region buildable;
+    boolean freeForAll;
 
     /** One map region, flattened to a bounding box; cylinders/circles/spheres use their extents. */
     static final class Region {
@@ -157,11 +159,38 @@ final class MapInfo {
             List<Region> regions=new ArrayList<>();
             Element regionsEl=metadata.first("regions");
             if(regionsEl!=null)collectRegions(regionsEl,metadata,regions,maxBuildHeight);
-            return new MapInfo(nvl(metadata.value("name"),pretty(last(dir))),metadata.value("version"),objective,metadata.value("created"),
+            MapInfo result=new MapInfo(nvl(metadata.value("name"),pretty(last(dir))),metadata.value("version"),objective,metadata.value("created"),
                     nvl(metadata.value("gamemode"),gamemode),metadata.people("authors","author"),metadata.people("contributors","contributor"),
                     String.join(", ",labels),dir,players,bundled,cache,String.join(", ",variants),incomplete,maxBuildHeight,kitBlocks,regions,teamOrder);
+            result.buildable=buildableRegion(metadata,maxBuildHeight);
+            result.freeForAll=ffa!=null&&teams==null&&!metadata.incomplete;
+            return result;
         }catch(Exception e){System.err.println("OTL: could not read map metadata "+dir+": "+e.getMessage());}
         return new MapInfo(pretty(last(dir)),"","","",gamemode,"","","",dir,0,bundled,cache,"default",true,-1,java.util.Collections.emptySet(),java.util.Collections.emptyList(),java.util.Collections.emptyList());
+    }
+
+    /** Only accept a complete, unconditional cuboid allow followed by a global deny. */
+    static Region buildableRegion(MapXml meta,int height){
+        if(meta.incomplete||!meta.included.isEmpty()||meta.first("variant")!=null||meta.first("filters")!=null||height>0
+            ||meta.root.getElementsByTagName("if").getLength()>0||meta.root.getElementsByTagName("unless").getLength()>0)return null;
+        Element container=meta.first("regions");
+        if(container==null)return null;
+        List<Element> rules=new ArrayList<>(),shapes=new ArrayList<>();
+        for(Element element:MapXml.children(container)){
+            if(element.getTagName().equals("apply")&&(element.hasAttribute("block")||element.hasAttribute("block-place")))rules.add(element);
+            else if(element.hasAttribute("id"))shapes.add(element);
+        }
+        if(rules.size()!=2)return null;
+        Element allow=rules.get(0),deny=rules.get(1);
+        if(!"always".equals(allow.getAttribute("block"))||!"never".equals(deny.getAttribute("block"))
+            ||!"everywhere".equals(deny.getAttribute("region"))||allow.hasAttribute("block-place")||deny.hasAttribute("block-place"))return null;
+        String id=allow.getAttribute("region");
+        if(id.isEmpty())return null;
+        for(Element shape:shapes)if(id.equals(shape.getAttribute("id"))&&shape.getTagName().equals("cuboid")){
+            double[] box=regionBox(shape,meta,height);
+            if(box!=null&&!meta.incomplete)return new Region("Buildable area",box);
+        }
+        return null;
     }
 
     /** Flattens shape children (through union/intersection) into bounding boxes; everything else is skipped. */

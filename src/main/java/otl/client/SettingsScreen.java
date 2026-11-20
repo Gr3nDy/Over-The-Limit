@@ -12,7 +12,7 @@ import org.lwjgl.opengl.GL11;
  * footer pinned, and a content canvas that scrolls as one. Rows come from {@link SettingsPanel}.
  */
 abstract class SettingsScreen extends GuiScreen {
-    static final int MAX_W=470,MAX_H=272,HEADER=26,FOOTER=28,PAD=14,SCROLL=24;
+    static final int MAX_W=520,MAX_H=300,HEADER=26,FOOTER=28,PAD=14,SCROLL=24;
     /** Strip at the top of the body that holds the module reset, so it never covers a row. */
     static final int TOOL=14;
     private final Set<GuiButton> pinned=new HashSet<>();
@@ -27,6 +27,8 @@ abstract class SettingsScreen extends GuiScreen {
     protected abstract void buildPanel();
     /** Draw custom widgets in panel space; labels and sections are drawn by the panel itself. */
     protected void drawContent(int mx,int my,float partial){}
+    /** Draw above the scrolling band, outside its clip: category tabs and other fixed chrome. */
+    protected void drawFixed(int mx,int my,float partial){}
     /** Draw on top of the buttons, e.g. swatch fills or text fields. */
     protected void drawOverlay(int mx,int my,float partial){}
 
@@ -73,10 +75,11 @@ abstract class SettingsScreen extends GuiScreen {
         try{super.mouseClicked(mx,my,button);}finally{for(GuiButton b:hidden)b.visible=true;}
     }
     @Override public void drawScreen(int mx,int my,float partial){
-        drawDefaultBackground();
+        drawRect(0,0,width,height,0x40101010);
         BedrockUi.panel(panelX(),panelY(),panelW(),panelH());
         BedrockUi.header(fontRendererObj,title(),panelX(),panelY(),panelW());
         if(subtitle()!=null)drawString(fontRendererObj,subtitle(),panelX()+PAD,panelY()+29,BedrockUi.DIM);
+        drawFixed(mx,my,partial);
         int top=contentTop(),bottom=contentBottom();
         scissor(panelX()+2,top,panelW()-4,Math.max(0,bottom-top));
         panel.draw(fontRendererObj);
@@ -85,7 +88,7 @@ abstract class SettingsScreen extends GuiScreen {
         drawOverlay(mx,my,partial);
         GL11.glDisable(GL11.GL_SCISSOR_TEST);
         drawRect(panelX()+2,bottom,panelX()+panelW()-2,panelY()+panelH()-2,BedrockUi.PANEL);
-        drawRect(panelX()+2,bottom,panelX()+panelW()-2,bottom+1,0xFF3A3A3A);
+        drawRect(panelX()+2,bottom,panelX()+panelW()-2,bottom+1,BedrockUi.EDGE);
         for(GuiButton b:buttonList)if(pinned.contains(b))b.drawButton(mc,mx,my);
         scrollbar(mx,my,top,bottom);
     }

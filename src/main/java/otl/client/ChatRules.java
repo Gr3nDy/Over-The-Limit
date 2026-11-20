@@ -9,7 +9,7 @@ final class ChatRules {
     private static final Pattern FORMAT=Pattern.compile("\u00a7[0-9A-FK-OR]",Pattern.CASE_INSENSITIVE);
     private static final Pattern PRIVATE_SPACES=Pattern.compile("\\p{Zs}");
     private static final Pattern PM=Pattern.compile("^(From|To)(?:\\s*:\\s*|\\s+)(?:\\[[^\\]\\r\\n]{1,32}\\]\\s*)*<?([A-Za-z0-9_]{1,16})>?(?:\\s*[:>\u00bb]\\s*|\\s+)(.+)$",Pattern.CASE_INSENSITIVE|Pattern.DOTALL);
-    private static final Pattern GROUP=Pattern.compile("^\\(([^)\\r\\n]{1,32})\\)\\s*(?:\\[[^\\]\\r\\n]+\\]\\s*)*<?([A-Za-z0-9_]{1,16})>?\\s*[:>\u00bb]\\s*(.+)$");
+    private static final Pattern GROUP=Pattern.compile("^\\(([^)\\r\\n]{1,32})\\)\\s*(?:\\[[^\\]\\r\\n]+\\]\\s*)*<?([A-Za-z0-9_]{1,16})>?(?:\\s*\\[[^\\]\\r\\n]{1,32}\\])?\\s*[:>\u00bb]\\s*(.+)$");
     static final class Route {
         final String key,name;final boolean outgoing;
         Route(String key,String name,boolean outgoing){this.key=key;this.name=name;this.outgoing=outgoing;}
@@ -46,16 +46,26 @@ final class ChatRules {
     static String privateBody(String text){if(text.length()>1024)return "";Matcher m=PM.matcher(privateText(text));return m.matches()&&privatePrefix(privateText(text))?m.group(3).trim():"";}
     static String groupTeam(String text){Matcher m=GROUP.matcher(plain(text).trim());return m.matches()&&!m.group(1).equalsIgnoreCase("Party")?m.group(1).trim():null;}
     static String groupBody(String text){Matcher m=GROUP.matcher(plain(text).trim());return m.matches()?m.group(3).trim():"";}
+    /**
+     * The line PGM closes a welcome block with: a rule of dashes, equals or underscores. It carries
+     * no words, so it marks the end of the block on a client in any language.
+     */
+    static boolean welcomeEnd(String plainLine){
+        return plainLine!=null&&plainLine.trim().matches("[-=*_~]{3,}");
+    }
     static boolean authoredBy(String formatted,String player){
         Route r=classify(formatted);if(r.outgoing)return true;
         if(r.key.equals(TEAM)||r.key.equals(PARTY))return player.equalsIgnoreCase(r.name);
-        return plain(formatted).trim().matches("(?i)^(?:<"+Pattern.quote(player)+">\\s+|"+Pattern.quote(player)+"\\s*[:>\u00bb]\\s*).+$");
+        return plain(formatted).trim().matches("(?i)^(?:(?:\\[[^\\]\\r\\n]{1,32}\\]\\s*)*<"+Pattern.quote(player)+">\\s+|"+Pattern.quote(player)+"\\s*[:>\u00bb]\\s*).+$");
     }
     static String channel(String key){return ALL.equals(key)?"/g":TEAM.equals(key)?"/team":PARTY.equals(key)?"/party chat":null;}
-    static String commandChannel(String command){
-        String c=command.trim().toLowerCase(Locale.ROOT).replaceAll("\\s+"," ");
-        return c.equals("/g")?ALL:c.equals("/t")||c.equals("/team")?TEAM:c.equals("/party chat")?PARTY:null;
+    /**
+     * Global chat goes out as plain text, the way the vanilla box sends it; only the other
+     * channels need PGM's command prefix. A typed command is never rewritten.
+     */
+    static String outgoing(String selected,String text){
+        if(text.startsWith("/")||ALL.equals(selected))return text;
+        return (selected.startsWith("pm:")?"/msg "+selected.substring(3):TEAM.equals(selected)?"/t":"/party chat")+" "+text;
     }
-    static String outgoing(String selected,String text){if(text.startsWith("/"))return text;return (selected.startsWith("pm:")?"/msg "+selected.substring(3):TEAM.equals(selected)?"/t":PARTY.equals(selected)?"/party chat":"/g")+" "+text;}
     static int inputLimit(String selected,String text,boolean fullChat){return !fullChat||text.startsWith("/")?100:100-outgoing(selected,"").length();}
 }

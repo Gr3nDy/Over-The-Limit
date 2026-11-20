@@ -81,6 +81,7 @@ final class HudEditor extends GuiScreen {
     protected void mouseReleased(int mx,int my,int state){dragging=null;corner=-1;guideX=guideY=-1;UtilitySettings.save();super.mouseReleased(mx,my,state);}
     public void onGuiClosed(){dragging=null;corner=-1;guideX=guideY=-1;UtilitySettings.save();}
     public void drawScreen(int mx,int my,float partial){
+        // HUD editing is an in-world workflow: keep the game visible behind the editor controls.
         drawRect(0,0,width,height,0x50101010);
         int hx=width/2-91,hy=height-22;
         drawRect(hx,hy,hx+182,hy+22,0x14000000);
