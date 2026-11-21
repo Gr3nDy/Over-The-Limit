@@ -10,6 +10,7 @@ import net.minecraftforge.event.world.WorldEvent;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.client.renderer.entity.RenderPlayer;
+import net.minecraftforge.client.event.RenderPlayerEvent;
 import net.minecraft.client.resources.*;
 import org.lwjgl.input.Keyboard;
 
@@ -23,6 +24,8 @@ public final class Otl {
     private final KeyBinding minimapZoom=new KeyBinding("key.otl.minimapzoom",Keyboard.KEY_SEMICOLON,"key.categories.otl");
     private final KeyBinding emote=new KeyBinding("key.otl.emote",Keyboard.KEY_B,"key.categories.otl");
     private final KeyBinding skateboard=new KeyBinding("key.otl.skateboard",Keyboard.KEY_N,"key.categories.otl");
+    private final java.util.Map<RenderPlayer,net.minecraft.client.model.ModelBase> vanillaPlayerModels=new java.util.HashMap<>();
+    private final java.util.Map<RenderPlayer,AnimatedModelPlayer> animatedPlayerModels=new java.util.HashMap<>();
     @Mod.EventHandler public void init(FMLInitializationEvent event) {
         ClientRegistry.registerKeyBinding(modules);
         ClientRegistry.registerKeyBinding(teamChat);
@@ -69,6 +72,7 @@ public final class Otl {
         MinecraftForge.EVENT_BUS.register(UpdateNotice.INSTANCE);
         FMLCommonHandler.instance().bus().register(UpdateNotice.INSTANCE);
         MinecraftForge.EVENT_BUS.register(PlayerAnim.INSTANCE);
+        MinecraftForge.EVENT_BUS.register(SkateNameplate.INSTANCE);
         FMLCommonHandler.instance().bus().register(PlayerAnim.INSTANCE);
         installTouchdown();
         FMLCommonHandler.instance().bus().register(this);MinecraftForge.EVENT_BUS.register(this);
@@ -78,15 +82,29 @@ public final class Otl {
             renderer.addLayer(new FaceOverlay(renderer));
             // RenderPlayer reads getMainModel() everywhere except the first-person arm, so swapping
             // this field animates every rendered player and leaves the held hand alone.
-            try{
-                net.minecraftforge.fml.relauncher.ReflectionHelper.setPrivateValue(
-                    net.minecraft.client.renderer.entity.RendererLivingEntity.class,renderer,
-                    new AnimatedModelPlayer("slim".equals(entry.getKey())),"mainModel","field_77045_g");
-            }catch(RuntimeException fail){System.err.println("OTL: could not install the animated player model: "+fail);}
-            installArmorModels(renderer,entry.getKey());
+            vanillaPlayerModels.put(renderer,renderer.getMainModel());
+            animatedPlayerModels.put(renderer,new AnimatedModelPlayer("slim".equals(entry.getKey())));
             installSkateHeldLayer(renderer);
         }
         ((IReloadableResourceManager)MinecraftAccess.get().getResourceManager()).registerReloadListener(resources->{SkinFace.clear();FaceMarks.clearCache();KillFeed.clearHeads();});
+    }
+
+    @SubscribeEvent(priority=net.minecraftforge.fml.common.eventhandler.EventPriority.HIGHEST)
+    public void localSkateModel(RenderPlayerEvent.Pre event){
+        RenderPlayer renderer=event.renderer;
+        net.minecraft.client.Minecraft mc=MinecraftAccess.get();
+        if(mc.thePlayer==null||event.entityPlayer!=mc.thePlayer||!PlayerAnim.skating())return;
+        AnimatedModelPlayer model=animatedPlayerModels.get(renderer);
+        if(model==null)return;
+        net.minecraftforge.fml.relauncher.ReflectionHelper.setPrivateValue(
+            net.minecraft.client.renderer.entity.RendererLivingEntity.class,renderer,model,"mainModel","field_77045_g");
+    }
+
+    @SubscribeEvent(priority=net.minecraftforge.fml.common.eventhandler.EventPriority.LOWEST)
+    public void restoreLocalSkateModel(RenderPlayerEvent.Post event){
+        net.minecraft.client.model.ModelBase vanilla=vanillaPlayerModels.get(event.renderer);
+        if(vanilla!=null)net.minecraftforge.fml.relauncher.ReflectionHelper.setPrivateValue(
+            net.minecraft.client.renderer.entity.RendererLivingEntity.class,event.renderer,vanilla,"mainModel","field_77045_g");
     }
 
     private static void installSkateHeldLayer(RenderPlayer renderer){
@@ -102,24 +120,6 @@ public final class Otl {
         }catch(RuntimeException fail){System.err.println("OTL: could not install skate held-item layer: "+fail);}
     }
 
-    /** Armor has its own ModelBiped instances; give it the same single-joint rig as the player. */
-    private static void installArmorModels(RenderPlayer renderer,String skin){
-        try{
-            java.util.List<?> layers=net.minecraftforge.fml.relauncher.ReflectionHelper.getPrivateValue(
-                net.minecraft.client.renderer.entity.RendererLivingEntity.class,renderer,
-                "layerRenderers","field_177097_h");
-            if(layers==null)return;
-            for(Object layer:layers)if(layer instanceof net.minecraft.client.renderer.entity.layers.LayerBipedArmor){
-                net.minecraft.client.renderer.entity.layers.LayerBipedArmor armor=(net.minecraft.client.renderer.entity.layers.LayerBipedArmor)layer;
-                net.minecraftforge.fml.relauncher.ReflectionHelper.setPrivateValue(
-                    net.minecraft.client.renderer.entity.layers.LayerArmorBase.class,armor,
-                    new AnimatedModelPlayer("slim".equals(skin)),"modelArmor","field_177189_c");
-                net.minecraftforge.fml.relauncher.ReflectionHelper.setPrivateValue(
-                    net.minecraft.client.renderer.entity.layers.LayerArmorBase.class,armor,
-                    new AnimatedModelPlayer("slim".equals(skin)),"modelLeggings","field_177186_d");
-            }
-        }catch(RuntimeException fail){System.err.println("OTL: could not install animated armor models: "+fail);}
-    }
     /** Reliable Chat cancels the lines it absorbs, so this must still see them. */
     /** Menus replace the game HUD: Lunar's chrome does not show the hotbar and crosshair through its panels. */
     @SubscribeEvent(priority=net.minecraftforge.fml.common.eventhandler.EventPriority.HIGHEST)

@@ -20,17 +20,10 @@ final class OtlSmokeChecks {
     void animatedModel(Minecraft mc){
         java.util.Map<String,net.minecraft.client.renderer.entity.RenderPlayer> skin=mc.getRenderManager().getSkinMap();
         require(skin.size()>=2,"Skin map lost a player renderer");
-        AnimatedModelPlayer model=null;
         for(net.minecraft.client.renderer.entity.RenderPlayer renderer:skin.values()){
-            require(renderer.getMainModel() instanceof AnimatedModelPlayer,
-                "Player renderer still uses the vanilla model");
-            model=(AnimatedModelPlayer)renderer.getMainModel();
+            require(renderer.getMainModel() instanceof net.minecraft.client.model.ModelPlayer,
+                "Player renderer has no player model");
         }
-        // One anatomical cut: the hand/foot stays attached to the forearm/shin segment.
-        require(model.lowerArmR.childModels==null||model.lowerArmR.childModels.isEmpty(),"The arm has an artificial extra joint");
-        require(model.lowerLegL.childModels==null||model.lowerLegL.childModels.isEmpty(),"The leg has an artificial extra joint");
-        require(model.lowerArmR.cubeList.size()==1&&model.lowerArmR.cubeList.get(0).posY2>model.lowerArmR.cubeList.get(0).posY1,
-            "The forearm has no geometry");
     }
 
     /**

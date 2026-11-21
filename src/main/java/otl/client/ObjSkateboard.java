@@ -15,6 +15,7 @@ import java.util.List;
 /** Small, intentionally limited OBJ reader for the bundled static skateboard mesh. */
 final class ObjSkateboard {
     private static final ResourceLocation FILE=new ResourceLocation("otl","models/skateboard.obj");
+    private static final ResourceLocation TEXTURE=new ResourceLocation("otl","textures/skateboard.png");
     private static final List<float[]> V=new ArrayList<>(), UV=new ArrayList<>(), N=new ArrayList<>();
     private static final List<int[]> F=new ArrayList<>();
     private static boolean loaded;
@@ -62,7 +63,8 @@ final class ObjSkateboard {
             draw(scale,1f,1f,1f,1f);
             GL11.glEndList();
         }
-        GL11.glColor4f(0.82f,0.82f,0.82f,1f);
+        Minecraft.getMinecraft().getTextureManager().bindTexture(TEXTURE);
+        GL11.glColor4f(1f,1f,1f,1f);
         GL11.glCallList(displayList);
         // Inverted hull: cull the front faces while drawing a slightly enlarged black copy. This
         // leaves only the back-facing shell at the silhouette, unlike wireframe which outlines

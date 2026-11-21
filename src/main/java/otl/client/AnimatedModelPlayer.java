@@ -166,17 +166,17 @@ final class AnimatedModelPlayer extends ModelPlayer {
             // After the vertical flip the mesh spans Y=0..0.5 before the compacting scale. Its
             // lowest point must sit on the model's foot plane at 1.5 blocks, not at the player's
             // origin; otherwise the wheels and deck clip through the floor.
-            GlStateManager.translate(0f,1.5f+boardDrop,0f);
+            // Raise only the visual board. Moving the player model would desync its hitbox,
+            // shadow, and vanilla movement; this small lift puts the wheels above the floor.
+            GlStateManager.translate(0f,1.65f+boardDrop,0f);
             // The GLB uses the opposite vertical convention from Minecraft, so flip it once
             // before applying the animated ollie rotation. Keep the real mesh compact beside
             // the player; the source asset's 1.2-block normalization was still too large in play.
             GlStateManager.rotate(180f,1f,0f,0f);
-            GlStateManager.scale(0.62f,0.62f,0.62f);
+            GlStateManager.scale(0.40f,0.40f,0.40f);
             GlStateManager.rotate(boardX*57.29578f,1f,0f,0f);
             GlStateManager.rotate(boardY*57.29578f,0f,1f,0f);
             GlStateManager.rotate(boardZ*57.29578f,0f,0f,1f);
-            GlStateManager.disableTexture2D();
-            GlStateManager.color(0.82f,0.82f,0.82f,1f);
             ObjSkateboard.render(1f);
         }finally{
             GlStateManager.color(1f,1f,1f,1f);

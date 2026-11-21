@@ -150,8 +150,7 @@ final class PlayerAnim {
         State s=state(p);
         if(s.emote>=0)stopEmote(mc,p,true);
         if(s.wantsBoard){
-            s.wantsBoard=false;
-            s.pushAt=-1;s.ollieAt=-1;s.wasMoving=false;
+            exitBoard(s);
             endCamera(mc,true);
         }else{
             s.wantsBoard=true;
@@ -176,10 +175,10 @@ final class PlayerAnim {
         checkEmote(mc);
     }
 
-    /** The click that ends an emote must not also punch or place a block. */
+    /** Attack or place exits an active animation before Minecraft handles the click. */
     @SubscribeEvent(priority=EventPriority.HIGHEST)
     public void mouse(MouseEvent event){
-        if(event.button!=0||!event.buttonstate)return;
+        if((event.button!=0&&event.button!=1)||!event.buttonstate)return;
         Minecraft mc=MinecraftAccess.get();
         // A screen that takes clicks (chat) must keep them; the emote already ended on open.
         if(mc.thePlayer==null||mc.currentScreen!=null)return;
@@ -190,10 +189,7 @@ final class PlayerAnim {
         if(emoting)stopEmote(mc,mc.thePlayer,true);
         else if(managing)endCamera(mc,true);
         if(skating){
-            s.wantsBoard=false;
-            s.pushAt=-1;
-            s.ollieAt=-1;
-            s.wasMoving=false;
+            exitBoard(s);
             endCamera(mc,true);
         }
         event.setCanceled(true);
@@ -207,6 +203,12 @@ final class PlayerAnim {
 
     private static void step(EntityPlayer p){
         State s=state(p);
+        // Combat interrupts skating immediately. Do not leave a board/pose fade running after
+        // damage: the player must return to the exact vanilla render on this tick.
+        if(p==MinecraftAccess.get().thePlayer&&s.wantsBoard&&p.hurtTime>0){
+            exitBoard(s);
+            endCamera(MinecraftAccess.get(),true);
+        }
         s.prevBoard=s.board;
         float target=s.wantsBoard?1f:0f;
         if(s.board<target)s.board=Math.min(target,s.board+PULL_OUT);
@@ -234,6 +236,15 @@ final class PlayerAnim {
             s.wasMoving=false;
             s.pushAt=-1;
         }
+    }
+
+    private static void exitBoard(State s){
+        s.wantsBoard=false;
+        s.board=0f;
+        s.prevBoard=0f;
+        s.pushAt=-1;
+        s.ollieAt=-1;
+        s.wasMoving=false;
     }
 
     private static void checkEmote(Minecraft mc){
