@@ -30,13 +30,16 @@ final class AnimClips {
         // Back foot at the tail, front foot forward: the back leg is the one that kicks.
         p.set(AnimPose.RIGHT_LEG,-0.14f+0.55f*k,0f,0.10f);
         p.set(AnimPose.LEFT_LEG,0.10f,0f,-0.10f);
-        p.kneeRight=0.34f-0.30f*k;
-        p.kneeLeft=0.44f;
+        // A riding crouch, knees out over the board; the kick straightens the back leg.
+        p.kneeRight=0.50f-0.44f*k;
+        p.kneeLeft=0.60f;
+        p.kneeRightZ=0.06f;
+        p.kneeLeftZ=-0.06f;
         // Shoulders stay square to the board; only the arms counterbalance.
         p.add(AnimPose.RIGHT_ARM,-0.30f,0f,0.34f);
         p.add(AnimPose.LEFT_ARM,0.10f,0f,-0.34f);
-        p.elbowRight=0.55f;
-        p.elbowLeft=0.40f;
+        p.elbowRight=0.62f;
+        p.elbowLeft=0.50f;
         // The body is replaced, never added: vanilla does not reset the body angles, so an
         // additive value here would keep growing every frame and the model would spin. The head is
         // left alone so it still follows where the player is looking.

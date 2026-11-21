@@ -20,9 +20,17 @@ final class OtlSmokeChecks {
     void animatedModel(Minecraft mc){
         java.util.Map<String,net.minecraft.client.renderer.entity.RenderPlayer> skin=mc.getRenderManager().getSkinMap();
         require(skin.size()>=2,"Skin map lost a player renderer");
-        for(net.minecraft.client.renderer.entity.RenderPlayer renderer:skin.values())
+        AnimatedModelPlayer model=null;
+        for(net.minecraft.client.renderer.entity.RenderPlayer renderer:skin.values()){
             require(renderer.getMainModel() instanceof AnimatedModelPlayer,
                 "Player renderer still uses the vanilla model");
+            model=(AnimatedModelPlayer)renderer.getMainModel();
+        }
+        // A limb is cut twice: the bend is a curve, so both joints must really be in the chain.
+        require(model.lowerArmR.childModels.contains(model.tipArmR),"The forearm has no second joint");
+        require(model.lowerLegL.childModels.contains(model.tipLegL),"The shin has no second joint");
+        require(model.tipArmR.cubeList.size()==1&&model.tipArmR.cubeList.get(0).posY2>model.tipArmR.cubeList.get(0).posY1,
+            "The last segment of an arm has no geometry");
     }
 
     /**
