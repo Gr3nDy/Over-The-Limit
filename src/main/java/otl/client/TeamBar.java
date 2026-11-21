@@ -263,6 +263,11 @@ final class TeamBar {
         Bar(List<List<String>> left,List<List<String>> right,int head,int textW,Timer timer,String label,int line,
             List<Objectives.Strip> leftStrips,List<Objectives.Strip> rightStrips,boolean compact,List<List<Objectives.Strip>> points,
             Header header,int headerW,List<String> leftOwners,List<String> rightOwners,boolean counts,int cell){
+            this(left,right,head,textW,timer,label,line,leftStrips,rightStrips,compact,points,header,headerW,leftOwners,rightOwners,counts,cell,COUNT_BAND);
+        }
+        Bar(List<List<String>> left,List<List<String>> right,int head,int textW,Timer timer,String label,int line,
+            List<Objectives.Strip> leftStrips,List<Objectives.Strip> rightStrips,boolean compact,List<List<Objectives.Strip>> points,
+            Header header,int headerW,List<String> leftOwners,List<String> rightOwners,boolean counts,int cell,int countBand){
             this.ffa=false;this.ffaScores=Collections.emptyMap();
             this.left=left;this.right=right;this.head=head;this.advance=advance(head);this.timer=timer;
             this.compact=compact;this.counts=counts;this.cell=cell;
@@ -312,7 +317,7 @@ final class TeamBar {
             this.leftStripX=textX-OBJECTIVE_GAP-leftW;
             // Each row is drawn in a band at least nine pixels tall so the clock still fits.
             int lines=Math.max(this.leftStrips.size(),this.rightStrips.size());
-            this.band=counts?COUNT_BAND:Math.max(Math.max(head,9),compact&&lines>0?lines*stripLine:0);
+            this.band=counts?Math.max(COUNT_LINE+5,Math.min(COUNT_BAND,countBand)):Math.max(Math.max(head,9),compact&&lines>0?lines*stripLine:0);
             int rows=Math.max(left.size(),right.size());
             int stack=rows>0?rows*band+(rows-1)*ROW_GAP:band;
             // Only compact markers share the clock's row; named team blocks stay underneath.
@@ -893,13 +898,18 @@ final class TeamBar {
         // where they belong; the row itself shrinks to the line.
         boolean hideHeads=UtilitySettings.teamBarHideHeads;
         // Last resort, height only: a stack of many teams can still be taller than the screen.
-        while(head>MIN_HEAD){
+        int band=COUNT_BAND;
+        while(true){
             int h=hideHeads||counts?0:head;
-            if(new Bar(left,right,h,textW,timer,label,counts?0:line(h,ffa),leftStrips,rightStrips,compact,pointStrips,header,headerW,leftOwners,rightOwners,counts,cell).height<=screenH-8)break;
-            head--;
+            Bar fit=new Bar(left,right,h,textW,timer,label,counts?0:line(h,ffa),leftStrips,rightStrips,compact,pointStrips,header,headerW,leftOwners,rightOwners,counts,cell,band);
+            if(fit.height<=screenH-8)break;
+            // Counting has no head to shrink, so the count rows themselves get shorter instead.
+            if(counts){if(band<=COUNT_LINE+5)break;band--;}
+            else if(head>MIN_HEAD)head--;
+            else break;
         }
         int drawnHead=hideHeads||counts?0:head;
-        return new Bar(left,right,drawnHead,textW,timer,label,counts?0:line(drawnHead,ffa),leftStrips,rightStrips,compact,pointStrips,header,headerW,leftOwners,rightOwners,counts,cell);
+        return new Bar(left,right,drawnHead,textW,timer,label,counts?0:line(drawnHead,ffa),leftStrips,rightStrips,compact,pointStrips,header,headerW,leftOwners,rightOwners,counts,cell,band);
     }
 
     /** Eight teams of heads no longer fit under the clock, so the bar counts them instead. */
@@ -1734,7 +1744,7 @@ final class TeamBar {
             // A count is the whole row: the number follows the pass, with the team colour under it.
             if(bar.counts&&!members.isEmpty()){
                 int rowTop=y+bar.rowTop(0,r);
-                quad(world,start,rowTop+COUNT_BAND-COUNT_LINE,start+bar.cell,rowTop+COUNT_BAND,teamColour(mc,members));
+                quad(world,start,rowTop+bar.band-COUNT_LINE,start+bar.cell,rowTop+bar.band,teamColour(mc,members));
             }else if(bar.head>0)for(int i=0;i<members.size();i++)if(members.get(i).equals(hover)){hx=start+i*bar.advance;hy=top;found=true;}else head(world,members.get(i),start+i*bar.advance,top,bar.head);
             if(bar.ffa&&bar.head>0)for(int i=0;i<members.size();i++){
                 int px=start+i*bar.advance;
@@ -1750,7 +1760,7 @@ final class TeamBar {
             if(lineW>0)quad(world,x+bar.rightLine(members),lineTop,x+bar.rightLine(members)+lineW,lineTop+lineH,teamColour(mc,members));
             if(bar.counts&&!members.isEmpty()){
                 int rowTop=y+bar.rowTop(1,r);
-                quad(world,start,rowTop+COUNT_BAND-COUNT_LINE,start+bar.cell,rowTop+COUNT_BAND,teamColour(mc,members));
+                quad(world,start,rowTop+bar.band-COUNT_LINE,start+bar.cell,rowTop+bar.band,teamColour(mc,members));
             }else if(bar.head>0)for(int i=0;i<members.size();i++)if(members.get(i).equals(hover)){hx=start+i*bar.advance;hy=top;found=true;}else head(world,members.get(i),start+i*bar.advance,top,bar.head);
         }
         if(found){
@@ -1949,11 +1959,12 @@ final class TeamBar {
     }
 
     /**
-     * The face is drawn from an eight-by-eight grid, so rounding is done by leaving texels out: two
-     * texels cut from each corner is a quarter of the side, which reads as a rounded head at any
-     * size. Below eight pixels a head is one averaged swatch, where a corner would be invisible.
+     * The face is drawn from an eight-by-eight grid, so rounding is done by leaving texels out. One
+     * texel at each corner is the smallest cut the grid allows, and it reads as a clipped edge
+     * rather than a circle. Below eight pixels a head is one averaged swatch, where a corner would
+     * be invisible.
      */
-    private static final int ROUND_CUT=2;
+    private static final int ROUND_CUT=1;
 
     static boolean roundedTexel(int col,int row){
         boolean side=col<ROUND_CUT||col>=8-ROUND_CUT;

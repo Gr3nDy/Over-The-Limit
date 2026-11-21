@@ -43,7 +43,11 @@ final class KillFeedRules {
                 template.contains("magic")||template.contains("potion")||template.contains("poison")||template.contains("wither")?Cause.MAGIC:
                 template.contains("slain")||template.contains("fists")||template.contains("punched")||template.contains("knocked")?Cause.MELEE:
                 template.contains("breathe")?Cause.DROWN:template.contains("cactus")?Cause.CACTUS:
-                template.contains("squash")?Cause.ANVIL:fall?Cause.FALL:Cause.DEATH;
+                template.contains("squash")?Cause.ANVIL:fall?Cause.FALL:
+                // PGM's plain wording names who hit you and no weapon ("was killed by Steve"), so
+                // the cause is still known. Falling through to DEATH drew a bone icon. A line that
+                // names only a block or entity has no attacker to show, and stays unknown.
+                killer!=null?Cause.MELEE:Cause.DEATH;
         }
         /** A death matched against PGM's own wording for the client's language. */
         Death(String original,Matcher m,Rule rule){
@@ -149,7 +153,10 @@ final class KillFeedRules {
         /** A template as PGM writes it in the client's own language: {0} victim, {1} killer, {2} item, {3} mob, {4} distance. */
         Rule(String spec,String template){
             int colon=spec.indexOf(':');
-            cause=Cause.valueOf(colon<0?spec:spec.substring(0,colon));
+            Cause keyed=Cause.valueOf(colon<0?spec:spec.substring(0,colon));
+            // PGM keys a weaponless player kill as plain "death", so in every language the most
+            // common kill line drew a bone. A template that names the killer is a player kill.
+            cause=keyed==Cause.DEATH&&template.contains("{1}")?Cause.MELEE:keyed;
             boolean f=false,l=false,v=false;
             if(colon>=0)for(String flag:spec.substring(colon+1).split("\\+")){
                 if(flag.equals("fall"))f=true;else if(flag.equals("lava"))l=true;else if(flag.equals("void"))v=true;
@@ -172,8 +179,8 @@ final class KillFeedRules {
             end=tokens.end();
         }
         regex.append(Pattern.quote(template.substring(end)));
-        // The line may end in punctuation in any script, and PGM appends its own "(predicted)".
-        return regex.append("(?:[.!?\\u3002\\uff01\\uff1f])?(?:\\s*\\([^\\r\\n)]{0,40}\\))?$").toString();
+        // The line may end in punctuation in any script, trail a space, and PGM appends its own "(predicted)".
+        return regex.append("\\s*(?:[.!?\\u3002\\uff01\\uff1f])?(?:\\s*\\([^\\r\\n)]{0,40}\\))?$").toString();
     }
     private static final List<Rule> RULES=new ArrayList<>();
     static {
@@ -197,12 +204,16 @@ final class KillFeedRules {
             "blew up","was blown up by TNT","was blown up by a {m}","tried to hug a creeper",
             "went up in flames","was burnt to a crisp by a flaming {w}","was burnt to a crisp by Lava",
             "was squashed to death","was squashed by a falling {w}","suffocated","tried to hug a cactus",
+            "was burnt to a crisp by {m}",
             "went splat","hit the ground too hard","fell off a high place","went splat from {d} blocks up",
             "hit the ground from {d} blocks up","fell {d} blocks and died","forgot how to fly","just learned about gravity",
             "tripped and fell","fell out of a {d} block orbit","fell into lava","fell out of the world"
         })add(text);
         for(String where:new String[]{"off a high place","into lava","out of the world"}){
             for(String verb:new String[]{"punched","spleefed"})add("was "+verb+" "+where+" by {k}");
+            // PGM writes a block or entity there when nothing owns the spleef, so the same words
+            // with a {m} catch "was spleefed off a high place by Iron Sword".
+            for(String verb:new String[]{"punched","spleefed"})add("was "+verb+" "+where+" by {m}");
             add("was knocked "+where+" by {k}'s {w}");add("was knocked "+where+" by a {m}");
             for(String verb:new String[]{"shot","sniped"}){
                 add("was "+verb+" "+where+" by {k} from {d} blocks");

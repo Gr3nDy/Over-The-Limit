@@ -215,6 +215,31 @@ public class KillFeedRulesTest {
         }
         assertEquals(KillFeedRules.Cause.MAGIC,KillFeedRules.parse("Alex was killed by magic").cause);
     }
+    /**
+     * PGM's plain player-death wording names no weapon. The cause is still a player, so the feed
+     * must not fall through to its unknown-cause icon (a bone) for the most common kill line there is.
+     */
+    @Test public void aPlayerKillWithNoWeaponStillHasACause(){
+        for(String line:new String[]{"Alex was killed by Bob","Alex was suffocated by Bob","Alex was killed by Bob's Iron Sword block","Alex was killed by Bob's Zombie"}){
+            KillFeedRules.Death d=KillFeedRules.parse(line);
+            assertNotNull(line,d);
+            assertEquals(line,KillFeedRules.Cause.MELEE,d.cause);
+        }
+        // A world kill with no named actor has no cause to read, and stays unknown.
+        assertEquals(KillFeedRules.Cause.DEATH,KillFeedRules.parse("Alex was killed by a Iron Sword").cause);
+        // The spleef and fire lines that name a block instead of a player used to be dropped entirely.
+        KillFeedRules.Death spleef=KillFeedRules.parse("Alex was spleefed off a high place by Iron Sword");
+        assertNotNull("A spleef with no player owner was dropped",spleef);
+        assertEquals(KillFeedRules.Cause.FALL,spleef.cause);assertTrue(spleef.fall);
+        assertNotNull("A fire death naming a block was dropped",KillFeedRules.parse("Alex was burnt to a crisp by Iron Sword"));
+        // PGM keys a weaponless player kill as plain "death" in every language, so those lines drew
+        // a bone too. A translated template that names the killer is a player kill.
+        KillFeedRules.Death german=KillFeedRules.parse("Alex wurde von Bob get\u00f6tet","de_DE");
+        assertNotNull(german);
+        assertEquals(KillFeedRules.Cause.MELEE,german.cause);
+        KillFeedRules.Death world=KillFeedRules.parse("Alex wurde von einem Block get\u00f6tet","de_DE");
+        if(world!=null)assertNotEquals("A block death has no attacker to show",KillFeedRules.Cause.MELEE,world.cause);
+    }
     @Test public void explosionSpleefAndMeleeKnockback(){
         for(String zone:new String[]{"off a high place","into lava","out of the world"}){
             assertEquals("Alex",KillFeedRules.parse("Bob was knocked "+zone+" by Alex's Stone Sword").killer);

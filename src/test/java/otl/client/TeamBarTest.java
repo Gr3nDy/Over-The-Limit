@@ -5,14 +5,14 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class TeamBarTest {
-    /** Rounded heads trim the four corners of the eight-by-eight face and keep the middle. */
+    /** Rounded heads clip the single corner texel of the eight-by-eight face and keep the rest. */
     @Test public void roundedHeadsKeepTheFaceAndDropItsCorners(){
         for(int col=0;col<8;col++)for(int row=0;row<8;row++){
             boolean inside=TeamBar.roundedTexel(col,row);
-            boolean corner=(col<2||col>5)&&(row<2||row>5);
+            boolean corner=(col==0||col==7)&&(row==0||row==7);
             if(corner)assertFalse("Corner texel "+col+","+row+" was kept",inside);
-            // The centre four-by-four must survive, or the face would be hollowed out.
-            if(col>=2&&col<=5&&row>=2&&row<=5)assertTrue("Centre texel "+col+","+row+" was dropped",inside);
+            // Only the four corner texels go: the rest of the face is untouched.
+            else assertTrue("Texel "+col+","+row+" was dropped",inside);
         }
         // Symmetric in both axes, so the head does not look lopsided.
         for(int col=0;col<8;col++)for(int row=0;row<8;row++){

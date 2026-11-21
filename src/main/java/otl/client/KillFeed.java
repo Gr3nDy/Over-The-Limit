@@ -214,7 +214,9 @@ final class KillFeed {
                 mc.fontRendererObj.drawStringWithShadow(text.assist,meX,y+6,textColor);
             }
             int iconX=x+5+actorWidth+(text.actorHead?HEAD_ADVANCE:0)+(suicide?0:4);
-            if(suicide)skull(iconX,y+2,fade);
+            // A skull is for a death with no readable cause. A fall, lava, cactus or drown death has
+            // one even though nobody else was involved, so it keeps its own icon.
+            if(suicide&&death.cause==KillFeedRules.Cause.DEATH)skull(iconX,y+2,fade);
             else if(death.cause==KillFeedRules.Cause.MELEE&&death.weapon==null){
                 Gui.drawRect(iconX+3,y+5,iconX+13,y+15,KillFeedRules.faded(0xFFB98662,fade));
                 Gui.drawRect(iconX+1,y+8,iconX+5,y+12,KillFeedRules.faded(0xFFDBAD87,fade));
