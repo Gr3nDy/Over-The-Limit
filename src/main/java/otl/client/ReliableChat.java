@@ -319,14 +319,30 @@ public final class ReliableChat {
             for(Session s:sessions.values())s.trimPrivate();
         }
         if(mc.currentScreen instanceof ReliableChatScreen&&!active())mc.displayGuiScreen(new GuiChat(((ReliableChatScreen)mc.currentScreen).text()));
+        // Belt and braces for launchers that paint the chat outside the Chat event.
+        if(active()&&!onAll())hideClientLines();else restoreClientLines();
+    }
+    /** A filtered tab is drawn by us; the client's own chat must not paint All behind it. */
+    private static boolean clientLinesHidden;
+    private static void hideClientLines(){
+        GuiNewChat client=clientChat();if(client==null)return;
+        List<ChatLine> drawn=ReflectionHelper.getPrivateValue(GuiNewChat.class,client,"drawnChatLines","field_146253_i");
+        if(!drawn.isEmpty())drawn.clear();
+        clientLinesHidden=true;
+    }
+    /** Back on All, the client's own display list is rebuilt from the history we never touched. */
+    private static void restoreClientLines(){
+        if(!clientLinesHidden)return;clientLinesHidden=false;
+        GuiNewChat client=clientChat();if(client!=null)client.refreshChat();
     }
     /**
      * The All tab is the client's own chat, drawn by the client. A filtered tab replaces just that
      * draw: the chat object and the message stream stay the client's, so other chat mods keep working.
      */
     @SubscribeEvent(priority=EventPriority.LOWEST) public void chatLayer(RenderGameOverlayEvent.Chat e){
-        if(!active()||onAll())return;
+        if(!active()||onAll()){restoreClientLines();return;}
         e.setCanceled(true);
+        hideClientLines();
         GlStateManager.pushMatrix();
         try{GlStateManager.translate(e.posX,e.posY,0);((QuietChat)currentView().hud).drawAt(System.nanoTime());}
         finally{GlStateManager.popMatrix();GlStateManager.color(1,1,1,1);}

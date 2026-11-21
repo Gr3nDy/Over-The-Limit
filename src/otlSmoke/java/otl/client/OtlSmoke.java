@@ -62,7 +62,8 @@ public final class OtlSmoke {
     void line(IChatComponent text){
         net.minecraftforge.client.event.ClientChatReceivedEvent event=new net.minecraftforge.client.event.ClientChatReceivedEvent((byte)1,text);
         MinecraftForge.EVENT_BUS.post(event);
-        if(!event.isCanceled()&&mc.ingameGUI!=null)mc.ingameGUI.getChatGUI().printChatMessage(event.message);
+        net.minecraft.client.Minecraft game=MinecraftAccess.get();
+        if(!event.isCanceled()&&game.ingameGUI!=null)game.ingameGUI.getChatGUI().printChatMessage(event.message);
     }
     /** A chat line already cancelled by Reliable Chat, as it reaches the client in-game. */
     void cancelledLine(String text){
@@ -366,7 +367,7 @@ public final class OtlSmoke {
         s.mouseClicked(box[0]+8,box[1]+box[3]-12,0);
     }
     /** All is the client's own chat object; every other tab is one of our own buffers. */
-    List<ChatLine> chatHistory(String key){return ReflectionHelper.getPrivateValue(GuiNewChat.class,ChatRules.ALL.equals(key)?mc.ingameGUI.getChatGUI():ReliableChat.session().views.get(key).hud,"chatLines","field_146252_h");}
+    List<ChatLine> chatHistory(String key){return ReflectionHelper.getPrivateValue(GuiNewChat.class,ChatRules.ALL.equals(key)?MinecraftAccess.get().ingameGUI.getChatGUI():ReliableChat.session().views.get(key).hud,"chatLines","field_146252_h");}
     final java.util.concurrent.CountDownLatch metadataBlocked=new java.util.concurrent.CountDownLatch(1),releaseMetadata=new java.util.concurrent.CountDownLatch(1);
     String hoverQuery(){return remoteEnabled?"Hallows":"Allure";}
     void openGoldChat(){
@@ -756,6 +757,7 @@ public final class OtlSmoke {
             case "chatui":state=43;scopeEnd=44;mc.displayGuiScreen(new HudEditor());ReliableChat.session();return;
             case "killconfirm":state=45;scopeEnd=51;UtilitySettings.killConfirm=false;mc.displayGuiScreen(new HudEditor());ReliableChat.session();return;
             case "tabs":state=52;scopeEnd=54;prepareTabs(mc);return;
+            case "chatopen":state=155;scopeEnd=158;return;
             case "bow":state=55;scopeEnd=58;return;
             case "accuracy":state=56;scopeEnd=58;return;
             case "minimap":state=59;scopeEnd=63;return;
@@ -850,10 +852,13 @@ public final class OtlSmoke {
             }else if(state==3){
                 require(count("/t")==0&&count("/g")==0&&count("/party chat")==0,"Tab/map sent bare command: "+packets);
                 require(packets.containsAll(Arrays.asList("/t team message","global message","/party chat party message","/msg Alice hello","/r reply")),"Missing routed sends: "+packets);
-                ReliableChat.session().clear("party");ReliableChat.session().clear("all");ReliableChat.session().select("team");ReliableChat.noteSend(null);
+                ReliableChat.session().clear("party");ReliableChat.session().select("team");ReliableChat.noteSend(null);
+                // All is the client's own chat now, so it starts from whatever the client already
+                // holds: empty it too, or "one line" cannot mean anything.
+                mc.ingameGUI.getChatGUI().clearChatMessages();
                 line("\u00a7cYou are not in a party.");
                 List<ChatLine> partyHistory=ReflectionHelper.getPrivateValue(GuiNewChat.class,ReliableChat.session().views.get("party").hud,"chatLines","field_146252_h");
-                List<ChatLine> allHistory=ReflectionHelper.getPrivateValue(GuiNewChat.class,ReliableChat.session().views.get("all").hud,"chatLines","field_146252_h");
+                List<ChatLine> allHistory=chatHistory("all");
                 require(partyHistory.size()==1&&allHistory.size()==1&&ReliableChat.session().selected.equals("team"),"Party error missing, duplicated, or stole focus without recent send");
                 line("Alex: You are not in a party.");require(partyHistory.size()==1,"Player quote copied as party warning");
                 line("Overcast Community\nview our /servers or click the beacon");require(!ReliableChat.fullChat()&&ReliableChat.tabKeys().size()==1,"Return to lobby");line("Welcome to Overcast Community!");
@@ -3748,6 +3753,8 @@ public final class OtlSmoke {
                 UtilitySettings.pgmSettings.clear();UtilitySettings.save();
             }else if(state==128){
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-pgm-settings.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+            }else if(state>=155&&state<=158){
+                checks.chatDoubling(mc,state);
             }
             if(state==scopeEnd){
                 if(!scope.equals("all"))System.out.println("OTL_SMOKE: PASS - "+scope);

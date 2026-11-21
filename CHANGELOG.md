@@ -19,6 +19,7 @@
 ### Fixed
 - **FFA objectives** - on a free-for-all map every player is their own team, so a control point or a flag had no side of its own and was dropped: Item Sumo showed the score with no point beside it. Those objectives now sit in the middle, under the clock and above the player grid.
 - **Team Bar with heads hidden** - the team name and its objectives hung below an empty head row. With heads off there is no row to fill, so the name now sits level with the clock and everything under it moves up with it.
+- **Chat looked doubled on Team and Party** - the client's own chat kept its lines and painted them behind the filtered tab, so the All tab showed through. A filtered tab now blanks the client's own display list and All rebuilds it from history, which the mod never touches.
 
 ## v0.7.1 - Nov 20 2026
 

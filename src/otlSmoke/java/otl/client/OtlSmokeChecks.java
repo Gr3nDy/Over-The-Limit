@@ -76,6 +76,35 @@ final class OtlSmokeChecks {
     }
 
     /**
+     * A filtered tab must be the only chat on screen. The All tab is the client's own chat object,
+     * so if that object still holds its lines the client paints them behind the filtered tab and
+     * the chat reads as doubled.
+     */
+    void chatDoubling(Minecraft mc,int state){
+        if(state==155){
+            UtilitySettings.chat=true;UtilitySettings.showTabChat=true;
+            smoke.line("Created by MapMaker");
+            smoke.line("\u00a79(Blue Team) Alex: team hello");
+            smoke.line("Bob: global hello");
+            mc.displayGuiScreen(new net.minecraft.client.gui.GuiChat());
+            require(mc.currentScreen instanceof ReliableChatScreen,"The chat screen was not replaced");
+            ((ReliableChatScreen)mc.currentScreen).select("team");
+            require(ReliableChat.session().selected.equals("team"),"The Team tab was not selected");
+            require(ReliableChat.session().views.get("team").totalLines()>0,"The team line never reached the Team tab");
+        }else if(state==156){
+            net.minecraft.util.ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-chat-team-open.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+            require(clientLines(mc).isEmpty(),"The client's own chat still paints All behind the Team tab");
+            ((ReliableChatScreen)mc.currentScreen).select("all");
+        }else if(state==157){
+            net.minecraft.util.ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-chat-all-open.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+            require(!clientLines(mc).isEmpty(),"Switching back to All did not restore the client's own chat");
+        }
+    }
+    private java.util.List<?> clientLines(Minecraft mc){
+        return ReflectionHelper.getPrivateValue(net.minecraft.client.gui.GuiNewChat.class,mc.ingameGUI.getChatGUI(),"drawnChatLines","field_146253_i");
+    }
+
+    /**
      * The end-of-match sound, through Forge's own event object and the real handlers. On a client
      * whose chat PGM translates, this sound is the only end signal left, so it is checked with the
      * English lines out of the picture: no chat line is sent here, only the sound.
