@@ -344,19 +344,23 @@ public final class ReliableChat {
      */
     @SubscribeEvent(priority=EventPriority.LOWEST) public void chatLayer(RenderGameOverlayEvent.Chat e){
         if(!active()||onAll()){restoreClientLines();return;}
+        drawFiltered(e.posX,e.posY);
+    }
+    private static void drawFiltered(int x,int y){
         hideClientLines();
         GlStateManager.pushMatrix();
-        try{GlStateManager.translate(e.posX,e.posY,0);((QuietChat)currentView().hud).drawAt(System.nanoTime());}
+        try{GlStateManager.translate(x,y,0);((QuietChat)currentView().hud).drawAt(System.nanoTime());}
         finally{GlStateManager.popMatrix();GlStateManager.color(1,1,1,1);}
-        tabs();
     }
     /** Draw the channel strip as a real HUD overlay; GuiNewChat is not rendered on every launcher. */
     @SubscribeEvent public void overlay(RenderGameOverlayEvent.Post e){
-        // HOTBAR is emitted reliably by vanilla and Lunar, unlike the aggregate ALL event.
-        // CHAT is posted after the chat lines, keeping the strip visible instead of
-        // letting the chat renderer paint over it.
-        if(e.type!=RenderGameOverlayEvent.ElementType.CHAT||!active()||!onAll())return;
-        tabs();
+        if(!HudStage.due(e)||!active())return;
+        if(onAll()){tabs();return;}
+        // Another mod cancelling the chat stage skips the draw above too, so the tab lands here.
+        if(e.type==RenderGameOverlayEvent.ElementType.ALL){
+            drawFiltered(0,new ScaledResolution(MinecraftAccess.get()).getScaledHeight()-48);
+            tabs();
+        }
     }
     private static void tabs(){
         Minecraft mc=MinecraftAccess.get();

@@ -69,7 +69,7 @@ public final class KillConfirm {
     @SubscribeEvent public void unload(WorldEvent.Unload event){if(event.world.isRemote){state.clear();wasDead=false;lastHealth=Float.MAX_VALUE;respawnPosition.clear();}}
     @SubscribeEvent public void overlay(RenderGameOverlayEvent.Post event){
         Minecraft mc=MinecraftAccess.get();
-        if(event.type==RenderGameOverlayEvent.ElementType.CHAT&&active()&&mc.thePlayer!=null&&!(mc.currentScreen instanceof HudEditor)&&!mc.gameSettings.hideGUI)draw(false);
+        if(HudStage.due(event)&&active()&&mc.thePlayer!=null&&!(mc.currentScreen instanceof HudEditor)&&!mc.gameSettings.hideGUI)draw(false);
     }
     static void draw(boolean editing){
         Minecraft mc=MinecraftAccess.get();if(!editing&&state.reward==null&&state.recapAt==0)return;

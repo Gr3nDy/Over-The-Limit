@@ -757,7 +757,7 @@ public final class OtlSmoke {
             case "chatui":state=43;scopeEnd=44;mc.displayGuiScreen(new HudEditor());ReliableChat.session();return;
             case "killconfirm":state=45;scopeEnd=51;UtilitySettings.killConfirm=false;mc.displayGuiScreen(new HudEditor());ReliableChat.session();return;
             case "tabs":state=52;scopeEnd=54;prepareTabs(mc);return;
-            case "chatopen":state=155;scopeEnd=158;return;
+            case "chatopen":state=155;scopeEnd=163;return;
             case "bow":state=55;scopeEnd=58;return;
             case "accuracy":state=56;scopeEnd=58;return;
             case "minimap":state=59;scopeEnd=63;return;
@@ -3755,6 +3755,10 @@ public final class OtlSmoke {
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-pgm-settings.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
             }else if(state>=155&&state<=158){
                 checks.chatDoubling(mc,state);
+            }else if(state>=159&&state<=160){
+                checks.killFeedWithFilteredTab(mc,state);
+            }else if(state>=161&&state<=163){
+                checks.hudSurvivesACancelledChatStage(mc,state);
             }
             if(state==scopeEnd){
                 if(!scope.equals("all"))System.out.println("OTL_SMOKE: PASS - "+scope);

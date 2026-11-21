@@ -129,7 +129,7 @@ final class Regions {
     }
 
     @SubscribeEvent public void overlay(RenderGameOverlayEvent.Post event){
-        if(event.type!=RenderGameOverlayEvent.ElementType.CHAT)return;
+        if(!HudStage.due(event))return;
         UtilitySettings.load();
         Minecraft mc=MinecraftAccess.get();
         if(!UtilitySettings.regionHud||mc.thePlayer==null||mc.gameSettings.hideGUI)return;

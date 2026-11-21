@@ -68,7 +68,8 @@ final class KillFeed {
     static void clearHeads(){heads.clear();headSkins.clear();}
     @SubscribeEvent public void overlay(RenderGameOverlayEvent.Post event){
         if(System.nanoTime()-namesAt>250_000_000L)refreshNames();
-        if(event.type==RenderGameOverlayEvent.ElementType.CHAT&&!(MinecraftAccess.get().currentScreen instanceof GuiChat)&&!(MinecraftAccess.get().currentScreen instanceof HudEditor))draw(-1,-1,false);
+        if(!HudStage.due(event))return;
+        if(!(MinecraftAccess.get().currentScreen instanceof GuiChat)&&!(MinecraftAccess.get().currentScreen instanceof HudEditor))draw(-1,-1,false);
     }
     @SubscribeEvent public void screen(GuiScreenEvent.DrawScreenEvent.Post event){
         if(event.gui instanceof GuiChat)draw(event.mouseX,event.mouseY,true);

@@ -257,7 +257,7 @@ final class Minimap {
     }
     @SubscribeEvent public void overlay(RenderGameOverlayEvent.Post event){
         Minecraft mc=MinecraftAccess.get();
-        if(event.type==RenderGameOverlayEvent.ElementType.CHAT&&active()&&mc.thePlayer!=null&&!mc.gameSettings.hideGUI&&!(mc.currentScreen instanceof HudEditor))draw(false,event.partialTicks);
+        if(HudStage.due(event)&&active()&&mc.thePlayer!=null&&!mc.gameSettings.hideGUI&&!(mc.currentScreen instanceof HudEditor))draw(false,event.partialTicks);
     }
     static void drawPreview(){INSTANCE.draw(true,1);}
     private void draw(boolean preview,float partial){

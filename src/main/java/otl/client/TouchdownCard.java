@@ -228,7 +228,7 @@ final class TouchdownCard {
         if(current==null&&!queue.isEmpty()){current=queue.removeFirst();started=now;}
     }
     @SubscribeEvent public void overlay(RenderGameOverlayEvent.Post event){
-        if(event.type!=RenderGameOverlayEvent.ElementType.CHAT)return;
+        if(!HudStage.due(event))return;
         Minecraft mc=MinecraftAccess.get();
         if(current==null||!UtilitySettings.touchdown||!UtilitySettings.touchdownCard||!Touchdown.active()||mc.thePlayer==null||mc.theWorld==null||mc.gameSettings.hideGUI||mc.currentScreen instanceof HudEditor)return;
         draw(current,(System.nanoTime()-started)/1_000_000_000F,false);

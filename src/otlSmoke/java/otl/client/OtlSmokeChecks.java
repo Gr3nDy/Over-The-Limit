@@ -114,8 +114,67 @@ final class OtlSmokeChecks {
             require(!clientLines(mc).isEmpty(),"Switching back to All did not restore the client's own chat");
         }
     }
+
+    /**
+     * A death line must still reach the kill feed while a filtered chat tab is on screen. The feed
+     * draws on the frame's own chat stage, which an earlier chat fix skipped entirely.
+     */
+    void killFeedWithFilteredTab(Minecraft mc,int state){
+        if(state==159){
+            UtilitySettings.chat=true;UtilitySettings.killFeed=true;
+            UtilitySettings.killFeedFilter=KillFeedRules.FilterMode.ALL;UtilitySettings.showTabChat=true;
+            mc.displayGuiScreen(new net.minecraft.client.gui.GuiChat());
+            ((ReliableChatScreen)mc.currentScreen).select("team");
+            require(ReliableChat.session().selected.equals("team"),"The Team tab was not selected");
+            KillFeed.history.clear();
+            smoke.line("\u00a7cAlex\u00a7r was slain by \u00a7cSteve\u00a7r's Iron Sword");
+        }else if(state==160){
+            require(!KillFeed.history.entries.isEmpty(),"A death line never reached the kill feed with the Team tab on");
+            KillFeedRules.Death death=KillFeed.history.entries.get(0);
+            require("Alex".equals(death.victim)&&"Steve".equals(death.killer),"The death was read wrong: "+death.victim+" / "+death.killer);
+            // The feed draws from the frame's chat stage: post the real event and check it is not cancelled.
+            net.minecraftforge.client.event.RenderGameOverlayEvent frame=
+                new net.minecraftforge.client.event.RenderGameOverlayEvent(0F,new net.minecraft.client.gui.ScaledResolution(mc));
+            net.minecraftforge.client.event.RenderGameOverlayEvent.Chat chat=
+                new net.minecraftforge.client.event.RenderGameOverlayEvent.Chat(frame,0,mc.currentScreen.height-48);
+            net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(chat);
+            require(!chat.isCanceled(),"The chat stage was cancelled, so the kill feed could not draw");
+        }
+    }
     private java.util.List<?> clientLines(Minecraft mc){
         return ReflectionHelper.getPrivateValue(net.minecraft.client.gui.GuiNewChat.class,mc.ingameGUI.getChatGUI(),"drawnChatLines","field_146253_i");
+    }
+
+    /** Stands in for the mod that was cancelling the chat stage on the user's client. */
+    static final class ChatCanceller{
+        @net.minecraftforge.fml.common.eventhandler.SubscribeEvent
+        public void cancel(net.minecraftforge.client.event.RenderGameOverlayEvent.Chat event){event.setCanceled(true);}
+    }
+    private ChatCanceller canceller;
+    private long fallbacksBefore;
+
+    /**
+     * Another mod cancelling the chat stage skips post(CHAT), and every HUD widget used to draw
+     * there: the bar and the feed kept running with nothing on screen. The end of the frame has to
+     * take over, so this registers a canceller and checks the HUD keeps drawing.
+     */
+    void hudSurvivesACancelledChatStage(Minecraft mc,int state){
+        if(state==161){
+            UtilitySettings.chat=true;UtilitySettings.killFeed=true;
+            UtilitySettings.killFeedFilter=KillFeedRules.FilterMode.ALL;
+            if(mc.currentScreen!=null)mc.displayGuiScreen(null);
+            KillFeed.history.clear();
+            smoke.line("\u00a7cAlex\u00a7r was slain by \u00a7cSteve\u00a7r's Iron Sword");
+            fallbacksBefore=HudStage.fallbacks;
+            canceller=new ChatCanceller();
+            net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(canceller);
+        }else if(state==162){
+            require(HudStage.fallbacks>fallbacksBefore,"The HUD stopped drawing when the chat stage was cancelled");
+            require(!KillFeed.history.entries.isEmpty(),"The death line never reached the feed");
+        }else if(state==163){
+            net.minecraft.util.ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-hud-chat-cancelled.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+            net.minecraftforge.common.MinecraftForge.EVENT_BUS.unregister(canceller);canceller=null;
+        }
     }
 
     /**

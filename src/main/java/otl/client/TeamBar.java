@@ -1446,7 +1446,7 @@ final class TeamBar {
     }
 
     @SubscribeEvent public void overlay(RenderGameOverlayEvent.Post event){
-        if(event.type!=RenderGameOverlayEvent.ElementType.CHAT)return;
+        if(!HudStage.due(event))return;
         UtilitySettings.load();
         Minecraft mc=MinecraftAccess.get();
         if(!UtilitySettings.teamBar||mc.thePlayer==null||mc.theWorld==null||mc.gameSettings.hideGUI)return;

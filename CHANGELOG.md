@@ -21,6 +21,7 @@
 - **Team Bar with heads hidden** - the team name and its objectives hung below an empty head row. With heads off there is no row to fill, so the name now sits level with the clock and everything under it moves up with it.
 - **Chat looked doubled on Team and Party** - the client's own chat kept its lines and painted them behind the filtered tab, so the All tab showed through. A filtered tab now blanks the client's own display list and All rebuilds it from history, which the mod never touches.
 - **Team Bar disappeared with Team or Party selected** - hiding the doubled chat cancelled Forge's chat event, and that also skipped the frame's own chat stage, which is where the bar is drawn. The bar kept running behind the scenes but never appeared. The event is no longer cancelled; the client's own lines are blanked instead, so the bar and the channel strip stay on screen.
+- **The whole HUD could vanish with it** - the Team Bar, kill feed, minimap, bow accuracy, kill confirm, region borders, touchdown card and channel strip all drew on that same chat stage, so anything that cancelled it took every one of them at once, while their clocks and tracking kept running. They now draw on the hotbar stage whenever the chat stage has not been seen for a frame, so a chat mod cannot hide the HUD again.
 
 ## v0.7.1 - Nov 20 2026
 

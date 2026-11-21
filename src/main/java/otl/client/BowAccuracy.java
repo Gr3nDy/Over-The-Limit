@@ -195,7 +195,7 @@ public final class BowAccuracy {
     static void drawPreview(){INSTANCE.draw(true);}
     @SubscribeEvent public void overlay(RenderGameOverlayEvent.Post event){
         Minecraft mc=MinecraftAccess.get();
-        if(event.type!=RenderGameOverlayEvent.ElementType.CHAT||!observing()||mc.thePlayer==null||mc.currentScreen instanceof HudEditor||mc.gameSettings.hideGUI)return;
+        if(!HudStage.due(event)||!observing()||mc.thePlayer==null||mc.currentScreen instanceof HudEditor||mc.gameSettings.hideGUI)return;
         if(UtilitySettings.bowAccuracy)draw(false);
         if(UtilitySettings.bowHitMarker&&mc.gameSettings.thirdPersonView==0)drawMarker(event.resolution.getScaledWidth()/2F,event.resolution.getScaledHeight()/2F);
     }
