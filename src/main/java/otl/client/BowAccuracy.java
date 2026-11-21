@@ -166,7 +166,7 @@ public final class BowAccuracy {
         if(event.type==2||!observing())return;
         sync();String text=event.message.getFormattedText();notice(text);
         if((UtilitySettings.bowHitMarker||UtilitySettings.bowKillSound)&&!stats.ended&&MinecraftAccess.get().thePlayer!=null){
-            KillFeedRules.Death death=KillFeedRules.parse(text);
+            KillFeedRules.Death death=KillFeedRules.parse(text,KillFeedRules.clientLocale());
             if(death!=null&&death.ownKill(MinecraftAccess.get().thePlayer.getName())&&!death.suicide()&&KillConfirmRules.isBow(death)){
                 if(UtilitySettings.bowHitMarker)feedback.kill(System.nanoTime());
                 if(UtilitySettings.bowKillSound)MinecraftAccess.get().getSoundHandler().playSound(PositionedSoundRecord.create(new net.minecraft.util.ResourceLocation("note.pling"),1.4F));

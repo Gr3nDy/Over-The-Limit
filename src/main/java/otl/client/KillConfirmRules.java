@@ -175,7 +175,7 @@ final class KillConfirmRules {
             if(text!=null&&MATCH_START.matcher(ChatRules.plain(text).trim()).matches()){matchStartSeen=true;firstKillTaken=false;return;}
             while(!pendingTags.isEmpty()&&now-pendingTags.peekFirst().time>PAIR_NANOS)pendingTags.removeFirst();
             while(!pendingRewards.isEmpty()&&now-pendingRewards.peekFirst().time>PAIR_NANOS)pendingRewards.removeFirst();
-            KillFeedRules.Death death=KillFeedRules.parse(text);
+            KillFeedRules.Death death=KillFeedRules.parse(text,KillFeedRules.clientLocale());
             if(death!=null){
                 if(death.victim.equalsIgnoreCase(local)){
                     if(!death.suicide()&&death.killer!=null){

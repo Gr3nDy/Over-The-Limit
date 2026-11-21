@@ -45,6 +45,14 @@ final class KillFeedRules {
                 template.contains("breathe")?Cause.DROWN:template.contains("cactus")?Cause.CACTUS:
                 template.contains("squash")?Cause.ANVIL:fall?Cause.FALL:Cause.DEATH;
         }
+        /** A death matched against PGM's own wording for the client's language. */
+        Death(String original,Matcher m,Rule rule){
+            this.original=original;victim=m.group("v");killer=group(m,"k");weapon=group(m,"w");
+            distance=group(m,"d");mob=group(m,"m");
+            victimLabel=colored(original,m.start("v"),victim);
+            killerLabel=killer==null?(mob==null?"\u00a77World":mob):colored(original,m.start("k"),killer);
+            cause=rule.cause;voidFall=rule.voidFall;lava=rule.lava;fall=rule.fall;
+        }
         /** A death recognised only by the two names in it, for a locale with no English template. */
         Death(String original,String victim,int victimAt,String killer,int killerAt){
             this.original=original;this.victim=victim;this.killer=killer;
@@ -121,8 +129,13 @@ final class KillFeedRules {
     }
     private static final class Rule {
         final String template;final Pattern pattern;
+        /** Set only for a translated template, where the key says what killed the player. */
+        final Cause cause;final boolean lava,voidFall,fall;
+        /** Fixed text length and whether the line names a player, used to rank overlapping templates. */
+        final int literal;final boolean named;
         Rule(String template){
-            this.template=template;StringBuilder regex=new StringBuilder("^");
+            this.template=template;cause=null;lava=false;voidFall=false;fall=false;literal=0;named=false;
+            StringBuilder regex=new StringBuilder("^");
             Matcher tokens=Pattern.compile("\\{([vkwdm])\\}").matcher(template);int end=0;
             while(tokens.find()){
                 regex.append(Pattern.quote(template.substring(end,tokens.start())));
@@ -133,6 +146,34 @@ final class KillFeedRules {
             regex.append(Pattern.quote(template.substring(end))).append("(?:[.!])?(?: \\(predicted\\))?$");
             pattern=Pattern.compile(regex.toString());
         }
+        /** A template as PGM writes it in the client's own language: {0} victim, {1} killer, {2} item, {3} mob, {4} distance. */
+        Rule(String spec,String template){
+            int colon=spec.indexOf(':');
+            cause=Cause.valueOf(colon<0?spec:spec.substring(0,colon));
+            boolean f=false,l=false,v=false;
+            if(colon>=0)for(String flag:spec.substring(colon+1).split("\\+")){
+                if(flag.equals("fall"))f=true;else if(flag.equals("lava"))l=true;else if(flag.equals("void"))v=true;
+            }
+            this.template=template;lava=l;voidFall=v;fall=f;
+            pattern=Pattern.compile(numbered(template));
+            literal=template.replaceAll("\\{[0-4]\\}","").length();
+            named=template.contains("{1}");
+        }
+    }
+    private static String numbered(String template){
+        template=template.replace("''","'");
+        StringBuilder regex=new StringBuilder("^");
+        Matcher tokens=Pattern.compile("\\{([0-4])\\}").matcher(template);int end=0;
+        while(tokens.find()){
+            regex.append(Pattern.quote(template.substring(end,tokens.start())));
+            String key=tokens.group(1);
+            regex.append("(?<").append("vkwmd".charAt(key.charAt(0)-'0')).append(">")
+                .append(key.equals("0")||key.equals("1")?"[A-Za-z0-9_]{1,16}":key.equals("4")?"[0-9]{1,6}(?:[,.][0-9]{1,3})?":key.equals("3")?"[^\\r\\n]{1,48}?":"[^\\r\\n]{1,80}?").append(")");
+            end=tokens.end();
+        }
+        regex.append(Pattern.quote(template.substring(end)));
+        // The line may end in punctuation in any script, and PGM appends its own "(predicted)".
+        return regex.append("(?:[.!?\\u3002\\uff01\\uff1f])?(?:\\s*\\([^\\r\\n)]{0,40}\\))?$").toString();
     }
     private static final List<Rule> RULES=new ArrayList<>();
     static {
@@ -189,7 +230,77 @@ final class KillFeedRules {
     static int panelColor(boolean hovered,int opacity,float fade){return faded(hovered?0xEE202020:0xCC000000,Math.max(0,Math.min(100,opacity))/100F*fade);}
     static float slideOffset(long age,boolean enabled){float t=Math.max(0,Math.min(1,age/200000000F));return enabled?-22*(1-t)*(1-t)*(1-t):0;}
     static Death parse(String formatted){
-        return parse(formatted,null);
+        return parse(formatted,null,null);
+    }
+
+    /**
+     * PGM translates a death line into each player's own language, so the English templates above
+     * only fire for English clients. The same jar also carries those translations, so the exact
+     * wording per language is read from {@code death-messages.txt} and matched the same way, which
+     * keeps the cause of death instead of falling back to a plain skull.
+     */
+    static Death parse(String formatted,java.util.function.Predicate<String> known){
+        return parse(formatted,known,null);
+    }
+
+    /** For callers that only need the cause of a line the client itself rendered. */
+    static Death parse(String formatted,String locale){
+        return parse(formatted,null,locale);
+    }
+
+    static Death parse(String formatted,java.util.function.Predicate<String> known,String locale){
+        if(formatted==null||formatted.length()>1024)return null;
+        String plain=ChatRules.plain(formatted);
+        for(Rule rule:localeRules(locale)){Matcher m=rule.pattern.matcher(plain);if(m.matches())return new Death(formatted,m,rule);}
+        for(Rule rule:RULES){Matcher m=rule.pattern.matcher(plain);if(m.matches())return new Death(formatted,m,rule.template);}
+        return known==null?null:byNames(formatted,plain,known);
+    }
+
+    /** The client's own language code, which is the one PGM rendered the death message in. */
+    static String clientLocale(){
+        net.minecraft.client.Minecraft mc=MinecraftAccess.get();
+        return mc==null||mc.gameSettings==null?null:mc.gameSettings.language;
+    }
+
+    private static final Map<String,List<String>> RAW=new HashMap<>();
+    private static final Map<String,List<Rule>> LOADED=new HashMap<>();
+    private static boolean read;
+
+    private static List<Rule> localeRules(String locale){
+        if(locale==null||locale.isEmpty())return Collections.emptyList();
+        List<Rule> rules=LOADED.get(locale);
+        if(rules!=null)return rules;
+        if(!read)loadTemplates();
+        List<String> raw=RAW.get(locale);
+        if(raw==null){
+            int cut=locale.indexOf('_');
+            if(cut>0)raw=RAW.get(locale.substring(0,cut));
+        }
+        rules=new ArrayList<>();
+        if(raw!=null)for(String entry:raw){
+            int bar=entry.indexOf('|');
+            try{rules.add(new Rule(entry.substring(0,bar),entry.substring(bar+1)));}catch(RuntimeException skip){}
+        }
+        // Longer fixed text is more specific; a line naming a player beats one naming only an item.
+        rules.sort(Comparator.comparingInt((Rule r)->r.literal).reversed().thenComparingInt(r->r.named?0:1));
+        LOADED.put(locale,rules);
+        return rules;
+    }
+
+    private static void loadTemplates(){
+        read=true;
+        try(java.io.InputStream in=KillFeedRules.class.getResourceAsStream("/assets/otl/death-messages.txt")){
+            if(in==null)return;
+            java.io.BufferedReader reader=new java.io.BufferedReader(new java.io.InputStreamReader(in,java.nio.charset.StandardCharsets.UTF_8));
+            for(String line;(line=reader.readLine())!=null;){
+                if(line.isEmpty()||line.charAt(0)=='#')continue;
+                int bar=line.indexOf('|');
+                if(bar<1)continue;
+                RAW.computeIfAbsent(line.substring(0,bar),key->new ArrayList<>()).add(line.substring(bar+1));
+            }
+        }catch(Exception bad){
+            System.err.println("OTL: could not read translated death messages: "+bad.getMessage());
+        }
     }
 
     /**
@@ -206,13 +317,6 @@ final class KillFeedRules {
      * A victim on their own is not enough to go on - "Alex joined the game" has the same shape - so
      * a line with only one name is left alone rather than guessed at.
      */
-    static Death parse(String formatted,java.util.function.Predicate<String> known){
-        if(formatted==null||formatted.length()>1024)return null;
-        String plain=ChatRules.plain(formatted);
-        for(Rule rule:RULES){Matcher m=rule.pattern.matcher(plain);if(m.matches())return new Death(formatted,m,rule.template);}
-        return known==null?null:byNames(formatted,plain,known);
-    }
-
     private static Death byNames(String formatted,String plain,java.util.function.Predicate<String> known){
         String text=plain.trim();
         if(text.length()<3||text.length()>200)return null;

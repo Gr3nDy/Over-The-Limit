@@ -52,7 +52,7 @@ final class UpdateNotice {
         ChatComponentText link=new ChatComponentText("\u00a7b\u00a7lDownload");
         link.getChatStyle().setChatClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL,PAGE));
         link.getChatStyle().setChatHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,new ChatComponentText("\u00a77Open the releases page")));
-        mc.ingameGUI.getChatGUI().printChatMessage(line.appendSibling(link));
+        ReliableChat.say(line.appendSibling(link));
     }
 
     /** The release's tag, or null when the response is not a release this mod can read. */

@@ -234,7 +234,7 @@ final class MapPreview {
             waitingUntil=0;
             if(commandScreen==null){
                 pendingQuery=responseTitle;
-                if(pendingQuery==null)MinecraftAccess.get().ingameGUI.getChatGUI().printChatMessage(new net.minecraft.util.ChatComponentText("OTL: server did not identify the current map; use /map <name>."));
+                if(pendingQuery==null)ReliableChat.say(new net.minecraft.util.ChatComponentText("OTL: server did not identify the current map; use /map <name>."));
             }
         }
         if(pendingQuery!=null){

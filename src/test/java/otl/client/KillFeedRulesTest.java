@@ -234,4 +234,38 @@ public class KillFeedRulesTest {
         assertEquals(1000,history.entries.size());assertEquals("P1004",history.entries.get(0).victim);
         assertEquals("P5",history.entries.get(999).victim);history.clear();assertTrue(history.entries.isEmpty());
     }
+    @Test public void translatedDeathsKeepTheirCause(){
+        // Real PGM wording from death_ko_KR.properties and death_ru_RU.properties.
+        KillFeedRules.Death snipe=KillFeedRules.parse("Alex\uc774(\uac00) 12 \ube14\ub85d \ub5a8\uc5b4\uc9c4 \uacf3\uc5d0\uc11c Bob\uc5d0\uac8c \uc800\uaca9\ub2f9\ud588\uc2b5\ub2c8\ub2e4","ko_KR");
+        assertNotNull("A Korean death line was not recognised",snipe);
+        assertEquals("Alex",snipe.victim);
+        assertEquals("Bob",snipe.killer);
+        assertEquals(KillFeedRules.Cause.BOW,snipe.cause);
+        assertEquals("12",snipe.distance);
+        assertEquals(KillFeedRules.Cause.EXPLOSION,KillFeedRules.parse("Alex\uc774 Bob\uc758 \ud06c\ub9ac\ud37c\ub97c \uc548\uc73c\ub824\uace0 \ud588\uc2b5\ub2c8\ub2e4.","ko_KR").cause);
+        KillFeedRules.Death lava=KillFeedRules.parse("Alex\uc774(\uac00) \uc6a9\uc554\uc5d0 \ube60\uc84c\uc2b5\ub2c8\ub2e4","ko_KR");
+        assertEquals(KillFeedRules.Cause.FALL,lava.cause);
+        assertEquals(KillFeedRules.Context.LAVA,lava.context());
+        assertEquals(KillFeedRules.Cause.ANVIL,KillFeedRules.parse("Alex\uc774(\uac00) Bob\uc5d0\uac8c \uc9d3\ub20c\ub838\uc2b5\ub2c8\ub2e4","ko_KR").cause);
+        // Russian puts the victim first too, but every other word differs.
+        KillFeedRules.Death fists=KillFeedRules.parse("Alex \u043e\u0449\u0443\u0442\u0438\u043b \u044f\u0440\u043e\u0441\u0442\u044c \u043a\u0443\u043b\u0430\u043a\u043e\u0432 Bob","ru_RU");
+        assertEquals("Bob",fists.killer);
+        assertEquals(KillFeedRules.Cause.MELEE,fists.cause);
+        KillFeedRules.Death void_=KillFeedRules.parse("Alex \u0432\u044b\u043f\u0430\u043b \u0438\u0437 \u043c\u0438\u0440\u0430","ru_RU");
+        assertEquals(KillFeedRules.Cause.FALL,void_.cause);
+        assertEquals(KillFeedRules.Context.VOID,void_.context());
+        assertEquals(KillFeedRules.Cause.MAGIC,KillFeedRules.parse("Alex \u0431\u044b\u043b \u0443\u0431\u0438\u0442 \u043c\u0430\u0433\u0438\u0435\u0439 Bob","ru_RU").cause);
+        assertEquals(KillFeedRules.Cause.DROWN,KillFeedRules.parse("Alex \u0437\u0430\u0431\u044b\u043b, \u043a\u0430\u043a \u0434\u044b\u0448\u0430\u0442\u044c","ru_RU").cause);
+        // English keeps using the hand-written templates rather than the generated table.
+        assertEquals(KillFeedRules.Cause.BOW,KillFeedRules.parse("Alex was shot by Bob from 12 blocks","en_US").cause);
+        // A language with no table falls back to reading the names, and stays a plain death. Without
+        // a list of known accounts there is nothing to read, so nothing is claimed.
+        assertNull(KillFeedRules.parse("Alex \u0432\u044b\u043f\u0430\u043b \u0438\u0437 \u043c\u0438\u0440\u0430","tlh_AA"));
+        java.util.function.Predicate<String> players=known("Alex","Bob");
+        KillFeedRules.Death unknown=KillFeedRules.parse("Alex wurde durch Bob get\u00f6tet",players,"tlh_AA");
+        assertNotNull(unknown);
+        assertEquals("Alex",unknown.victim);
+        assertEquals("Bob",unknown.killer);
+        assertEquals(KillFeedRules.Cause.DEATH,unknown.cause);
+    }
 }

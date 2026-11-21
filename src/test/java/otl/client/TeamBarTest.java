@@ -236,4 +236,52 @@ public class TeamBarTest {
         assertNull(TeamBar.welcomeHeading("\u00a7fAlex: \u00a7mhi\u00a7m"));
         assertNull(TeamBar.welcomeHeading(null));
     }
+
+    /** A count replaces a team's heads with one cell, so every team still fits on the bar. */
+    @Test public void teamCountsTakeOneCellPerTeamAndKeepTheClockCentred(){
+        java.util.List<Objectives.Strip> none=java.util.Collections.emptyList();
+        java.util.List<String> left=java.util.Arrays.asList("A","B","C"),right=java.util.Arrays.asList("D","E");
+        TeamBar.Bar bar=new TeamBar.Bar(java.util.Collections.singletonList(left),
+            java.util.Collections.singletonList(right),0,24,null,"10:00",0,none,none,false,null,null,0,
+            java.util.Collections.singletonList("Red"),java.util.Collections.singletonList("Blue"),true,18);
+        assertTrue(bar.counts);
+        // One cell per team, whatever the team size, and the clock still on the exact centre.
+        assertEquals(18,bar.rowWidth(left));
+        assertEquals(18,bar.rowWidth(right));
+        assertEquals(bar.width/2,bar.textX+bar.textW/2);
+        // The number's row is one band tall and no head is drawn at all.
+        assertEquals(TeamBar.COUNT_BAND,bar.band);
+        assertEquals(0,bar.head);
+        // The team's objectives go below its count, never beside the clock.
+        Objectives.Strip goals=new Objectives.Strip(java.util.Collections.singletonList(
+            new Objectives.Part("x",TeamBar.WHITE,-1)),20,"Red");
+        TeamBar.Bar withGoals=new TeamBar.Bar(java.util.Collections.singletonList(left),
+            java.util.Collections.singletonList(right),0,24,null,"10:00",0,
+            java.util.Collections.singletonList(goals),none,false,null,null,0,
+            java.util.Collections.singletonList("Red"),java.util.Collections.singletonList("Blue"),true,18);
+        assertTrue("a team's goals were not placed under its count",withGoals.stripTop(0,0)>=TeamBar.COUNT_BAND);
+        assertTrue("the goals did not make the bar taller",withGoals.height>bar.height);
+    }
+
+    @Test public void eightTeamsAreCountedInsteadOfDrawn(){
+        assertFalse(TeamBar.countsForced(java.util.Arrays.asList("a","b","c","d","e","f","g")));
+        assertTrue(TeamBar.countsForced(java.util.Arrays.asList("a","b","c","d","e","f","g","h")));
+    }
+
+    /** In FFA a control point belongs to one player, so it is drawn in the middle, above the grid. */
+    @Test public void ffaObjectivesSitInTheMiddleAboveTheGrid(){
+        java.util.List<java.util.List<String>> grid=java.util.Arrays.asList(java.util.Arrays.asList("A","B"));
+        java.util.Map<String,String> scores=java.util.Collections.emptyMap();
+        TeamBar.Bar plain=new TeamBar.Bar(grid,16,20,30,null,"10:00",null,0,scores);
+        Objectives.Strip point=new Objectives.Strip(java.util.Collections.singletonList(
+            new Objectives.Part("Control",TeamBar.AQUA,-1)),60);
+        TeamBar.Bar withPoint=new TeamBar.Bar(grid,16,20,30,null,"10:00",null,0,scores,
+            java.util.Collections.singletonList(point));
+        assertEquals(1,withPoint.strips(4).size());
+        assertTrue(withPoint.strips(2).isEmpty()&&withPoint.strips(3).isEmpty());
+        assertEquals("the point was not under the clock",12,withPoint.stripTop(4,0));
+        assertEquals("the point was not centred",withPoint.width/2-30,withPoint.stripX(4,point));
+        assertTrue("the grid did not move down for the point",withPoint.leftRowTops[0]>plain.leftRowTops[0]);
+        assertTrue("the point did not widen the bar",withPoint.width>plain.width);
+    }
 }

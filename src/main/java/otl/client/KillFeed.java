@@ -36,7 +36,7 @@ final class KillFeed {
         if(!active()||MinecraftAccess.get().thePlayer==null)return;
         String message=event.message.getFormattedText();
         if(event.type==2)return;
-        KillFeedRules.Death death=KillFeedRules.parse(message,nameCache::contains);
+        KillFeedRules.Death death=KillFeedRules.parse(message,nameCache::contains,KillFeedRules.clientLocale());
         // shortcut: assist rewards have no victim; restore attribution only when the server identifies one.
         if(death==null)return;
         history.add(death);if(scroll>0&&visible(death))scroll=Math.min(scroll+1,Math.max(0,visibleEntries().size()-rows()));

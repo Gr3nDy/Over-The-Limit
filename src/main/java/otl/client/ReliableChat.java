@@ -22,7 +22,6 @@ public final class ReliableChat {
     static final ReliableChat INSTANCE=new ReliableChat();
     /** One live Session per host; the eldest host is evicted past 24 hosts. */
     private static final Map<String,Session> sessions=new LinkedHashMap<String,Session>(){private static final long serialVersionUID=1L;@Override protected boolean removeEldestEntry(Map.Entry<String,Session> eldest){return size()>24;}};
-    static RoutingHud installed;
     private static final ChatWelcomeGate welcomeGate=new ChatWelcomeGate();
     private static Object observedWorld,observedConnection;
     private static String observedHost="";
@@ -31,6 +30,30 @@ public final class ReliableChat {
     static boolean active(){UtilitySettings.load();observeContext();return UtilitySettings.chat&&ServerScope.active();}
     static boolean fullChat(){observeContext();return ServerScope.active()&&welcomeGate.enabled();}
     static long contextVersion(){observeContext();return contextVersion;}
+    /** The All tab is the client's own chat, untouched: everything printed there shows up. */
+    static boolean onAll(){return ChatRules.ALL.equals(session().selected);}
+    static GuiNewChat clientChat(){Minecraft mc=MinecraftAccess.get();return mc.ingameGUI==null?null:mc.ingameGUI.getChatGUI();}
+    /**
+     * Points the client's chat field at the tab on screen for the length of one vanilla call, so
+     * GuiChat's own scrolling, paging and link hover act on what the player can actually see.
+     * Returns the object to hand back, or null when the client's own chat is already the one on screen.
+     */
+    static GuiNewChat borrowView(){
+        if(!active()||onAll())return null;
+        GuiNewChat client=clientChat();
+        if(client==null||client==currentView().hud)return null;
+        ReflectionHelper.setPrivateValue(GuiIngame.class,MinecraftAccess.get().ingameGUI,currentView().hud,"persistantChatGUI","field_73840_e");
+        return client;
+    }
+    static void returnChat(GuiNewChat client){
+        if(client!=null&&MinecraftAccess.get().ingameGUI!=null)ReflectionHelper.setPrivateValue(GuiIngame.class,MinecraftAccess.get().ingameGUI,client,"persistantChatGUI","field_73840_e");
+    }
+    /** A line the player has to see even while a filtered tab is on screen. */
+    static void say(IChatComponent text){
+        Minecraft mc=MinecraftAccess.get();
+        if(mc.ingameGUI!=null)mc.ingameGUI.getChatGUI().printChatMessage(text);
+        if(active()&&!onAll())currentView().append(text,0,true);
+    }
     private static void observeContext(){
         Minecraft mc=MinecraftAccess.get();String host=mc.getCurrentServerData()==null?"":ServerScope.host(mc.getCurrentServerData().serverIP);
         Object connection=mc.getNetHandler()==null?null:mc.getNetHandler().getNetworkManager();
@@ -104,11 +127,14 @@ public final class ReliableChat {
                     int alpha=(int)((open?255:(int)(255*fade))*opacity);shown++;
                     if(alpha<=3)continue;
                     int y=-i*9;
+                    // The same translucent backdrop vanilla puts behind a line, so a filtered tab
+                    // reads like the All tab instead of floating text.
+                    Gui.drawRect(0,y-9,getChatWidth()+4,y,(alpha/2)<<24);
                     GlStateManager.enableBlend();GlStateManager.tryBlendFuncSeparate(770,771,1,0);
                     mc.fontRendererObj.drawStringWithShadow(line.getChatComponent().getFormattedText(),0,y-8,0xFFFFFF|(alpha<<24));
                     GlStateManager.disableAlpha();GlStateManager.disableBlend();
                 }
-            }finally{GlStateManager.popMatrix();}
+            }finally{GlStateManager.popMatrix();GlStateManager.color(1,1,1,1);}
         }
         @Override public void refreshChat(){
             int old=position();trim();drawn.clear();
@@ -191,14 +217,20 @@ public final class ReliableChat {
     }
     public static void applyPreferences(){
         for(Session s:sessions.values())for(View v:s.views.values()){if(!UtilitySettings.rememberDrafts)v.draft="";v.hud.refreshChat();}
+        // Tabs off means no way to reach a filtered tab, so nobody is left stranded on one.
+        if(!UtilitySettings.showTabChat)for(Session s:sessions.values())s.selected=ChatRules.ALL;
         if(!UtilitySettings.bubbles)TeamBubbles.clearBubbles();
     }
     static void receive(IChatComponent text,int id){
         Session s=session();String formatted=text.getFormattedText();
         if(fullChat()&&ChatRules.commandWarning(formatted)&&recentCommand!=null&&recentCommand.host.equals(ServerScope.current())&&System.nanoTime()-recentCommand.time<8000000000L&&s.views.containsKey(recentCommand.key)){
-            s.views.get(recentCommand.key).append(text,id,true);return;
+            // On the All tab the warning is already in the client's own chat; anywhere else it has
+            // to be copied into the channel that spoke, or the player never sees it.
+            if(!ChatRules.ALL.equals(recentCommand.key))s.views.get(recentCommand.key).append(text,id,true);
+            return;
         }
-        String self=MinecraftAccess.get().thePlayer==null?"":MinecraftAccess.get().thePlayer.getName();boolean own=!self.isEmpty()&&ChatRules.authoredBy(formatted,self);s.views.get(ChatRules.ALL).append(text,id,own);
+        // The All tab is the client's own chat, which receives every line anyway.
+        String self=MinecraftAccess.get().thePlayer==null?"":MinecraftAccess.get().thePlayer.getName();boolean own=!self.isEmpty()&&ChatRules.authoredBy(formatted,self);
         if(!fullChat())return;
         ChatRules.Route r=ChatRules.classify(text.getFormattedText());
         if(r.key.startsWith("pm:")){
@@ -260,24 +292,19 @@ public final class ReliableChat {
         }
         return result;
     }
-    /** Server packets have one authoritative ingress, not the inherited GUI's print hooks. */
+    /**
+     * The client's chat keeps every line: this only copies it into the filtered tabs. Nothing is
+     * cancelled, so other chat mods and the client's own chat still receive the message.
+     */
     @SubscribeEvent(priority=EventPriority.LOWEST) public void serverChat(ClientChatReceivedEvent event){
         if(event.type==2)return;
         observeWelcome(event.message);
         if(!active())return;
-        Minecraft mc=MinecraftAccess.get();GuiNewChat hud=mc.ingameGUI.getChatGUI();
-        GuiNewChat fallback=hud instanceof RoutingHud?((RoutingHud)hud).original:hud;
         try{
-            storeFallback(fallback,event.message);
             receive(event.message,0);
-            event.setCanceled(true);
         }catch(Exception e){
             System.err.println("OTL: could not route chat message: "+e.getMessage());
         }
-    }
-    private static void storeFallback(GuiNewChat hud,IChatComponent message){
-        // Let client chat extensions observe the original component through vanilla's print hook.
-        hud.printChatMessage(message);
     }
     @SubscribeEvent public void open(GuiOpenEvent e){
         if(active()&&e.gui!=null&&e.gui.getClass()==GuiChat.class){
@@ -290,22 +317,32 @@ public final class ReliableChat {
             expirePending(System.nanoTime());
             for(Session s:sessions.values())s.trimPrivate();
         }
-        if(mc.ingameGUI!=null&&!(mc.ingameGUI.getChatGUI() instanceof RoutingHud)){
-            installed=new RoutingHud(mc,mc.ingameGUI.getChatGUI());
-            ReflectionHelper.setPrivateValue(GuiIngame.class,mc.ingameGUI,installed,"persistantChatGUI","field_73840_e");
-        }
         if(mc.currentScreen instanceof ReliableChatScreen&&!active())mc.displayGuiScreen(new GuiChat(((ReliableChatScreen)mc.currentScreen).text()));
-        if(installed!=null)installed.mirror();
+    }
+    /**
+     * The All tab is the client's own chat, drawn by the client. A filtered tab replaces just that
+     * draw: the chat object and the message stream stay the client's, so other chat mods keep working.
+     */
+    @SubscribeEvent(priority=EventPriority.LOWEST) public void chatLayer(RenderGameOverlayEvent.Chat e){
+        if(!active()||onAll())return;
+        e.setCanceled(true);
+        GlStateManager.pushMatrix();
+        try{GlStateManager.translate(e.posX,e.posY,0);((QuietChat)currentView().hud).drawAt(System.nanoTime());}
+        finally{GlStateManager.popMatrix();GlStateManager.color(1,1,1,1);}
+        tabs();
     }
     /** Draw the channel strip as a real HUD overlay; GuiNewChat is not rendered on every launcher. */
     @SubscribeEvent public void overlay(RenderGameOverlayEvent.Post e){
         // HOTBAR is emitted reliably by vanilla and Lunar, unlike the aggregate ALL event.
         // CHAT is posted after the chat lines, keeping the strip visible instead of
         // letting the chat renderer paint over it.
-        if(e.type!=RenderGameOverlayEvent.ElementType.CHAT||installed==null||!active())return;
-        if(MinecraftAccess.get().currentScreen instanceof HudEditor)return;
-        if(MinecraftAccess.get().currentScreen instanceof ReliableChatScreen)return;
-        if(UtilitySettings.showTabChat)installed.drawTabs();
+        if(e.type!=RenderGameOverlayEvent.ElementType.CHAT||!active()||!onAll())return;
+        tabs();
+    }
+    private static void tabs(){
+        Minecraft mc=MinecraftAccess.get();
+        if(!UtilitySettings.showTabChat||mc.currentScreen instanceof HudEditor||mc.currentScreen instanceof ReliableChatScreen)return;
+        drawTabs();
     }
     
     static HudLayout.Rect tabBounds(){
@@ -317,74 +354,28 @@ public final class ReliableChat {
         return HudLayout.bounds(HudLayout.TABS,(int)Math.ceil(total*UtilitySettings.tabHudSize/100F),(int)Math.ceil(16*UtilitySettings.tabHudSize/100F));
     }
     static void drawTabsPreview(){
-        if(installed!=null&&active()){installed.drawTabs();return;}
+        if(active()){drawTabs();return;}
         HudLayout.Rect r=tabBounds();int x=0;float scale=UtilitySettings.tabHudSize/100F;GlStateManager.pushMatrix();
         try{GlStateManager.translate(r.x,r.y,0);GlStateManager.scale(scale,scale,1);
             for(String label:new String[]{"All","Team","Party"}){Gui.drawRect(x,0,x+50,16,ChatAppearance.tabColor(0xCC202020,UtilitySettings.tabBackgroundOpacity));if(x==0)Gui.drawRect(x,15,x+50,16,0xFFFFFFFF);MinecraftAccess.get().fontRendererObj.drawStringWithShadow(label,x+4,4,0xFFFFFFFF);x+=52;}
         }finally{GlStateManager.popMatrix();}
     }
-    static final class RoutingHud extends GuiNewChat {
-        final GuiNewChat original;
-        RoutingHud(Minecraft mc,GuiNewChat original){super(mc);this.original=original;}
-        GuiNewChat target(){return active()?currentView().hud:original;}
-        void mirror(){
-            GuiNewChat view=target();
-            for(String[] field:new String[][]{{"chatLines","field_146252_h"},{"drawnChatLines","field_146253_i"},{"scrollPos","field_146250_j"},{"isScrolled","field_146251_k"}})
-                ReflectionHelper.setPrivateValue(GuiNewChat.class,this,ReflectionHelper.getPrivateValue(GuiNewChat.class,view,field),field);
-        }
-        @Override public void drawChat(int ticks){
-            if(active()){
-                drawAt(System.nanoTime());
-            }else original.drawChat(ticks);
-        }
-        void drawTabs(){
-            Minecraft mc=MinecraftAccess.get();ScaledResolution sr=new ScaledResolution(mc);Session s=session();
-            int width=52,total=0;
+    /** The channel strip, drawn the same way on the HUD and in the open chat screen. */
+    static void drawTabs(){
+        Minecraft mc=MinecraftAccess.get();Session s=session();int width=52;
+        HudLayout.Rect box=tabBounds();int left=0;float scale=UtilitySettings.tabHudSize/100F;
+        GlStateManager.pushMatrix();
+        try{GlStateManager.translate(box.x,box.y,0);GlStateManager.scale(scale,scale,1);
             for(String key:tabKeys()){
                 View v=s.views.get(key);if(v==null)continue;
                 String label=v.name+(v.unread>0?" "+v.unread:"");
-                total+=key.startsWith("pm:")?Math.min(110,Math.max(width,font(mc,label)+12)):width;
-            }
-            HudLayout.Rect box=tabBounds();int left=0,topY=0;float scale=UtilitySettings.tabHudSize/100F;
-            GlStateManager.pushMatrix();try{GlStateManager.translate(box.x,box.y,0);GlStateManager.scale(scale,scale,1);
-            for(String key:tabKeys()){
-                View v=s.views.get(key);if(v==null)continue;
-                String label=v.name+(v.unread>0?" "+v.unread:"");
-                int w=key.startsWith("pm:")?Math.min(110,Math.max(width,font(mc,label)+12)):width;
+                int w=key.startsWith("pm:")?Math.min(110,Math.max(width,mc.fontRendererObj.getStringWidth(label)+12)):width;
                 w=Math.min(w,(int)(box.w/scale)-left);if(w<12)break;
-                Gui.drawRect(left,topY,left+w-2,topY+16,ChatAppearance.tabColor(key.equals(s.selected)?0xEE404040:0xCC202020,UtilitySettings.tabBackgroundOpacity));
-                if(key.equals(s.selected))Gui.drawRect(left,topY+15,left+w-2,topY+16,0xFFFFFFFF);
-                mc.fontRendererObj.drawStringWithShadow(mc.fontRendererObj.trimStringToWidth(label,w-8),left+4,topY+4,0xFFFFFFFF);
+                Gui.drawRect(left,0,left+w-2,16,ChatAppearance.tabColor(key.equals(s.selected)?0xEE404040:0xCC202020,UtilitySettings.tabBackgroundOpacity));
+                if(key.equals(s.selected))Gui.drawRect(left,15,left+w-2,16,0xFFFFFFFF);
+                mc.fontRendererObj.drawStringWithShadow(mc.fontRendererObj.trimStringToWidth(label,w-8),left+4,4,0xFFFFFFFF);
                 left+=w;if(left>=box.w/scale)break;
             }
-            }finally{GlStateManager.popMatrix();}
-        }
-        private int font(Minecraft mc,String s){return mc.fontRendererObj.getStringWidth(s);}
-        void drawAt(long now){
-            mirror();
-            GlStateManager.pushMatrix();
-            try{if(MinecraftAccess.get().currentScreen instanceof ReliableChatScreen)GlStateManager.translate(0,-18,0);((QuietChat)currentView().hud).drawAt(now);}
-            finally{GlStateManager.popMatrix();}
-        }
-        @Override public void printChatMessageWithOptionalDeletion(IChatComponent text,int id){
-            original.printChatMessageWithOptionalDeletion(text,id);
-            if(active())receive(text,id);
-            else if(ServerScope.active()){String self=MinecraftAccess.get().thePlayer==null?"":MinecraftAccess.get().thePlayer.getName();session().views.get(ChatRules.ALL).append(text,id,!self.isEmpty()&&ChatRules.authoredBy(text.getFormattedText(),self));}
-        }
-        @Override public void clearChatMessages(){
-            original.clearChatMessages();
-            if(ServerScope.active()&&org.lwjgl.input.Keyboard.isKeyDown(org.lwjgl.input.Keyboard.KEY_F3)&&org.lwjgl.input.Keyboard.isKeyDown(org.lwjgl.input.Keyboard.KEY_D))for(View v:session().views.values()){v.hud.clearChatMessages();v.bottom();}
-        }
-        @Override public void deleteChatLine(int id){original.deleteChatLine(id);if(active())for(View v:session().views.values())v.hud.deleteChatLine(id);}
-        @Override public void refreshChat(){original.refreshChat();for(Session s:sessions.values())for(View v:s.views.values())v.hud.refreshChat();}
-        @Override public java.util.List<String> getSentMessages(){return original.getSentMessages();}
-        @Override public void addToSentMessages(String text){original.addToSentMessages(text);}
-        @Override public void scroll(int n){target().scroll(n);}
-        @Override public void resetScroll(){original.resetScroll();}
-        @Override public IChatComponent getChatComponent(int x,int y){
-            mirror();
-            if(active()&&MinecraftAccess.get().currentScreen instanceof ReliableChatScreen)y-=18*new ScaledResolution(MinecraftAccess.get()).getScaleFactor();
-            return target().getChatComponent(x,y);
-        }
+        }finally{GlStateManager.popMatrix();GlStateManager.color(1,1,1,1);}
     }
 }

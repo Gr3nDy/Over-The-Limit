@@ -20,11 +20,11 @@ public final class UtilityScreen extends SettingsScreen {
         if(page==0){
             panel.section("CHAT");
             toggle(0,"Reliable Chat",UtilitySettings.chat);
+            toggle(14,"Channel tabs (All / Team / Party)",UtilitySettings.showTabChat);
             toggle(1,"Unread counts",UtilitySettings.counts);
             toggle(4,"Remember drafts",UtilitySettings.rememberDrafts);
             toggle(5,"Unlimited history",UtilitySettings.unlimitedHistory);
             toggle(6,"Shift + Tab cycling",UtilitySettings.cycleTabs);
-            toggle(14,"Show Tab Chat",UtilitySettings.showTabChat);
             buttonList.add(new ChoiceButton(this,15,panel.left(),panel.choice(),panel.width(),"Tab position",new String[]{"Bottom Left","Bottom Right","Top Left","Top Right"},UtilitySettings.tabChatPosition,v->{UtilitySettings.tabChatPosition=v;UtilitySettings.hudPositions.remove(HudLayout.TABS);ReliableChat.applyPreferences();}));
             panel.note(UtilitySettings.unlimitedHistory?"Unlimited history uses more memory.":"100 messages per view. History is session-only.");
         }else if(page==1){

@@ -1,13 +1,22 @@
 # Changelog
 
-## Unreleased
+## v0.7.2 - <PII type="DATE" id="20"/>
+
+### Changed
+- **Reliable Chat no longer takes over the client's chat** - OTL used to replace the game's chat object and swallow every incoming chat message before the client saw it. Other chat mods saw nothing, and the HUD's own drawing could leave a tinted GL colour behind for whatever was drawn next. The client's chat now receives every message untouched and draws the **All** tab itself, exactly as shipped. OTL only replaces the chat *draw* while a filtered tab is selected, and those tabs now use the same backdrop, fade and position as the All tab. Scrolling, page keys, link hover and clicking all act on whichever tab is on screen.
+- **Channel tabs switch** - Reliable Chat's General page now opens with a **Channel tabs (All / Team / Party)** switch. Turning it off hides the strip both on the HUD and while typing, leaving the client's own chat, and the selected channel returns to All so nothing is left stranded on a hidden tab.
 
 ### Fixed
+- **Kill feed cause on every language** - PGM writes death messages in each player's own language, so outside English the feed could only read the names and drew the plain skull for every kill. The translations PGM ships are now matched too, so the bow, explosion, melee, fall, fire, magic, cactus, anvil and drown icons come back in all 25 supported languages. German, French, Japanese, Thai and Chinese resolve every template, Korean 98% and Russian 97%, with no line left as a bare skull in either. English is untouched and still uses the hand-written templates.
 - **Kill feed on translated clients** - German, Dutch, Swedish, Danish and Afrikaans glue a possessive onto the killer's name (`{1}s` renders as `Bobs`), so a line read as words found no killer and the death was dropped. A name is now matched as the longest known account name starting where the previous one ended, which also covers Japanese, where PGM writes both names with nothing between them. Affected 49 of 83 German killer lines and every Korean one.
 - **Kill feed hover box** - a long translated death line could draw off the left or top of the screen. The box is now measured and clamped inside the screen on all four edges.
 
 ### Added
+- **Team counts instead of heads** - a Team Bar switch replaces every team's row of heads with the number of players online, with that team's colour as a bar underneath. Each team keeps its own number, so it reads the same on a two-team map as on an eight-team one, and maps with eight teams count automatically because that many rows of heads no longer fit under the clock. Hovering a number lists everyone in that team. The team's score and objectives sit under its count, never beside the clock.
 - **Update notice** - the first time you join a server in a session, OTL asks GitHub for the latest release and prints one chat line with a download link when yours is older. The check runs on its own thread, says nothing when it fails or is up to date, and can be turned off under PGM settings, CLIENT, "Update notice on join".
+
+### Fixed
+- **FFA objectives** - on a free-for-all map every player is their own team, so a control point or a flag had no side of its own and was dropped: Item Sumo showed the score with no point beside it. Those objectives now sit in the middle, under the clock and above the player grid.
 
 ## v0.7.1 - Nov 20 2026
 

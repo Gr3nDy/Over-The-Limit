@@ -47,7 +47,7 @@ final class ReliableChatScreen extends GuiChat {
         // A transfer may happen between reading the input and sending it. Never publish a stale PM draft.
         if(syncView())return;
         if(msg.length()>ChatRules.inputLimit(ReliableChat.session().selected,msg,ReliableChat.fullChat())){
-            mc.ingameGUI.getChatGUI().printChatMessage(new net.minecraft.util.ChatComponentText("OTL: message too long for this channel; shorten it before sending."));return;
+            ReliableChat.say(new net.minecraft.util.ChatComponentText("OTL: message too long for this channel; shorten it before sending."));return;
         }
         long sendingContext=ReliableChat.contextVersion();
         ReliableChat.View before=ReliableChat.currentView();before.draft=addToChat||!UtilitySettings.rememberDrafts?"":text();
@@ -75,12 +75,25 @@ final class ReliableChatScreen extends GuiChat {
         if((key==org.lwjgl.input.Keyboard.KEY_RETURN||key==org.lwjgl.input.Keyboard.KEY_NUMPADENTER)&&text().trim().length()>ChatRules.inputLimit(ReliableChat.session().selected,text().trim(),ReliableChat.fullChat())){
             sendChatMessage(text().trim(),true);return;
         }
+        // Vanilla pages the client's own chat; a filtered tab keeps its own scroll position.
+        if(ReliableChat.active()&&!ReliableChat.onAll()&&(key==org.lwjgl.input.Keyboard.KEY_PRIOR||key==org.lwjgl.input.Keyboard.KEY_NEXT)){
+            int lines=ReliableChat.currentView().hud.getLineCount();
+            if(lines>0)ReliableChat.currentView().hud.scroll(key==org.lwjgl.input.Keyboard.KEY_PRIOR?lines:-lines);
+            return;
+        }
         super.keyTyped(typed,key);
     }
     void cycleNext(){List<String> keys=ReliableChat.tabKeys();if(keys.size()<2)return;int i=keys.indexOf(ReliableChat.session().selected);select(keys.get((i+1)%keys.size()));}
     @Override public void drawScreen(int x,int y,float partial){
-        if(ReliableChat.active())syncView();super.drawScreen(x,y,partial);if(!ReliableChat.active())return;
+        if(ReliableChat.active())syncView();
+        // GuiChat reads and scrolls whatever object the client's chat field holds, so hand it the
+        // tab on screen for this call and give the client its own chat back afterwards.
+        GuiNewChat client=ReliableChat.borrowView();
+        try{super.drawScreen(x,y,partial);}finally{ReliableChat.returnChat(client);}
+        if(!ReliableChat.active())return;
         ReliableChat.Session s=ReliableChat.session();tabs.clear();int left=2,top=height-34;
+        // "Channel tabs: OFF" hides them while typing too, not just on the HUD.
+        if(UtilitySettings.showTabChat){
         List<String> keys=ReliableChat.tabKeys();
         int channelWidth=52,fixed=channelWidth*3+48,pmWidth=Math.max(30,Math.min(96,(width-fixed-10)/Math.max(1,s.visible.size())));
         for(String key:keys){
@@ -98,6 +111,7 @@ final class ReliableChatScreen extends GuiChat {
         String more=UtilitySettings.counts&&hiddenUnread>0?"... "+hiddenUnread:"...";
         int moreW=Math.min(width-left-2,Math.max(26,fontRendererObj.getStringWidth(more)+8));
         tabs.add(new Tab("overflow",left,moreW));drawRect(left,top,left+moreW,top+17,ChatAppearance.tabColor(0xDD252525,UtilitySettings.typingTabBackgroundOpacity));drawString(fontRendererObj,more,left+4,top+5,FaceUi.TEXT);
+        }
         }
         ChatScroll.Bar bar=UtilitySettings.chatScrollbar?scrollbar():null;
         if(bar!=null){
@@ -167,16 +181,25 @@ final class ReliableChatScreen extends GuiChat {
             }
         }
         if(overflow||context!=null){overflow=false;context=null;confirm=null;return;}
-        super.mouseClicked(x,y,button);
+        GuiNewChat client=ReliableChat.borrowView();
+        try{super.mouseClicked(x,y,button);}finally{ReliableChat.returnChat(client);}
     }
-    ChatScroll.Bar scrollbar(){ReliableChat.View v=ReliableChat.currentView();return ChatScroll.bar(width,height,v.hud.getChatWidth(),v.hud.getChatScale(),v.hud.getLineCount(),v.totalLines(),v.scroll());}
+    ChatScroll.Bar scrollbar(){
+        // The All tab is the client's own chat, which has no scrollbar of its own.
+        if(ReliableChat.onAll())return null;
+        ReliableChat.View v=ReliableChat.currentView();return ChatScroll.bar(width,height,v.hud.getChatWidth(),v.hud.getChatScale(),v.hud.getLineCount(),v.totalLines(),v.scroll());
+    }
     @Override protected void mouseClickMove(int x,int y,int button,long elapsed){
         syncView();if(draggingScroll!=null){ChatScroll.Bar bar=scrollbar();if(bar!=null)draggingScroll.scrollTo(bar.offset(y,scrollGrab));return;}super.mouseClickMove(x,y,button,elapsed);
     }
     @Override protected void mouseReleased(int x,int y,int state){draggingScroll=null;super.mouseReleased(x,y,state);}
     @Override public void handleMouseInput()throws IOException{
         if(overflow){int wheel=Mouse.getEventDWheel();superHandleMouse();if(wheel!=0)menuScroll=Math.max(0,menuScroll+(wheel>0?-1:1));}
-        else super.handleMouseInput();
+        else{
+            // The wheel scrolls whatever object the client's chat field holds.
+            GuiNewChat client=ReliableChat.borrowView();
+            try{super.handleMouseInput();}finally{ReliableChat.returnChat(client);}
+        }
     }
     private void superHandleMouse()throws IOException{
         // GuiChat's mouse-wheel handler is deliberately bypassed while browsing the popup.

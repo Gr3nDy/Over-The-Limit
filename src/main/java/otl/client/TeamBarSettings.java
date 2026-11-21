@@ -25,6 +25,8 @@ public final class TeamBarSettings extends SettingsScreen {
         int headStyle=panel.row();
         buttonList.add(new NeutralButton(14,panel.columnX(2,0),headStyle,panel.columnWidth(2),20,"Hide player heads: "+(UtilitySettings.teamBarHideHeads?"ON":"OFF"),false));
         buttonList.add(new NeutralButton(16,panel.columnX(2,1),headStyle,panel.columnWidth(2),20,"Rounded heads: "+(UtilitySettings.teamBarRoundedHeads?"ON":"OFF"),false));
+        buttonList.add(new NeutralButton(18,panel.left(),panel.row(),panel.width(),20,"Team counts instead of heads: "+(UtilitySettings.teamBarCount?"ON":"OFF"),false));
+        panel.note("Team counts show how many players are online, with the team colour underneath and the objectives below. Hover a count for its roster. Maps with eight teams always count.");
         int sizing=panel.row();
         buttonList.add(new PresetSlider(2,panel.columnX(2,0),sizing,panel.columnWidth(2),"Players: ","",PresetSlider.PLAYERS,UtilitySettings.teamBarPlayers,10,s->UtilitySettings.teamBarPlayers=s.getValueInt()));
         buttonList.add(new PresetSlider(3,panel.columnX(2,1),sizing,panel.columnWidth(2),"Size: ","%",PresetSlider.SIZE,UtilitySettings.teamBarSize,150,s->UtilitySettings.teamBarSize=s.getValueInt()));
@@ -58,6 +60,7 @@ public final class TeamBarSettings extends SettingsScreen {
         if(b.id==11)UtilitySettings.teamBarControlPoints=!UtilitySettings.teamBarControlPoints;
         if(b.id==14)UtilitySettings.teamBarHideHeads=!UtilitySettings.teamBarHideHeads;
         if(b.id==16)UtilitySettings.teamBarRoundedHeads=!UtilitySettings.teamBarRoundedHeads;
+        if(b.id==18)UtilitySettings.teamBarCount=!UtilitySettings.teamBarCount;
         if(b.id==15)UtilitySettings.teamBarHideVanillaBossHealth=!UtilitySettings.teamBarHideVanillaBossHealth;
         if(b.id==17)UtilitySettings.teamBarHideScoreboard=!UtilitySettings.teamBarHideScoreboard;
         UtilitySettings.save();initGui();

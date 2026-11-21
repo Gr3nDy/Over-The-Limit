@@ -57,7 +57,13 @@ public final class OtlSmoke {
     MapInfo cardInfo(MapInfoScreen screen){
         return screen==null?null:ReflectionHelper.getPrivateValue(MapInfoScreen.class,screen,"info");
     }
-    void line(String text){MinecraftForge.EVENT_BUS.post(new net.minecraftforge.client.event.ClientChatReceivedEvent((byte)1,new ChatComponentText(text)));}
+    /** Mirrors the game: post the event, then let the client's own chat print what survived it. */
+    void line(String text){line(new ChatComponentText(text));}
+    void line(IChatComponent text){
+        net.minecraftforge.client.event.ClientChatReceivedEvent event=new net.minecraftforge.client.event.ClientChatReceivedEvent((byte)1,text);
+        MinecraftForge.EVENT_BUS.post(event);
+        if(!event.isCanceled()&&mc.ingameGUI!=null)mc.ingameGUI.getChatGUI().printChatMessage(event.message);
+    }
     /** A chat line already cancelled by Reliable Chat, as it reaches the client in-game. */
     void cancelledLine(String text){
         net.minecraftforge.client.event.ClientChatReceivedEvent e=new net.minecraftforge.client.event.ClientChatReceivedEvent((byte)1,new ChatComponentText(text));
@@ -359,7 +365,8 @@ public final class OtlSmoke {
         int[] box=s.cardBox((row-scroll)*columns+at%columns);
         s.mouseClicked(box[0]+8,box[1]+box[3]-12,0);
     }
-    List<ChatLine> chatHistory(String key){return ReflectionHelper.getPrivateValue(GuiNewChat.class,ReliableChat.session().views.get(key).hud,"chatLines","field_146252_h");}
+    /** All is the client's own chat object; every other tab is one of our own buffers. */
+    List<ChatLine> chatHistory(String key){return ReflectionHelper.getPrivateValue(GuiNewChat.class,ChatRules.ALL.equals(key)?mc.ingameGUI.getChatGUI():ReliableChat.session().views.get(key).hud,"chatLines","field_146252_h");}
     final java.util.concurrent.CountDownLatch metadataBlocked=new java.util.concurrent.CountDownLatch(1),releaseMetadata=new java.util.concurrent.CountDownLatch(1);
     String hoverQuery(){return remoteEnabled?"Hallows":"Allure";}
     void openGoldChat(){
@@ -1197,17 +1204,17 @@ public final class OtlSmoke {
             }else if(state==33){
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-front-third-person-bubble.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
                 UtilitySettings.bubbles=false;UtilitySettings.save();mc.gameSettings.thirdPersonView=0;
-                ReliableChat.session().select(ChatRules.PARTY);int partyBefore=chatHistory("party").size(),allBefore=chatHistory("all").size();
+                ReliableChat.session().select(ChatRules.PARTY);int partyBefore=chatHistory("party").size();
                 ReliableChat.send("/unknown-command");ReliableChat.session().select(ChatRules.TEAM);
                 line("\u00a7c\u26a0 Unknown command");
-                require(chatHistory("party").size()==partyBefore+1&&chatHistory("all").size()==allBefore,"Command warning did not route only to originating channel");
+                require(chatHistory("party").size()==partyBefore+1,"Command warning did not route to the channel that spoke");
                 line("<Alex>: \u26a0 quoted warning");require(chatHistory("party").size()==partyBefore+1,"Quoted player warning leaked to originating channel");
                 ReliableChat.expirePending(System.nanoTime()+9000000000L);line("\u26a0 Unrelated later warning");
                 require(chatHistory("party").size()==partyBefore+1,"Expired command context captured a later warning");ReliableChat.session().select("all");
-            ReliableChat.session().select(ChatRules.TEAM);int teamBefore=chatHistory("team").size(),allTeamBefore=chatHistory("all").size();
+            ReliableChat.session().select(ChatRules.TEAM);int teamBefore=chatHistory("team").size();
             ReliableChat.send("plain team text");
             line("\u00a7c\u26a0 You are not on a team");
-            require(chatHistory("team").size()==teamBefore+1&&chatHistory("all").size()==allTeamBefore,"A tab that sent plain text lost its warning to All");
+            require(chatHistory("team").size()==teamBefore+1,"A tab that sent plain text lost its warning to the channel that spoke");
             ReliableChat.expirePending(System.nanoTime()+10_000_000_000L);ReliableChat.session().select("all");
                 KillFeed.history.clear();UtilitySettings.killFeed=true;UtilitySettings.hideKillChat=false;UtilitySettings.killFeedSlide=false;
                 ModulesScreen menu=new ModulesScreen(null);mc.displayGuiScreen(menu);
@@ -1392,14 +1399,14 @@ public final class OtlSmoke {
                 ReliableChat.session().select("all");
                 ChatComponentText original=new ChatComponentText("Full original wrapped message "+String.join(" ",Collections.nCopies(50,"preserved")));
                 original.getChatStyle().setChatClickEvent(new net.minecraft.event.ClickEvent(net.minecraft.event.ClickEvent.Action.SUGGEST_COMMAND,"/msg Alex "));
-                ReliableChat.receive(original,0);mc.displayGuiScreen(new GuiChat());ReliableChat.currentView().bottom();
-                require(chatHistory("all").get(0).getChatComponent()==original,"Vanilla history lost original full component");
-                ReliableChat.installed.mirror();
-                Object mirrored=ReflectionHelper.getPrivateValue(GuiNewChat.class,ReliableChat.installed,"chatLines","field_146252_h");
-                require(mirrored==chatHistory("all"),"Client chat extensions cannot see selected history");
+                line(original);mc.displayGuiScreen(new GuiChat());ReliableChat.currentView().bottom();
+                require(chatHistory("all").get(0).getChatComponent()==original,"The client's chat lost the original full component");
+                require(mc.ingameGUI.getChatGUI().getClass()==GuiNewChat.class,"OTL replaced the client's own chat object");
                 int factor=new ScaledResolution(mc).getScaleFactor();IChatComponent hit=mc.ingameGUI.getChatGUI().getChatComponent(10*factor,50*factor);
                 require(hit!=null&&hit.getChatStyle().getChatClickEvent()!=null,"Vanilla click component action was lost");
-                for(int i=0;i<90;i++)ReliableChat.receive(new ChatComponentText("<History>: scroll message "+i),0);
+                // A filtered tab is one of our own buffers, and it owns its scroll position.
+                ReliableChat.session().select(ChatRules.TEAM);
+                for(int i=0;i<90;i++)ReliableChat.currentView().append(new ChatComponentText("<History>: scroll message "+i),0,false);
                 ReliableChatScreen chat=(ReliableChatScreen)mc.currentScreen;ChatScroll.Bar bar=chat.scrollbar();require(bar!=null,"Chat scrollbar missing");
                 require(UtilitySettings.chatScrollbar,"The chat scrollbar defaults to on");
                 // Clicking the track grabs the thumb there; there are no arrow buttons any more.
