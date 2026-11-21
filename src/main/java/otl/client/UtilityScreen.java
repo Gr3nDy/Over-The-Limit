@@ -21,6 +21,7 @@ public final class UtilityScreen extends SettingsScreen {
             panel.section("CHAT");
             toggle(0,"Reliable Chat",UtilitySettings.chat);
             toggle(14,"Channel tabs (All / Team / Party)",UtilitySettings.showTabChat);
+            toggle(20,"Tabs only while typing",UtilitySettings.tabChatTypingOnly);
             toggle(1,"Unread counts",UtilitySettings.counts);
             toggle(4,"Remember drafts",UtilitySettings.rememberDrafts);
             toggle(5,"Unlimited history",UtilitySettings.unlimitedHistory);
@@ -61,12 +62,13 @@ public final class UtilityScreen extends SettingsScreen {
         if(b.id==5)UtilitySettings.unlimitedHistory=!UtilitySettings.unlimitedHistory;
         if(b.id==6)UtilitySettings.cycleTabs=!UtilitySettings.cycleTabs;
         if(b.id==14)UtilitySettings.showTabChat=!UtilitySettings.showTabChat;
+        if(b.id==20)UtilitySettings.tabChatTypingOnly=!UtilitySettings.tabChatTypingOnly;
         if(b.id==7)UtilitySettings.bubbles=!UtilitySettings.bubbles;
         if(b.id==18)UtilitySettings.bubbleTeamAndChat=!UtilitySettings.bubbleTeamAndChat;
         if(b.id==19)UtilitySettings.chatScrollbar=!UtilitySettings.chatScrollbar;
         if(b.id==8){int n=UtilitySettings.bubbleCharacters+(isShiftKeyDown()?-20:20);UtilitySettings.bubbleCharacters=n>200?20:n<20?200:n;}
         if(b.id==9)UtilitySettings.bubbleSeconds=1+Math.floorMod(UtilitySettings.bubbleSeconds-1+(isShiftKeyDown()?-1:1),15);
-        if(b.id==2){UtilitySettings.chat=true;UtilitySettings.counts=true;UtilitySettings.rememberDrafts=false;UtilitySettings.unlimitedHistory=false;UtilitySettings.cycleTabs=true;UtilitySettings.showTabChat=true;UtilitySettings.tabChatPosition=0;UtilitySettings.bubbles=false;UtilitySettings.bubbleTeamAndChat=false;UtilitySettings.bubbleCharacters=80;UtilitySettings.bubbleSeconds=4;UtilitySettings.tabBackgroundOpacity=25;UtilitySettings.typingTabBackgroundOpacity=25;UtilitySettings.chatScrollbar=true;UtilitySettings.hudPositions.remove(HudLayout.TABS);}
+        if(b.id==2){UtilitySettings.chat=true;UtilitySettings.counts=true;UtilitySettings.rememberDrafts=false;UtilitySettings.unlimitedHistory=false;UtilitySettings.cycleTabs=true;UtilitySettings.showTabChat=true;UtilitySettings.tabChatTypingOnly=false;UtilitySettings.tabChatPosition=0;UtilitySettings.bubbles=false;UtilitySettings.bubbleTeamAndChat=false;UtilitySettings.bubbleCharacters=80;UtilitySettings.bubbleSeconds=4;UtilitySettings.tabBackgroundOpacity=25;UtilitySettings.typingTabBackgroundOpacity=25;UtilitySettings.chatScrollbar=true;UtilitySettings.hudPositions.remove(HudLayout.TABS);}
         UtilitySettings.save();ReliableChat.applyPreferences();initGui();
     }
     protected void mouseReleased(int mx,int my,int state){super.mouseReleased(mx,my,state);UtilitySettings.save();}

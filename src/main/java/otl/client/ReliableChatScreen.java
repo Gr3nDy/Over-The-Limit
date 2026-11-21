@@ -21,6 +21,11 @@ final class ReliableChatScreen extends GuiChat {
     private static final class Tab {String key;int x,w;Tab(String k,int x,int w){key=k;this.x=x;this.w=w;}}
     private static final class MenuItem {String label;Runnable action;int y;MenuItem(String l,Runnable a,int y){label=l;action=a;this.y=y;}}
     ReliableChatScreen(String initial){super(initial);this.initial=initial;}
+    /** The grey hint in an empty input line: which channel the next message will go to. */
+    static String typingHint(String key,String name){
+        boolean pm=key!=null&&key.startsWith("pm:");
+        return (pm?"Typing to ":"Typing in ")+(name==null?"All":name);
+    }
     String text(){return inputField==null?initial:inputField.getText();}
     @Override public void updateScreen(){
         super.updateScreen();
@@ -91,6 +96,12 @@ final class ReliableChatScreen extends GuiChat {
         GuiNewChat client=ReliableChat.borrowView();
         try{super.drawScreen(x,y,partial);}finally{ReliableChat.returnChat(client);}
         if(!ReliableChat.active())return;
+        // An empty input line names the channel it will send to, so the strip is not the only clue.
+        if(UtilitySettings.showTabChat&&text().isEmpty()){
+            ReliableChat.View view=ReliableChat.currentView();
+            drawString(fontRendererObj,typingHint(view.key,view.name),inputField.xPosition+4,
+                inputField.yPosition+(inputField.height-8)/2,0xFF7A7A7A);
+        }
         ReliableChat.Session s=ReliableChat.session();tabs.clear();int left=2,top=height-34;
         // "Channel tabs: OFF" hides them while typing too, not just on the HUD.
         if(UtilitySettings.showTabChat){

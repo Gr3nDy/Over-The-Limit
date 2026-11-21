@@ -22,4 +22,12 @@ public class ChatPolishTest {
         assertEquals("short",TeamBubbleRules.limit("short",80));String s=TeamBubbleRules.limit("12345678901234567890",10);assertEquals("123456789\u2026",s);
         assertEquals("a\u2026",TeamBubbleRules.limit("a\uD83D\uDE00more",2));assertEquals("hello world",TeamBubbleRules.limit("hello\nworld",80));
     }
+    /** An empty input line says which channel the message will go to. */
+    @Test public void theEmptyInputLineNamesTheChannel(){
+        assertEquals("Typing in All",ReliableChatScreen.typingHint(ChatRules.ALL,"All"));
+        assertEquals("Typing in Team",ReliableChatScreen.typingHint(ChatRules.TEAM,"Team"));
+        assertEquals("Typing in Party",ReliableChatScreen.typingHint(ChatRules.PARTY,"Party"));
+        assertEquals("Typing to Alex",ReliableChatScreen.typingHint("pm:alex","Alex"));
+        assertEquals("Typing in All",ReliableChatScreen.typingHint(null,null));
+    }
 }

@@ -196,7 +196,8 @@ public final class ReliableChat {
     static Session session(){UtilitySettings.load();observeContext();return sessions.computeIfAbsent(ServerScope.current(),Session::new);}
     static View currentView(){return session().view();}
     static void openChannel(String key){
-        if(!active()||!fullChat())return;
+        // With the channel tabs off there is no tab to land on and everything is sent to All.
+        if(!active()||!fullChat()||!UtilitySettings.showTabChat)return;
         Session s=session();
         if(ChatRules.TEAM.equals(key)&&!ChatRules.TEAM.equals(s.selected))s.temporaryReturn=s.selected;
         s.select(key);
@@ -207,7 +208,7 @@ public final class ReliableChat {
     static void openPrivate(String player){
         if(player==null||!player.matches("[A-Za-z0-9_]{1,16}"))return;
         String key="pm:"+player.toLowerCase(Locale.ROOT);
-        if(!active()||!fullChat()){MinecraftAccess.get().displayGuiScreen(new GuiChat("/msg "+player+" "));return;}
+        if(!active()||!fullChat()||!UtilitySettings.showTabChat){MinecraftAccess.get().displayGuiScreen(new GuiChat("/msg "+player+" "));return;}
         session().pm(key,player);
         openChannel(key);
     }
@@ -342,6 +343,8 @@ public final class ReliableChat {
     private static void tabs(){
         Minecraft mc=MinecraftAccess.get();
         if(!UtilitySettings.showTabChat||mc.currentScreen instanceof HudEditor||mc.currentScreen instanceof ReliableChatScreen)return;
+        // Only while typing: the open chat draws its own strip, so the HUD keeps nothing.
+        if(UtilitySettings.tabChatTypingOnly)return;
         drawTabs();
     }
     

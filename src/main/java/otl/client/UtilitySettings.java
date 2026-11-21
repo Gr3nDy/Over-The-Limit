@@ -13,6 +13,8 @@ public final class UtilitySettings {
     /** Active profile name; profiles keep their own HUD positions and module settings. */
     static String profile="Default";
     public static boolean chat=true, counts=true, otherFaces=true, showTabChat=true, mapPreview=true;
+    /** Keep the channel strip off the HUD and draw it only while the chat is open. */
+    public static boolean tabChatTypingOnly=false;
     static boolean previewOnCommand=true;
     static boolean largeMapPreview=false;
     public static boolean leftHand=false;
@@ -206,6 +208,7 @@ public final class UtilitySettings {
         read(j,"unread_counts",e->counts=e.getAsBoolean());
         read(j,"other_faces",e->otherFaces=e.getAsBoolean());
         read(j,"show_tab_chat",e->showTabChat=e.getAsBoolean());
+        read(j,"tab_chat_typing_only",e->tabChatTypingOnly=e.getAsBoolean());
         read(j,"map_preview",e->mapPreview=e.getAsBoolean());
         read(j,"preview_on_command",e->previewOnCommand=e.getAsBoolean());
         read(j,"large_map_preview",e->largeMapPreview=e.getAsBoolean());
@@ -300,7 +303,7 @@ public final class UtilitySettings {
         }catch(Exception e){System.err.println("Overcast Utilities: could not save settings: "+e.getMessage());}
     }
     static JsonObject snapshot(){
-            JsonObject j=new JsonObject();j.addProperty("schema_version",1);j.addProperty("profile",profile);j.addProperty("reliable_chat",chat);j.addProperty("unread_counts",counts);j.addProperty("other_faces",otherFaces);j.addProperty("show_tab_chat",showTabChat);j.addProperty("map_preview",mapPreview);j.addProperty("tab_chat_position",tabChatPosition);
+            JsonObject j=new JsonObject();j.addProperty("schema_version",1);j.addProperty("profile",profile);j.addProperty("reliable_chat",chat);j.addProperty("unread_counts",counts);j.addProperty("other_faces",otherFaces);j.addProperty("show_tab_chat",showTabChat);j.addProperty("tab_chat_typing_only",tabChatTypingOnly);j.addProperty("map_preview",mapPreview);j.addProperty("tab_chat_position",tabChatPosition);
             j.addProperty("face_rig",faceRig);
             j.addProperty("team_bar",teamBar);
             j.addProperty("team_bar_players",teamBarPlayers);j.addProperty("team_bar_size",teamBarSize);
