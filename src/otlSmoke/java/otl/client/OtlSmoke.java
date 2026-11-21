@@ -775,7 +775,7 @@ public final class OtlSmoke {
         }
     }
     void prepareTabs(Minecraft mc){
-        UtilitySettings.tabBackgroundOpacity=0;UtilitySettings.typingTabBackgroundOpacity=0;
+        UtilitySettings.chatBackgroundOpacity=0;
         mc.displayGuiScreen(new GuiChat());((ReliableChatScreen)mc.currentScreen).select("team");
         require(ReliableChat.session().selected.equals("team"),"Selected channel did not change with transparent tabs");
     }
@@ -1481,12 +1481,12 @@ public final class OtlSmoke {
                 UtilitySettings.killFeed=true;UtilitySettings.killConfirmSounds=false;UtilitySettings.save();
                 require(org.lwjgl.opengl.GL11.glGetError()==0,"Kill Confirm left a GL error");
                 UtilityScreen appearance=new UtilityScreen();mc.displayGuiScreen(appearance);appearance.actionPerformed(find(appearance,"Appearance"));
-                net.minecraftforge.fml.client.config.GuiSlider tabs=slider(appearance,16);
-                net.minecraftforge.fml.client.config.GuiSlider typingTabs=slider(appearance,17);
-                tabs.setValue(35);tabs.updateSlider();typingTabs.setValue(70);typingTabs.updateSlider();appearance.onGuiClosed();
-                UtilitySettings.tabBackgroundOpacity=100;UtilitySettings.typingTabBackgroundOpacity=100;ReflectionHelper.setPrivateValue(UtilitySettings.class,null,false,"loaded");UtilitySettings.load();
-                require(UtilitySettings.tabBackgroundOpacity==35&&UtilitySettings.typingTabBackgroundOpacity==70,"Typing/idle tab opacity did not persist independently");
-                appearance.actionPerformed(find(appearance,"Reset chat options"));require(UtilitySettings.tabBackgroundOpacity==25&&UtilitySettings.typingTabBackgroundOpacity==25,"Tab background reset failed");
+                net.minecraftforge.fml.client.config.GuiSlider background=slider(appearance,16);
+                background.setValue(35);background.updateSlider();appearance.onGuiClosed();
+                require(Math.abs(mc.gameSettings.chatOpacity-.35F)<.001F,"The All tab kept the old chat background");
+                UtilitySettings.chatBackgroundOpacity=100;ReflectionHelper.setPrivateValue(UtilitySettings.class,null,false,"loaded");UtilitySettings.load();
+                require(UtilitySettings.chatBackgroundOpacity==35,"Chat background opacity did not persist");
+                appearance.actionPerformed(find(appearance,"Reset chat options"));require(UtilitySettings.chatBackgroundOpacity==100&&Math.abs(mc.gameSettings.chatOpacity-1F)<.001F,"Chat background reset failed");
             }else if(state==48){
                 UtilitySettings.killConfirm=true;UtilitySettings.totalExpKills=true;UtilitySettings.hideKillConfirmChat=false;UtilitySettings.killFeed=false;
                 KillConfirm.state.clear();mc.displayGuiScreen(null);
@@ -1590,7 +1590,7 @@ public final class OtlSmoke {
             }else if(state==53){
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-tab-background-gameplay-0.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());mc.displayGuiScreen(new HudEditor());
             }else if(state==54){
-                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-tab-background-preview-0.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());UtilitySettings.tabBackgroundOpacity=100;UtilitySettings.typingTabBackgroundOpacity=100;UtilitySettings.save();
+                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-tab-background-preview-0.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());UtilitySettings.chatBackgroundOpacity=100;UtilitySettings.save();
             }else if(state==55){
                 checkBow(mc);
             }else if(state==56){

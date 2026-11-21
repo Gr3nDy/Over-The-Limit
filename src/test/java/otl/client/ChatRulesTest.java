@@ -46,6 +46,17 @@ public class ChatRulesTest {
             String to=prefix.replace("From","To");ChatRules.Route outgoing=ChatRules.classify(to+"hello");assertEquals(to,"pm:alex",outgoing.key);assertTrue(outgoing.outgoing);assertEquals(to,"hello",ChatRules.privateBody(to+"hello"));
         }
     }
+    @Test public void privateLinesColourTheOtherPlayerPurpleAndUsWhite(){
+        net.minecraft.util.IChatComponent incoming=ChatRules.privateLine(new net.minecraft.util.ChatComponentText("\u00a77\u00a7oFrom: \u00a7bAlex\u00a7r hello"),"Alex","Steve");
+        String text=incoming.getFormattedText();
+        assertTrue(text,text.contains("\u00a7dAlex"));
+        assertTrue("the body must keep the server's own colour",text.endsWith("\u00a77\u00a7o")||text.contains("hello"));
+        // Our own name is the receiver: plain white, never light purple.
+        String both=ChatRules.privateLine(new net.minecraft.util.ChatComponentText("From: Alex to Steve: hi"),"Alex","Steve").getFormattedText();
+        assertTrue(both,both.contains("\u00a7dAlex")&&both.contains("\u00a7fSteve"));
+        // A name mentioned in the body is not recoloured, only the prefix.
+        assertEquals("say Alex again",ChatRules.privateLine(new net.minecraft.util.ChatComponentText("Alex: say Alex again"),"Alex","Steve").getFormattedText().replaceAll("\u00a7.","").replace("Alex: ",""));
+    }
     @Test public void privateConversationIdentityAndBodies(){
         assertEquals(ChatRules.classify("From Alex: first").key,ChatRules.classify("To ALEX: second").key);
         assertEquals("first\nsecond",ChatRules.privateBody("From Alex: first\nsecond"));

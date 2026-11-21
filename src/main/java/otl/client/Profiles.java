@@ -45,6 +45,7 @@ final class Profiles {
         UtilitySettings.bubbleCharacters=keepChars;UtilitySettings.bubbleSeconds=keepSeconds;
         UtilitySettings.profile=target;
         UtilitySettings.save();
+        UtilitySettings.applyChatBackground();
         ReliableChat.applyPreferences();
     }
     static String newProfile(){

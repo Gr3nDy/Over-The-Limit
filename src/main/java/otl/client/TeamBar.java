@@ -384,12 +384,14 @@ final class TeamBar {
             this.leftStripX=0;this.rightStripX=0;this.leftStripW=0;this.band=head;
             this.leftRowTops=new int[rows.size()];this.rightRowTops=new int[0];
             this.leftStripTops=new int[0];this.rightStripTops=new int[0];
-            // Clock, then the objectives under it, then the grid.
-            this.neutralPointY=12;
-            int top=12+(centre.isEmpty()?0:centre.size()*neutralLine+OBJECTIVE_GAP);
-            for(int i=0;i<rows.size();i++)leftRowTops[i]=top+i*(head+15);
+            // Clock, then the grid, then the objectives under the last head row: on a free-for-all
+            // map a control point or a flag scores the players above it, so it belongs under them.
             this.stripY=0;this.stripH=0;this.pointY=0;
-            this.height=(rows.isEmpty()?(centre.isEmpty()?9:12+centre.size()*neutralLine):top+rows.size()*(head+15)-2)
+            int top=12;
+            for(int i=0;i<rows.size();i++)leftRowTops[i]=top+i*(head+15);
+            int rowsBottom=rows.isEmpty()?top:top+rows.size()*(head+15)-2;
+            this.neutralPointY=rowsBottom+(centre.isEmpty()?0:OBJECTIVE_GAP);
+            this.height=Math.max(9,centre.isEmpty()?rowsBottom:neutralPointY+centre.size()*neutralLine)
                 +(header==null?0:HEADER_H);
         }
         /** Left edge of one objective line, against the clock on its own side. */

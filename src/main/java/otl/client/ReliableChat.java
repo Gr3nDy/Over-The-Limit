@@ -129,7 +129,7 @@ public final class ReliableChat {
                     int y=-i*9;
                     // The same translucent backdrop vanilla puts behind a line, so a filtered tab
                     // reads like the All tab instead of floating text.
-                    Gui.drawRect(0,y-9,getChatWidth()+4,y,(alpha/2)<<24);
+                    Gui.drawRect(0,y-9,getChatWidth()+4,y,(alpha/2*UtilitySettings.chatBackgroundOpacity/100)<<24);
                     GlStateManager.enableBlend();GlStateManager.tryBlendFuncSeparate(770,771,1,0);
                     mc.fontRendererObj.drawStringWithShadow(line.getChatComponent().getFormattedText(),0,y-8,0xFFFFFF|(alpha<<24));
                     GlStateManager.disableAlpha();GlStateManager.disableBlend();
@@ -241,7 +241,7 @@ public final class ReliableChat {
                 if(sent!=null){Iterator<Pending> it=sent.iterator();while(it.hasNext()){Pending p=it.next();if(System.nanoTime()-p.time>30000000000L){it.remove();continue;}if(p.body.equals(ChatRules.privateBody(text.getFormattedText()))){it.remove();break;}}
                     if(sent.isEmpty()){pending.remove(ServerScope.current()+"|"+r.key);if(recentSend!=null&&recentSend.key.equals(r.key))recentSend=null;}}
             }
-            v.append(text,id,r.outgoing);
+            v.append(ChatRules.privateLine(text,r.name,self),id,r.outgoing);
         }else if(!r.key.equals(ChatRules.ALL))s.views.get(r.key).append(text,id,own);
         else if(ChatWarnings.party(text.getFormattedText())){
             s.views.get(ChatRules.PARTY).append(text,id,true);
@@ -382,7 +382,7 @@ public final class ReliableChat {
         if(active()){drawTabs();return;}
         HudLayout.Rect r=tabBounds();int x=0;float scale=UtilitySettings.tabHudSize/100F;GlStateManager.pushMatrix();
         try{GlStateManager.translate(r.x,r.y,0);GlStateManager.scale(scale,scale,1);
-            for(String label:new String[]{"All","Team","Party"}){Gui.drawRect(x,0,x+50,16,ChatAppearance.tabColor(0xCC202020,UtilitySettings.tabBackgroundOpacity));if(x==0)Gui.drawRect(x,15,x+50,16,0xFFFFFFFF);MinecraftAccess.get().fontRendererObj.drawStringWithShadow(label,x+4,4,0xFFFFFFFF);x+=52;}
+            for(String label:new String[]{"All","Team","Party"}){Gui.drawRect(x,0,x+50,16,ChatAppearance.tabColor(0x33202020,UtilitySettings.chatBackgroundOpacity));if(x==0)Gui.drawRect(x,15,x+50,16,0xFFFFFFFF);MinecraftAccess.get().fontRendererObj.drawStringWithShadow(label,x+4,4,0xFFFFFFFF);x+=52;}
         }finally{GlStateManager.popMatrix();}
     }
     /** The channel strip, drawn the same way on the HUD and in the open chat screen. */
@@ -396,7 +396,7 @@ public final class ReliableChat {
                 String label=v.name+(v.unread>0?" "+v.unread:"");
                 int w=key.startsWith("pm:")?Math.min(110,Math.max(width,mc.fontRendererObj.getStringWidth(label)+12)):width;
                 w=Math.min(w,(int)(box.w/scale)-left);if(w<12)break;
-                Gui.drawRect(left,0,left+w-2,16,ChatAppearance.tabColor(key.equals(s.selected)?0xEE404040:0xCC202020,UtilitySettings.tabBackgroundOpacity));
+                Gui.drawRect(left,0,left+w-2,16,ChatAppearance.tabColor(key.equals(s.selected)?0x3B404040:0x33202020,UtilitySettings.chatBackgroundOpacity));
                 if(key.equals(s.selected))Gui.drawRect(left,15,left+w-2,16,0xFFFFFFFF);
                 mc.fontRendererObj.drawStringWithShadow(mc.fontRendererObj.trimStringToWidth(label,w-8),left+4,4,0xFFFFFFFF);
                 left+=w;if(left>=box.w/scale)break;

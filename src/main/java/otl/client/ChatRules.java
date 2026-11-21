@@ -60,6 +60,27 @@ final class ChatRules {
     }
     static String channel(String key){return ALL.equals(key)?"/g":TEAM.equals(key)?"/team":PARTY.equals(key)?"/party chat":null;}
     /**
+     * A private line reads as a conversation: the other player's name light purple, our own name
+     * plain white, so which end of the message is which is clear at a glance. Only the name in the
+     * prefix is touched; the body keeps the server's own colours.
+     */
+    static net.minecraft.util.IChatComponent privateLine(net.minecraft.util.IChatComponent text,String other,String self){
+        String s=text.getFormattedText(),out=colourName(s,other,"\u00a7d");
+        if(self!=null&&!self.isEmpty()&&!self.equalsIgnoreCase(other))out=colourName(out,self,"\u00a7f");
+        return out.equals(s)?text:new net.minecraft.util.ChatComponentText(out);
+    }
+    private static String colourName(String s,String name,String code){
+        if(name==null||name.isEmpty())return s;
+        String lower=s.toLowerCase(Locale.ROOT),needle=name.toLowerCase(Locale.ROOT);
+        int at=lower.indexOf(needle);
+        // A name in the body is not a name being addressed, so only the prefix is recoloured.
+        if(at<0||at>=Math.min(s.length(),64))return s;
+        String restore="\u00a7r";Matcher m=FORMAT.matcher(s.substring(0,at));String last=null;
+        while(m.find())last=m.group();
+        if(last!=null&&"0123456789abcdef".indexOf(Character.toLowerCase(last.charAt(1)))>=0)restore=last;
+        return s.substring(0,at)+code+s.substring(at,at+name.length())+restore+s.substring(at+name.length());
+    }
+    /**
      * Global chat goes out as plain text, the way the vanilla box sends it; only the other
      * channels need PGM's command prefix. A typed command is never rewritten.
      */

@@ -110,7 +110,7 @@ final class ReliableChatScreen extends GuiChat {
         for(String key:keys){
             ReliableChat.View v=s.views.get(key);if(v==null)continue;boolean pm=key.startsWith("pm:");int w=pm?pmWidth:channelWidth;
             Tab tab=new Tab(key,left,w);tabs.add(tab);
-            drawRect(left,top,left+w-2,top+17,ChatAppearance.tabColor(key.equals(s.selected)?0xEE404040:0xCC202020,UtilitySettings.typingTabBackgroundOpacity));
+            drawRect(left,top,left+w-2,top+17,ChatAppearance.tabColor(key.equals(s.selected)?0x3B404040:0x33202020,UtilitySettings.chatBackgroundOpacity));
             if(key.equals(s.selected))drawRect(left,top+16,left+w-2,top+17,0xFFFFFFFF);
             String count=UtilitySettings.counts&&v.unread>0?" "+v.unread:"";
             String name=fontRendererObj.trimStringToWidth(v.name,Math.max(8,w-8-fontRendererObj.getStringWidth(count)-(pm?10:0)));
@@ -121,7 +121,7 @@ final class ReliableChatScreen extends GuiChat {
         int hiddenUnread=0;for(ReliableChat.View v:s.views.values())if(v.key.startsWith("pm:")&&!s.visible.contains(v.key))hiddenUnread+=v.unread;
         String more=UtilitySettings.counts&&hiddenUnread>0?"... "+hiddenUnread:"...";
         int moreW=Math.min(width-left-2,Math.max(26,fontRendererObj.getStringWidth(more)+8));
-        tabs.add(new Tab("overflow",left,moreW));drawRect(left,top,left+moreW,top+17,ChatAppearance.tabColor(0xDD252525,UtilitySettings.typingTabBackgroundOpacity));drawString(fontRendererObj,more,left+4,top+5,FaceUi.TEXT);
+        tabs.add(new Tab("overflow",left,moreW));drawRect(left,top,left+moreW,top+17,ChatAppearance.tabColor(0x37252525,UtilitySettings.chatBackgroundOpacity));drawString(fontRendererObj,more,left+4,top+5,FaceUi.TEXT);
         }
         }
         ChatScroll.Bar bar=UtilitySettings.chatScrollbar?scrollbar():null;

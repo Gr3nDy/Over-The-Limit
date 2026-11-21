@@ -302,8 +302,8 @@ public class TeamBarTest {
         assertTrue("the clock would be drawn outside the bar",stacked.height>=9);
     }
 
-    /** In FFA a control point belongs to one player, so it is drawn in the middle, above the grid. */
-    @Test public void ffaObjectivesSitInTheMiddleAboveTheGrid(){
+    /** In FFA a control point scores the players, so it is drawn under the grid, not above it. */
+    @Test public void ffaObjectivesSitUnderTheGrid(){
         java.util.List<java.util.List<String>> grid=java.util.Arrays.asList(java.util.Arrays.asList("A","B"));
         java.util.Map<String,String> scores=java.util.Collections.emptyMap();
         TeamBar.Bar plain=new TeamBar.Bar(grid,16,20,30,null,"10:00",null,0,scores);
@@ -313,9 +313,11 @@ public class TeamBarTest {
             java.util.Collections.singletonList(point));
         assertEquals(1,withPoint.strips(4).size());
         assertTrue(withPoint.strips(2).isEmpty()&&withPoint.strips(3).isEmpty());
-        assertEquals("the point was not under the clock",12,withPoint.stripTop(4,0));
+        int rowBottom=withPoint.leftRowTops[0]+withPoint.head;
+        assertTrue("the point did not move under the heads",withPoint.stripTop(4,0)>=rowBottom);
         assertEquals("the point was not centred",withPoint.width/2-30,withPoint.stripX(4,point));
-        assertTrue("the grid did not move down for the point",withPoint.leftRowTops[0]>plain.leftRowTops[0]);
+        assertEquals("the grid moved down for the point",plain.leftRowTops[0],withPoint.leftRowTops[0]);
+        assertTrue("the bar did not grow for the point",withPoint.height>plain.height);
         assertTrue("the point did not widen the bar",withPoint.width>plain.width);
     }
 }

@@ -120,8 +120,10 @@ public final class UtilitySettings {
     static boolean regionHudPrefix=true;
     static int regionHudBackground=25;
     static int bubbleCharacters=80, bubbleSeconds=4;
-    static int tabBackgroundOpacity=25;
-    static int typingTabBackgroundOpacity=25;
+    /** One opacity for the whole chat: the backdrop behind each line and the channel tab strip. */
+    static int chatBackgroundOpacity=100;
+    /** Set once the slider has been used, so a first run leaves the player's own chat opacity alone. */
+    static boolean chatBackgroundSet;
     /** Draw the chat scrollbar while browsing history. */
     static boolean chatScrollbar=true;
     static final Map<String,String> selected=new HashMap<>();
@@ -153,7 +155,17 @@ public final class UtilitySettings {
             }
         }
         if(j!=null)read(j);
+        // The All tab is drawn by the client's own chat, which only reads this vanilla setting, so
+        // the mod's single background slider is pushed into it. Until the slider is used the
+        // player's own options.txt value stays as it is.
+        applyChatBackground();
         Profiles.ensureDefault();
+    }
+    /** Pushes the chat background into vanilla's own setting, which draws the All tab. */
+    static void applyChatBackground(){
+        if(!chatBackgroundSet)return;
+        Minecraft mc=MinecraftAccess.get();
+        if(mc!=null)mc.gameSettings.chatOpacity=chatBackgroundOpacity/100F;
     }
     static void read(JsonObject j){
         read(j,"profile",e->profile=Profiles.safeName(e.getAsString()));
@@ -273,8 +285,7 @@ public final class UtilitySettings {
         read(j,"bubble_team_and_chat",e->bubbleTeamAndChat=e.getAsBoolean());
         read(j,"bubble_characters",e->bubbleCharacters=Math.max(20,Math.min(200,e.getAsInt())));
         read(j,"bubble_seconds",e->bubbleSeconds=Math.max(1,Math.min(15,e.getAsInt())));
-        read(j,"tab_background_opacity",e->tabBackgroundOpacity=Math.max(0,Math.min(100,e.getAsInt())));
-        read(j,"typing_tab_background_opacity",e->typingTabBackgroundOpacity=Math.max(0,Math.min(100,e.getAsInt())));
+        read(j,"chat_background_opacity",e->{chatBackgroundOpacity=Math.max(0,Math.min(100,e.getAsInt()));chatBackgroundSet=true;});
         read(j,"chat_scrollbar",e->chatScrollbar=e.getAsBoolean());
         if(j.has("map_favorites"))for(JsonElement e:j.getAsJsonArray("map_favorites")){
             String key=favoriteKey(e.getAsString());if(key!=null&&mapFavorites.size()<2000)mapFavorites.add(key);
@@ -389,8 +400,7 @@ public final class UtilitySettings {
             j.addProperty("bow_hit_marker_size",bowHitMarkerSize);
             j.addProperty("main_hand_left",mainHandLeft);j.addProperty("hand_type",handType.name());
             j.addProperty("remember_drafts",rememberDrafts);j.addProperty("unlimited_history",unlimitedHistory);j.addProperty("shift_tab",cycleTabs);j.addProperty("team_bubbles",bubbles);j.addProperty("bubble_team_and_chat",bubbleTeamAndChat);j.addProperty("bubble_characters",bubbleCharacters);j.addProperty("bubble_seconds",bubbleSeconds);
-            j.addProperty("tab_background_opacity",tabBackgroundOpacity);
-            j.addProperty("typing_tab_background_opacity",typingTabBackgroundOpacity);
+            j.addProperty("chat_background_opacity",chatBackgroundOpacity);
             j.addProperty("chat_scrollbar",chatScrollbar);
             JsonArray favorites=new JsonArray();for(String key:mapFavorites)favorites.add(new JsonPrimitive(key));j.add("map_favorites",favorites);
             JsonArray order=new JsonArray();for(String n:Profiles.profileOrder)order.add(new JsonPrimitive(n));j.add("profile_order",order);
