@@ -268,6 +268,40 @@ public class TeamBarTest {
         assertTrue(TeamBar.countsForced(java.util.Arrays.asList("a","b","c","d","e","f","g","h")));
     }
 
+    /**
+     * With the heads hidden there is no head row to fill, so a team's name takes the bar's top edge
+     * and its objectives follow straight after, instead of hanging below an empty head row.
+     */
+    @Test public void hiddenHeadsPullTheTeamNameAndObjectivesUp(){
+        java.util.List<Objectives.Strip> none=java.util.Collections.emptyList();
+        java.util.List<Objectives.Strip> name=java.util.Collections.singletonList(
+            new Objectives.Strip(java.util.Collections.singletonList(
+                new Objectives.Part("Red",TeamBar.WHITE,-1)),20,"Red"));
+        java.util.List<Objectives.Strip> goals=java.util.Arrays.asList(
+            new Objectives.Strip(java.util.Collections.singletonList(
+                new Objectives.Part("Red",TeamBar.WHITE,-1)),20,"Red"),
+            new Objectives.Strip(java.util.Collections.singletonList(
+                new Objectives.Part("Monument",TeamBar.WHITE,-1)),40,"Red"));
+        java.util.List<String> left=java.util.Collections.singletonList("A");
+        java.util.List<String> owners=java.util.Collections.singletonList("Red");
+        TeamBar.Bar withHeads=new TeamBar.Bar(java.util.Collections.singletonList(left),
+            java.util.Collections.<java.util.List<String>>emptyList(),16,20,null,"10:00",7,name,none,
+            false,null,null,0,owners,null,false,0);
+        TeamBar.Bar noHeads=new TeamBar.Bar(java.util.Collections.singletonList(left),
+            java.util.Collections.<java.util.List<String>>emptyList(),0,20,null,"10:00",7,name,none,
+            false,null,null,0,owners,null,false,0);
+        assertTrue("the name did not move up",noHeads.stripTop(0,0)<withHeads.stripTop(0,0));
+        // No head row at all: the name sits one gap below the bar's own top edge.
+        assertEquals(TeamBar.OBJECTIVE_GAP,noHeads.stripTop(0,0));
+        assertTrue("the bar kept the empty head row",noHeads.height<withHeads.height);
+        // Its objectives follow immediately after the name, and the clock still fits the bar.
+        TeamBar.Bar stacked=new TeamBar.Bar(java.util.Collections.singletonList(left),
+            java.util.Collections.<java.util.List<String>>emptyList(),0,20,null,"10:00",7,goals,none,
+            false,null,null,0,owners,null,false,0);
+        assertEquals(noHeads.stripTop(0,0)+TeamBar.STRIP_LINE,stacked.stripTop(0,1));
+        assertTrue("the clock would be drawn outside the bar",stacked.height>=9);
+    }
+
     /** In FFA a control point belongs to one player, so it is drawn in the middle, above the grid. */
     @Test public void ffaObjectivesSitInTheMiddleAboveTheGrid(){
         java.util.List<java.util.List<String>> grid=java.util.Arrays.asList(java.util.Arrays.asList("A","B"));

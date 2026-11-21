@@ -333,9 +333,12 @@ final class TeamBar {
                 // Each team's objectives sit directly under its own heads, so on a four-team bar a
                 // block never drifts under another team's row. Teams with no heads left over go
                 // below the stack, as before.
+                // With heads hidden there is no head row to fill: the team's name takes the bar's
+                // own top edge and everything under it moves up, instead of hanging below a gap.
+                int rowH=head>0||counts?band:0;
                 standardHeight=Math.max(
-                    layout(left,leftOwners,this.leftStrips,leftRowTops,leftStripTops,band,stripLine),
-                    layout(right,rightOwners,this.rightStrips,rightRowTops,rightStripTops,band,stripLine));
+                    layout(left,leftOwners,this.leftStrips,leftRowTops,leftStripTops,band,rowH,stripLine),
+                    layout(right,rightOwners,this.rightStrips,rightRowTops,rightStripTops,band,rowH,stripLine));
             }
             this.pointY=standardHeight+OBJECTIVE_GAP;
             int ownedRows=Math.max(pointStrips.get(0).size(),pointStrips.get(1).size());
@@ -411,10 +414,12 @@ final class TeamBar {
          * Stacks one column's head blocks and gives each team's objectives the space directly
          * under that team's own block, so a block can never drift under another team's row.
          * Objectives of teams with no heads online fall in below the stack, as they did before.
+         * {@code band} is the clock's own row, which the column never gets shorter than;
+         * {@code rowH} is what a head row takes, which is nothing when the heads are hidden.
          * Returns the column's bottom, measured inside the bar.
          */
         private static int layout(List<List<String>> rows,List<String> owners,List<Objectives.Strip> strips,
-                                  int[] rowTops,int[] stripTops,int band,int stripLine){
+                                  int[] rowTops,int[] stripTops,int band,int rowH,int stripLine){
             boolean[] placed=new boolean[strips.size()];
             int y=0,r=0;
             while(r<rows.size()){
@@ -422,7 +427,7 @@ final class TeamBar {
                 int from=r;
                 if(owner==null)r++;
                 else do{r++;}while(r<rows.size()&&owner.equals(ownerAt(owners,r)));
-                for(int i=from;i<r;i++){rowTops[i]=y;y+=band;}
+                for(int i=from;i<r;i++){rowTops[i]=y;y+=rowH;}
                 if(owner!=null){
                     boolean any=false;
                     // Matched by team name, not by the order the lines arrived: PGM sorts the
@@ -441,7 +446,7 @@ final class TeamBar {
             for(boolean done:placed)if(!done){leftover=true;break;}
             if(rows.isEmpty()){
                 // No heads at all: keep the stack below the clock's own row.
-                y=band+(strips.isEmpty()?0:OBJECTIVE_GAP);
+                y=rowH+(strips.isEmpty()?0:OBJECTIVE_GAP);
             }else if(leftover)y+=OBJECTIVE_GAP;
             for(int i=0;i<strips.size();i++)if(!placed[i]){stripTops[i]=y;y+=stripLine;}
             return Math.max(band,y);
