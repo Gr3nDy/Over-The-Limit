@@ -56,21 +56,19 @@ final class ObjSkateboard {
     }
 
     static void render(float scale){
-        load();
-        if(displayList==0){
-            displayList=GL11.glGenLists(1);
-            GL11.glNewList(displayList,GL11.GL_COMPILE);
-            draw(scale,1f,1f,1f,1f);
-            GL11.glEndList();
-        }
-        Minecraft.getMinecraft().getTextureManager().bindTexture(TEXTURE);
-        GL11.glColor4f(1f,1f,1f,1f);
-        GL11.glCallList(displayList);
-        // Inverted hull: cull the front faces while drawing a slightly enlarged black copy. This
-        // leaves only the back-facing shell at the silhouette, unlike wireframe which outlines
-        // every internal triangle of the decimated mesh.
-        GL11.glPushAttrib(GL11.GL_ENABLE_BIT|GL11.GL_POLYGON_BIT|GL11.GL_CURRENT_BIT);
+        GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
         try{
+            load();
+            if(displayList==0){
+                displayList=GL11.glGenLists(1);
+                GL11.glNewList(displayList,GL11.GL_COMPILE);
+                draw(scale,1f,1f,1f,1f);
+                GL11.glEndList();
+            }
+            Minecraft.getMinecraft().getTextureManager().bindTexture(TEXTURE);
+            GL11.glColor4f(1f,1f,1f,1f);
+            GL11.glCallList(displayList);
+            // Inverted hull: only the enlarged back-facing shell becomes the outline.
             GL11.glDisable(GL11.GL_TEXTURE_2D);
             GL11.glCullFace(GL11.GL_FRONT);
             GL11.glEnable(GL11.GL_CULL_FACE);
@@ -80,6 +78,9 @@ final class ObjSkateboard {
             GL11.glCallList(displayList);
             GL11.glPopMatrix();
         }finally{
+            // Restore texture, culling, depth, blend, color and polygon state before Minecraft
+            // renders the rest of the player/world. A leaked state here causes the white-screen
+            // failure when N first enables the board.
             GL11.glPopAttrib();
         }
     }
