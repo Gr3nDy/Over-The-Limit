@@ -5,14 +5,16 @@ import static org.junit.Assert.*;
 
 /** Pose curves are pure maths: they must stay finite, in range and on the intended parts. */
 public class AnimPoseTest {
-    @Test public void idleStaysSubtleAndAdditive(){
-        for(float t=0;t<400;t+=7.3f){
-            AnimPose p=new AnimPose();
-            AnimClips.idle(p,t);
-            for(int i=0;i<AnimPose.PARTS;i++)assertFalse("part "+i+" replaced",p.replace[i]);
-            for(float a:p.angle)assertTrue("angle "+a,Float.isFinite(a)&&Math.abs(a)<0.25f);
-            assertFalse(p.board);
+    @Test public void nothingIsAppliedWithoutAnEmoteOrTheBoard(){
+        // The model must stay exactly vanilla until the player asks for something: a clip that
+        // quietly runs all the time is what made the whole body spin.
+        AnimPose p=new AnimPose();
+        assertFalse(p.board);
+        for(int i=0;i<AnimPose.PARTS;i++){
+            assertFalse("part "+i+" replaced by default",p.replace[i]);
+            assertEquals("part "+i+" not zero by default",0f,p.angle[i],1e-6f);
         }
+        assertEquals(0f,p.elbowRight+p.elbowLeft+p.kneeRight+p.kneeLeft,1e-6f);
     }
 
     @Test public void everyEmoteReplacesTheWholeBody(){
@@ -50,31 +52,46 @@ public class AnimPoseTest {
             assertTrue("emote "+id+" never bent an arm past a relaxed angle",strongest>0.4f);
         }
         AnimPose skate=new AnimPose();
-        AnimClips.skate(skate,0f,0f,10f);
+        AnimClips.skate(skate,-1f);
         assertTrue("the skate stance did not bend its knees",skate.kneeLeft>0.3f&&skate.kneeRight>0.2f);
-        AnimPose idle=new AnimPose();
-        AnimClips.idle(idle,10f);
-        assertTrue("idle left the elbows locked",idle.elbowRight>0.05f&&idle.elbowLeft>0.05f);
     }
 
     @Test public void skatePlantsTheLegsAndKeepsTheArmsAdditive(){
         AnimPose p=new AnimPose();
-        AnimClips.skate(p,3f,1f,20f);
+        AnimClips.skate(p,-1f);
         assertTrue(p.replace[AnimPose.RIGHT_LEG]&&p.replace[AnimPose.LEFT_LEG]);
         assertTrue(p.replace[AnimPose.RIGHT_LEG+2]);
         assertFalse(p.replace[AnimPose.RIGHT_ARM]||p.replace[AnimPose.LEFT_ARM]);
+        // The head is left to the game so it still follows where the player looks.
         assertFalse(p.replace[AnimPose.HEAD]);
         assertJointsSane("skate",p);
     }
 
-    @Test public void theSkateStanceNeverTwistsTheTorsoOrHead(){
-        // A body or head Y rotation is what made the whole model look like it was spinning.
-        for(float t=0;t<200;t+=3.1f)for(float swing=0f;swing<6f;swing+=1.3f){
+    @Test public void theSkateStanceNeverTurnsTheBodyOrHead(){
+        // Any Y rotation on the body or head is what made the model look like it was spinning.
+        for(float push=-1f;push<1.01f;push+=0.11f){
             AnimPose p=new AnimPose();
-            AnimClips.skate(p,swing,1f,t);
-            assertTrue("torso twisted",Math.abs(p.angle[AnimPose.BODY+1])<0.01f);
-            assertTrue("head turned",Math.abs(p.angle[AnimPose.HEAD+1])<0.01f);
+            AnimClips.skate(p,push);
+            for(int part:new int[]{AnimPose.HEAD,AnimPose.BODY}){
+                assertEquals("part "+part+" turned",0f,p.angle[part+1],1e-6f);
+                assertEquals("part "+part+" tilted sideways",0f,p.angle[part+2],1e-6f);
+            }
         }
+    }
+
+    @Test public void theSkateStanceIsStaticApartFromOnePush(){
+        // Balancing, not jogging: with no push the stance must be identical frame after frame.
+        AnimPose first=new AnimPose();
+        AnimClips.skate(first,-1f);
+        AnimPose again=new AnimPose();
+        AnimClips.skate(again,-1f);
+        assertArrayEquals(first.angle,again.angle,0f);
+        assertEquals(first.kneeRight,again.kneeRight,0f);
+        // A push starts and finishes, so the stance always returns to the same resting shape.
+        AnimPose mid=new AnimPose();
+        AnimClips.skate(mid,0.5f);
+        assertTrue("the kick did not move the back leg",Math.abs(mid.angle[AnimPose.RIGHT_LEG]-first.angle[AnimPose.RIGHT_LEG])>0.3f);
+        assertJointsSane("kick",mid);
     }
 
     @Test public void olliePopsTheDeckAndEachTrickTurnsIt(){
@@ -94,6 +111,13 @@ public class AnimPoseTest {
         AnimPose shove=new AnimPose();
         AnimClips.ollie(shove,0.5f,2);
         assertTrue(Math.abs(shove.boardY)>1f);
+        // The body angle is replaced, so an ollie always unwinds back to the stance instead of
+        // leaving the player leaning further over after every jump.
+        AnimPose start=new AnimPose();
+        AnimClips.ollie(start,0f,0);
+        AnimPose end=new AnimPose();
+        AnimClips.ollie(end,1f,0);
+        assertEquals(start.angle[AnimPose.BODY],end.angle[AnimPose.BODY],1e-5f);
     }
 
     @Test public void smoothstepClamps(){

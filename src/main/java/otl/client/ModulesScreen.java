@@ -495,7 +495,7 @@ final class ModulesScreen extends GuiScreen {
         DESC.put("kill_confirm","Show a clear confirmation after a kill");
         DESC.put("map_preview","Preview the next map before voting");
         DESC.put("face_rig","Add expressive face marks to your skin");
-        DESC.put("player_animation","Idle motion, emotes and a skateboard");
+        DESC.put("player_animation","Emotes and a pull-out skateboard");
         DESC.put("minimap","Keep a compact map in a screen corner");
         DESC.put("left_hand","Choose what appears in your off-hand view");
         DESC.put("bow_optimizer","Improve bow timing and accuracy");

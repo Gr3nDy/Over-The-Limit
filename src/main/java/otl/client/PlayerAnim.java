@@ -13,8 +13,9 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 
 /**
- * Client-side animation state: a breathing sway for every player, plus a skateboard and emotes
- * for the local player. Nothing is sent to the server, so other clients see vanilla poses.
+ * Client-side animation state: a skateboard and emotes for the local player. Nothing runs until
+ * the player asks for it - no emote and no board means the model is left exactly vanilla.
+ * Nothing is sent to the server, so other clients never see it.
  *
  * <p>The emote owns the camera until the player left-clicks, takes damage, starts moving, opens a
  * screen, changes the perspective themselves, dies or leaves the world. Every exit restores the
@@ -26,6 +27,8 @@ final class PlayerAnim {
     /** Board progress per tick; a pull-out or stow takes about seven ticks. */
     private static final float PULL_OUT=0.16f;
     private static final int OLLIE_TICKS=11;
+    /** One kick of the back leg; after it the player just balances and the board rolls. */
+    private static final int PUSH_TICKS=9;
     /** Ticks the emote pose takes to fade in. */
     private static final float EMOTE_FADE=4f;
 
@@ -33,6 +36,10 @@ final class PlayerAnim {
         float board,prevBoard;
         boolean wantsBoard;
         int ollieAt=-1,trick;
+        /** Tick the single kick started on; -1 when the player is just balancing. */
+        int pushAt=-1;
+        /** Whether movement was held last tick, so one kick starts per stop-to-move change. */
+        boolean wasMoving;
         /** -1 while no emote runs; emoteEnd holds the tick the last one stopped on. */
         int emote=-1,emoteAt,emoteLast=-1,emoteEnd=-1;
         boolean baseline;
@@ -59,12 +66,17 @@ final class PlayerAnim {
         Minecraft mc=MinecraftAccess.get();
         float partial=Math.max(0f,Math.min(1f,age-p.ticksExisted));
         State s=STATES.get(p.getEntityId());
-        AnimPose pose=SCRATCH;
-        pose.reset();
-        AnimClips.idle(pose,age);
+        // Nothing is touched until the player asks for it: vanilla behaviour stays exactly vanilla.
         if(s!=null&&s.board>0.001f&&p==mc.thePlayer){
+            AnimPose pose=SCRATCH;
+            pose.reset();
             float board=s.prevBoard+(s.board-s.prevBoard)*partial;
-            AnimClips.skate(pose,swing,amount,age);
+            float push=-1f;
+            if(s.pushAt>=0){
+                float phase=(age-s.pushAt)/PUSH_TICKS;
+                if(phase>=0f&&phase<=1f)push=phase;
+            }
+            AnimClips.skate(pose,push);
             pose.board=true;
             // Blocks, not model units: this translate runs in the same space as a rotation point.
             pose.boardDrop=(1f-board)*0.40f;
@@ -73,18 +85,17 @@ final class PlayerAnim {
                 float phase=(age-s.ollieAt)/OLLIE_TICKS;
                 if(phase>=0f&&phase<=1f)AnimClips.ollie(pose,phase,s.trick);
             }
+            poseModel(model,pose);
+            model.boardOut=true;
+            model.boardX=pose.boardX;
+            model.boardY=pose.boardY;
+            model.boardZ=pose.boardZ;
+            model.boardDrop=pose.boardDrop;
+            model.elbowRight=pose.elbowRight;model.elbowLeft=pose.elbowLeft;
+            model.kneeRight=pose.kneeRight;model.kneeLeft=pose.kneeLeft;
+            model.elbowRightZ=pose.elbowRightZ;model.elbowLeftZ=pose.elbowLeftZ;
+            model.kneeRightZ=pose.kneeRightZ;model.kneeLeftZ=pose.kneeLeftZ;
         }
-        poseModel(model,pose);
-        model.boardOut=pose.board;
-        model.boardX=pose.boardX;
-        model.boardY=pose.boardY;
-        model.boardZ=pose.boardZ;
-        model.boardDrop=pose.boardDrop;
-        model.elbowRight=pose.elbowRight;model.elbowLeft=pose.elbowLeft;
-        model.kneeRight=pose.kneeRight;model.kneeLeft=pose.kneeLeft;
-        model.elbowRightZ=pose.elbowRightZ;model.elbowLeftZ=pose.elbowLeftZ;
-        model.kneeRightZ=pose.kneeRightZ;model.kneeLeftZ=pose.kneeLeftZ;
-
         if(s!=null&&p==mc.thePlayer)emote(model,s,age);
     }
 
@@ -181,6 +192,7 @@ final class PlayerAnim {
         if(s.board<target)s.board=Math.min(target,s.board+PULL_OUT);
         else if(s.board>target)s.board=Math.max(target,s.board-PULL_OUT);
         if(s.ollieAt>=0&&p.ticksExisted-s.ollieAt>OLLIE_TICKS)s.ollieAt=-1;
+        if(s.pushAt>=0&&p.ticksExisted-s.pushAt>PUSH_TICKS)s.pushAt=-1;
         // Crouch then jump pops the ollie; a plain jump is left alone as a normal jump.
         boolean jumped=!p.onGround&&s.lastGround&&p.motionY>0.12;
         if(p==MinecraftAccess.get().thePlayer&&jumped&&p.isSneaking()
@@ -189,6 +201,15 @@ final class PlayerAnim {
             s.trick=(int)(Math.random()*3);
         }
         s.lastGround=p.onGround;
+        if(p==MinecraftAccess.get().thePlayer&&s.wantsBoard&&s.board>=0.9f){
+            // One kick when movement starts; while it keeps moving the stance just balances.
+            boolean walking=walking(p);
+            if(walking&&!s.wasMoving&&s.pushAt<0&&s.ollieAt<0)s.pushAt=p.ticksExisted;
+            s.wasMoving=walking;
+        }else{
+            s.wasMoving=false;
+            s.pushAt=-1;
+        }
     }
 
     private static void checkEmote(Minecraft mc){
@@ -242,6 +263,13 @@ final class PlayerAnim {
         if(!(p instanceof net.minecraft.client.entity.EntityPlayerSP))return false;
         net.minecraft.util.MovementInput in=((net.minecraft.client.entity.EntityPlayerSP)p).movementInput;
         return in!=null&&(in.moveForward!=0f||in.moveStrafe!=0f||in.jump||in.sneak);
+    }
+
+    /** Direction keys only: crouching or jumping must not count as a kick. */
+    private static boolean walking(EntityPlayer p){
+        if(!(p instanceof net.minecraft.client.entity.EntityPlayerSP))return false;
+        net.minecraft.util.MovementInput in=((net.minecraft.client.entity.EntityPlayerSP)p).movementInput;
+        return in!=null&&(in.moveForward!=0f||in.moveStrafe!=0f);
     }
 
     private static float health(EntityPlayer p){

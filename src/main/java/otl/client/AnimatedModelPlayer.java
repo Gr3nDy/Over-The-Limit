@@ -99,6 +99,11 @@ final class AnimatedModelPlayer extends ModelPlayer {
 
     @Override
     public void setRotationAngles(float swing,float amount,float age,float yaw,float pitch,float scale,Entity entity){
+        // Every angle starts at its vanilla default before the game poses the model. Vanilla does
+        // not reset bipedHead.rotateAngleZ or bipedBody.rotateAngleX/Z, so anything that adds to
+        // them - including a plain sway - piles up frame after frame and the model spins. Player
+        // Animator restores its defaults the same way, then assigns absolute values.
+        resetAngles();
         super.setRotationAngles(swing,amount,age,yaw,pitch,scale,entity);
         boardOut=false;
         elbowRight=elbowLeft=kneeRight=kneeLeft=0f;
@@ -113,6 +118,13 @@ final class AnimatedModelPlayer extends ModelPlayer {
         lowerLegL.rotateAngleX=lowerLegLw.rotateAngleX=kneeLeft;
         lowerLegR.rotateAngleZ=lowerLegRw.rotateAngleZ=kneeRightZ;
         lowerLegL.rotateAngleZ=lowerLegLw.rotateAngleZ=kneeLeftZ;
+    }
+
+    /** Vanilla defaults for the pose angles, so a stale frame can never leak into the next. */
+    private void resetAngles(){
+        for(ModelRenderer r:new ModelRenderer[]{bipedHead,bipedBody,bipedRightArm,bipedLeftArm,bipedRightLeg,bipedLeftLeg}){
+            r.rotateAngleX=0f;r.rotateAngleY=0f;r.rotateAngleZ=0f;
+        }
     }
 
     /**

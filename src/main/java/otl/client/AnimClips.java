@@ -9,8 +9,8 @@ package otl.client;
 final class AnimClips {
     static final int EMOTES=3;
     private static final float PI=(float)Math.PI;
-    /** A relaxed standing bend: real people never lock their knees or elbows. */
-    private static final float STAND_ELBOW=0.16f,STAND_KNEE=0.06f;
+    /** A relaxed standing bend: real people never lock their elbows. */
+    private static final float STAND_ELBOW=0.16f;
 
     private AnimClips(){}
 
@@ -20,36 +20,27 @@ final class AnimClips {
         return t*t*(3f-2f*t);
     }
 
-    /** Everyone gets a slow breathing sway, added on top of the vanilla walk. */
-    static void idle(AnimPose p,float t){
-        p.add(AnimPose.HEAD,0.018f*sin(t*0.071f),0.03f*sin(t*0.043f),0.022f*sin(t*0.061f));
-        p.add(AnimPose.BODY,0f,0f,0.012f*sin(t*0.05f));
-        p.add(AnimPose.RIGHT_ARM,0.02f*sin(t*0.063f),0f,0.035f*sin(t*0.051f));
-        p.add(AnimPose.LEFT_ARM,-0.02f*sin(t*0.063f),0f,-0.035f*sin(t*0.051f));
-        p.elbowRight=STAND_ELBOW+0.03f*sin(t*0.05f);
-        p.elbowLeft=STAND_ELBOW-0.03f*sin(t*0.05f);
-        p.kneeRight=STAND_KNEE;p.kneeLeft=STAND_KNEE;
-    }
-
     /**
-     * The deck stance: legs planted instead of walking, knees bent for balance, arms loose at the
-     * sides. The back leg straightens on the push, which is what makes it read as skateboarding.
+     * The deck stance: legs planted instead of walking, knees bent for balance. The stance is
+     * static - the player is balancing - and one push plays when they start moving, then the board
+     * just rolls.
      */
-    static void skate(AnimPose p,float swing,float amount,float t){
-        float moving=Math.min(1f,amount*1.8f);
-        float push=swing*1.3324f;
-        float backKick=Math.max(0f,sin(push))*moving;
-        // Front foot leads, back foot pushes: the knees carry the difference.
-        p.set(AnimPose.RIGHT_LEG,0.10f+0.30f*backKick,0f,0.10f);
-        p.set(AnimPose.LEFT_LEG,-0.14f,0f,-0.10f);
-        p.kneeRight=0.34f-0.22f*backKick;
-        p.kneeLeft=0.44f+0.10f*backKick;
+    static void skate(AnimPose p,float push){
+        float k=push<0f?0f:sin(push*PI);
+        // Back foot at the tail, front foot forward: the back leg is the one that kicks.
+        p.set(AnimPose.RIGHT_LEG,-0.14f+0.55f*k,0f,0.10f);
+        p.set(AnimPose.LEFT_LEG,0.10f,0f,-0.10f);
+        p.kneeRight=0.34f-0.30f*k;
+        p.kneeLeft=0.44f;
         // Shoulders stay square to the board; only the arms counterbalance.
         p.add(AnimPose.RIGHT_ARM,-0.30f,0f,0.34f);
         p.add(AnimPose.LEFT_ARM,0.10f,0f,-0.34f);
-        p.elbowRight=0.55f+0.20f*backKick;
-        p.elbowLeft=0.40f-0.10f*backKick;
-        p.add(AnimPose.HEAD,-0.05f,0f,0f);
+        p.elbowRight=0.55f;
+        p.elbowLeft=0.40f;
+        // The body is replaced, never added: vanilla does not reset the body angles, so an
+        // additive value here would keep growing every frame and the model would spin. The head is
+        // left alone so it still follows where the player is looking.
+        p.set(AnimPose.BODY,0.06f,0f,0f);
     }
 
     /** One ollie: crouch, tuck both knees, pop the deck. Trick 0 ollie, 1 kickflip, 2 shove-it. */
@@ -59,7 +50,8 @@ final class AnimClips {
         p.add(AnimPose.LEFT_LEG,-0.40f*s,0f,0f);
         p.kneeRight+=0.85f*s;
         p.kneeLeft+=0.95f*s;
-        p.add(AnimPose.BODY,0.14f*s,0f,0f);
+        // Replaced: the body angle is not reset by vanilla, so adding to it would never unwind.
+        p.set(AnimPose.BODY,0.06f+0.14f*s,0f,0f);
         p.add(AnimPose.RIGHT_ARM,-0.30f*s,0f,0.10f*s);
         p.add(AnimPose.LEFT_ARM,-0.30f*s,0f,-0.10f*s);
         p.elbowRight+=0.25f*s;p.elbowLeft+=0.25f*s;
