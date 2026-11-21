@@ -84,8 +84,22 @@ public final class Otl {
                     new AnimatedModelPlayer("slim".equals(entry.getKey())),"mainModel","field_77045_g");
             }catch(RuntimeException fail){System.err.println("OTL: could not install the animated player model: "+fail);}
             installArmorModels(renderer,entry.getKey());
+            installSkateHeldLayer(renderer);
         }
         ((IReloadableResourceManager)MinecraftAccess.get().getResourceManager()).registerReloadListener(resources->{SkinFace.clear();FaceMarks.clearCache();KillFeed.clearHeads();});
+    }
+
+    private static void installSkateHeldLayer(RenderPlayer renderer){
+        try{
+            java.util.List<net.minecraft.client.renderer.entity.layers.LayerRenderer> layers=
+                net.minecraftforge.fml.relauncher.ReflectionHelper.getPrivateValue(
+                    net.minecraft.client.renderer.entity.RendererLivingEntity.class,renderer,
+                    "layerRenderers","field_177097_h");
+            if(layers==null)return;
+            for(java.util.Iterator<net.minecraft.client.renderer.entity.layers.LayerRenderer> it=layers.iterator();it.hasNext();)
+                if(it.next() instanceof net.minecraft.client.renderer.entity.layers.LayerHeldItem)it.remove();
+            layers.add(new SkateHeldItemLayer(renderer));
+        }catch(RuntimeException fail){System.err.println("OTL: could not install skate held-item layer: "+fail);}
     }
 
     /** Armor has its own ModelBiped instances; give it the same single-joint rig as the player. */

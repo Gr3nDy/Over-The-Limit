@@ -18,6 +18,7 @@ final class ObjSkateboard {
     private static final List<float[]> V=new ArrayList<>(), UV=new ArrayList<>(), N=new ArrayList<>();
     private static final List<int[]> F=new ArrayList<>();
     private static boolean loaded;
+    private static int displayList;
     private static float minX,maxX,minY,maxY,minZ,maxZ;
 
     private ObjSkateboard(){}
@@ -55,7 +56,14 @@ final class ObjSkateboard {
 
     static void render(float scale){
         load();
-        draw(scale,1f,1f,1f,1f);
+        if(displayList==0){
+            displayList=GL11.glGenLists(1);
+            GL11.glNewList(displayList,GL11.GL_COMPILE);
+            draw(scale,1f,1f,1f,1f);
+            GL11.glEndList();
+        }
+        GL11.glColor4f(0.82f,0.82f,0.82f,1f);
+        GL11.glCallList(displayList);
         // Inverted hull: cull the front faces while drawing a slightly enlarged black copy. This
         // leaves only the back-facing shell at the silhouette, unlike wireframe which outlines
         // every internal triangle of the decimated mesh.
@@ -65,7 +73,10 @@ final class ObjSkateboard {
             GL11.glCullFace(GL11.GL_FRONT);
             GL11.glEnable(GL11.GL_CULL_FACE);
             GL11.glColor4f(0f,0f,0f,1f);
-            draw(scale*1.025f,0f,0f,0f,1f);
+            GL11.glPushMatrix();
+            GL11.glScalef(1.025f,1.025f,1.025f);
+            GL11.glCallList(displayList);
+            GL11.glPopMatrix();
         }finally{
             GL11.glPopAttrib();
         }
@@ -73,6 +84,7 @@ final class ObjSkateboard {
 
     private static void draw(float scale,float red,float green,float blue,float alpha){
         Tessellator t=Tessellator.getInstance(); WorldRenderer w=t.getWorldRenderer();
+        GL11.glColor4f(red,green,blue,alpha);
         float sx=Math.max(1e-5f,maxX-minX), sy=Math.max(1e-5f,maxY-minY), sz=Math.max(1e-5f,maxZ-minZ);
         w.begin(GL11.GL_TRIANGLES,DefaultVertexFormats.POSITION_TEX_NORMAL);
         for(int[] f:F)for(int i=0;i<3;i++){

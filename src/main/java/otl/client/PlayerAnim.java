@@ -61,6 +61,11 @@ final class PlayerAnim {
         return UtilitySettings.playerAnimation;
     }
 
+    static boolean skating(){
+        Minecraft mc=MinecraftAccess.get();
+        return mc!=null&&mc.thePlayer!=null&&state(mc.thePlayer).wantsBoard;
+    }
+
     /** Pushes the pose for one render frame onto the model, before its limbs draw. */
     static void apply(AnimatedModelPlayer model,EntityPlayer p,float swing,float amount,float age){
         Minecraft mc=MinecraftAccess.get();
@@ -144,7 +149,14 @@ final class PlayerAnim {
         if(p.isRiding())return;
         State s=state(p);
         if(s.emote>=0)stopEmote(mc,p,true);
-        s.wantsBoard=!s.wantsBoard;
+        if(s.wantsBoard){
+            s.wantsBoard=false;
+            s.pushAt=-1;s.ollieAt=-1;s.wasMoving=false;
+            endCamera(mc,true);
+        }else{
+            s.wantsBoard=true;
+            beginSkateCamera(mc);
+        }
     }
 
     @SubscribeEvent
@@ -173,9 +185,17 @@ final class PlayerAnim {
         if(mc.thePlayer==null||mc.currentScreen!=null)return;
         State s=STATES.get(mc.thePlayer.getEntityId());
         boolean emoting=s!=null&&s.emote>=0;
-        if(!emoting&&!managing)return;
+        boolean skating=s!=null&&s.wantsBoard;
+        if(!emoting&&!managing&&!skating)return;
         if(emoting)stopEmote(mc,mc.thePlayer,true);
-        else endCamera(mc,true);
+        else if(managing)endCamera(mc,true);
+        if(skating){
+            s.wantsBoard=false;
+            s.pushAt=-1;
+            s.ollieAt=-1;
+            s.wasMoving=false;
+            endCamera(mc,true);
+        }
         event.setCanceled(true);
     }
 
@@ -254,6 +274,13 @@ final class PlayerAnim {
         if(managing||!UtilitySettings.emoteCamera)return;
         savedView=mc.gameSettings.thirdPersonView;
         mc.gameSettings.thirdPersonView=2;
+        managing=true;
+    }
+
+    private static void beginSkateCamera(Minecraft mc){
+        if(managing)return;
+        savedView=mc.gameSettings.thirdPersonView;
+        mc.gameSettings.thirdPersonView=1;
         managing=true;
     }
 

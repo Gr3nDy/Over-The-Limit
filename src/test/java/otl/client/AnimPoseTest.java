@@ -56,26 +56,26 @@ public class AnimPoseTest {
         assertTrue("the skate stance did not bend its knees",skate.kneeLeft>0.3f&&skate.kneeRight>0.2f);
     }
 
-    @Test public void skatePlantsTheLegsAndKeepsTheArmsAdditive(){
+    @Test public void skatePlantsTheLegsAndReplacesTheWalkingArms(){
         AnimPose p=new AnimPose();
         AnimClips.skate(p,-1f);
         assertTrue(p.replace[AnimPose.RIGHT_LEG]&&p.replace[AnimPose.LEFT_LEG]);
         assertTrue(p.replace[AnimPose.RIGHT_LEG+2]);
-        assertFalse(p.replace[AnimPose.RIGHT_ARM]||p.replace[AnimPose.LEFT_ARM]);
+        assertTrue(p.replace[AnimPose.RIGHT_ARM]&&p.replace[AnimPose.LEFT_ARM]);
         // The head is left to the game so it still follows where the player looks.
         assertFalse(p.replace[AnimPose.HEAD]);
         assertJointsSane("skate",p);
     }
 
-    @Test public void theSkateStanceNeverTurnsTheBodyOrHead(){
-        // Any Y rotation on the body or head is what made the model look like it was spinning.
+    @Test public void theSkateStanceTurnsOnlyTheBodyForSidewaysRiding(){
+        // A controlled body yaw is intentional for skating; head roll and sideways tilt are not.
         for(float push=-1f;push<1.01f;push+=0.11f){
             AnimPose p=new AnimPose();
             AnimClips.skate(p,push);
-            for(int part:new int[]{AnimPose.HEAD,AnimPose.BODY}){
-                assertEquals("part "+part+" turned",0f,p.angle[part+1],1e-6f);
-                assertEquals("part "+part+" tilted sideways",0f,p.angle[part+2],1e-6f);
-            }
+            assertEquals("head turned",0f,p.angle[AnimPose.HEAD+1],1e-6f);
+            assertEquals("head tilted sideways",0f,p.angle[AnimPose.HEAD+2],1e-6f);
+            assertEquals("body tilted sideways",0f,p.angle[AnimPose.BODY+2],1e-6f);
+            assertEquals("body yaw",-0.58f,p.angle[AnimPose.BODY+1],1e-6f);
         }
     }
 

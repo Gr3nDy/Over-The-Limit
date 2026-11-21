@@ -163,9 +163,15 @@ final class AnimatedModelPlayer extends ModelPlayer {
             // OBJ vertices are already in blocks; the old ModelRenderer boxes used model units.
             // Put the real board at the same foot plane (Y=20 model units) and preserve the
             // animated pull-out and ollie rotations.
-            // The normalized OBJ's lowest vertices are 0.5 blocks below its origin; 2.0 puts
-            // those wheel bottoms on the player's 1.5-block foot/ground plane.
-            GlStateManager.translate(0f,2.0f+boardDrop,0f);
+            // After the vertical flip the mesh spans Y=0..0.5 before the compacting scale. Its
+            // lowest point must sit on the model's foot plane at 1.5 blocks, not at the player's
+            // origin; otherwise the wheels and deck clip through the floor.
+            GlStateManager.translate(0f,1.5f+boardDrop,0f);
+            // The GLB uses the opposite vertical convention from Minecraft, so flip it once
+            // before applying the animated ollie rotation. Keep the real mesh compact beside
+            // the player; the source asset's 1.2-block normalization was still too large in play.
+            GlStateManager.rotate(180f,1f,0f,0f);
+            GlStateManager.scale(0.62f,0.62f,0.62f);
             GlStateManager.rotate(boardX*57.29578f,1f,0f,0f);
             GlStateManager.rotate(boardY*57.29578f,0f,1f,0f);
             GlStateManager.rotate(boardZ*57.29578f,0f,0f,1f);

@@ -20,30 +20,23 @@ final class AnimClips {
         return t*t*(3f-2f*t);
     }
 
-    /**
-     * The deck stance: legs planted instead of walking, knees bent for balance. The stance is
-     * static - the player is balancing - and one push plays when they start moving, then the board
-     * just rolls.
-     */
+    /** Clean skate base pose: a quiet side-on balance, with one short push layered on top. */
     static void skate(AnimPose p,float push){
-        float k=push<0f?0f:sin(push*PI);
-        // Back foot at the tail, front foot forward: the back leg is the one that kicks.
-        p.set(AnimPose.RIGHT_LEG,-0.14f+0.55f*k,0f,0.10f);
-        p.set(AnimPose.LEFT_LEG,0.10f,0f,-0.10f);
-        // A riding crouch, knees out over the board; the kick straightens the back leg.
-        p.kneeRight=0.50f-0.44f*k;
-        p.kneeLeft=0.60f;
-        p.kneeRightZ=0.06f;
-        p.kneeLeftZ=-0.06f;
-        // Shoulders stay square to the board; only the arms counterbalance.
-        p.add(AnimPose.RIGHT_ARM,-0.30f,0f,0.34f);
-        p.add(AnimPose.LEFT_ARM,0.10f,0f,-0.34f);
-        p.elbowRight=0.62f;
-        p.elbowLeft=0.50f;
-        // The body is replaced, never added: vanilla does not reset the body angles, so an
-        // additive value here would keep growing every frame and the model would spin. The head is
-        // left alone so it still follows where the player is looking.
-        p.set(AnimPose.BODY,0.06f,0f,0f);
+        float k=push<0f?0f:smooth(push);
+        // Back foot kicks once, then returns smoothly to the same planted base pose.
+        p.set(AnimPose.RIGHT_LEG,-0.10f+0.65f*k,0f,0.08f);
+        p.set(AnimPose.LEFT_LEG,0.08f,0f,-0.08f);
+        p.kneeRight=0.34f-0.30f*k;
+        p.kneeLeft=0.38f;
+        p.kneeRightZ=0.025f;p.kneeLeftZ=-0.025f;
+        // Skate sideways: the head remains under vanilla camera control, while the torso turns
+        // mostly left with a small forward-facing bias. Keep the feet nearly square to the deck;
+        // rotating every part together makes the player look like a rigid statue.
+        p.set(AnimPose.BODY,0.035f,-0.58f,0f);
+        // Absolute, quiet balance arms: never inherit vanilla walking swing and never fold inward.
+        p.set(AnimPose.RIGHT_ARM,-0.10f,-0.10f,0.10f);
+        p.set(AnimPose.LEFT_ARM,-0.02f,0.10f,-0.10f);
+        p.elbowRight=0.08f;p.elbowLeft=0.08f;
     }
 
     /** One ollie: crouch, tuck both knees, pop the deck. Trick 0 ollie, 1 kickflip, 2 shove-it. */
