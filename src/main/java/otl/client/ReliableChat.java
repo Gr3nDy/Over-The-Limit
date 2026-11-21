@@ -338,10 +338,12 @@ public final class ReliableChat {
     /**
      * The All tab is the client's own chat, drawn by the client. A filtered tab replaces just that
      * draw: the chat object and the message stream stay the client's, so other chat mods keep working.
+     * The event is never cancelled: cancelling it also skips Forge's post(CHAT), which is where the
+     * Team Bar and the channel strip are drawn, so the whole HUD above the chat vanished.
+     * Blanking the client's own lines is enough, because vanilla's drawChat returns on an empty list.
      */
     @SubscribeEvent(priority=EventPriority.LOWEST) public void chatLayer(RenderGameOverlayEvent.Chat e){
         if(!active()||onAll()){restoreClientLines();return;}
-        e.setCanceled(true);
         hideClientLines();
         GlStateManager.pushMatrix();
         try{GlStateManager.translate(e.posX,e.posY,0);((QuietChat)currentView().hud).drawAt(System.nanoTime());}

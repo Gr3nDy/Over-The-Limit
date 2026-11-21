@@ -83,6 +83,16 @@ final class OtlSmokeChecks {
     void chatDoubling(Minecraft mc,int state){
         if(state==155){
             UtilitySettings.chat=true;UtilitySettings.showTabChat=true;
+            ReliableChat.session().select("team");
+            // Cancelling the Chat event also skips Forge's post(CHAT), where the Team Bar is drawn,
+            // so a filtered tab must never cancel it: blank the client's lines instead. The tab is
+            // still empty here, so this posts the handler without drawing anything.
+            net.minecraftforge.client.event.RenderGameOverlayEvent frame=
+                new net.minecraftforge.client.event.RenderGameOverlayEvent(0F,new net.minecraft.client.gui.ScaledResolution(mc));
+            net.minecraftforge.client.event.RenderGameOverlayEvent.Chat chat=
+                new net.minecraftforge.client.event.RenderGameOverlayEvent.Chat(frame,0,mc.currentScreen==null?0:mc.currentScreen.height-48);
+            net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(chat);
+            require(!chat.isCanceled(),"A filtered tab cancelled the Chat event, which also hides the Team Bar");
             smoke.line("Created by MapMaker");
             smoke.line("\u00a79(Blue Team) Alex: team hello");
             smoke.line("Bob: global hello");
@@ -92,10 +102,14 @@ final class OtlSmokeChecks {
             require(ReliableChat.session().selected.equals("team"),"The Team tab was not selected");
             require(ReliableChat.session().views.get("team").totalLines()>0,"The team line never reached the Team tab");
         }else if(state==156){
-            net.minecraft.util.ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-chat-team-open.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+            // A screenshot taken in the same tick as a change captures the previous frame, so the
+            // blanked chat is only visible one tick later.
             require(clientLines(mc).isEmpty(),"The client's own chat still paints All behind the Team tab");
-            ((ReliableChatScreen)mc.currentScreen).select("all");
         }else if(state==157){
+            net.minecraft.util.ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-chat-team-open.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+            require(clientLines(mc).isEmpty(),"The client's own chat repopulated behind the Team tab");
+            ((ReliableChatScreen)mc.currentScreen).select("all");
+        }else if(state==158){
             net.minecraft.util.ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-chat-all-open.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
             require(!clientLines(mc).isEmpty(),"Switching back to All did not restore the client's own chat");
         }
