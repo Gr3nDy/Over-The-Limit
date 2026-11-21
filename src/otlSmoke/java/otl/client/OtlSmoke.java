@@ -3504,12 +3504,15 @@ public final class OtlSmoke {
                 // PGM pads its list with entries like "|95-80f34791e431"; they must not take a row.
                 tabEntry(mc,"|95-80f34791e431","|95-80f34791e431");
                 TabListMenu tabs=TabListMenu.INSTANCE;
-                // The list takes the mouse, so it must take the keyboard too: a player walking when
-                // they middle-click must stop under the cursor, not run off while they pick a name.
+                // The list takes the mouse and the keyboard, but not the player's momentum: what
+                // they were doing when they middle-clicked carries on, and new keys are ignored.
                 mc.thePlayer.movementInput.moveForward=1;mc.thePlayer.movementInput.moveStrafe=1;
                 tabs.begin(mc);
-                require(mc.thePlayer.movementInput.moveForward==0&&mc.thePlayer.movementInput.moveStrafe==0,
-                    "Opening the player list left the player walking");
+                require(mc.thePlayer.movementInput.moveForward==1&&mc.thePlayer.movementInput.moveStrafe==1,
+                    "Opening the player list killed the player's momentum");
+                mc.thePlayer.movementInput.moveForward=0;
+                tabs.hold(mc);
+                require(mc.thePlayer.movementInput.moveForward==1,"A key pressed while browsing moved the player");
                 require(tabs.browsing,"Middle-clicking the player list did not start browsing");
                 require(mc.currentScreen==null,"The player list opened a screen instead of staying on the HUD");
                 require(tabs.layout(mc).rows>0&&tabs.layout(mc).columns>0,"The clickable player list laid out no rows");
@@ -3608,7 +3611,7 @@ public final class OtlSmoke {
                 mc.displayGuiScreen(new PgmSettingsScreen(null));
                 PgmSettingsScreen pgm=(PgmSettingsScreen)mc.currentScreen;
                 pgm.showClient();
-                require(buttons(pgm).size()==2,"The client page still lists rows it no longer has: "+buttons(pgm).size());
+                require(buttons(pgm).size()==3,"The client page still lists rows it no longer has: "+buttons(pgm).size());
                 pgm.actionPerformed(find(pgm,"Player list middle-click: ON"));
                 require(!UtilitySettings.tabPlayerMenu,"The player list middle-click option did not turn off");
                 pgm.actionPerformed(find(pgm,"Player list middle-click: OFF"));

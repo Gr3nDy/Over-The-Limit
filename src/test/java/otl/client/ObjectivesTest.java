@@ -73,6 +73,29 @@ public class ObjectivesTest {
     }
     private static final List<String> TEAMS=Arrays.asList("red","blue");
 
+    @Test public void compactMarkersMirrorAboutTheClock(){
+        // A team's score and its flag share one compact line. The left line is right-aligned
+        // against the clock, so its last marker hugs the time; the right line must lead with that
+        // same marker instead of the score, or the two sides read differently.
+        java.util.Map<String,Integer> columns=new java.util.HashMap<>();columns.put("red",0);columns.put("blue",1);
+        java.util.List<Objectives.Entry> entries=Objectives.entries(java.util.Arrays.asList(
+            "\u00a7cRed","\u00a7f0\u00a78/\u00a7f3 \u00a7cRed","\u00a7c\u2690 \u00a7fFlag",
+            "\u00a79Blue","\u00a7f1\u00a78/\u00a7f3 \u00a79Blue","\u00a79\u2690 \u00a7fFlag"),TEAMS);
+        java.util.List<java.util.List<Objectives.Entry>> sides=Objectives.splitEntries(entries,columns,true);
+        java.util.List<Objectives.Part> left=markers(Objectives.compactLines(sides.get(0),TEAMS,false));
+        java.util.List<Objectives.Part> right=markers(Objectives.compactLines(sides.get(1),TEAMS,true));
+        assertEquals("\u2690",left.get(left.size()-1).text);
+        assertEquals("\u2690",right.get(0).text);
+        assertFalse(left.get(0).text.equals("\u2690"));
+    }
+
+    /** Flattens one side's compact lines into the parts of its first line. */
+    private static List<Objectives.Part> markers(List<List<List<Objectives.Part>>> lines){
+        List<Objectives.Part> parts=new java.util.ArrayList<>();
+        for(List<Objectives.Part> row:lines.get(0))parts.addAll(row);
+        return parts;
+    }
+
     @Test public void blinkingSharedArrowKeepsCarrierAndNameColour(){
         Objectives.ScoreTracker tracker=new Objectives.ScoreTracker();
         java.util.Map<Character,String> colours=new java.util.HashMap<>();colours.put('9',"blue");colours.put('0',"red");

@@ -434,6 +434,14 @@ final class TabListMenu {
             &&mc.currentScreen==null&&!mc.gameSettings.hideGUI&&TeamBar.playerListVisible(mc);
     }
 
+    /**
+     * The keys held when the list opened. The list takes the keyboard, not the player's momentum:
+     * these are re-applied every tick, so speed, sprint and a jump arc carry on, while anything
+     * pressed while browsing is ignored.
+     */
+    private float heldForward,heldStrafe;
+    private boolean heldJump,heldSneak,heldSprint;
+
     void begin(Minecraft mc){
         browsing=true;
         menu=null;
@@ -444,21 +452,36 @@ final class TabListMenu {
         // Seeded from the buttons that opened the list, so it does not close on its own press.
         lastLeft=Mouse.isButtonDown(0);
         lastMiddle=true;
+        if(mc.thePlayer!=null){
+            heldForward=mc.thePlayer.movementInput.moveForward;
+            heldStrafe=mc.thePlayer.movementInput.moveStrafe;
+            heldJump=mc.thePlayer.movementInput.jump;
+            heldSneak=mc.thePlayer.movementInput.sneak;
+            heldSprint=mc.thePlayer.isSprinting();
+        }
         mc.setIngameNotInFocus();
-        // setIngameNotInFocus only unpressed keys when it had focus to give up, so stop walking
-        // here too: the list has the mouse, and the player must not run away under it.
+        // setIngameNotInFocus only unpressed keys when it had focus to give up, so put the held
+        // walk back here too: the cursor is free, but the player keeps moving as they were.
         KeyBinding.unPressAllKeys();
-        halt(mc);
+        hold(mc);
     }
 
-    /** The list owns the keyboard as well as the mouse: nothing moves the player while it is open. */
-    static void halt(Minecraft mc){
+    /** Keeps the player doing exactly what they were doing when the list opened. */
+    void hold(Minecraft mc){
         if(mc.thePlayer==null)return;
-        mc.thePlayer.movementInput.moveForward=0;
-        mc.thePlayer.movementInput.moveStrafe=0;
-        mc.thePlayer.movementInput.jump=false;
-        mc.thePlayer.movementInput.sneak=false;
-        mc.thePlayer.setSprinting(false);
+        mc.thePlayer.movementInput.moveForward=heldForward;
+        mc.thePlayer.movementInput.moveStrafe=heldStrafe;
+        mc.thePlayer.movementInput.jump=heldJump;
+        mc.thePlayer.movementInput.sneak=heldSneak;
+        if(heldSprint)mc.thePlayer.setSprinting(true);
+    }
+
+    /** Hands the keyboard back as it is really held, so walking resumes without a re-press. */
+    static void syncKeys(Minecraft mc){
+        for(KeyBinding kb:mc.gameSettings.keyBindings){
+            int code=kb.getKeyCode();
+            if(code>0&&code<Keyboard.KEYBOARD_SIZE)KeyBinding.setKeyBindState(code,Keyboard.isKeyDown(code));
+        }
     }
 
     /**
@@ -530,6 +553,8 @@ final class TabListMenu {
         int key=mc.gameSettings.keyBindPlayerList.getKeyCode();
         if(key>0&&key<Keyboard.KEYBOARD_SIZE)KeyBinding.setKeyBindState(key,Keyboard.isKeyDown(key));
         if(grab&&mc.currentScreen==null&&mc.theWorld!=null&&!mc.inGameHasFocus)mc.setIngameFocus();
+        // Closing must not need a re-press: the held keys are re-read from the keyboard here.
+        syncKeys(mc);
     }
 
     void end(Minecraft mc){stop(mc,true);}
@@ -560,8 +585,8 @@ final class TabListMenu {
             KeyBinding.setKeyBindState(listKey,true);
         }
         KeyBinding.setKeyBindState(mc.gameSettings.keyBindUseItem.getKeyCode(),false);
-        // Keys pressed while browsing would otherwise start the walk again under the cursor.
-        halt(mc);
+        // Keys pressed while browsing would otherwise start a different walk under the cursor.
+        hold(mc);
         ScaledResolution sr=new ScaledResolution(mc);
         poll(mc,Mouse.getX()*sr.getScaledWidth()/mc.displayWidth,
             sr.getScaledHeight()-Mouse.getY()*sr.getScaledHeight()/mc.displayHeight-1,

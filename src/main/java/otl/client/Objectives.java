@@ -207,11 +207,10 @@ final class Objectives {
                 // One group per team, so a team's icons stay on their own line(s). Two teams share a
                 // side on a three- or four-team map, and balancing the whole side used to split one
                 // team's markers across both rows and mix them with the other team's.
-                for(List<List<Part>> team:compactGroups(sides.get(side),teams))
-                    for(List<List<Part>> row:compactRows(team)){
-                        Strip one=lay(mc,row,max);
-                        if(one!=null)lines.add(one);
-                    }
+                for(List<List<Part>> row:compactLines(sides.get(side),teams,side==1)){
+                    Strip one=lay(mc,row,max);
+                    if(one!=null)lines.add(one);
+                }
             }else{
                 int limit=side==2||side==3?Math.max(24,pointMax-(compact?TeamBar.stripWidth(out.get(side-2))+TeamBar.OBJECTIVE_GAP:0)):max;
                 for(Entry entry:sides.get(side)){
@@ -280,6 +279,25 @@ final class Objectives {
         int half=(markers.size()+1)/2;
         return Arrays.asList(Collections.singletonList(markers.subList(0,half)),
             Collections.singletonList(markers.subList(half,markers.size())));
+    }
+
+    /**
+     * The right side of the clock mirrors the left, so its markers run back toward the time: the
+     * marker that touches the clock on the left is the first one on the right.
+     */
+    private static List<List<Part>> mirrorMarkers(List<List<Part>> row,boolean mirror){
+        if(!mirror)return row;
+        List<List<Part>> out=new ArrayList<>(row);
+        Collections.reverse(out);
+        return out;
+    }
+
+    /** One side's compact marker rows, already mirrored for the right side of the clock. */
+    static List<List<List<Part>>> compactLines(List<Entry> side,List<String> teams,boolean mirror){
+        List<List<List<Part>>> out=new ArrayList<>();
+        for(List<List<Part>> team:compactGroups(side,teams))
+            for(List<List<Part>> row:compactRows(team))out.add(mirrorMarkers(row,mirror));
+        return out;
     }
 
     /**
