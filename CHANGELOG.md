@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.8.0 - 2026-11-21
+
+### Added
+- **Player Animation** - every player now breathes and sways instead of standing frozen, driven by the client's own clock so nothing is sent to the server. Press **N** to pull out a skateboard: the deck drops in under your feet, your legs stop walking, and moving makes the back leg push. Jumping while it is out pops an ollie, with a kickflip or shove-it picked at random.
+- **Emotes** - press **B** to cycle wave, dance and cheer. You need to be standing still; the pose fades in over a fifth of a second and the camera switches to the front third-person view so you can see it. Left-clicking ends the emote and that click is swallowed, so it cannot also punch. Taking damage, walking, opening a screen, pressing F5, dying or leaving the world ends it too, and the saved perspective is restored. Both keys are rebindable in Controls, and the module has its own switch plus an **Emote camera** switch.
+
+### Fixed
+- **Team Bar clock sat left of centre** - the bar's default anchor was a hand-tuned fraction that only landed on the screen centre at the width of the editor's preview bar. Every real bar sat a pixel or three left, and a wide one drifted far enough to see. It is now a true centre anchor, exact at every bar and screen width.
+
+### Notes
+- Emotes and the skateboard are local for now: other players show their own idle sway but not your deck or emote until the relay exists.
+- Armor keeps the vanilla pose, so a strong leg tuck during an ollie can show a gap at the boots.
+
 ## v0.7.2 - <PII type="DATE" id="20"/>
 
 ### Changed

@@ -89,7 +89,7 @@ final class ModulesScreen extends GuiScreen {
     }
     /** Stable product order: high-frequency modules first, niche tools later. */
     private int moduleRank(String id){
-        String order="reliable_chat team_bar kill_feed kill_confirm map_preview face_rig minimap left_hand bow_optimizer auto_gg region_overlay touchdown custom_votebook";
+        String order="reliable_chat team_bar kill_feed kill_confirm map_preview face_rig player_animation minimap left_hand bow_optimizer auto_gg region_overlay touchdown custom_votebook";
         int at=order.indexOf(id);
         return at<0?10000:at;
     }
@@ -408,6 +408,12 @@ final class ModulesScreen extends GuiScreen {
                 drawRect(gx+3,gy+3,gx+4,gy+5,c);drawRect(gx+6,gy+3,gx+7,gy+5,c);
                 drawRect(gx+3,gy+7,gx+7,gy+8,c);
                 break;
+            case "player_animation": // figure with a raised arm
+                drawRect(gx+4,gy,gx+6,gy+2,c);drawRect(gx+4,gy+2,gx+6,gy+6,c);
+                drawRect(gx+2,gy+2,gx+4,gy+3,c);drawRect(gx+6,gy+1,gx+9,gy+2,c);
+                drawRect(gx+6,gy+2,gx+7,gy+3,c);
+                drawRect(gx+3,gy+6,gx+4,gy+10,c);drawRect(gx+5,gy+6,gx+6,gy+10,c);
+                break;
             case "kill_confirm": // crosshair
                 drawRect(gx+4,gy+1,gx+6,gy+9,c);drawRect(gx+1,gy+4,gx+9,gy+6,c);
                 drawRect(gx+4,gy+4,gx+6,gy+6,bg);
@@ -489,6 +495,7 @@ final class ModulesScreen extends GuiScreen {
         DESC.put("kill_confirm","Show a clear confirmation after a kill");
         DESC.put("map_preview","Preview the next map before voting");
         DESC.put("face_rig","Add expressive face marks to your skin");
+        DESC.put("player_animation","Idle motion, emotes and a skateboard");
         DESC.put("minimap","Keep a compact map in a screen corner");
         DESC.put("left_hand","Choose what appears in your off-hand view");
         DESC.put("bow_optimizer","Improve bow timing and accuracy");

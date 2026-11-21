@@ -22,7 +22,9 @@ public final class HudLayout {
             return confirmPosition(sr.getScaledWidth(),sr.getScaledHeight(),(int)Math.ceil(KillConfirm.WIDTH*scale),(int)Math.ceil(KillConfirm.HEIGHT*scale));
         }
         if(TABS.equals(id)){int n=UtilitySettings.tabChatPosition;return new Position(n==1||n==3?1:0,n>=2?0:1);}
-        if(TEAM_BAR.equals(id))return new Position(.49228395061728397,.0531496062992126);
+        // A true centre anchor. The old fraction was calibrated for the editor's preview bar, which
+        // is far wider than a real one, so every real bar sat a couple of pixels left of centre.
+        if(TEAM_BAR.equals(id))return new Position(.5,.0531496062992126);
         if(CARD.equals(id))return new Position(1,.5);
         if(REGION.equals(id))return new Position(1,.5865384615384616);
         if(BOW.equals(id))return new Position(0,.312621359223301);

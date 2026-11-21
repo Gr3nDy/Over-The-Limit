@@ -53,5 +53,15 @@ public class HudLayoutTest {
         r=HudLayout.rect(100,60,500,500,new HudLayout.Position(-3,5));assertEquals(4,r.x);assertEquals(4,r.y);assertEquals(92,r.w);assertEquals(52,r.h);
         assertTrue(r.contains(4,4));assertFalse(r.contains(96,56));
     }
+    @Test public void theTeamBarDefaultSitsOnTheScreenCentre(){
+        // The saved default is a fraction of the free space; a fraction below 0.5 left the clock a
+        // couple of pixels left of centre for every bar narrower than the editor's preview.
+        for(int sw:new int[]{320,480,481,854,1280})for(int w:new int[]{20,120,191,260,300}){
+            HudLayout.Rect r=HudLayout.rect(sw,300,w,44,HudLayout.position(HudLayout.TEAM_BAR));
+            assertTrue("bar "+w+" on "+sw+" landed at "+r.x,
+                Math.abs(r.x+w/2-sw/2)<=1);
+        }
+    }
+
     @Test(expected=IllegalArgumentException.class) public void rejectsNonFiniteSavedPositions(){new HudLayout.Position(Double.NaN,0);}
 }

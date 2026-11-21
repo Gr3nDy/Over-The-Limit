@@ -43,6 +43,10 @@ public final class UtilitySettings {
         return new String[]{"Bottom Left","Bottom Right","Top Left","Top Right"}[Math.max(0,Math.min(3,tabChatPosition))];
     }
     public static boolean faceRig=true;
+    /** Limb animation: a breathing sway for everyone, plus local emotes and a skateboard. */
+    public static boolean playerAnimation=true;
+    /** Emotes switch to the front third-person view until a click, damage or walking. */
+    public static boolean emoteCamera=true;
     /** Top-centre team bar: heads per team with the match timer in the middle. */
     public static boolean teamBar=true;
     /** Heads per side (1-75) and the bar's scale; below 10 heads they stay full size. */
@@ -172,6 +176,8 @@ public final class UtilitySettings {
         read(j,"profile_order",e->{Profiles.profileOrder.clear();for(JsonElement el:e.getAsJsonArray())Profiles.profileOrder.add(Profiles.safeName(el.getAsString()));});
         read(j,"reliable_chat",e->chat=e.getAsBoolean());
         read(j,"face_rig",e->faceRig=e.getAsBoolean());
+        read(j,"player_animation",e->playerAnimation=e.getAsBoolean());
+        read(j,"emote_camera",e->emoteCamera=e.getAsBoolean());
         read(j,"team_bar",e->teamBar=e.getAsBoolean());
         read(j,"team_bar_players",e->teamBarPlayers=Math.max(1,Math.min(75,e.getAsInt())));
         read(j,"team_bar_size",e->teamBarSize=Math.max(50,Math.min(150,e.getAsInt())));
@@ -316,6 +322,8 @@ public final class UtilitySettings {
     static JsonObject snapshot(){
             JsonObject j=new JsonObject();j.addProperty("schema_version",1);j.addProperty("profile",profile);j.addProperty("reliable_chat",chat);j.addProperty("unread_counts",counts);j.addProperty("other_faces",otherFaces);j.addProperty("show_tab_chat",showTabChat);j.addProperty("tab_chat_typing_only",tabChatTypingOnly);j.addProperty("map_preview",mapPreview);j.addProperty("tab_chat_position",tabChatPosition);
             j.addProperty("face_rig",faceRig);
+            j.addProperty("player_animation",playerAnimation);
+            j.addProperty("emote_camera",emoteCamera);
             j.addProperty("team_bar",teamBar);
             j.addProperty("team_bar_players",teamBarPlayers);j.addProperty("team_bar_size",teamBarSize);
             j.addProperty("team_bar_dead_opacity",teamBarDeadOpacity);

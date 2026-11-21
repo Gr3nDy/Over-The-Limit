@@ -879,6 +879,7 @@ public final class OtlSmoke {
             }else if(state==6){
                 ModulesScreen menu=(ModulesScreen)mc.currentScreen;
                 require(find(menu,"DONE")!=null,"Modules menu missing its Done button");
+                checks.animatedModel(mc);
                 boolean faceRig=UtilitySettings.faceRig;
                 cardToggle(menu,OtlModule.ALL.indexOf(OtlModule.byId("face_rig")));
                 require(UtilitySettings.faceRig!=faceRig,"Module card toggle did not apply");

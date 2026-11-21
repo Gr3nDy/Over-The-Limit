@@ -14,6 +14,18 @@ final class OtlSmokeChecks {
     private void require(boolean ok,String message){if(!ok)throw new AssertionError(message);}
 
     /**
+     * The animated model is installed by reflection, so a wrong mapping would only show up as a
+     * logged warning and a game that looks unchanged. Assert the swap really landed.
+     */
+    void animatedModel(Minecraft mc){
+        java.util.Map<String,net.minecraft.client.renderer.entity.RenderPlayer> skin=mc.getRenderManager().getSkinMap();
+        require(skin.size()>=2,"Skin map lost a player renderer");
+        for(net.minecraft.client.renderer.entity.RenderPlayer renderer:skin.values())
+            require(renderer.getMainModel() instanceof AnimatedModelPlayer,
+                "Player renderer still uses the vanilla model");
+    }
+
+    /**
      * The sidebar toggle: it hides the vanilla sidebar only while the bar is up, and the mod puts
      * the sidebar back itself, so turning the option off can never leave the screen empty.
      */

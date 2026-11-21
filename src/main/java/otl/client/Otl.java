@@ -13,20 +13,24 @@ import net.minecraft.client.renderer.entity.RenderPlayer;
 import net.minecraft.client.resources.*;
 import org.lwjgl.input.Keyboard;
 
-@Mod(modid="otl",name="Over The Limit",version="0.7.2",clientSideOnly=true,acceptedMinecraftVersions="[1.8.9]",acceptableRemoteVersions="*")
+@Mod(modid="otl",name="Over The Limit",version="0.8.0",clientSideOnly=true,acceptedMinecraftVersions="[1.8.9]",acceptableRemoteVersions="*")
 public final class Otl {
-    static final String VERSION="0.7.2";
+    static final String VERSION="0.8.0";
     private final KeyBinding modules=new KeyBinding("key.otl.modules",Keyboard.KEY_P,"key.categories.otl");
     private final KeyBinding teamChat=new KeyBinding("key.otl.team_chat",Keyboard.KEY_Y,"key.categories.otl");
     private final KeyBinding partyChat=new KeyBinding("key.otl.party_chat",Keyboard.KEY_NONE,"key.categories.otl");
     private final KeyBinding minimap=new KeyBinding("key.otl.minimap",Keyboard.KEY_M,"key.categories.otl");
     private final KeyBinding minimapZoom=new KeyBinding("key.otl.minimapzoom",Keyboard.KEY_SEMICOLON,"key.categories.otl");
+    private final KeyBinding emote=new KeyBinding("key.otl.emote",Keyboard.KEY_B,"key.categories.otl");
+    private final KeyBinding skateboard=new KeyBinding("key.otl.skateboard",Keyboard.KEY_N,"key.categories.otl");
     @Mod.EventHandler public void init(FMLInitializationEvent event) {
         ClientRegistry.registerKeyBinding(modules);
         ClientRegistry.registerKeyBinding(teamChat);
         ClientRegistry.registerKeyBinding(partyChat);
         ClientRegistry.registerKeyBinding(minimap);
         ClientRegistry.registerKeyBinding(minimapZoom);
+        ClientRegistry.registerKeyBinding(emote);
+        ClientRegistry.registerKeyBinding(skateboard);
         MinecraftForge.EVENT_BUS.register(ReliableChat.INSTANCE);
         MinecraftForge.EVENT_BUS.register(KillFeed.INSTANCE);
         MinecraftForge.EVENT_BUS.register(KillConfirm.INSTANCE);
@@ -64,10 +68,22 @@ public final class Otl {
         FMLCommonHandler.instance().bus().register(TabListMenu.INSTANCE);
         MinecraftForge.EVENT_BUS.register(UpdateNotice.INSTANCE);
         FMLCommonHandler.instance().bus().register(UpdateNotice.INSTANCE);
+        MinecraftForge.EVENT_BUS.register(PlayerAnim.INSTANCE);
+        FMLCommonHandler.instance().bus().register(PlayerAnim.INSTANCE);
         installTouchdown();
         FMLCommonHandler.instance().bus().register(this);MinecraftForge.EVENT_BUS.register(this);
         net.minecraft.client.renderer.entity.RenderManager rm=MinecraftAccess.get().getRenderManager();
-        if(rm!=null)for(RenderPlayer renderer:rm.getSkinMap().values())renderer.addLayer(new FaceOverlay(renderer));
+        if(rm!=null)for(java.util.Map.Entry<String,RenderPlayer> entry:rm.getSkinMap().entrySet()){
+            RenderPlayer renderer=entry.getValue();
+            renderer.addLayer(new FaceOverlay(renderer));
+            // RenderPlayer reads getMainModel() everywhere except the first-person arm, so swapping
+            // this field animates every rendered player and leaves the held hand alone.
+            try{
+                net.minecraftforge.fml.relauncher.ReflectionHelper.setPrivateValue(
+                    net.minecraft.client.renderer.entity.RendererLivingEntity.class,renderer,
+                    new AnimatedModelPlayer("slim".equals(entry.getKey())),"mainModel","field_77045_g");
+            }catch(RuntimeException fail){System.err.println("OTL: could not install the animated player model: "+fail);}
+        }
         ((IReloadableResourceManager)MinecraftAccess.get().getResourceManager()).registerReloadListener(resources->{SkinFace.clear();FaceMarks.clearCache();KillFeed.clearHeads();});
     }
     /** Reliable Chat cancels the lines it absorbs, so this must still see them. */
@@ -87,6 +103,8 @@ public final class Otl {
     @SubscribeEvent public void key(InputEvent.KeyInputEvent event){
         if(minimap.isPressed()){Minimap.INSTANCE.cycleView();return;}
         if(minimapZoom.isPressed()){Minimap.INSTANCE.cycleZoom();return;}
+        if(emote.isPressed()){PlayerAnim.emoteKey(MinecraftAccess.get());return;}
+        if(skateboard.isPressed()){PlayerAnim.skateKey(MinecraftAccess.get());return;}
         if(teamChat.isPressed()){ReliableChat.openChannel(ChatRules.TEAM);return;}
         if(partyChat.isPressed()){ReliableChat.openChannel(ChatRules.PARTY);return;}
         openMenu();
@@ -104,7 +122,7 @@ public final class Otl {
         for(net.minecraft.entity.player.EntityPlayer p:new java.util.ArrayList<net.minecraft.entity.player.EntityPlayer>(mc.theWorld.playerEntities))PlayerSignals.tick(p);
     }
     @SubscribeEvent public void worldUnload(WorldEvent.Unload event){
-        if(event.world!=null&&event.world.isRemote)PlayerSignals.clear();
+        if(event.world!=null&&event.world.isRemote){PlayerSignals.clear();PlayerAnim.clear();}
     }
     /** The snowball's baked model is swapped once per resource reload; it delegates while no Touchdown map runs. */
     @SubscribeEvent public void modelBake(net.minecraftforge.client.event.ModelBakeEvent event){
