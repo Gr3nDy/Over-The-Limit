@@ -158,17 +158,20 @@ final class AnimatedModelPlayer extends ModelPlayer {
     }
 
     private void drawBoard(float scale){
-        deck.rotateAngleX=trucks.rotateAngleX=wheels.rotateAngleX=boardX;
-        deck.rotateAngleY=trucks.rotateAngleY=wheels.rotateAngleY=boardY;
-        deck.rotateAngleZ=trucks.rotateAngleZ=wheels.rotateAngleZ=boardZ;
         GlStateManager.pushMatrix();
         try{
-            GlStateManager.translate(0f,boardDrop,0f);
+            // OBJ vertices are already in blocks; the old ModelRenderer boxes used model units.
+            // Put the real board at the same foot plane (Y=20 model units) and preserve the
+            // animated pull-out and ollie rotations.
+            // The normalized OBJ's lowest vertices are 0.5 blocks below its origin; 2.0 puts
+            // those wheel bottoms on the player's 1.5-block foot/ground plane.
+            GlStateManager.translate(0f,2.0f+boardDrop,0f);
+            GlStateManager.rotate(boardX*57.29578f,1f,0f,0f);
+            GlStateManager.rotate(boardY*57.29578f,0f,1f,0f);
+            GlStateManager.rotate(boardZ*57.29578f,0f,0f,1f);
             GlStateManager.disableTexture2D();
-            // Flat colours: a painted deck, metal hardware, pale wheels.
-            GlStateManager.color(0.20f,0.22f,0.26f,1f);deck.render(scale);
-            GlStateManager.color(0.62f,0.65f,0.70f,1f);trucks.render(scale);
-            GlStateManager.color(0.90f,0.90f,0.86f,1f);wheels.render(scale);
+            GlStateManager.color(0.82f,0.82f,0.82f,1f);
+            ObjSkateboard.render(1f);
         }finally{
             GlStateManager.color(1f,1f,1f,1f);
             GlStateManager.enableTexture2D();
