@@ -26,11 +26,11 @@ final class OtlSmokeChecks {
                 "Player renderer still uses the vanilla model");
             model=(AnimatedModelPlayer)renderer.getMainModel();
         }
-        // A limb is cut twice: the bend is a curve, so both joints must really be in the chain.
-        require(model.lowerArmR.childModels.contains(model.tipArmR),"The forearm has no second joint");
-        require(model.lowerLegL.childModels.contains(model.tipLegL),"The shin has no second joint");
-        require(model.tipArmR.cubeList.size()==1&&model.tipArmR.cubeList.get(0).posY2>model.tipArmR.cubeList.get(0).posY1,
-            "The last segment of an arm has no geometry");
+        // One anatomical cut: the hand/foot stays attached to the forearm/shin segment.
+        require(model.lowerArmR.childModels==null||model.lowerArmR.childModels.isEmpty(),"The arm has an artificial extra joint");
+        require(model.lowerLegL.childModels==null||model.lowerLegL.childModels.isEmpty(),"The leg has an artificial extra joint");
+        require(model.lowerArmR.cubeList.size()==1&&model.lowerArmR.cubeList.get(0).posY2>model.lowerArmR.cubeList.get(0).posY1,
+            "The forearm has no geometry");
     }
 
     /**

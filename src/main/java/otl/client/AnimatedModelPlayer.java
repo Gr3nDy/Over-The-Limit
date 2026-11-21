@@ -8,9 +8,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 
 /**
- * The vanilla player model with two changes: each limb is cut twice - at the elbow and again near
- * the wrist, at the knee and again near the ankle - so it bends in a curve (a vanilla limb is one
- * rigid box), and a skateboard hangs under the feet while it is out.
+ * The vanilla player model with a single anatomical cut at each elbow and knee, plus a skateboard.
  *
  * <p>The split reuses the vanilla renderers instead of drawing replacements, because a child
  * renderer inherits the parent's transform: sneaking, a held item and the armour layer all keep
@@ -23,17 +21,8 @@ final class AnimatedModelPlayer extends ModelPlayer {
     private static final int ARM_RW_U=40,ARM_RW_V=32,ARM_LW_U=48,ARM_LW_V=48;
     private static final int LEG_RW_U=0,LEG_RW_V=32,LEG_LW_U=0,LEG_LW_V=48;
 
-    /**
-     * A joint is spread over two cuts instead of one, so the limb curves rather than creases.
-     * The first cut takes most of the angle and the second finishes it, which keeps the tip
-     * pointing exactly where a single joint would have put it.
-     */
-    private static final float BEND_INNER=0.55f;
-
     final ModelRenderer lowerArmR,lowerArmL,lowerLegR,lowerLegL;
     final ModelRenderer lowerArmRw,lowerArmLw,lowerLegRw,lowerLegLw;
-    final ModelRenderer tipArmR,tipArmL,tipLegR,tipLegL;
-    final ModelRenderer tipArmRw,tipArmLw,tipLegRw,tipLegLw;
     private final ModelRenderer deck,trucks,wheels;
 
     boolean boardOut;
@@ -43,36 +32,30 @@ final class AnimatedModelPlayer extends ModelPlayer {
 
     AnimatedModelPlayer(boolean slim){
         super(0f,slim);
-        ModelRenderer[] j;
-        j=split(bipedRightArm,ARM_R_U,ARM_R_V,0f);lowerArmR=j[0];tipArmR=j[1];
-        j=split(bipedLeftArm,ARM_L_U,ARM_L_V,0f);lowerArmL=j[0];tipArmL=j[1];
-        j=split(bipedRightLeg,LEG_R_U,LEG_R_V,0f);lowerLegR=j[0];tipLegR=j[1];
-        j=split(bipedLeftLeg,LEG_L_U,LEG_L_V,0f);lowerLegL=j[0];tipLegL=j[1];
-        j=split(bipedRightArmwear,ARM_RW_U,ARM_RW_V,0.25f);lowerArmRw=j[0];tipArmRw=j[1];
-        j=split(bipedLeftArmwear,ARM_LW_U,ARM_LW_V,0.25f);lowerArmLw=j[0];tipArmLw=j[1];
-        j=split(bipedRightLegwear,LEG_RW_U,LEG_RW_V,0.25f);lowerLegRw=j[0];tipLegRw=j[1];
-        j=split(bipedLeftLegwear,LEG_LW_U,LEG_LW_V,0.25f);lowerLegLw=j[0];tipLegLw=j[1];
+        lowerArmR=split(bipedRightArm,ARM_R_U,ARM_R_V,0f);
+        lowerArmL=split(bipedLeftArm,ARM_L_U,ARM_L_V,0f);
+        lowerLegR=split(bipedRightLeg,LEG_R_U,LEG_R_V,0f);
+        lowerLegL=split(bipedLeftLeg,LEG_L_U,LEG_L_V,0f);
+        lowerArmRw=split(bipedRightArmwear,ARM_RW_U,ARM_RW_V,0.25f);
+        lowerArmLw=split(bipedLeftArmwear,ARM_LW_U,ARM_LW_V,0.25f);
+        lowerLegRw=split(bipedRightLegwear,LEG_RW_U,LEG_RW_V,0.25f);
+        lowerLegLw=split(bipedLeftLegwear,LEG_LW_U,LEG_LW_V,0.25f);
 
         deck=board(0);trucks=board(1);wheels=board(2);
     }
 
     /**
-     * Cuts a limb twice. The renderer keeps the upper half, and two children at the joints draw
-     * the lower half from the same skin texels: the first child covers the middle quarter and the
-     * second the last one. Splitting twice is the most bend a 1.8.9 model can show - the game bakes
-     * a limb's geometry into a display list, so the vertices cannot be warped per frame the way
-     * newer versions do it, and a single cut reads as a sharp crease.
+     * Cuts a limb once at its real joint. Hands and feet remain attached to the forearm/shin;
+     * they are not separate artificial joints.
      *
      * <p>The geometry is read back from the box the vanilla model built, so slim arms and the
      * inflated outer layer both come out right.
-     *
-     * <p>Returns the two joints in order.
      *
      * shortcut: the end faces of the lower pieces sample the wrong texels (only the side faces are
      * exact), which shows as a small patch on the palm and the sole; upgrade to a hand-built box
      * with per-face UVs if that ever becomes visible in play.
      */
-    private ModelRenderer[] split(ModelRenderer limb,int u,int v,float inflate){
+    private ModelRenderer split(ModelRenderer limb,int u,int v,float inflate){
         ModelBox box=limb.cubeList.get(0);
         // posX1..posZ2 already include the inflation, so it is taken back out before the halves
         // are rebuilt with the same inflate; otherwise the outer layer grows twice.
@@ -85,27 +68,23 @@ final class AnimatedModelPlayer extends ModelPlayer {
         limb.cubeList.add(new ModelBox(limb,u,v,x,y,z,w,half,d,inflate));
         // A bare renderer defaults to a 64x32 atlas; the player skin is 64x64, so copying the
         // parent's size is what keeps the lower halves sampling the right texels.
-        int cut=half/2;
         ModelRenderer lower=new ModelRenderer(this);
         lower.textureWidth=limb.textureWidth;
         lower.textureHeight=limb.textureHeight;
-        lower.cubeList.add(new ModelBox(lower,u,v+half,x,0f,z,w,half-cut,d,inflate));
+        lower.cubeList.add(new ModelBox(lower,u,v+half,x,0f,z,w,half,d,inflate));
         // The joint sits half a limb down, so the child box starts exactly where the upper ends.
         lower.setRotationPoint(0f,y+half,0f);
         limb.addChild(lower);
-        ModelRenderer tip=new ModelRenderer(this);
-        tip.textureWidth=limb.textureWidth;
-        tip.textureHeight=limb.textureHeight;
-        tip.cubeList.add(new ModelBox(tip,u,v+half+half-cut,x,0f,z,w,cut,d,inflate));
-        tip.setRotationPoint(0f,half-cut,0f);
-        lower.addChild(tip);
-        return new ModelRenderer[]{lower,tip};
+        return lower;
     }
 
     /** 0 deck, 1 trucks, 2 wheels: flat-coloured groups hanging under the feet. */
     private ModelRenderer board(int part){
         ModelRenderer r=new ModelRenderer(this);
-        r.setRotationPoint(0f,24f,0f);
+        // Model Y grows downward. The player's foot/ground plane is 24, and the wheel boxes end
+        // at local Y=4, so anchor the assembly at 20: wheel bottoms land at 24 while the deck
+        // remains visibly above the ground instead of sinking the deck into it.
+        r.setRotationPoint(0f,20f,0f);
         if(part==0){
             r.addBox(-5f,0f,-11f,10,1,22);          // deck
             r.addBox(-5f,-1f,-12f,10,1,3);          // nose curl
@@ -133,18 +112,15 @@ final class AnimatedModelPlayer extends ModelPlayer {
         elbowRightZ=elbowLeftZ=kneeRightZ=kneeLeftZ=0f;
         if(entity instanceof EntityPlayer&&PlayerAnim.enabled())
             PlayerAnim.apply(this,(EntityPlayer)entity,swing,amount,age);
-        bend(lowerArmR,lowerArmRw,tipArmR,tipArmRw,elbowRight,elbowRightZ);
-        bend(lowerArmL,lowerArmLw,tipArmL,tipArmLw,elbowLeft,elbowLeftZ);
-        bend(lowerLegR,lowerLegRw,tipLegR,tipLegRw,kneeRight,kneeRightZ);
-        bend(lowerLegL,lowerLegLw,tipLegL,tipLegLw,kneeLeft,kneeLeftZ);
+        bend(lowerArmR,lowerArmRw,elbowRight,elbowRightZ);
+        bend(lowerArmL,lowerArmLw,elbowLeft,elbowLeftZ);
+        bend(lowerLegR,lowerLegRw,kneeRight,kneeRightZ);
+        bend(lowerLegL,lowerLegLw,kneeLeft,kneeLeftZ);
     }
 
-    /** Spreads one joint angle over the two cuts, so the limb curves instead of creasing. */
-    private static void bend(ModelRenderer lower,ModelRenderer lowerWear,ModelRenderer tip,ModelRenderer tipWear,float x,float z){
-        lower.rotateAngleX=lowerWear.rotateAngleX=x*BEND_INNER;
-        lower.rotateAngleZ=lowerWear.rotateAngleZ=z*BEND_INNER;
-        tip.rotateAngleX=tipWear.rotateAngleX=x*(1f-BEND_INNER);
-        tip.rotateAngleZ=tipWear.rotateAngleZ=z*(1f-BEND_INNER);
+    private static void bend(ModelRenderer lower,ModelRenderer lowerWear,float x,float z){
+        lower.rotateAngleX=lowerWear.rotateAngleX=x;
+        lower.rotateAngleZ=lowerWear.rotateAngleZ=z;
     }
 
     /** Vanilla defaults for the pose angles, so a stale frame can never leak into the next. */
@@ -161,13 +137,13 @@ final class AnimatedModelPlayer extends ModelPlayer {
      */
     @Override
     public void renderRightArm(){
-        straighten(bipedRightArm,bipedRightArmwear,lowerArmR,lowerArmRw,tipArmR,tipArmRw);
+        straighten(bipedRightArm,bipedRightArmwear,lowerArmR,lowerArmRw);
         super.renderRightArm();
     }
 
     @Override
     public void renderLeftArm(){
-        straighten(bipedLeftArm,bipedLeftArmwear,lowerArmL,lowerArmLw,tipArmL,tipArmLw);
+        straighten(bipedLeftArm,bipedLeftArmwear,lowerArmL,lowerArmLw);
         super.renderLeftArm();
     }
 

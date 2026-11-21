@@ -194,9 +194,13 @@ final class PlayerAnim {
         if(s.ollieAt>=0&&p.ticksExisted-s.ollieAt>OLLIE_TICKS)s.ollieAt=-1;
         if(s.pushAt>=0&&p.ticksExisted-s.pushAt>PUSH_TICKS)s.pushAt=-1;
         // Crouch then jump pops the ollie; a plain jump is left alone as a normal jump.
-        boolean jumped=!p.onGround&&s.lastGround&&p.motionY>0.12;
-        if(p==MinecraftAccess.get().thePlayer&&jumped&&p.isSneaking()
-            &&s.wantsBoard&&s.board>=0.9f){
+        // Do not rely only on the server's onGround transition: in 1.8 that flag can remain true
+        // for the first client tick of a jump. The jump key is the reliable local edge, while
+        // lastGround prevents a held key from starting another trick in mid-air.
+        boolean jumped=!p.onGround&&s.lastGround&&p.motionY>0.05;
+        boolean jumpPressed=MinecraftAccess.get().gameSettings.keyBindJump.isKeyDown();
+        if(p==MinecraftAccess.get().thePlayer&&(jumped||jumpPressed&&!p.onGround&&s.lastGround)&&p.isSneaking()
+            &&s.wantsBoard&&s.board>=0.9f&&s.ollieAt<0){
             s.ollieAt=p.ticksExisted;
             s.trick=(int)(Math.random()*3);
         }
