@@ -3,15 +3,18 @@ package otl.client;
 /**
  * Pose curves. Time is in ticks and every angle is in radians; no game state is touched here.
  * Each clip is written against the vanilla model: X swings a limb forward/back, Z spreads it
- * sideways, Y turns it around the shoulder or hip.
+ * sideways, Y turns it around the shoulder or hip. Elbows and knees fold with X only, so a
+ * bent limb never shears through the torso.
  */
 final class AnimClips {
     static final int EMOTES=3;
     private static final float PI=(float)Math.PI;
+    /** A relaxed standing bend: real people never lock their knees or elbows. */
+    private static final float STAND_ELBOW=0.16f,STAND_KNEE=0.06f;
 
     private AnimClips(){}
 
-    /** Smoothstep, clamped, used for fade-ins. */
+    /** Smoothstep, clamped, used for fades. */
     static float smooth(float t){
         t=Math.max(0f,Math.min(1f,t));
         return t*t*(3f-2f*t);
@@ -20,34 +23,46 @@ final class AnimClips {
     /** Everyone gets a slow breathing sway, added on top of the vanilla walk. */
     static void idle(AnimPose p,float t){
         p.add(AnimPose.HEAD,0.018f*sin(t*0.071f),0.03f*sin(t*0.043f),0.022f*sin(t*0.061f));
-        p.add(AnimPose.BODY,0f,0.02f*sin(t*0.043f+1.2f),0.012f*sin(t*0.05f));
+        p.add(AnimPose.BODY,0f,0f,0.012f*sin(t*0.05f));
         p.add(AnimPose.RIGHT_ARM,0.02f*sin(t*0.063f),0f,0.035f*sin(t*0.051f));
         p.add(AnimPose.LEFT_ARM,-0.02f*sin(t*0.063f),0f,-0.035f*sin(t*0.051f));
+        p.elbowRight=STAND_ELBOW+0.03f*sin(t*0.05f);
+        p.elbowLeft=STAND_ELBOW-0.03f*sin(t*0.05f);
+        p.kneeRight=STAND_KNEE;p.kneeLeft=STAND_KNEE;
     }
 
     /**
-     * The deck stance: legs planted instead of walking, torso turned into the board, arms out for
-     * balance. The back leg kicks while moving, which doubles as a push.
+     * The deck stance: legs planted instead of walking, knees bent for balance, arms loose at the
+     * sides. The back leg straightens on the push, which is what makes it read as skateboarding.
      */
     static void skate(AnimPose p,float swing,float amount,float t){
         float moving=Math.min(1f,amount*1.8f);
         float push=swing*1.3324f;
-        p.set(AnimPose.RIGHT_LEG,0.08f+0.55f*moving*Math.max(0f,sin(push)),0f,0.12f);
-        p.set(AnimPose.LEFT_LEG,-0.06f,0f,-0.12f);
-        p.add(AnimPose.BODY,0.07f*moving,0.30f,0f);
-        p.add(AnimPose.RIGHT_ARM,-0.42f,0.30f,0.62f);
-        p.add(AnimPose.LEFT_ARM,0.18f,0.30f,-0.62f);
-        p.add(AnimPose.HEAD,-0.06f,-0.30f,0f);
+        float backKick=Math.max(0f,sin(push))*moving;
+        // Front foot leads, back foot pushes: the knees carry the difference.
+        p.set(AnimPose.RIGHT_LEG,0.10f+0.30f*backKick,0f,0.10f);
+        p.set(AnimPose.LEFT_LEG,-0.14f,0f,-0.10f);
+        p.kneeRight=0.34f-0.22f*backKick;
+        p.kneeLeft=0.44f+0.10f*backKick;
+        // Shoulders stay square to the board; only the arms counterbalance.
+        p.add(AnimPose.RIGHT_ARM,-0.30f,0f,0.34f);
+        p.add(AnimPose.LEFT_ARM,0.10f,0f,-0.34f);
+        p.elbowRight=0.55f+0.20f*backKick;
+        p.elbowLeft=0.40f-0.10f*backKick;
+        p.add(AnimPose.HEAD,-0.05f,0f,0f);
     }
 
-    /** One ollie: crouch, tuck the legs, pop the deck. Trick 0 is a plain ollie, 1 a kickflip, 2 a shove-it. */
+    /** One ollie: crouch, tuck both knees, pop the deck. Trick 0 ollie, 1 kickflip, 2 shove-it. */
     static void ollie(AnimPose p,float phase,int trick){
         float s=sin(phase*PI);
-        p.add(AnimPose.RIGHT_LEG,-0.50f*s,0f,0f);
-        p.add(AnimPose.LEFT_LEG,-0.60f*s,0f,0f);
-        p.add(AnimPose.BODY,0.20f*s,0f,0f);
-        p.add(AnimPose.RIGHT_ARM,-0.35f*s,0f,0.15f*s);
-        p.add(AnimPose.LEFT_ARM,-0.35f*s,0f,-0.15f*s);
+        p.add(AnimPose.RIGHT_LEG,-0.34f*s,0f,0f);
+        p.add(AnimPose.LEFT_LEG,-0.40f*s,0f,0f);
+        p.kneeRight+=0.85f*s;
+        p.kneeLeft+=0.95f*s;
+        p.add(AnimPose.BODY,0.14f*s,0f,0f);
+        p.add(AnimPose.RIGHT_ARM,-0.30f*s,0f,0.10f*s);
+        p.add(AnimPose.LEFT_ARM,-0.30f*s,0f,-0.10f*s);
+        p.elbowRight+=0.25f*s;p.elbowLeft+=0.25f*s;
         if(trick==0)p.boardX=-0.85f*s;
         else if(trick==1)p.boardZ=2f*PI*phase;
         else p.boardY=PI*phase;
@@ -62,34 +77,49 @@ final class AnimClips {
         }
     }
 
+    /** Arm up, elbow bent, forearm swinging from the elbow. The upper arm stays put. */
     private static void wave(AnimPose p,float t){
         float w=sin(t*0.55f);
-        p.set(AnimPose.HEAD,-0.04f,0.12f,0.14f);
-        p.set(AnimPose.BODY,0.03f,0.04f,0.02f*w);
-        p.set(AnimPose.RIGHT_ARM,-2.50f,0f,0.55f+0.30f*w);
-        p.set(AnimPose.LEFT_ARM,0.06f,0f,-0.07f);
-        p.set(AnimPose.RIGHT_LEG,0f,0f,0.05f);
-        p.set(AnimPose.LEFT_LEG,0f,0f,-0.05f);
+        p.set(AnimPose.HEAD,-0.05f,0.10f,0.12f);
+        p.set(AnimPose.BODY,0.02f,0f,0.02f*w);
+        p.set(AnimPose.RIGHT_ARM,-2.45f,0f,0.42f);
+        p.set(AnimPose.LEFT_ARM,0.05f,0f,-0.08f);
+        p.set(AnimPose.RIGHT_LEG,0.02f,0f,0.06f);
+        p.set(AnimPose.LEFT_LEG,-0.02f,0f,-0.06f);
+        p.elbowRight=0.95f+0.55f*w;
+        p.elbowRightZ=0.30f*w;
+        p.elbowLeft=STAND_ELBOW;
+        p.kneeRight=0.10f;p.kneeLeft=0.10f;
     }
 
+    /** Alternating steps with the arms pumping: the knees and elbows carry the beat. */
     private static void dance(AnimPose p,float t){
         float w=sin(t*0.5f),c=cos(t*0.5f);
-        p.set(AnimPose.HEAD,0.05f*w,0.25f*w,0.10f*c);
-        p.set(AnimPose.BODY,0.05f,0.20f*w,0.06f*c);
-        p.set(AnimPose.RIGHT_ARM,-0.70f-1.20f*Math.max(0f,w),0f,0.50f+0.20f*c);
-        p.set(AnimPose.LEFT_ARM,-0.70f-1.20f*Math.max(0f,-w),0f,-0.50f+0.20f*c);
-        p.set(AnimPose.RIGHT_LEG,0.28f*w,0f,0.10f);
-        p.set(AnimPose.LEFT_LEG,-0.28f*w,0f,-0.10f);
+        p.set(AnimPose.HEAD,0.04f*w,0.18f*w,0.08f*c);
+        p.set(AnimPose.BODY,0.04f,0f,0.05f*c);
+        p.set(AnimPose.RIGHT_ARM,-0.55f-0.85f*Math.max(0f,w),0f,0.45f);
+        p.set(AnimPose.LEFT_ARM,-0.55f-0.85f*Math.max(0f,-w),0f,-0.45f);
+        p.set(AnimPose.RIGHT_LEG,0.30f*w,0f,0.08f);
+        p.set(AnimPose.LEFT_LEG,-0.30f*w,0f,-0.08f);
+        p.elbowRight=1.05f+0.45f*Math.max(0f,w);
+        p.elbowLeft=1.05f+0.45f*Math.max(0f,-w);
+        p.kneeRight=0.25f+0.45f*Math.max(0f,w);
+        p.kneeLeft=0.25f+0.45f*Math.max(0f,-w);
     }
 
+    /** Both arms overhead with a bounce; the elbows straighten as the arms go up. */
     private static void cheer(AnimPose p,float t){
         float b=Math.abs(sin(t*0.35f));
-        p.set(AnimPose.HEAD,-0.18f,0f,0f);
-        p.set(AnimPose.BODY,-0.05f+0.03f*b,0f,0f);
-        p.set(AnimPose.RIGHT_ARM,-2.65f+0.15f*b,0f,0.30f-0.10f*b);
-        p.set(AnimPose.LEFT_ARM,-2.65f+0.15f*b,0f,-0.30f+0.10f*b);
-        p.set(AnimPose.RIGHT_LEG,0.10f,0f,0.08f);
-        p.set(AnimPose.LEFT_LEG,0.10f,0f,-0.08f);
+        p.set(AnimPose.HEAD,-0.16f,0f,0f);
+        p.set(AnimPose.BODY,-0.04f+0.03f*b,0f,0f);
+        p.set(AnimPose.RIGHT_ARM,-2.70f,0f,0.28f);
+        p.set(AnimPose.LEFT_ARM,-2.70f,0f,-0.28f);
+        p.set(AnimPose.RIGHT_LEG,0.06f,0f,0.07f);
+        p.set(AnimPose.LEFT_LEG,0.06f,0f,-0.07f);
+        p.elbowRight=0.55f-0.35f*b;
+        p.elbowLeft=0.55f-0.35f*b;
+        p.kneeRight=0.08f+0.20f*b;
+        p.kneeLeft=0.08f+0.20f*b;
     }
 
     private static float sin(float v){return (float)Math.sin(v);}

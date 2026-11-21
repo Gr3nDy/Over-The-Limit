@@ -24,7 +24,37 @@ public class AnimPoseTest {
                 assertTrue("emote "+id+" part "+i+" = "+p.angle[i],
                     Float.isFinite(p.angle[i])&&Math.abs(p.angle[i])<3.3f);
             }
+            assertJointsSane("emote "+id,p);
         }
+    }
+
+    /** Joints fold one way only, and never far enough to push a limb through the torso. */
+    private static void assertJointsSane(String what,AnimPose p){
+        for(float bend:new float[]{p.elbowRight,p.elbowLeft,p.kneeRight,p.kneeLeft})
+            assertTrue(what+" joint out of range: "+bend,Float.isFinite(bend)&&bend>=-0.2f&&bend<=2.2f);
+        for(float splay:new float[]{p.elbowRightZ,p.elbowLeftZ,p.kneeRightZ,p.kneeLeftZ})
+            assertTrue(what+" splay out of range: "+splay,Float.isFinite(splay)&&Math.abs(splay)<=0.6f);
+    }
+
+    @Test public void everyPoseBendsItsJoints(){
+        // The whole point of the split limbs: no clip may leave the elbows and knees locked straight.
+        for(int id=0;id<AnimClips.EMOTES;id++){
+            // Neither arm may be locked straight at any point, and each emote must drive one hard.
+            float strongest=0f;
+            for(float t=0f;t<40f;t+=1.7f){
+                AnimPose p=new AnimPose();
+                AnimClips.emote(p,id,t);
+                assertTrue("emote "+id+" locked an arm straight at t="+t,p.elbowRight>0.1f&&p.elbowLeft>0.1f);
+                strongest=Math.max(strongest,Math.max(p.elbowRight,p.elbowLeft));
+            }
+            assertTrue("emote "+id+" never bent an arm past a relaxed angle",strongest>0.4f);
+        }
+        AnimPose skate=new AnimPose();
+        AnimClips.skate(skate,0f,0f,10f);
+        assertTrue("the skate stance did not bend its knees",skate.kneeLeft>0.3f&&skate.kneeRight>0.2f);
+        AnimPose idle=new AnimPose();
+        AnimClips.idle(idle,10f);
+        assertTrue("idle left the elbows locked",idle.elbowRight>0.05f&&idle.elbowLeft>0.05f);
     }
 
     @Test public void skatePlantsTheLegsAndKeepsTheArmsAdditive(){
@@ -34,6 +64,17 @@ public class AnimPoseTest {
         assertTrue(p.replace[AnimPose.RIGHT_LEG+2]);
         assertFalse(p.replace[AnimPose.RIGHT_ARM]||p.replace[AnimPose.LEFT_ARM]);
         assertFalse(p.replace[AnimPose.HEAD]);
+        assertJointsSane("skate",p);
+    }
+
+    @Test public void theSkateStanceNeverTwistsTheTorsoOrHead(){
+        // A body or head Y rotation is what made the whole model look like it was spinning.
+        for(float t=0;t<200;t+=3.1f)for(float swing=0f;swing<6f;swing+=1.3f){
+            AnimPose p=new AnimPose();
+            AnimClips.skate(p,swing,1f,t);
+            assertTrue("torso twisted",Math.abs(p.angle[AnimPose.BODY+1])<0.01f);
+            assertTrue("head turned",Math.abs(p.angle[AnimPose.HEAD+1])<0.01f);
+        }
     }
 
     @Test public void olliePopsTheDeckAndEachTrickTurnsIt(){

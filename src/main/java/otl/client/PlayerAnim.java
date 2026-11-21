@@ -66,7 +66,8 @@ final class PlayerAnim {
             float board=s.prevBoard+(s.board-s.prevBoard)*partial;
             AnimClips.skate(pose,swing,amount,age);
             pose.board=true;
-            pose.boardDrop=(1f-board)*1.2f;
+            // Blocks, not model units: this translate runs in the same space as a rotation point.
+            pose.boardDrop=(1f-board)*0.40f;
             pose.boardX=-0.9f*(1f-board);
             if(s.ollieAt>=0){
                 float phase=(age-s.ollieAt)/OLLIE_TICKS;
@@ -79,6 +80,10 @@ final class PlayerAnim {
         model.boardY=pose.boardY;
         model.boardZ=pose.boardZ;
         model.boardDrop=pose.boardDrop;
+        model.elbowRight=pose.elbowRight;model.elbowLeft=pose.elbowLeft;
+        model.kneeRight=pose.kneeRight;model.kneeLeft=pose.kneeLeft;
+        model.elbowRightZ=pose.elbowRightZ;model.elbowLeftZ=pose.elbowLeftZ;
+        model.kneeRightZ=pose.kneeRightZ;model.kneeLeftZ=pose.kneeLeftZ;
 
         if(s!=null&&p==mc.thePlayer)emote(model,s,age);
     }
@@ -102,6 +107,7 @@ final class PlayerAnim {
         pose.reset();
         AnimClips.emote(pose,id,age-s.emoteAt);
         blendModel(model,pose,weight);
+        blendJoints(model,pose,weight);
     }
 
     static void emoteKey(Minecraft mc){
@@ -152,10 +158,13 @@ final class PlayerAnim {
     public void mouse(MouseEvent event){
         if(event.button!=0||!event.buttonstate)return;
         Minecraft mc=MinecraftAccess.get();
+        // A screen that takes clicks (chat) must keep them; the emote already ended on open.
         if(mc.thePlayer==null||mc.currentScreen!=null)return;
         State s=STATES.get(mc.thePlayer.getEntityId());
-        if(s==null||s.emote<0)return;
-        stopEmote(mc,mc.thePlayer,true);
+        boolean emoting=s!=null&&s.emote>=0;
+        if(!emoting&&!managing)return;
+        if(emoting)stopEmote(mc,mc.thePlayer,true);
+        else endCamera(mc,true);
         event.setCanceled(true);
     }
 
@@ -172,8 +181,10 @@ final class PlayerAnim {
         if(s.board<target)s.board=Math.min(target,s.board+PULL_OUT);
         else if(s.board>target)s.board=Math.max(target,s.board-PULL_OUT);
         if(s.ollieAt>=0&&p.ticksExisted-s.ollieAt>OLLIE_TICKS)s.ollieAt=-1;
-        if(p==MinecraftAccess.get().thePlayer&&s.wantsBoard&&s.board>=0.9f
-            &&!p.onGround&&s.lastGround&&p.motionY>0.12){
+        // Crouch then jump pops the ollie; a plain jump is left alone as a normal jump.
+        boolean jumped=!p.onGround&&s.lastGround&&p.motionY>0.12;
+        if(p==MinecraftAccess.get().thePlayer&&jumped&&p.isSneaking()
+            &&s.wantsBoard&&s.board>=0.9f){
             s.ollieAt=p.ticksExisted;
             s.trick=(int)(Math.random()*3);
         }
@@ -181,8 +192,6 @@ final class PlayerAnim {
     }
 
     private static void checkEmote(Minecraft mc){
-        // F5 during an emote is the player's own choice: drop management instead of restoring.
-        if(managing&&mc.gameSettings.thirdPersonView!=2)managing=false;
         EntityPlayer p=mc.thePlayer;
         State s=STATES.get(p.getEntityId());
         if(s==null){
@@ -199,7 +208,10 @@ final class PlayerAnim {
             if(managing)endCamera(mc,true);
             return;
         }
-        if(damaged||p.isDead||hp<=0f||mc.currentScreen!=null||moving(p))stopEmote(mc,p,true);
+        // F5 is the player's own choice: drop the emote, but leave the view they picked.
+        boolean ownView=mc.gameSettings.thirdPersonView!=2;
+        if(damaged||p.isDead||hp<=0f||mc.currentScreen!=null||moving(p)||ownView)
+            stopEmote(mc,p,!ownView);
     }
 
     private static void stopEmote(Minecraft mc,EntityPlayer p,boolean restore){
@@ -271,6 +283,21 @@ final class PlayerAnim {
         blendPart(m.bipedRightLeg,p,AnimPose.RIGHT_LEG,weight);
         blendPart(m.bipedLeftLeg,p,AnimPose.LEFT_LEG,weight);
         copyWear(m);
+    }
+
+    /**
+     * The joints blend with the same weight as the limbs they belong to, so an emote fades its
+     * elbows and knees in with the rest of the pose instead of snapping them.
+     */
+    private static void blendJoints(AnimatedModelPlayer m,AnimPose p,float w){
+        m.elbowRight+= (p.elbowRight-m.elbowRight)*w;
+        m.elbowLeft += (p.elbowLeft -m.elbowLeft )*w;
+        m.kneeRight += (p.kneeRight -m.kneeRight )*w;
+        m.kneeLeft  += (p.kneeLeft  -m.kneeLeft  )*w;
+        m.elbowRightZ+=(p.elbowRightZ-m.elbowRightZ)*w;
+        m.elbowLeftZ +=(p.elbowLeftZ -m.elbowLeftZ )*w;
+        m.kneeRightZ +=(p.kneeRightZ -m.kneeRightZ )*w;
+        m.kneeLeftZ  +=(p.kneeLeftZ  -m.kneeLeftZ  )*w;
     }
 
     private static void blendPart(ModelRenderer r,AnimPose p,int i,float w){

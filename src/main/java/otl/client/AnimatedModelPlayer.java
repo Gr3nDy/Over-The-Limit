@@ -1,51 +1,162 @@
 package otl.client;
 
+import net.minecraft.client.model.ModelBox;
 import net.minecraft.client.model.ModelPlayer;
 import net.minecraft.client.model.ModelRenderer;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 
-/** The vanilla player model with the OTL pose layer and a skater deck under the feet. */
+/**
+ * The vanilla player model with two changes: each limb is split at the elbow and the knee so it
+ * can bend (a vanilla limb is one rigid box), and a skateboard hangs under the feet while it is
+ * out.
+ *
+ * <p>The split reuses the vanilla renderers instead of drawing replacements, because a child
+ * renderer inherits the parent's transform: sneaking, a held item and the armour layer all keep
+ * working, and the lower half follows the shoulder wherever the game puts it.
+ */
 final class AnimatedModelPlayer extends ModelPlayer {
-    private final ModelRenderer board;
+    /** Skin atlas offsets, fixed by the skin format: the same for slim and classic. */
+    private static final int ARM_R_U=40,ARM_R_V=16,ARM_L_U=32,ARM_L_V=48;
+    private static final int LEG_R_U=0,LEG_R_V=16,LEG_L_U=16,LEG_L_V=48;
+    private static final int ARM_RW_U=40,ARM_RW_V=32,ARM_LW_U=48,ARM_LW_V=48;
+    private static final int LEG_RW_U=0,LEG_RW_V=32,LEG_LW_U=0,LEG_LW_V=48;
+
+    private final ModelRenderer lowerArmR,lowerArmL,lowerLegR,lowerLegL;
+    private final ModelRenderer lowerArmRw,lowerArmLw,lowerLegRw,lowerLegLw;
+    private final ModelRenderer deck,trucks,wheels;
+
     boolean boardOut;
     float boardX,boardY,boardZ,boardDrop;
+    float elbowRight,elbowLeft,kneeRight,kneeLeft;
+    float elbowRightZ,elbowLeftZ,kneeRightZ,kneeLeftZ;
 
     AnimatedModelPlayer(boolean slim){
         super(0f,slim);
-        board=new ModelRenderer(this);
-        // Box coordinates are relative to the rotation point, which sits at the soles (y=24);
-        // +y runs down in model space, so the deck hangs just under the feet.
-        board.addBox(-5f,0f,-9f,10,1,18);
-        board.setRotationPoint(0f,24f,0f);
+        lowerArmR=split(bipedRightArm,ARM_R_U,ARM_R_V,0f);
+        lowerArmL=split(bipedLeftArm,ARM_L_U,ARM_L_V,0f);
+        lowerLegR=split(bipedRightLeg,LEG_R_U,LEG_R_V,0f);
+        lowerLegL=split(bipedLeftLeg,LEG_L_U,LEG_L_V,0f);
+        lowerArmRw=split(bipedRightArmwear,ARM_RW_U,ARM_RW_V,0.25f);
+        lowerArmLw=split(bipedLeftArmwear,ARM_LW_U,ARM_LW_V,0.25f);
+        lowerLegRw=split(bipedRightLegwear,LEG_RW_U,LEG_RW_V,0.25f);
+        lowerLegLw=split(bipedLeftLegwear,LEG_LW_U,LEG_LW_V,0.25f);
+
+        deck=board(0);trucks=board(1);wheels=board(2);
+    }
+
+    /**
+     * Cuts a limb in half: the renderer keeps the upper box, and a child at the joint draws the
+     * lower box from the lower half of the same skin texels. The geometry is read back from the
+     * box the vanilla model built, so slim arms and the inflated outer layer both come out right.
+     *
+     * shortcut: the end faces of the lower half sample the wrong texels (only the side faces are
+     * exact), which shows as a small patch on the palm and the sole; upgrade to a hand-built box
+     * with per-face UVs if that ever becomes visible in play.
+     */
+    private ModelRenderer split(ModelRenderer limb,int u,int v,float inflate){
+        ModelBox box=limb.cubeList.get(0);
+        // posX1..posZ2 already include the inflation, so it is taken back out before the two
+        // halves are rebuilt with the same inflate; otherwise the outer layer grows twice.
+        float x=box.posX1+inflate,y=box.posY1+inflate,z=box.posZ1+inflate;
+        int w=Math.round(box.posX2-box.posX1-2f*inflate);
+        int h=Math.round(box.posY2-box.posY1-2f*inflate);
+        int d=Math.round(box.posZ2-box.posZ1-2f*inflate);
+        int half=h/2;
+        limb.cubeList.clear();
+        limb.cubeList.add(new ModelBox(limb,u,v,x,y,z,w,half,d,inflate));
+        ModelRenderer lower=new ModelRenderer(this);
+        // A bare renderer defaults to a 64x32 atlas; the player skin is 64x64, so copying the
+        // parent's size is what keeps the lower half sampling the right texels.
+        lower.textureWidth=limb.textureWidth;
+        lower.textureHeight=limb.textureHeight;
+        lower.setTextureOffset(u,v+half);
+        lower.addBox(x,0f,z,w,half,d,inflate);
+        // The joint sits half a limb down, so the child box starts exactly where the upper ends.
+        lower.setRotationPoint(0f,y+half,0f);
+        limb.addChild(lower);
+        return lower;
+    }
+
+    /** 0 deck, 1 trucks, 2 wheels: flat-coloured groups hanging under the feet. */
+    private ModelRenderer board(int part){
+        ModelRenderer r=new ModelRenderer(this);
+        r.setRotationPoint(0f,24f,0f);
+        if(part==0){
+            r.addBox(-5f,0f,-11f,10,1,22);          // deck
+            r.addBox(-5f,-1f,-12f,10,1,3);          // nose curl
+            r.addBox(-5f,-1f,9f,10,1,3);            // tail curl
+        }else if(part==1){
+            r.addBox(-4f,1f,-7f,8,1,2);
+            r.addBox(-4f,1f,5f,8,1,2);
+        }else{
+            r.addBox(-4f,2f,-8f,2,2,3);r.addBox(2f,2f,-8f,2,2,3);
+            r.addBox(-4f,2f,5f,2,2,3);r.addBox(2f,2f,5f,2,2,3);
+        }
+        return r;
     }
 
     @Override
     public void setRotationAngles(float swing,float amount,float age,float yaw,float pitch,float scale,Entity entity){
         super.setRotationAngles(swing,amount,age,yaw,pitch,scale,entity);
+        boardOut=false;
+        elbowRight=elbowLeft=kneeRight=kneeLeft=0f;
+        elbowRightZ=elbowLeftZ=kneeRightZ=kneeLeftZ=0f;
         if(entity instanceof EntityPlayer&&PlayerAnim.enabled())
             PlayerAnim.apply(this,(EntityPlayer)entity,swing,amount,age);
-        else boardOut=false;
+        lowerArmR.rotateAngleX=lowerArmRw.rotateAngleX=elbowRight;
+        lowerArmL.rotateAngleX=lowerArmLw.rotateAngleX=elbowLeft;
+        lowerArmR.rotateAngleZ=lowerArmRw.rotateAngleZ=elbowRightZ;
+        lowerArmL.rotateAngleZ=lowerArmLw.rotateAngleZ=elbowLeftZ;
+        lowerLegR.rotateAngleX=lowerLegRw.rotateAngleX=kneeRight;
+        lowerLegL.rotateAngleX=lowerLegLw.rotateAngleX=kneeLeft;
+        lowerLegR.rotateAngleZ=lowerLegRw.rotateAngleZ=kneeRightZ;
+        lowerLegL.rotateAngleZ=lowerLegLw.rotateAngleZ=kneeLeftZ;
+    }
+
+    /**
+     * The first-person hand renders the arm renderers directly, without going through
+     * setRotationAngles, so it would inherit whatever the last third-person frame left behind -
+     * including a bent elbow. Straighten the arm first so the held hand looks vanilla.
+     */
+    @Override
+    public void renderRightArm(){
+        straighten(bipedRightArm,bipedRightArmwear,lowerArmR,lowerArmRw);
+        super.renderRightArm();
+    }
+
+    @Override
+    public void renderLeftArm(){
+        straighten(bipedLeftArm,bipedLeftArmwear,lowerArmL,lowerArmLw);
+        super.renderLeftArm();
+    }
+
+    private static void straighten(ModelRenderer arm,ModelRenderer wear,ModelRenderer lower,ModelRenderer lowerWear){
+        arm.rotateAngleX=arm.rotateAngleY=arm.rotateAngleZ=0f;
+        wear.rotateAngleX=wear.rotateAngleY=wear.rotateAngleZ=0f;
+        lower.rotateAngleX=lower.rotateAngleZ=0f;
+        lowerWear.rotateAngleX=lowerWear.rotateAngleZ=0f;
     }
 
     @Override
     public void render(Entity entity,float swing,float amount,float age,float yaw,float pitch,float scale){
         super.render(entity,swing,amount,age,yaw,pitch,scale);
-        if(boardOut&&entity instanceof EntityPlayer&&!entity.isInvisible())drawBoard(scale);
+        if(boardOut&&!entity.isInvisible())drawBoard(scale);
     }
 
     private void drawBoard(float scale){
-        board.rotateAngleX=boardX;
-        board.rotateAngleY=boardY;
-        board.rotateAngleZ=boardZ;
+        deck.rotateAngleX=trucks.rotateAngleX=wheels.rotateAngleX=boardX;
+        deck.rotateAngleY=trucks.rotateAngleY=wheels.rotateAngleY=boardY;
+        deck.rotateAngleZ=trucks.rotateAngleZ=wheels.rotateAngleZ=boardZ;
         GlStateManager.pushMatrix();
         try{
-            // The model is already flipped, so +y here moves the deck down: it rises into place.
             GlStateManager.translate(0f,boardDrop,0f);
             GlStateManager.disableTexture2D();
-            GlStateManager.color(0.30f,0.33f,0.38f,1f);
-            board.render(scale);
+            // Flat colours: a painted deck, metal hardware, pale wheels.
+            GlStateManager.color(0.20f,0.22f,0.26f,1f);deck.render(scale);
+            GlStateManager.color(0.62f,0.65f,0.70f,1f);trucks.render(scale);
+            GlStateManager.color(0.90f,0.90f,0.86f,1f);wheels.render(scale);
         }finally{
             GlStateManager.color(1f,1f,1f,1f);
             GlStateManager.enableTexture2D();

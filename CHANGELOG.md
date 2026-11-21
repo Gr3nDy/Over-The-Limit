@@ -3,7 +3,7 @@
 ## v0.8.0 - 2026-11-21
 
 ### Added
-- **Player Animation** - every player now breathes and sways instead of standing frozen, driven by the client's own clock so nothing is sent to the server. Press **N** to pull out a skateboard: the deck drops in under your feet, your legs stop walking, and moving makes the back leg push. Jumping while it is out pops an ollie, with a kickflip or shove-it picked at random.
+- **Player Animation** - every player now breathes and sways instead of standing frozen, driven by the client's own clock so nothing is sent to the server. Arms and legs are drawn in two segments with real elbows and knees, so a pose can actually bend instead of swinging one rigid box. Press **N** to pull out a skateboard: a deck with trucks and wheels drops in under your feet, your knees bend into the stance, and moving makes the back leg push. Crouch and jump while it is out to pop an ollie, with a kickflip or shove-it picked at random; a plain jump stays a normal jump.
 - **Emotes** - press **B** to cycle wave, dance and cheer. You need to be standing still; the pose fades in over a fifth of a second and the camera switches to the front third-person view so you can see it. Left-clicking ends the emote and that click is swallowed, so it cannot also punch. Taking damage, walking, opening a screen, pressing F5, dying or leaving the world ends it too, and the saved perspective is restored. Both keys are rebindable in Controls, and the module has its own switch plus an **Emote camera** switch.
 
 ### Fixed
