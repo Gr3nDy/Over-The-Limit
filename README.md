@@ -11,7 +11,7 @@
 | Module | What it does |
 | --- | --- |
 | **Face Rig** | Animates skin-based eyes and expressions; includes an in-game editor. |
-| **Player Animation** | Nothing changes until you use it. **B** cycles wave, dance and cheer with an automatic third-person camera, and **N** pulls out a skateboard: one kick, then a balancing stance, with an ollie on crouch-and-jump. |
+| **Player Animation** | Nothing changes until you use it. **B** cycles wave, dance and cheer with an automatic third-person camera, and **N** pulls out a skateboard: one kick, then a balancing stance, with an ollie on crouch-and-jump. Other OTL players see your board and tricks. |
 | **Reliable Chat** | Adds channel/PM tabs, drafts, scrollable history and optional team speech bubbles. |
 | **Map Preview** | Shows book/chat map previews, a searchable gallery and `/map` info cards. |
 | **Custom Votebook** | Replaces the vote book with map cards, Supervote, match stats and a match link. |

@@ -15,7 +15,8 @@ import net.minecraftforge.fml.common.gameevent.TickEvent;
 /**
  * Client-side animation state: a skateboard and emotes for the local player. Nothing runs until
  * the player asks for it - no emote and no board means the model is left exactly vanilla.
- * Nothing is sent to the server, so other clients never see it.
+ * Nothing is sent to the server. The board is shared with other OTL clients through
+ * {@link BoardSync}; emotes stay local.
  *
  * <p>The emote owns the camera until the player left-clicks, takes damage, starts moving, opens a
  * screen, changes the perspective themselves, dies or leaves the world. Every exit restores the
@@ -36,7 +37,7 @@ final class PlayerAnim {
      * tiny next to a Minecraft player, whose head alone is half a block wide, so the board is drawn
      * 1.6x: about 1.3 blocks long, the size a boat reads at. This is the one number to change.
      */
-    private static final float BOARD_SCALE=1.6f;
+    private static final float BOARD_SCALE=1.7f;
     private static final class State {
         float board,prevBoard;
         boolean wantsBoard;
@@ -71,6 +72,12 @@ final class PlayerAnim {
         return mc!=null&&mc.thePlayer!=null&&state(mc.thePlayer).wantsBoard;
     }
 
+    /** Whether the local player has a board out, for the board sharing link. */
+    static boolean localWantsBoard(){
+        Minecraft mc=MinecraftAccess.get();
+        return mc!=null&&mc.thePlayer!=null&&state(mc.thePlayer).wantsBoard;
+    }
+
     /** True while this player has an emote running, so the rig is installed only for emotes. */
     static boolean emoting(EntityPlayer p){
         Minecraft mc=MinecraftAccess.get();
@@ -80,15 +87,18 @@ final class PlayerAnim {
     }
 
     /**
-     * Draws the board under the local skater after the vanilla model has rendered. This replaces
-     * the old mainModel swap, which Lunar/OptiFine turned into a full-screen white flash.
+     * Draws the board under a skater after the vanilla model has rendered. This replaces the old
+     * mainModel swap, which Lunar/OptiFine turned into a full-screen white flash.
      *
      * <p>{@code RenderPlayerEvent.Post} runs in camera space, after the renderer popped the entity
      * transform, so the player's own position has to be applied here before anything else.
+     *
+     * <p>Other players' boards come from {@link BoardSync}: the board itself is placed from their
+     * real position and body yaw, so a remote rider needs nothing but "board is out" to look right.
      */
     static void renderBoard(EntityPlayer p,float partial,double x,double y,double z){
         Minecraft mc=MinecraftAccess.get();
-        if(mc==null||p!=mc.thePlayer)return;
+        if(mc==null)return;
         State s=STATES.get(p.getEntityId());
         if(s==null||s.board<=0.001f)return;
         float board=s.prevBoard+(s.board-s.prevBoard)*partial;
@@ -204,10 +214,12 @@ final class PlayerAnim {
         if(!enabled()){
             if(managing)endCamera(mc,true);
             STATES.clear();
+            BoardSync.reset();
             return;
         }
         for(EntityPlayer p:new java.util.ArrayList<EntityPlayer>(mc.theWorld.playerEntities))step(p);
         checkEmote(mc);
+        BoardSync.tick();
     }
 
     /** Attack or place exits an active animation before Minecraft handles the click. */
@@ -234,10 +246,12 @@ final class PlayerAnim {
         Minecraft mc=MinecraftAccess.get();
         if(managing&&mc!=null)endCamera(mc,true);
         STATES.clear();
+        BoardSync.reset();
     }
 
     private static void step(EntityPlayer p){
         State s=state(p);
+        if(p!=MinecraftAccess.get().thePlayer)remote(s,p);
         // Combat interrupts skating immediately. Do not leave a board/pose fade running after
         // damage: the player must return to the exact vanilla render on this tick.
         if(p==MinecraftAccess.get().thePlayer&&s.wantsBoard&&p.hurtTime>0){
@@ -260,6 +274,7 @@ final class PlayerAnim {
             &&s.wantsBoard&&s.board>=0.9f&&s.ollieAt<0){
             s.ollieAt=p.ticksExisted;
             s.trick=(int)(Math.random()*3);
+            BoardSync.trick(s.trick);
         }
         s.lastGround=p.onGround;
         if(p==MinecraftAccess.get().thePlayer&&s.wantsBoard&&s.board>=0.9f){
@@ -280,6 +295,19 @@ final class PlayerAnim {
         s.pushAt=-1;
         s.ollieAt=-1;
         s.wasMoving=false;
+    }
+
+    /**
+     * A remote rider's board comes from their own client. The ollie is stamped with their tick
+     * count as it is now, so the same render code animates it from the moment the message lands.
+     */
+    private static void remote(State s,EntityPlayer p){
+        s.wantsBoard=BoardSync.riding(p.getName());
+        int trick=BoardSync.takeTrick(p.getName());
+        if(trick>=0){
+            s.ollieAt=p.ticksExisted;
+            s.trick=trick;
+        }
     }
 
     private static void checkEmote(Minecraft mc){

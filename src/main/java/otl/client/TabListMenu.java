@@ -526,9 +526,9 @@ final class TabListMenu {
     private void run(Minecraft mc,int action,String player){
         end(mc);
         try{
-            if(action==0){TeamBar.INSTANCE.confirmProfile(player);return;}
+            if(action==1){TeamBar.INSTANCE.confirmProfile(player);return;}
             if(mc.thePlayer==null)return;
-            String command=action==1?TeamBar.teleportCommand(player)
+            String command=action==0?TeamBar.teleportCommand(player)
                 :action==2?TeamBar.friendCommand(player):null;
             if(action==3)ReliableChat.openPrivate(player);
             else if(command!=null)mc.thePlayer.sendChatMessage(command);

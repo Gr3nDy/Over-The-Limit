@@ -11,5 +11,5 @@ public final class PlayerAnimModule extends OtlModule {
     public boolean enabled(){return UtilitySettings.playerAnimation;}
     public void setEnabled(boolean on){UtilitySettings.playerAnimation=on;}
     public GuiScreen settings(GuiScreen back){return new PlayerAnimSettings(back);}
-    public void reset(){UtilitySettings.restore("player_animation","emote_camera");}
+    public void reset(){UtilitySettings.restore("player_animation","emote_camera","board_share");}
 }

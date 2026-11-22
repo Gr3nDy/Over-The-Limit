@@ -67,6 +67,40 @@ final class ModulesScreen extends GuiScreen {
     }
     private boolean overSearch(int mx,int my){return BedrockUi.hit(mx,my,searchX()-4,y+4,searchW()+8,20);}
 
+    /** Dot and word for the OTL service link; hidden when the header has no room for it. */
+    private List<String> hereNow=Collections.emptyList();
+    /** "Online" plus how many other OTL users are in this world, e.g. "Online · 3". */
+    private String serviceLabel(){
+        int status=OtlService.status();
+        String label=OtlService.statusLabel(status);
+        if(status==OtlService.ONLINE&&!hereNow.isEmpty())label=label+" \u00b7 "+hereNow.size();
+        return label;
+    }
+    private int lightX(){return searchX()-12-fontRendererObj.getStringWidth(serviceLabel())-9;}
+    private void drawServiceLight(int mx,int my){
+        hereNow=OtlPresence.here();
+        int x=lightX();
+        // A narrow window would push the light into the nav strip, so it is simply not drawn.
+        if(x<navSettingsX()+fontRendererObj.getStringWidth("SETTINGS")+14)return;
+        int status=OtlService.status();
+        boolean hover=BedrockUi.hit(mx,my,x-3,y+4,fontRendererObj.getStringWidth(serviceLabel())+16,20);
+        BedrockUi.rounded(x,y+10,6,6,2,OtlService.statusColour(status));
+        drawString(fontRendererObj,serviceLabel(),x+10,y+9,status==OtlService.ONLINE?BedrockUi.TEXT:hover?BedrockUi.TEXT:BedrockUi.DIM);
+    }
+    /** Names of the other OTL users here; capped so a big server does not fill the screen. */
+    private List<String> serviceTip(){
+        List<String> tip=new ArrayList<>();
+        int status=OtlService.status();
+        tip.add("OTL service: "+OtlService.statusLabel(status));
+        if(status!=OtlService.ONLINE){tip.add("Board sharing and other online features are idle");return tip;}
+        if(hereNow.isEmpty()){tip.add("No other OTL users in this world");return tip;}
+        tip.add(hereNow.size()==1?"1 other OTL user here:":hereNow.size()+" other OTL users here:");
+        int shown=Math.min(hereNow.size(),8);
+        for(int i=0;i<shown;i++)tip.add("  "+hereNow.get(i));
+        if(hereNow.size()>shown)tip.add("  and "+(hereNow.size()-shown)+" more");
+        return tip;
+    }
+
     private List<OtlModule> visible(){
         String q=query.trim().toLowerCase(Locale.ROOT);
         List<OtlModule> list=new ArrayList<>();
@@ -328,6 +362,7 @@ final class ModulesScreen extends GuiScreen {
         // Top-level sections in the header, like the launcher's Mods / Settings strip.
         drawNav(navModsX(),"MODS",true,mx,my);
         drawNav(navSettingsX(),"SETTINGS",false,mx,my);
+        drawServiceLight(mx,my);
         int on=0;for(OtlModule m:OtlModule.ALL)if(m.enabled())on++;
         String count=on+" / "+OtlModule.ALL.size()+" ON";
         BedrockUi.chip(fontRendererObj,contentX(),y+h-24,74,18,"Enabled only",enabledOnly,
@@ -374,6 +409,8 @@ final class ModulesScreen extends GuiScreen {
         if(BedrockUi.hit(mx,my,navSettingsX()-4,y+4,fontRendererObj.getStringWidth("SETTINGS")+8,20))
             drawHoveringText(Arrays.asList("SETTINGS","PGM client and server options"),mx,my);
         if(overSearch(mx,my)&&!search.isFocused())drawHoveringText(Arrays.asList("Type to search, ESC clears"),mx,my);
+        if(BedrockUi.hit(mx,my,lightX()-3,y+4,fontRendererObj.getStringWidth(serviceLabel())+16,20))
+            drawHoveringText(serviceTip(),mx,my);
         for(int i=0;i<VISIBLE_ROWS*columns;i++){
             int index=scrollRow*columns+i;if(index>=list.size())break;
             int[] box=cardBox(i);

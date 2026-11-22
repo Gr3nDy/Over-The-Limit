@@ -150,6 +150,13 @@ public class TeamBarCentreTest {
         assertEquals("the clock's row was pushed above the heads",bar.labelTop,bar.rowTop(0,0));
         // Each card sits beside the last, inside its own side of the clock, and holds its heads.
         TeamBar.Block alpha=block(bar,0,"Alpha"),charlie=block(bar,0,"Charlie");
+        List<String> full=new ArrayList<>(left.get(0));
+        for(int i=2;i<=30;i++)full.add("A"+i);
+        bar.rosters=Collections.singletonList(new TeamBar.Side("Alpha",full));
+        assertNull(TeamBar.headAt(bar,alpha.x,alpha.y));
+        assertSame(bar.rosters.get(0),TeamBar.teamAt(bar,alpha.x,alpha.y));
+        assertNull(TeamBar.teamAt(bar,bar.textX,alpha.y));
+        assertEquals("Alpha (30)\n"+String.join("\n",full),TeamBar.cardAt(bar,alpha.x,alpha.y));
         assertTrue("the left cards overlapped",alpha.x+alpha.w<=charlie.x);
         assertTrue("a left card crossed the clock",charlie.x+charlie.w<=bar.leftEnd);
         assertTrue("a left head left its card",
@@ -163,6 +170,41 @@ public class TeamBarCentreTest {
         assertEquals(bar.stripTop(0,0),bar.stripTop(0,1));
         assertEquals("The four-team bar pushed the clock off centre",bar.width/2,bar.textX+bar.textW/2);
         assertEquals("the bar kept a line it did not draw",bar.stripTop(0,0)+TeamBar.STRIP_LINE,bar.height);
+    }
+
+    @Test public void numbersModeKeepsLongObjectivesInsideTheirOwnCards(){
+        List<List<String>> rows=Arrays.asList(Collections.singletonList("A"),Collections.singletonList("B"));
+        List<String> owners=Arrays.asList("Red","Gold");
+        Objectives.Strip longGoal=strip("Red",2,96),shortGoal=strip("Red",2,35),other=strip("Gold",2,72);
+        TeamBar.Bar bar=new TeamBar.Bar(rows,rows,0,20,null,"",0,
+            lines(longGoal,shortGoal,other),lines(longGoal,shortGoal,other),false,null,null,0,owners,owners,true,14);
+        for(int side=0;side<2;side++){
+            TeamBar.Block red=block(bar,side,"Red"),gold=block(bar,side,"Gold");
+            assertTrue(red.x+red.w<=gold.x);
+            for(Objectives.Strip goal:lines(longGoal,shortGoal,other)){
+                TeamBar.Block card=goal==other?gold:red;
+                int x=bar.stripX(side,goal);
+                assertTrue(x>=card.x&&x+goal.width<=card.x+card.w);
+                assertEquals(side==0?card.x+card.w:card.x,side==0?x+goal.width:x);
+            }
+        }
+    }
+
+    @Test public void markerEdgesStayAlignedAtEveryHeadPresetAndHudScale(){
+        List<String> owners=Collections.singletonList("Red");
+        Objectives.Strip a=strip("Red",2,90),b=strip("Red",2,27);
+        for(int shown:new int[]{5,10,20,30})for(int scale:new int[]{50,75,100,125,150}){
+            int head=TeamBar.headSize(shown)*scale/100;
+            List<List<String>> rows=Collections.singletonList(Collections.singletonList("A"));
+            TeamBar.Bar bar=new TeamBar.Bar(rows,rows,head,20,null,"",0,lines(a,b),lines(a,b),false,
+                null,null,0,owners,owners,false,0,TeamBar.COUNT_BAND,96);
+            for(Objectives.Strip s:lines(a,b)){
+                assertTrue(bar.stripX(0,s)>=bar.rowX(0,0));
+                assertEquals(bar.leftEnd,bar.stripX(0,s)+s.width);
+                assertEquals(bar.rightX,bar.stripX(1,s));
+            }
+            assertEquals(bar.stripTop(0,1),bar.stripTop(1,1));
+        }
     }
 
     @Test public void aShuffledSidebarStillPutsObjectivesOnTheirOwnCards(){

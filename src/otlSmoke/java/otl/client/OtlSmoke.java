@@ -3591,7 +3591,8 @@ public final class OtlSmoke {
                 TabListMenu tabs=TabListMenu.INSTANCE;
                 require(tabs.menu!=null,"The menu closed on its own on PGM");
                 // View Profile: the option that "did nothing" in a match.
-                int rowY=tabs.menu.y+TeamBar.HeadMenu.TITLE+2;
+                // View Profile is now the second row; Teleport leads the menu.
+                int rowY=tabs.menu.y+TeamBar.HeadMenu.TITLE+TeamBar.HeadMenu.ROW+2;
                 tabs.poll(mc,tabs.menu.x+2,rowY,false,false);
                 tabs.poll(mc,tabs.menu.x+2,rowY,true,false);
                 require(mc.currentScreen instanceof net.minecraft.client.gui.GuiConfirmOpenLink,
@@ -3607,7 +3608,7 @@ public final class OtlSmoke {
                 tabs.begin(mc);
                 tabs.poll(mc,layout.x(real)+2,layout.y(real)+4,true,false);
                 require(tabs.menu!=null,"Reopening the menu on PGM failed");
-                int tpY=tabs.menu.y+TeamBar.HeadMenu.TITLE+TeamBar.HeadMenu.ROW+2;
+                int tpY=tabs.menu.y+TeamBar.HeadMenu.TITLE+2;
                 tabs.poll(mc,tabs.menu.x+2,tpY,false,false);
                 tabs.poll(mc,tabs.menu.x+2,tpY,true,false);
                 require(!tabs.browsing,"Teleport left the list in browse mode");

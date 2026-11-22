@@ -136,6 +136,7 @@ final class Objectives {
         final String name;
         /** Pixels before this part; set when the strip is laid out. */
         int space;
+        int slotWidth;
         final boolean mirror;
         Part(String text,int colour,int state,boolean marker,String name){
             this(text,colour,state,marker,name,false);
@@ -146,8 +147,12 @@ final class Objectives {
         Part(String text,int colour,int state,boolean marker){this(text,colour,state,marker,null);}
         Part(String text,int colour,int state){this(text,colour,state,false,null);}
         int width(FontRenderer font){
+            return Math.max(slotWidth,inkWidth(font));
+        }
+        int inkWidth(FontRenderer font){
             return text==null?ICON:font.getStringWidth(text);
         }
+        int inkOffset(FontRenderer font){return Math.max(0,slotWidth-inkWidth(font))/2;}
     }
 
     /** One sidebar row, and the team it belongs to (null when the row names no team). */
@@ -212,6 +217,13 @@ final class Objectives {
         Map<Character,String> colours=teamColours(mc,teams);
         if(points!=null)points.prepare(mc,colours);
         List<List<Entry>> sides=splitEntries(entries(TeamBar.sidebarRows(mc),teams,points,colours,TeamBar.INSTANCE.symbolicScores),columns,compact);
+        if(!compact){
+            int slot=ICON;
+            for(List<Entry> side:sides)for(Entry entry:side)if(!entry.score)
+                for(Part part:entry.parts)if(part.marker)slot=Math.max(slot,part.inkWidth(mc.fontRendererObj));
+            for(List<Entry> side:sides)for(Entry entry:side)if(!entry.score)
+                for(Part part:entry.parts)if(part.marker)part.slotWidth=slot;
+        }
         List<List<Strip>> out=new ArrayList<>();
         for(int side=0;side<5;side++){
             List<Strip> lines=new ArrayList<>();
@@ -255,6 +267,7 @@ final class Objectives {
             for(int i=0;i<entry.parts.size();i++){
                 Part original=entry.parts.get(i);
                 Part copy=new Part(original.text,original.colour,original.state,original.marker,original.name,original.mirror);
+                copy.slotWidth=original.slotWidth;
                 copy.space=i==0?gap:original.space;
                 parts.add(copy);
             }
@@ -391,6 +404,12 @@ final class Objectives {
             for(Part part:entry){
                 if(part==name)row.add(new Part(wrapped.get(i),part.colour,part.state,false,name.text));
                 else if(i==0)row.add(part);
+                else{
+                    // Keep wrapped text in the label column without repeating the marker.
+                    Part blank=new Part("",part.colour,-1,true,name.text);
+                    blank.slotWidth=part.width(mc.fontRendererObj);
+                    row.add(blank);
+                }
             }
             Strip one=lay(mc,Collections.singletonList(row),max);
             if(one!=null)lines.add(one);

@@ -47,6 +47,8 @@ public final class UtilitySettings {
     public static boolean playerAnimation=true;
     /** Emotes switch to the front third-person view until a click, damage or walking. */
     public static boolean emoteCamera=true;
+    /** Show other OTL players' boards, and share your own, over the OTL Supabase project. */
+    public static boolean boardShare=true;
     /** Top-centre team bar: heads per team with the match timer in the middle. */
     public static boolean teamBar=true;
     /** Heads per side (1-75) and the bar's scale; below 10 heads they stay full size. */
@@ -172,8 +174,12 @@ public final class UtilitySettings {
         read(j,"face_rig",e->faceRig=e.getAsBoolean());
         read(j,"player_animation",e->playerAnimation=e.getAsBoolean());
         read(j,"emote_camera",e->emoteCamera=e.getAsBoolean());
+        read(j,"board_share",e->boardShare=e.getAsBoolean());
         read(j,"team_bar",e->teamBar=e.getAsBoolean());
-        read(j,"team_bar_players",e->teamBarPlayers=Math.max(1,Math.min(75,e.getAsInt())));
+        read(j,"team_bar_players",e->{
+            int n=e.getAsInt();
+            teamBarPlayers=n==5||n==20||n==30?n:10;
+        });
         read(j,"team_bar_size",e->teamBarSize=Math.max(50,Math.min(150,e.getAsInt())));
         read(j,"team_bar_dead_opacity",e->teamBarDeadOpacity=Math.max(25,Math.min(100,e.getAsInt())));
         read(j,"team_bar_background_opacity",e->teamBarBackgroundOpacity=Math.max(0,Math.min(100,e.getAsInt())));
@@ -321,6 +327,7 @@ public final class UtilitySettings {
             j.addProperty("face_rig",faceRig);
             j.addProperty("player_animation",playerAnimation);
             j.addProperty("emote_camera",emoteCamera);
+    j.addProperty("board_share",boardShare);
             j.addProperty("team_bar",teamBar);
             j.addProperty("team_bar_players",teamBarPlayers);j.addProperty("team_bar_size",teamBarSize);
         j.addProperty("team_bar_dead_opacity",teamBarDeadOpacity);

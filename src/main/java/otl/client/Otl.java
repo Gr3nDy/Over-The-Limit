@@ -14,9 +14,9 @@ import net.minecraftforge.client.event.RenderPlayerEvent;
 import net.minecraft.client.resources.*;
 import org.lwjgl.input.Keyboard;
 
-@Mod(modid="otl",name="Over The Limit",version="0.8.0",clientSideOnly=true,acceptedMinecraftVersions="[1.8.9]",acceptableRemoteVersions="*")
+@Mod(modid="otl",name="Over The Limit",version="0.9.0",clientSideOnly=true,acceptedMinecraftVersions="[1.8.9]",acceptableRemoteVersions="*")
 public final class Otl {
-    static final String VERSION="0.8.0";
+    static final String VERSION="0.9.0";
     private final KeyBinding modules=new KeyBinding("key.otl.modules",Keyboard.KEY_P,"key.categories.otl");
     private final KeyBinding teamChat=new KeyBinding("key.otl.team_chat",Keyboard.KEY_Y,"key.categories.otl");
     private final KeyBinding partyChat=new KeyBinding("key.otl.party_chat",Keyboard.KEY_NONE,"key.categories.otl");
@@ -175,9 +175,14 @@ public final class Otl {
         Minecraft mc=MinecraftAccess.get();
         if(event.phase!=net.minecraftforge.fml.common.gameevent.TickEvent.Phase.END||mc.theWorld==null)return;
         for(net.minecraft.entity.player.EntityPlayer p:new java.util.ArrayList<net.minecraft.entity.player.EntityPlayer>(mc.theWorld.playerEntities))PlayerSignals.tick(p);
+        OtlPresence.tick();
     }
     @SubscribeEvent public void worldUnload(WorldEvent.Unload event){
-        if(event.world!=null&&event.world.isRemote){PlayerSignals.clear();PlayerAnim.clear();}
+        if(event.world!=null&&event.world.isRemote){
+            PlayerSignals.clear();PlayerAnim.clear();
+            // The shared link and the presence list belong to the world that just went away.
+            OtlService.stop();OtlPresence.reset();
+        }
     }
     /** The snowball's baked model is swapped once per resource reload; it delegates while no Touchdown map runs. */
     @SubscribeEvent public void modelBake(net.minecraftforge.client.event.ModelBakeEvent event){

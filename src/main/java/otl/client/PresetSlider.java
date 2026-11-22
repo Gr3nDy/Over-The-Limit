@@ -15,10 +15,9 @@ final class PresetSlider extends GuiSlider {
     static final int[] SHORT_SECONDS={1,2,4,6,8,10};
     static final int[] ZOOM={1,2,3,4,5};
     static final int[] ROWS={1,2,3,4,5};
-    static final int[] PLAYERS=range(1,75);
+    static final int[] PLAYERS={5,10,20,30};
     /** Auto GG delay in milliseconds: 0 to 5 s in 100 ms steps. */
     static final int[] DELAY=step(0,5000,100);
-    private static int[] range(int from,int to){int[] values=new int[to-from+1];for(int i=0;i<values.length;i++)values[i]=from+i;return values;}
     private static int[] step(int from,int to,int by){int[] values=new int[(to-from)/by+1];for(int i=0;i<values.length;i++)values[i]=from+i*by;return values;}
 
     private static final int RESET=14;

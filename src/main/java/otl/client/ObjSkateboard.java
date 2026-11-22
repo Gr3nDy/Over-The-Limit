@@ -29,8 +29,7 @@ import java.util.List;
  */
 final class ObjSkateboard {
     private static final ResourceLocation FILE=new ResourceLocation("otl","models/skateboard.obj");
-    private static final List<float[]> V=new ArrayList<>(),N=new ArrayList<>();
-    private static final List<int[]> F=new ArrayList<>();
+    private static int[] vertices;
     private static boolean loaded;
     private static boolean failed;
 
@@ -40,6 +39,8 @@ final class ObjSkateboard {
         if(loaded)return;
         try(BufferedReader r=new BufferedReader(new InputStreamReader(
             Minecraft.getMinecraft().getResourceManager().getResource(FILE).getInputStream(),"UTF-8"))){
+            List<float[]> V=new ArrayList<>(),N=new ArrayList<>();
+            List<int[]> F=new ArrayList<>();
             String line;
             while((line=r.readLine())!=null){
                 String[] a=line.trim().split("\\s+");
@@ -53,6 +54,20 @@ final class ObjSkateboard {
                 }else if("vn".equals(a[0]))N.add(new float[]{Float.parseFloat(a[1]),Float.parseFloat(a[2]),Float.parseFloat(a[3])});
                 else if("f".equals(a[0]))for(int i=1;i+2<a.length;i++)F.add(face(a[1],a[i+1],a[i+2]));
             }
+            // The builder never grows its own buffer on a write (only addVertexData does), so it has
+            // to be sized for the whole mesh up front or the first full vertex past it throws.
+            WorldRenderer mesh=new WorldRenderer(F.size()*3*DefaultVertexFormats.POSITION_TEX_COLOR_NORMAL.getIntegerSize());
+            mesh.begin(GL11.GL_TRIANGLES,DefaultVertexFormats.POSITION_TEX_COLOR_NORMAL);
+            for(int[] f:F)for(int i=0;i<3;i++){
+                float[] p=V.get(f[i*2]);
+                int ni=f[i*2+1];
+                float[] n=ni>=0&&ni<N.size()?N.get(ni):null;
+                mesh.pos(p[0],p[1],p[2]).tex(0f,0f).color(p[3],p[4],p[5],1f)
+                    .normal(n==null?0:n[0],n==null?1:n[1],n==null?0:n[2]).endVertex();
+            }
+            mesh.finishDrawing();
+            if(F.isEmpty()||mesh.getVertexCount()!=F.size()*3)throw new IllegalStateException("Incomplete board mesh");
+            vertices=mesh.getVertexState().getRawBuffer();
         }catch(Exception e){
             failed=true;
             System.err.println("OTL: could not read the skateboard mesh: "+e);
@@ -85,10 +100,11 @@ final class ObjSkateboard {
             GlStateManager.enableCull();
             GlStateManager.cullFace(GL11.GL_FRONT);
             GlStateManager.pushMatrix();
-            GlStateManager.scale(1.03f,1.03f,1.03f);
-            GlStateManager.color(0.02f,0.02f,0.02f,1f);
-            draw();
-            GlStateManager.popMatrix();
+            try{
+                GlStateManager.scale(1.03f,1.03f,1.03f);
+                GlStateManager.color(0.02f,0.02f,0.02f,1f);
+                draw();
+            }finally{GlStateManager.popMatrix();}
         }catch(Throwable e){
             failed=true;
             System.err.println("OTL: skateboard render disabled after render failure: "+e);
@@ -105,13 +121,7 @@ final class ObjSkateboard {
         Tessellator t=Tessellator.getInstance();
         WorldRenderer w=t.getWorldRenderer();
         w.begin(GL11.GL_TRIANGLES,DefaultVertexFormats.POSITION_TEX_COLOR_NORMAL);
-        for(int[] f:F)for(int i=0;i<3;i++){
-            int vi=f[i*2],ni=f[i*2+1];
-            if(vi<0||vi>=V.size())continue;
-            float[] p=V.get(vi);
-            float[] n=ni>=0&&ni<N.size()?N.get(ni):new float[]{0f,1f,0f};
-            w.pos(p[0],p[1],p[2]).tex(0f,0f).color(p[3],p[4],p[5],1f).normal(n[0],n[1],n[2]).endVertex();
-        }
+        w.addVertexData(vertices);
         t.draw();
     }
 }

@@ -7,7 +7,7 @@ One Forge 1.8.9 mod, many modules, one server family (`play.oc.tc`, `vanish.oc.t
 | Constraint | Consequence |
 |---|---|
 | Client is Lunar Client (obfuscated) or plain Forge | No reflection on MCP/SRG field names. Scan by **type/shape**, never by name. `MinecraftAccess` wraps the singleton lookup. |
-| Server has no API, no plugin of ours, no chat backend | Gameplay uses client-visible state. Optional map lookups use GitHub GETs; no accounts. |
+| Server has no API, no plugin of ours, no chat backend | Gameplay uses client-visible state. Optional map lookups use GitHub GETs. Cosmetic sharing (skateboards) is a client-to-client broadcast on a public Supabase channel: no accounts, no tables, nothing stored. |
 | Users install one JAR | Modules ship together with one entry point. Module preferences and face settings/marks share `config/Over The Limit/`. |
 | 1.8.9 + Java 8 | No streams-heavy code, no `java.time`, no newer Guava. |
 | Feature must never break the game | Every module is a clearly gated `if (!enabled) return;`, and toggling is safe at any moment. |
@@ -103,7 +103,7 @@ Invariants enforced on load, not trusted from disk: every int is clamped to its 
 
 `schema_version` is written but not yet branched on. When a breaking change lands: `if (v < 2) migrate(j);`. Nothing else is needed.
 
-If a hosted backend ever exists (leaderboards, cross-device settings), that is when a real DB appears — Postgres, one `player_settings(player_uuid, json, updated_at)` row plus per-feature tables. Not before.
+If a hosted backend ever exists for persistent data (leaderboards, cross-device settings), that is when a real DB appears — Postgres, one `player_settings(player_uuid, json, updated_at)` row plus per-feature tables. Not before. The board link in section 10 is deliberately not that: it stores nothing.
 
 ## 5. UI architecture
 
@@ -193,7 +193,46 @@ gradlew.bat runClient -PotlSmoke   # in-client smoke harness
 
 `getSkinMap()` stays unrenamed on purpose: it is a Forge-added method (`RenderManager` in forgeSrc declares it), so it resolves at runtime. Only vanilla members need SRG names.
 
-## 9. Known debt and the next scale step
+## 9. Board sharing (Supabase Realtime)
+
+The one networked feature: other OTL players see your skateboard and its ollies. It is a
+client-to-client broadcast, because the game server has no plugin of ours and cannot relay it.
+
+| Piece | File | Job |
+|---|---|---|
+| WebSocket | `WsSocket`, `WsFrames` | TLS upgrade by hand (Java 8 has no client), masked text frames, fragment assembly |
+| Realtime | `Realtime` | join a public channel, send/receive broadcast events, heartbeat, reconnect with backoff |
+| Feature | `BoardSync` | publishes local board state and tricks, keeps what other riders sent |
+| Link | `OtlService` | one shared connection, its status, and the subscribe/send surface |
+| Endpoint | `RealtimeConfig` | project URL + publishable key, optionally overridden by `realtime.json` |
+
+**Why a public channel.** A `private: false` channel needs no table, no RLS policy and no
+migration: the anon/publishable key is enough. Nothing is stored — a broadcast is delivered to
+whoever is connected and forgotten. That is the right shape for a cosmetic.
+
+**What travels.** Only `{"n":<name>,"b":<board out>}` on change and every 2 s while riding, plus
+`{"n":<name>,"b":true,"k":<0-2>}` when an ollie starts. Position, yaw and pose are already on every
+client from the game server, so a remote board is drawn by the same `PlayerAnim.renderBoard` code
+as the local one. A rider who goes quiet for 7 s fades out.
+
+**Threading.** One daemon worker owns the socket and one writer thread owns the bytes, so the game
+thread only ever offers to a queue. `BoardSync` runs from `PlayerAnim`'s client tick.
+
+**Setup (one time).** Create a Supabase project, then put its URL and publishable key in
+`RealtimeConfig`. Nothing else: no SQL, no bucket, no function. For a local test without a
+rebuild, drop `{"url":"https://<ref>.supabase.co","key":"<sb_publishable_...>"}` into
+`config/Over The Limit/realtime.json`. Empty values keep the feature completely off.
+
+**One connection, many features.** `OtlService` owns the single Realtime link and its channel
+`otl`. A feature subscribes with an event name and ignores the rest, so adding a second networked
+feature costs a handler, not a socket. The module menu's header shows a dot and a word for the
+link: grey `Off` when nothing is dialled, amber `Connecting`, green `Online`, red `Offline`. That
+distinction matters — a disabled feature and a broken link must never look the same.
+
+**Sharing the connection.** `OtlService.subscribe(handler)` receives every channel event;
+`BoardSync` is the first subscriber and filters on its own event name.
+
+## 10. Known debt and the next scale step
 
 - Module list is a static `Arrays.asList` — compile-time only, no dynamic loading. Fine while everything ships in one JAR; a service loader only pays off when modules become separate artifacts.
 - Public-repo lookup uses unauthenticated GitHub API (60 requests/hour) and slug matching; a miss offers the gallery. A repository outage is logged, and the other repository is still searched.

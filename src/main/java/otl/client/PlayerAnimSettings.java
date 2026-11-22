@@ -15,10 +15,13 @@ public final class PlayerAnimSettings extends SettingsScreen {
         panel.section("ANIMATION");
         buttonList.add(new NeutralButton(0,panel.left(),panel.row(),panel.width(),20,"Player Animation: "+(UtilitySettings.playerAnimation?"ON":"OFF"),false));
         buttonList.add(new NeutralButton(1,panel.left(),panel.row(),panel.width(),20,"Emote camera: "+(UtilitySettings.emoteCamera?"ON":"OFF"),false));
+        buttonList.add(new NeutralButton(3,panel.left(),panel.row(),panel.width(),20,"Online features: "+(UtilitySettings.boardShare?"ON":"OFF"),false));
         panel.section("KEYS");
         panel.note("Play Emote and Pull Out Skateboard are rebindable in Controls.");
         panel.note("Nothing changes until you press a key: idle players stay exactly vanilla.");
         panel.note("Emotes need you to stand still. The camera returns on a click, damage or walking.");
+        panel.note("Online features show other OTL players' boards and tricks, share yours, and let");
+        panel.note("them see you are running OTL. Only your name and board state are sent.");
         back(2);
     }
     protected void actionPerformed(GuiButton b){
@@ -26,6 +29,7 @@ public final class PlayerAnimSettings extends SettingsScreen {
         if(b.id==2){mc.displayGuiScreen(parent);return;}
         if(b.id==0)UtilitySettings.playerAnimation=!UtilitySettings.playerAnimation;
         if(b.id==1)UtilitySettings.emoteCamera=!UtilitySettings.emoteCamera;
+        if(b.id==3)UtilitySettings.boardShare=!UtilitySettings.boardShare;
         UtilitySettings.save();initGui();
     }
     protected void mouseReleased(int mx,int my,int state){super.mouseReleased(mx,my,state);UtilitySettings.save();}

@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.9.0 - 23/11/2026
+
+### Added
+- **Other OTL players can see your skateboard** — press **N** and everyone else running OTL sees the board under you, including your ollies. Nothing is sent to the game server: OTL clients talk to each other directly. Only your name and whether a board is out are shared.
+- **Who else uses OTL** — the module menu header now shows the OTL service status and how many other OTL users are in your world, e.g. `Online · 3`. Hover it for their names. A name only counts when the server also lists that player in the world, so nobody can fake a presence.
+- **Online features switch** — Player Animation has one switch for everything that uses the OTL service. Off means no connection at all.
+
+### Changed
+- **Teleport to player is now the first option** on every player menu, ahead of View Profile. This covers Team Bar heads, the expanded roster and the Tab-list player menu.
+- **Team roster screen** — opened by clicking a team card in chat. Rows are taller, and the player you are on has a bigger head. It no longer lets the HUD behind it react to hover, and the whole roster is reachable, not a truncated list.
+
+### Fixed
+- **Skateboard never appeared** — the board's mesh was baked into a buffer far too small for it, so loading failed on the first frame and **N** did nothing at all. The buffer is now sized from the real vertex count.
+- **Hovering through the roster** — the Team Bar drew and answered hovers on every screen, so cards behind an open roster still reacted. It now only runs in chat, the one screen its cards are clicked from.
+
 ## v0.8.0 - 2026-11-21
 
 ### Added
