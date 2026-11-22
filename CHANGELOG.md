@@ -3,18 +3,13 @@
 ## v0.8.0 - 2026-11-21
 
 ### Added
-- **Player Animation** - arms and legs are cut twice, at the elbow and again near the wrist (knee and ankle), so a pose bends in a curve instead of swinging one rigid box or creasing at a single point. Nothing runs until you ask for it: an idle player is left exactly vanilla, with no sway and no pose of any kind. Press **N** to pull out a skateboard: a deck with trucks and wheels drops in under your feet and you settle into a balancing crouch with bent knees. Moving kicks the back leg **once**, then you just balance and the board rolls. Crouch and jump while it is out to pop an ollie, with a kickflip or shove-it picked at random; a plain jump stays a normal jump.
-- **Emotes** - press **B** to cycle wave, dance and cheer. You need to be standing still; the pose fades in over a fifth of a second and the camera switches to the front third-person view so you can see it. Left-clicking ends the emote and that click is swallowed, so it cannot also punch. Taking damage, walking, opening a screen, pressing F5, dying or leaving the world ends it too, and the saved perspective is restored. Both keys are rebindable in Controls, and the module has its own switch plus an **Emote camera** switch.
+- **Skateboard** — press **N** to take out or put away your board. You can rebind the key in Controls. The board is client-side: only you see it.
 
 ### Fixed
 - English kill feed messages such as `Alex was slain by Player's Iron Sword` now show the attacker and weapon instead of treating the whole phrase as a mob.
 - Team cards sit side by side with heads level with the clock, scores on their own cards, aligned objectives, and separate background and outline opacity.
 - Improved translated kill-feed messages and tooltip layout, and enlarged the client-side skateboard.
 - **Team Bar clock sat left of centre** - the bar's default anchor was a hand-tuned fraction that only landed on the screen centre at the width of the editor's preview bar. Every real bar sat a pixel or three left, and a wide one drifted far enough to see. It is now a true centre anchor, exact at every bar and screen width.
-
-### Notes
-- Emotes and the skateboard are local for now: nothing is sent to the server, so other players see no change at all.
-- Armor keeps the vanilla pose, so a strong leg tuck during an ollie can show a gap at the boots.
 
 ## v0.7.2 - <PII type="DATE" id="20"/>
 
