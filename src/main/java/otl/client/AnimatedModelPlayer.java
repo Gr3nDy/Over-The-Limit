@@ -23,7 +23,6 @@ final class AnimatedModelPlayer extends ModelPlayer {
 
     final ModelRenderer lowerArmR,lowerArmL,lowerLegR,lowerLegL;
     final ModelRenderer lowerArmRw,lowerArmLw,lowerLegRw,lowerLegLw;
-    private final ModelRenderer deck,trucks,wheels;
 
     boolean boardOut;
     float boardX,boardY,boardZ,boardDrop;
@@ -40,8 +39,6 @@ final class AnimatedModelPlayer extends ModelPlayer {
         lowerArmLw=split(bipedLeftArmwear,ARM_LW_U,ARM_LW_V,0.25f);
         lowerLegRw=split(bipedRightLegwear,LEG_RW_U,LEG_RW_V,0.25f);
         lowerLegLw=split(bipedLeftLegwear,LEG_LW_U,LEG_LW_V,0.25f);
-
-        deck=board(0);trucks=board(1);wheels=board(2);
     }
 
     /**
@@ -76,27 +73,6 @@ final class AnimatedModelPlayer extends ModelPlayer {
         lower.setRotationPoint(0f,y+half,0f);
         limb.addChild(lower);
         return lower;
-    }
-
-    /** 0 deck, 1 trucks, 2 wheels: flat-coloured groups hanging under the feet. */
-    private ModelRenderer board(int part){
-        ModelRenderer r=new ModelRenderer(this);
-        // Model Y grows downward. The player's foot/ground plane is 24, and the wheel boxes end
-        // at local Y=4, so anchor the assembly at 20: wheel bottoms land at 24 while the deck
-        // remains visibly above the ground instead of sinking the deck into it.
-        r.setRotationPoint(0f,20f,0f);
-        if(part==0){
-            r.addBox(-5f,0f,-11f,10,1,22);          // deck
-            r.addBox(-5f,-1f,-12f,10,1,3);          // nose curl
-            r.addBox(-5f,-1f,9f,10,1,3);            // tail curl
-        }else if(part==1){
-            r.addBox(-4f,1f,-7f,8,1,2);
-            r.addBox(-4f,1f,5f,8,1,2);
-        }else{
-            r.addBox(-4f,2f,-8f,2,2,3);r.addBox(2f,2f,-8f,2,2,3);
-            r.addBox(-4f,2f,5f,2,2,3);r.addBox(2f,2f,5f,2,2,3);
-        }
-        return r;
     }
 
     @Override
@@ -149,39 +125,5 @@ final class AnimatedModelPlayer extends ModelPlayer {
 
     private static void straighten(ModelRenderer... parts){
         for(ModelRenderer r:parts)r.rotateAngleX=r.rotateAngleY=r.rotateAngleZ=0f;
-    }
-
-    @Override
-    public void render(Entity entity,float swing,float amount,float age,float yaw,float pitch,float scale){
-        super.render(entity,swing,amount,age,yaw,pitch,scale);
-        if(boardOut&&!entity.isInvisible())drawBoard(scale);
-    }
-
-    private void drawBoard(float scale){
-        GlStateManager.pushMatrix();
-        try{
-            // OBJ vertices are already in blocks; the old ModelRenderer boxes used model units.
-            // Put the real board at the same foot plane (Y=20 model units) and preserve the
-            // animated pull-out and ollie rotations.
-            // After the vertical flip the mesh spans Y=0..0.5 before the compacting scale. Its
-            // lowest point must sit on the model's foot plane at 1.5 blocks, not at the player's
-            // origin; otherwise the wheels and deck clip through the floor.
-            // Raise only the visual board. Moving the player model would desync its hitbox,
-            // shadow, and vanilla movement; this small lift puts the wheels above the floor.
-            GlStateManager.translate(0f,1.65f+boardDrop,0f);
-            // The GLB uses the opposite vertical convention from Minecraft, so flip it once
-            // before applying the animated ollie rotation. Keep the real mesh compact beside
-            // the player; the source asset's 1.2-block normalization was still too large in play.
-            GlStateManager.rotate(180f,1f,0f,0f);
-            GlStateManager.scale(0.40f,0.40f,0.40f);
-            GlStateManager.rotate(boardX*57.29578f,1f,0f,0f);
-            GlStateManager.rotate(boardY*57.29578f,0f,1f,0f);
-            GlStateManager.rotate(boardZ*57.29578f,0f,0f,1f);
-            ObjSkateboard.render(1f);
-        }finally{
-            GlStateManager.color(1f,1f,1f,1f);
-            GlStateManager.enableTexture2D();
-            GlStateManager.popMatrix();
-        }
     }
 }

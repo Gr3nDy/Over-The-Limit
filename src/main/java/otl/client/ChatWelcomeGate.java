@@ -9,7 +9,11 @@ final class ChatWelcomeGate {
     private boolean enabled=true,confirmed,title,description;
     boolean enabled(){return enabled;}
     void reset(){enabled=true;confirmed=false;worldChanged();}
-    void worldChanged(){title=false;description=false;}
+    /**
+     * A new world is the teleport into a match: full chat is back even before the map's own
+     * welcome arrives, which on a translated client never says "Created by" or "Welcome to".
+     */
+    void worldChanged(){enabled=true;title=false;description=false;}
     boolean accept(String formatted){
         String text=ChatRules.plain(formatted).trim();
         if(!ChatRules.ALL.equals(ChatRules.classify(formatted).key)||PLAYER_LINE.matcher(text).matches())return false;
@@ -20,7 +24,9 @@ final class ChatWelcomeGate {
             if(s.matches("^view our /servers or click the beacon[.!]?$"))description=true;
         }
         if(title&&description){enabled=false;confirmed=false;title=description=false;return before;}
-        if(isWelcome(formatted)||text.matches("(?is)^Created by\\s+.+$")){
+        // The map's welcome heading is a strikethrough rule, not a word, so it reads the same on
+        // every client: "Created by" and "Welcome to Overcast Community" are translated.
+        if(isWelcome(formatted)||TeamBar.welcomeHeading(formatted)!=null||text.matches("(?is)^Created by\\s+.+$")){
             boolean first=!confirmed;enabled=true;confirmed=true;title=description=false;return !before||first;
         }
         return false;

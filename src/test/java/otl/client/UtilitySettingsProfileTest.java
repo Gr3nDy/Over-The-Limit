@@ -17,19 +17,18 @@ public class UtilitySettingsProfileTest {
             assertFalse(UtilitySettings.teamBarHideVanillaBossHealth);
         }finally{UtilitySettings.teamBarHideVanillaBossHealth=before;}
     }
-    @Test public void hideHeadsAndStackedScorePersistAndReset(){
-        boolean heads=UtilitySettings.teamBarHideHeads;int style=UtilitySettings.teamBarScoreStyle;
+    @Test public void numbersModePersistsAndResets(){
+        boolean numbers=UtilitySettings.teamBarNumbers;
         try{
-            assertFalse(UtilitySettings.DEFAULTS.get("team_bar_hide_heads").getAsBoolean());
+            assertFalse(UtilitySettings.DEFAULTS.get("team_bar_numbers").getAsBoolean());
             JsonObject settings=new JsonObject();
-            settings.addProperty("team_bar_hide_heads",true);settings.addProperty("team_bar_score_style",3);
+            settings.addProperty("team_bar_numbers",true);
             UtilitySettings.read(settings);
-            assertTrue(UtilitySettings.teamBarHideHeads);assertEquals(3,UtilitySettings.teamBarScoreStyle);
-            assertTrue(UtilitySettings.snapshot().get("team_bar_hide_heads").getAsBoolean());
-            assertEquals(3,UtilitySettings.snapshot().get("team_bar_score_style").getAsInt());
-            UtilitySettings.restore("team_bar_hide_heads","team_bar_score_style");
-            assertFalse(UtilitySettings.teamBarHideHeads);assertEquals(0,UtilitySettings.teamBarScoreStyle);
-        }finally{UtilitySettings.teamBarHideHeads=heads;UtilitySettings.teamBarScoreStyle=style;}
+            assertTrue(UtilitySettings.teamBarNumbers);
+            assertTrue(UtilitySettings.snapshot().get("team_bar_numbers").getAsBoolean());
+            UtilitySettings.restore("team_bar_numbers");
+            assertFalse(UtilitySettings.teamBarNumbers);
+        }finally{UtilitySettings.teamBarNumbers=numbers;}
     }
     @Test public void controlPointTrackingDefaultsOnPersistsAndResets(){
         boolean before=UtilitySettings.teamBarControlPoints;
@@ -72,8 +71,8 @@ public class UtilitySettingsProfileTest {
         assertEquals(25,defaults.get("kill_background_opacity").getAsInt());
         assertEquals(100,defaults.get("chat_background_opacity").getAsInt());
         assertTrue(defaults.get("chat_scrollbar").getAsBoolean());
-        // Every Team Bar option is per profile, including the new colour line.
-        assertTrue(defaults.get("team_bar_team_color").getAsBoolean());
+        // Every Team Bar option is per profile, including the display mode.
+        assertFalse(defaults.get("team_bar_numbers").getAsBoolean());
         assertEquals(10,defaults.get("team_bar_players").getAsInt());
         assertEquals(150,defaults.get("team_bar_size").getAsInt());
         assertEquals(50,defaults.get("team_bar_dead_opacity").getAsInt());

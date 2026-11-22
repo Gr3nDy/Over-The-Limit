@@ -63,12 +63,20 @@ final class KillFeedRules {
             this.weapon=null;this.distance=null;this.mob=null;
             this.victimLabel=colored(original,victimAt,victim);
             this.killerLabel=colored(original,killerAt,killer);
-            this.cause=Cause.DEATH;this.voidFall=false;this.lava=false;this.fall=false;
+            // A line that names a player attacker is a player kill, in any language. Without this
+            // it fell through to "unknown" and every translated melee kill drew a bone.
+            this.cause=killer==null?Cause.DEATH:Cause.MELEE;
+            this.voidFall=false;this.lava=false;this.fall=false;
         }
         boolean ownKill(String name){return killer!=null&&killer.equalsIgnoreCase(name);}
         boolean suicide(){return killer==null?mob==null:killer.equalsIgnoreCase(victim);}
         Context context(){return lava?Context.LAVA:voidFall?Context.VOID:cause==Cause.FIRE?Context.FIRE:fall?Context.FALL:Context.NONE;}
-        boolean extraContext(){return suicide()?context()!=Context.NONE||cause!=Cause.DEATH:context()!=Context.NONE&&cause!=Cause.FIRE&&cause!=Cause.FALL;}
+        /**
+         * A second icon at the end of the row is only for a player kill with something extra to say
+         * (a bow shot off a cliff, say). With no attacker the icon in front already says what killed
+         * them, so drawing it again at the end repeats the same picture.
+         */
+        boolean extraContext(){return !suicide()&&context()!=Context.NONE&&cause!=Cause.FIRE&&cause!=Cause.FALL;}
         String distanceLabel(){return distance==null?"":" (+"+distance+" Blocks)";}
         int border(String local,int killColor,int deathColor,int assistColor,int opacity){
             if(suicide())return 0;
@@ -131,7 +139,7 @@ final class KillFeedRules {
     static String assistLabel(String name,char color){
         return "\u00a7"+(color==0?'b':color)+"\u00a7l"+name+"\u00a7r";
     }
-    private static final class Rule {
+    static final class Rule {
         final String template;final Pattern pattern;
         /** Set only for a translated template, where the key says what killed the player. */
         final Cause cause;final boolean lava,voidFall,fall;
@@ -185,6 +193,11 @@ final class KillFeedRules {
     private static final List<Rule> RULES=new ArrayList<>();
     static {
         for(String text:new String[]{
+            // Vanilla's own wording, which is what a translated death line actually says when the
+            // client renders it: "X was slain by Y using Iron Sword". Read straight from the client
+            // language file when that works, and kept here so a missing file still names the weapon.
+            "was slain by {k} using {w}","was shot by {k} using {w}","was fireballed by {k} using {w}",
+            "was pummeled by {k} using {w}","was killed by {k} using magic","was blown up by {k} using {w}",
             "was slain by {k}'s {w}","felt the fury of {k}'s fists","was killed by {k}",
             "was killed by {k}'s {w} block","was killed by {k}'s {m}",
             "was killed by {k}'s magic","was killed by {k}'s potion of {w}",
@@ -261,9 +274,25 @@ final class KillFeedRules {
 
     static Death parse(String formatted,java.util.function.Predicate<String> known,String locale){
         if(formatted==null||formatted.length()>1024)return null;
+        return parseRules(formatted,known,localeRules(locale));
+    }
+
+    static Death parseRules(String formatted,java.util.function.Predicate<String> known,List<Rule> localized){
         String plain=ChatRules.plain(formatted);
-        for(Rule rule:localeRules(locale)){Matcher m=rule.pattern.matcher(plain);if(m.matches())return new Death(formatted,m,rule);}
-        for(Rule rule:RULES){Matcher m=rule.pattern.matcher(plain);if(m.matches())return new Death(formatted,m,rule.template);}
+        Death fallback=null;
+        for(Rule rule:localized){
+            Matcher m=rule.pattern.matcher(plain);
+            if(!m.matches())continue;
+            fallback=new Death(formatted,m,rule);
+            if(fallback.mob==null||fallback.killer!=null)return fallback;
+            break;
+        }
+        // Vanilla's mob placeholder also accepts the entire phrase "Player's Iron Sword".
+        for(Rule rule:RULES){
+            Matcher m=rule.pattern.matcher(plain);
+            if(m.matches()&&(fallback==null||group(m,"k")!=null))return new Death(formatted,m,rule.template);
+        }
+        if(fallback!=null)return fallback;
         return known==null?null:byNames(formatted,plain,known);
     }
 
@@ -274,21 +303,21 @@ final class KillFeedRules {
     }
 
     private static final Map<String,List<String>> RAW=new HashMap<>();
-    private static final Map<String,List<Rule>> LOADED=new HashMap<>();
+    /** Read from the netty thread and the render thread, so a plain map could corrupt. */
+    private static final Map<String,List<Rule>> LOADED=new java.util.concurrent.ConcurrentHashMap<>();
     private static boolean read;
 
     private static List<Rule> localeRules(String locale){
         if(locale==null||locale.isEmpty())return Collections.emptyList();
         List<Rule> rules=LOADED.get(locale);
         if(rules!=null)return rules;
-        if(!read)loadTemplates();
-        List<String> raw=RAW.get(locale);
-        if(raw==null){
-            int cut=locale.indexOf('_');
-            if(cut>0)raw=RAW.get(locale.substring(0,cut));
-        }
         rules=new ArrayList<>();
-        if(raw!=null)for(String entry:raw){
+        // PGM sends the death line as a translatable component, so the client renders it in its
+        // own language file: that file is the exact wording on screen, in every language, not just
+        // the bundles PGM ships.
+        rules.addAll(langRules(clientLang(locale)));
+        loadTemplates();
+        for(String key:nearby(locale))for(String entry:RAW.get(key)){
             int bar=entry.indexOf('|');
             try{rules.add(new Rule(entry.substring(0,bar),entry.substring(bar+1)));}catch(RuntimeException skip){}
         }
@@ -298,8 +327,109 @@ final class KillFeedRules {
         return rules;
     }
 
-    private static void loadTemplates(){
-        read=true;
+    /** The client's own language file, or null when the pack does not ship that language. */
+    private static String clientLang(String locale){
+        net.minecraft.client.Minecraft mc=MinecraftAccess.get();
+        if(mc==null)return null;
+        try(java.io.InputStream in=mc.getResourceManager()
+            .getResource(new net.minecraft.util.ResourceLocation("minecraft","lang/"+locale+".lang")).getInputStream()){
+            java.io.ByteArrayOutputStream out=new java.io.ByteArrayOutputStream();
+            byte[] buffer=new byte[8192];
+            for(int read;(read=in.read(buffer))>0;)out.write(buffer,0,read);
+            return new String(out.toByteArray(),java.nio.charset.StandardCharsets.UTF_8);
+        }catch(Exception missing){
+            // A language this pack does not ship: the bundled translations still apply.
+            return null;
+        }
+    }
+
+    /**
+     * Every {@code death.} line of a Minecraft language file, as rules. The key says what killed
+     * the player, so the cause survives translation, and the wording is the client's own.
+     */
+    static List<Rule> langRules(String langFile){
+        List<Rule> rules=new ArrayList<>();
+        if(langFile==null)return rules;
+        for(String line:langFile.split("[\\r\\n]+")){
+            if(!line.startsWith("death."))continue;
+            int eq=line.indexOf('=');
+            if(eq<0)continue;
+            String key=line.substring(0,eq);
+            String template=placeholders(line.substring(eq+1));
+            // Vanilla's mob key puts the mob's own name in the killer slot, which PGM numbers as
+            // the mob argument; reading it as a weapon would label the death "World".
+            if(key.endsWith(".mob"))template=template.replace("{1}","{3}");
+            try{rules.add(new Rule(spec(key),template));}
+            catch(RuntimeException unusable){}
+        }
+        // Same ranking as the bundled templates: the longer fixed text is the more specific rule.
+        rules.sort(Comparator.comparingInt((Rule r)->r.literal).reversed().thenComparingInt(r->r.named?0:1));
+        return rules;
+    }
+
+    /** The cause a vanilla death key names, in the spec form {@link Rule} takes. */
+    private static String spec(String key){
+        if(key.contains("arrow"))return "BOW";
+        if(key.contains("fireball")||key.contains("explosion"))return "EXPLOSION";
+        if(key.contains("lava"))return "FIRE:lava";
+        if(key.contains("onFire")||key.contains("inFire"))return "FIRE";
+        if(key.contains("magic")||key.contains("wither")||key.contains("dragonBreath"))return "MAGIC";
+        if(key.contains("outOfWorld"))return "FALL:void";
+        if(key.startsWith("death.fell")||key.contains(".fall"))return "FALL:fall";
+        if(key.contains("drown"))return "DROWN";
+        if(key.contains("cactus"))return "CACTUS";
+        if(key.contains("anvil")||key.contains("fallingBlock"))return "ANVIL";
+        return "DEATH";
+    }
+
+    /** {@code %1$s} and friends become PGM's numbered arguments: 0 victim, 1 killer, 2 item, 3 mob, 4 distance. */
+    static String placeholders(String text){
+        StringBuilder out=new StringBuilder(text.length());
+        int next=0;
+        for(int i=0;i<text.length();i++){
+            char c=text.charAt(i);
+            if(c!='%'){out.append(c);continue;}
+            int j=i+1,index=-1;
+            while(j<text.length()&&Character.isDigit(text.charAt(j))){
+                index=(index<0?0:index*10)+(text.charAt(j)-'0');j++;
+            }
+            if(j<text.length()&&text.charAt(j)=='$')j++;
+            if(j>=text.length()){out.append(c);continue;}
+            char type=text.charAt(j);
+            if(type=='%'){out.append('%');i=j;continue;}
+            if(type!='s'&&type!='d'){out.append(c);continue;}
+            int slot;
+            if(index>=0){slot=index-1;next=index;}else slot=next++;
+            if(slot<0||slot>4){out.append(c);continue;}
+            out.append('{').append(slot).append('}');
+            i=j;
+        }
+        return out.toString();
+    }
+
+    /**
+     * PGM renders a death line in the nearest bundle it ships, not in the client's exact locale: a
+     * Portuguese (pt_PT), Latin-American Spanish or Norwegian (nb_NO) client is sent pt_BR, es_* or
+     * no_NO words. Reading only the exact key would never match those lines, so every bundle of the
+     * same language is tried, then one of the same country.
+     */
+    private static List<String> nearby(String locale){
+        int cut=locale.indexOf('_');
+        String language=(cut<0?locale:locale.substring(0,cut)).toLowerCase(Locale.ROOT);
+        String country=(cut<0?"":locale.substring(cut+1)).toLowerCase(Locale.ROOT);
+        List<String> sameLanguage=new ArrayList<>(),sameCountry=new ArrayList<>();
+        // Snapshot: templates are read on another thread the first time this runs.
+        for(String key:new ArrayList<>(RAW.keySet())){
+            int keyCut=key.indexOf('_');
+            if((keyCut<0?key:key.substring(0,keyCut)).toLowerCase(Locale.ROOT).equals(language))sameLanguage.add(key);
+            else if(!country.isEmpty()&&(keyCut<0?"":key.substring(keyCut+1)).toLowerCase(Locale.ROOT).equals(country))sameCountry.add(key);
+        }
+        sameLanguage.addAll(sameCountry);
+        return sameLanguage;
+    }
+
+    private static synchronized void loadTemplates(){
+        if(read)return;
         try(java.io.InputStream in=KillFeedRules.class.getResourceAsStream("/assets/otl/death-messages.txt")){
             if(in==null)return;
             java.io.BufferedReader reader=new java.io.BufferedReader(new java.io.InputStreamReader(in,java.nio.charset.StandardCharsets.UTF_8));
@@ -311,6 +441,8 @@ final class KillFeedRules {
             }
         }catch(Exception bad){
             System.err.println("OTL: could not read translated death messages: "+bad.getMessage());
+        }finally{
+            read=true;
         }
     }
 

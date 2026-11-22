@@ -20,6 +20,8 @@ final class KillFeed {
     static final KillFeed INSTANCE=new KillFeed();
     static final KillFeedRules.History history=new KillFeedRules.History();
     private static final Map<String,ItemStack> weapons=new HashMap<>();
+    /** The language {@link #weapons} was built in; a language switch rebuilds it. */
+    private static String weaponsLanguage="";
     private static final Map<String,int[]> heads=new HashMap<>();
     /** The skin each cached head was sampled from, so an unchanged skin is never re-read. */
     private static final Map<String,ResourceLocation> headSkins=new HashMap<>();
@@ -64,8 +66,12 @@ final class KillFeed {
         namesAt=System.nanoTime();
     }
     @SubscribeEvent public void unload(WorldEvent.Unload event){if(event.world.isRemote){history.clear();clearHeads();rowCache.clear();scroll=0;dragging=false;}}
-    /** A resource reload re-samples every skin, so the remembered pixels belong to the old pack. */
-    static void clearHeads(){heads.clear();headSkins.clear();}
+    /**
+     * A resource reload re-samples every skin, so the remembered pixels belong to the old pack.
+     * It also rebuilds every item name in the new language, so the weapon names cached for the old
+     * language would never match a translated death line again and every kill drew a bone.
+     */
+    static void clearHeads(){heads.clear();headSkins.clear();weapons.clear();}
     @SubscribeEvent public void overlay(RenderGameOverlayEvent.Post event){
         if(System.nanoTime()-namesAt>250_000_000L)refreshNames();
         if(!HudStage.due(event))return;
@@ -214,9 +220,11 @@ final class KillFeed {
                 mc.fontRendererObj.drawStringWithShadow(text.assist,meX,y+6,textColor);
             }
             int iconX=x+5+actorWidth+(text.actorHead?HEAD_ADVANCE:0)+(suicide?0:4);
-            // A skull is for a death with no readable cause. A fall, lava, cactus or drown death has
+            // One icon per row when nobody attacked: the setting comes first, then the cause. A
+            // skull is for a death with no readable cause; a fall, lava, cactus or drown death has
             // one even though nobody else was involved, so it keeps its own icon.
-            if(suicide&&death.cause==KillFeedRules.Cause.DEATH)skull(iconX,y+2,fade);
+            if(suicide&&death.context()!=KillFeedRules.Context.NONE)contextIcon(death,iconX,y+2,fade);
+            else if(suicide&&death.cause==KillFeedRules.Cause.DEATH)skull(iconX,y+2,fade);
             else if(death.cause==KillFeedRules.Cause.MELEE&&death.weapon==null){
                 Gui.drawRect(iconX+3,y+5,iconX+13,y+15,KillFeedRules.faded(0xFFB98662,fade));
                 Gui.drawRect(iconX+1,y+8,iconX+5,y+12,KillFeedRules.faded(0xFFDBAD87,fade));
@@ -228,8 +236,7 @@ final class KillFeed {
             if(text.victimHead){head(death.victim,textX,y+2,fade);textX+=HEAD_ADVANCE;}
             mc.fontRendererObj.drawStringWithShadow(victim,textX,y+6,textColor);
             int afterName=textX+mc.fontRendererObj.getStringWidth(victim);
-            if(suicide&&extraIcon>0)contextIcon(death,afterName+2,y+2,fade);
-            mc.fontRendererObj.drawStringWithShadow(detail,afterName+(suicide?extraIcon:0),y+6,KillFeedRules.faded(0xFFBBC4D5,fade));
+            mc.fontRendererObj.drawStringWithShadow(detail,afterName,y+6,KillFeedRules.faded(0xFFBBC4D5,fade));
             if(rowHover)hit=death;
         }
         if(hover&&entries.size()>rows()){
@@ -281,17 +288,28 @@ final class KillFeed {
             Gui.drawRect(x+4,y+2,x+6,y+5,impact);Gui.drawRect(x,y+4,x+2,y+6,impact);Gui.drawRect(x+8,y+4,x+10,y+6,impact);
         }
     }
+    /**
+     * The weapon each item is called in the current language. Item display names are translated,
+     * and so is the death line naming the weapon, so the map is rebuilt whenever the language
+     * changes; a map built in the old language matches nothing and drew a bone for every melee kill.
+     */
+    private static ItemStack weapon(String name,Minecraft mc){
+        String language=mc==null||mc.gameSettings==null?"":mc.gameSettings.language;
+        if(!language.equals(weaponsLanguage)){weapons.clear();weaponsLanguage=language;}
+        if(weapons.isEmpty()){
+            for(Object value:Item.itemRegistry){
+                Item item=(Item)value;ItemStack stack=new ItemStack(item);
+                weapons.put(stack.getDisplayName().toLowerCase(Locale.ROOT),stack);
+            }
+            weapons.put("wood sword",new ItemStack(Items.wooden_sword));
+            weapons.put("wooden sword",new ItemStack(Items.wooden_sword));
+        }
+        return weapons.get(name.toLowerCase(Locale.ROOT));
+    }
     static ItemStack icon(KillFeedRules.Death death){
         if(death.weapon!=null){
-            if(weapons.isEmpty()){
-                for(Object value:Item.itemRegistry){
-                    Item item=(Item)value;ItemStack stack=new ItemStack(item);
-                    weapons.put(stack.getDisplayName().toLowerCase(Locale.ROOT),stack);
-                }
-                weapons.put("wood sword",new ItemStack(Items.wooden_sword));
-                weapons.put("wooden sword",new ItemStack(Items.wooden_sword));
-            }
-            ItemStack item=weapons.get(death.weapon.toLowerCase(Locale.ROOT));if(item!=null)return item;
+            ItemStack item=weapon(death.weapon,MinecraftAccess.get());
+            if(item!=null)return item;
         }
         switch(death.cause){
             case BOW:return new ItemStack(Items.bow);
@@ -301,6 +319,9 @@ final class KillFeed {
             case DROWN:return new ItemStack(Items.water_bucket);
             case CACTUS:return new ItemStack(Blocks.cactus);
             case ANVIL:return new ItemStack(Blocks.anvil);
+            // A weapon we could not name - a renamed sword, or a language whose item name does not
+            // match the registry - is still a player kill with a weapon. A bone says "unknown".
+            case MELEE:return new ItemStack(Items.iron_sword);
             default:return new ItemStack(Items.bone);
         }
     }
@@ -368,7 +389,17 @@ final class KillFeed {
         void show(String text,int x,int y){
             Minecraft mc=MinecraftAccess.get();ScaledResolution sr=new ScaledResolution(mc);
             if(this.mc==null||width!=sr.getScaledWidth()||height!=sr.getScaledHeight())setWorldAndResolution(mc,sr.getScaledWidth(),sr.getScaledHeight());
-            java.util.List<String> lines=fontRendererObj.listFormattedStringToWidth(text,Math.max(30,Math.min(360,width-24)));
+            int wrap=Math.max(30,Math.min(360,width-24));
+            java.util.List<String> lines=new java.util.ArrayList<>(fontRendererObj.listFormattedStringToWidth(text,wrap));
+            // A translated line can still be wider than it measures (a pack that draws CJK wider than
+            // its glyph table says), so each line is cut to the box as well as wrapped.
+            for(int i=0;i<lines.size();i++)lines.set(i,fontRendererObj.trimStringToWidth(lines.get(i),wrap));
+            // And the box itself is capped to the screen: more lines than fit end in an ellipsis.
+            int fitLines=Math.max(1,(height-16)/10);
+            if(lines.size()>fitLines){
+                lines=new java.util.ArrayList<>(lines.subList(0,fitLines));
+                lines.set(fitLines-1,fontRendererObj.trimStringToWidth(lines.get(fitLines-1),wrap-9)+"...");
+            }
             int w=0;for(String line:lines)w=Math.max(w,fontRendererObj.getStringWidth(line));
             int h=8+(lines.size()>1?2+(lines.size()-1)*10:0);
             int bx=Math.max(4,Math.min(x+12,width-w-16)),by=Math.max(4,Math.min(y-12,height-h-12));

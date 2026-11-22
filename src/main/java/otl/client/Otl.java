@@ -72,7 +72,6 @@ public final class Otl {
         MinecraftForge.EVENT_BUS.register(UpdateNotice.INSTANCE);
         FMLCommonHandler.instance().bus().register(UpdateNotice.INSTANCE);
         MinecraftForge.EVENT_BUS.register(PlayerAnim.INSTANCE);
-        MinecraftForge.EVENT_BUS.register(SkateNameplate.INSTANCE);
         FMLCommonHandler.instance().bus().register(PlayerAnim.INSTANCE);
         installTouchdown();
         FMLCommonHandler.instance().bus().register(this);MinecraftForge.EVENT_BUS.register(this);
@@ -82,29 +81,51 @@ public final class Otl {
             renderer.addLayer(new FaceOverlay(renderer));
             // RenderPlayer reads getMainModel() everywhere except the first-person arm, so swapping
             // this field animates every rendered player and leaves the held hand alone.
-            vanillaPlayerModels.put(renderer,renderer.getMainModel());
-            animatedPlayerModels.put(renderer,new AnimatedModelPlayer("slim".equals(entry.getKey())));
             installSkateHeldLayer(renderer);
+            animatedPlayerModels.put(renderer,new AnimatedModelPlayer("slim".equals(entry.getKey())));
         }
         ((IReloadableResourceManager)MinecraftAccess.get().getResourceManager()).registerReloadListener(resources->{SkinFace.clear();FaceMarks.clearCache();KillFeed.clearHeads();});
     }
 
+    /** Specials.Pre is the concrete subclass: the bus cannot instantiate the abstract Specials. */
+    @SubscribeEvent
+    public void skateNameplate(net.minecraftforge.client.event.RenderLivingEvent.Specials.Pre event){
+        Minecraft mc=MinecraftAccess.get();
+        if(mc.thePlayer!=null&&event.entity==mc.thePlayer&&PlayerAnim.skating())event.setCanceled(true);
+    }
+
     @SubscribeEvent(priority=net.minecraftforge.fml.common.eventhandler.EventPriority.HIGHEST)
     public void localSkateModel(RenderPlayerEvent.Pre event){
-        RenderPlayer renderer=event.renderer;
-        net.minecraft.client.Minecraft mc=MinecraftAccess.get();
-        if(mc.thePlayer==null||event.entityPlayer!=mc.thePlayer||!PlayerAnim.skating())return;
-        AnimatedModelPlayer model=animatedPlayerModels.get(renderer);
-        if(model==null)return;
-        net.minecraftforge.fml.relauncher.ReflectionHelper.setPrivateValue(
-            net.minecraft.client.renderer.entity.RendererLivingEntity.class,renderer,model,"mainModel","field_77045_g");
+        // Remember the real model every time it is not ours, so an OptiFine resource reload that
+        // swaps the renderer's model is picked up instead of being restored to a stale instance.
+        net.minecraft.client.model.ModelBase current=event.renderer.getMainModel();
+        boolean ours=current instanceof AnimatedModelPlayer;
+        if(!ours)vanillaPlayerModels.put(event.renderer,current);
+        // The split-limb rig exists only for emotes. Skateboarding leaves the player model
+        // completely vanilla: no swap, no resize, no reposition.
+        if(PlayerAnim.emoting(event.entityPlayer)){
+            AnimatedModelPlayer model=animatedPlayerModels.get(event.renderer);
+            if(model!=null)setMainModel(event.renderer,model);
+        }else if(ours){
+            // A missed Post must never leave the custom model on the shared renderer, or every
+            // other player would draw with the split-limb rig and broken armour.
+            net.minecraft.client.model.ModelBase vanilla=vanillaPlayerModels.get(event.renderer);
+            if(vanilla!=null)setMainModel(event.renderer,vanilla);
+        }
     }
 
     @SubscribeEvent(priority=net.minecraftforge.fml.common.eventhandler.EventPriority.LOWEST)
     public void restoreLocalSkateModel(RenderPlayerEvent.Post event){
+        PlayerAnim.renderBoard(event.entityPlayer,event.partialRenderTick,event.x,event.y,event.z);
         net.minecraft.client.model.ModelBase vanilla=vanillaPlayerModels.get(event.renderer);
-        if(vanilla!=null)net.minecraftforge.fml.relauncher.ReflectionHelper.setPrivateValue(
-            net.minecraft.client.renderer.entity.RendererLivingEntity.class,event.renderer,vanilla,"mainModel","field_77045_g");
+        if(vanilla!=null)setMainModel(event.renderer,vanilla);
+    }
+
+    private static void setMainModel(RenderPlayer renderer,net.minecraft.client.model.ModelBase model){
+        try{
+            net.minecraftforge.fml.relauncher.ReflectionHelper.setPrivateValue(
+                net.minecraft.client.renderer.entity.RendererLivingEntity.class,renderer,model,"mainModel","field_77045_g");
+        }catch(RuntimeException ignored){/* a differing mapping just leaves vanilla rendering */}
     }
 
     private static void installSkateHeldLayer(RenderPlayer renderer){

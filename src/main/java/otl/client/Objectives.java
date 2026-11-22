@@ -25,13 +25,10 @@ import net.minecraft.client.gui.FontRenderer;
 final class Objectives {
     /** Square size and spacing; the strip is exactly one text line tall. */
     static final int ICON=7,SPACE=2,ENTRY_GAP=8,HEIGHT=8;
-    /** Score bar sizes: horizontal beside a name, vertical in place of the number. */
-    static final int BAR_W=24,BAR_H=5,BAR_VW=9,BAR_VH=18,STACK_H=21;
     /** PGM's wool state glyphs in order: untouched, picked up, placed. */
     static final String WOOL="\u2B1C\u2592\u2B1B";
     /** PGM's score row: "5", "5/10", then the team's display name. */
     private static final Pattern SCORE=Pattern.compile("^(\\d+)(?:\\s*/\\s*(\\d+))?\\s+(\\S.*)$");
-    private static final Pattern PERCENT=Pattern.compile("(?:^|\\s)(\\d{1,3})%");
     /**
      * PGM's goal row: a status glyph, a progress fraction or percentage, then the goal's name.
      * A destroyable prints the precise breaks after its percentage ("55% 11/20"), and a touched
@@ -139,27 +136,16 @@ final class Objectives {
         final String name;
         /** Pixels before this part; set when the strip is laid out. */
         int space;
-        /** 0..1 when this part is a score bar, -1 for text and wool squares. */
-        final float fraction;
         final boolean mirror;
-        final boolean stacked;
         Part(String text,int colour,int state,boolean marker,String name){
-            this(text,colour,state,marker,name,-1F);
+            this(text,colour,state,marker,name,false);
         }
-        Part(String text,int colour,int state,boolean marker,String name,float fraction){
-            this(text,colour,state,marker,name,fraction,false);
-        }
-        Part(String text,int colour,int state,boolean marker,String name,float fraction,boolean mirror){
-            this(text,colour,state,marker,name,fraction,mirror,false);
-        }
-        Part(String text,int colour,int state,boolean marker,String name,float fraction,boolean mirror,boolean stacked){
-            this.text=text;this.colour=colour;this.state=state;this.marker=marker;this.name=name;this.fraction=fraction;this.mirror=mirror;this.stacked=stacked;
+        Part(String text,int colour,int state,boolean marker,String name,boolean mirror){
+            this.text=text;this.colour=colour;this.state=state;this.marker=marker;this.name=name;this.mirror=mirror;
         }
         Part(String text,int colour,int state,boolean marker){this(text,colour,state,marker,null);}
         Part(String text,int colour,int state){this(text,colour,state,false,null);}
         int width(FontRenderer font){
-            if(fraction>=0)return UtilitySettings.teamBarScoreStyle==2?BAR_VW:BAR_W;
-            if(stacked){int slash=text.indexOf('/');return Math.max(6,Math.max(font.getStringWidth(text.substring(0,slash).trim()),font.getStringWidth(text.substring(slash+1).trim())));}
             return text==null?ICON:font.getStringWidth(text);
         }
     }
@@ -172,13 +158,30 @@ final class Objectives {
         final boolean shared;
         /** The team currently capturing a control point; null when none or unknown. */
         final String capturer;
+        /** A team's score line, which the bar prints under the clock rather than under its heads. */
+        final boolean score;
+        /** A bare team-name row, which the card's own label already prints. */
+        final boolean header;
         Entry(List<Part> parts,String team){this(parts,team,false);}
         Entry(List<Part> parts,String team,boolean controlPoint){this(parts,team,controlPoint,null);}
         Entry(List<Part> parts,String team,boolean controlPoint,String capturer){
             this(parts,team,controlPoint,capturer,false);
         }
         Entry(List<Part> parts,String team,boolean controlPoint,String capturer,boolean shared){
-            this.parts=parts;this.team=team;this.controlPoint=controlPoint;this.capturer=capturer;this.shared=shared;
+            this(parts,team,controlPoint,capturer,shared,false,false);
+        }
+        Entry(List<Part> parts,String team,boolean controlPoint,String capturer,boolean shared,boolean score){
+            this(parts,team,controlPoint,capturer,shared,score,false);
+        }
+        Entry(List<Part> parts,String team,boolean controlPoint,String capturer,boolean shared,boolean score,boolean header){
+            this.parts=parts;this.team=team;this.controlPoint=controlPoint;this.capturer=capturer;
+            this.shared=shared;this.score=score;this.header=header;
+        }
+        static Entry score(List<Part> parts,String team){
+            return new Entry(parts,team,false,null,false,true,false);
+        }
+        static Entry header(List<Part> parts,String team){
+            return new Entry(parts,team,false,null,false,false,true);
         }
     }
 
@@ -188,8 +191,17 @@ final class Objectives {
         int centre;
         /** The team block this line belongs to; null for compact markers and unowned rows. */
         final String team;
-        Strip(List<Part> parts,int width){this(parts,width,null);}
-        Strip(List<Part> parts,int width,String team){this.parts=parts;this.width=width;this.team=team;this.centre=width/2;}
+        /** A team's score line, drawn directly under the clock. */
+        final boolean score;
+        /** A bare team-name row, which the bar drops when that team already has a card. */
+        final boolean header;
+        Strip(List<Part> parts,int width){this(parts,width,null,false,false);}
+        Strip(List<Part> parts,int width,String team){this(parts,width,team,false,false);}
+        Strip(List<Part> parts,int width,String team,boolean score){this(parts,width,team,score,false);}
+        Strip(List<Part> parts,int width,String team,boolean score,boolean header){
+            this.parts=parts;this.width=width;this.team=team;this.score=score;this.header=header;
+            this.centre=width/2;
+        }
     }
 
     /**
@@ -220,7 +232,7 @@ final class Objectives {
                         for(Part part:one.parts){x+=part.space;int w=part.width(mc.fontRendererObj);if(!part.marker){one.centre=x+w/2;break;}x+=w;}
                     }
                     // Named blocks remember their team, so each sits under that team's own heads.
-                    if(side<2)for(Strip one:block)lines.add(new Strip(one.parts,one.width,entry.team));
+                    if(side<2)for(Strip one:block)lines.add(new Strip(one.parts,one.width,entry.team,entry.score,entry.header));
                     else lines.addAll(block);
                 }
                 if(side==2||side==3)lines=packPointLines(lines,limit);
@@ -242,7 +254,7 @@ final class Objectives {
             }
             for(int i=0;i<entry.parts.size();i++){
                 Part original=entry.parts.get(i);
-                Part copy=new Part(original.text,original.colour,original.state,original.marker,original.name,original.fraction,original.mirror,original.stacked);
+                Part copy=new Part(original.text,original.colour,original.state,original.marker,original.name,original.mirror);
                 copy.space=i==0?gap:original.space;
                 parts.add(copy);
             }
@@ -334,7 +346,7 @@ final class Objectives {
             if(side==1||side==3)for(int i=0;i<parts.size();i++){
                 Part part=parts.get(i);
                 if(part.marker&&part.text!=null&&"\u2794".equals(ChatRules.plain(part.text)))
-                    parts.set(i,new Part(part.text,part.colour,part.state,true,part.name,part.fraction,true));
+                    parts.set(i,new Part(part.text,part.colour,part.state,true,part.name,true));
             }
             // Mirror: the right side leads with the marker and the left with the name, so each
             // row's state markers always end up nearest the clock.
@@ -345,7 +357,7 @@ final class Objectives {
                 Integer capturerColumn=columns.get(MapInfo.norm(entry.capturer));
                 if(capturerColumn!=null)markersFirst=capturerColumn%2==0;
             }
-            sides.get(side).add(new Entry(order(parts,markersFirst),entry.team,entry.controlPoint,entry.capturer,entry.shared));
+            sides.get(side).add(new Entry(order(parts,markersFirst),entry.team,entry.controlPoint,entry.capturer,entry.shared,entry.score,entry.header));
         }
         return sides;
     }
@@ -434,14 +446,8 @@ final class Objectives {
                     String name=ChatRules.plain(scoringTeam.replace('\u00ba','\u00a7'));
                     int colour=TeamBar.chatColour((char)symbolic[0]);
                     String label=scores.label(symbolic[1]);
-                    float fraction=scores.fraction(symbolic[1]);
-                    // A bar hides the number, so its hover tooltip carries it instead.
-                    boolean bar=(UtilitySettings.teamBarScoreStyle==1||UtilitySettings.teamBarScoreStyle==2)&&fraction>=0;
-                    boolean stacked=UtilitySettings.teamBarScoreStyle==3&&fraction>=0;
-                    found.add(new Entry(Arrays.asList(
-                        bar?new Part(null,colour,-1,true,name+" "+ChatRules.plain(label),fraction)
-                           :new Part(label,colour,-1,true,name,-1F,false,stacked),
-                        new Part(name,colour,-1)),scoringTeam));
+                    // One style only: the number itself. The card above already names the team.
+                    found.add(Entry.score(Arrays.asList(new Part(label,colour,-1,true,name)),scoringTeam));
                 }
                 continue;
             }
@@ -449,12 +455,13 @@ final class Objectives {
             if(head>=0){
                 owner=teams.get(head);
                 int start=line.plain.indexOf(text);
-                found.add(new Entry(Arrays.<Part>asList(new Part(line.coloured(start,start+text.length()),TeamBar.chatColour(line.colourAt(start)),-1)),owner));
+                found.add(Entry.header(Arrays.<Part>asList(new Part(line.coloured(start,start+text.length()),TeamBar.chatColour(line.colourAt(start)),-1)),owner));
                 continue;
             }
             String team=owner;
             boolean controlPoint=false;
             boolean shared=false;
+            boolean isScore=false;
             String capturer=null;
             List<Part> parts=null;
             if(woolRow(text))parts=wools(line,team);
@@ -465,6 +472,7 @@ final class Objectives {
                     if(named>=0){
                         team=teams.get(named);
                         parts=scoreRow(line,scoreMatch,team);
+                        isScore=true;
                     }
                 }
                 Matcher goalMatch=GOAL.matcher(text);
@@ -496,7 +504,7 @@ final class Objectives {
                     }
                 }
             }
-            if(parts!=null&&!parts.isEmpty())found.add(new Entry(parts,team,controlPoint,capturer,shared));
+            if(parts!=null&&!parts.isEmpty())found.add(new Entry(parts,team,controlPoint,capturer,shared,isScore));
         }
         return found;
     }
@@ -522,21 +530,12 @@ final class Objectives {
         return parts;
     }
 
-    /** "5 Red": the score, then the team's own coloured name. */
+    /** "5 Red": the score number, with the team name as its hover label. */
     private static List<Part> scoreRow(Line line,Matcher score,String team){
-        String name=score.group(3).trim();
         int at=line.plain.indexOf(score.group());
         int numberStart=at+score.start(1),numberEnd=at+(score.group(2)==null?score.end(1):score.end(2));
-        int nameStart=at+score.start(3);
         List<Part> parts=new ArrayList<>();
-        String number=line.coloured(numberStart,numberEnd);
-        double current=Double.parseDouble(score.group(1));
-        double target=score.group(2)==null?0:Double.parseDouble(score.group(2));
-        boolean known=target>0&&Double.isFinite(current)&&Double.isFinite(target);
-        if((UtilitySettings.teamBarScoreStyle==1||UtilitySettings.teamBarScoreStyle==2)&&known)
-            parts.add(new Part(null,TeamBar.chatColour(line.colourAt(nameStart)),-1,true,name+" "+ChatRules.plain(number),(float)Math.min(1D,current/target)));
-        else parts.add(new Part(number,TeamBar.chatColour(line.colourAt(numberStart)),-1,true,team,-1F,false,UtilitySettings.teamBarScoreStyle==3&&known));
-        parts.add(new Part(line.coloured(nameStart,nameStart+name.length()),TeamBar.chatColour(line.colourAt(nameStart)),-1));
+        parts.add(new Part(line.coloured(numberStart,numberEnd),TeamBar.chatColour(line.colourAt(numberStart)),-1,true,team));
         return parts;
     }
 
@@ -549,15 +548,9 @@ final class Objectives {
         int state=status.length()==1?WOOL.indexOf(status.charAt(0)):-1;
         String name=goal.group(2);
         List<Part> parts=new ArrayList<>();
-        Matcher percent=PERCENT.matcher(status);
         // The wool square keeps the colour PGM gave the status, since that is the wool's own colour.
         if(state>=0)parts.add(new Part(null,TeamBar.chatColour(line.colourAt(at)),state,true,name));
-        else if(!status.isEmpty()){
-            String display=line.coloured(at,at+status.length());
-            if((UtilitySettings.teamBarScoreStyle==1||UtilitySettings.teamBarScoreStyle==2)&&percent.find())
-                parts.add(new Part(null,TeamBar.chatColour(line.colourAt(at)),-1,true,name+" "+ChatRules.plain(display),Math.min(100,Integer.parseInt(percent.group(1)))/100F));
-            else parts.add(new Part(display,TeamBar.chatColour(line.colourAt(at)),-1,true,name));
-        }
+        else if(!status.isEmpty())parts.add(new Part(line.coloured(at,at+status.length()),TeamBar.chatColour(line.colourAt(at)),-1,true,name));
         int nameStart=at+goal.start(2);
         parts.add(new Part(line.coloured(nameStart,nameStart+name.length()),TeamBar.chatColour(line.colourAt(nameStart)),-1));
         return parts;
@@ -613,9 +606,8 @@ final class Objectives {
         for(Part part:strip.parts){
             px+=part.space;
             int w=part.width(font);
-            int top=part.stacked||part.fraction>=0&&UtilitySettings.teamBarScoreStyle==2?0:(lineHeight-TeamBar.STRIP_LINE)/2;
-            int height=part.stacked?STACK_H:part.fraction>=0&&UtilitySettings.teamBarScoreStyle==2?BAR_VH:HEIGHT;
-            if(x>=px&&x<px+w&&y>=top&&y<top+height)return part.name;
+            int h=part.text==null?ICON:HEIGHT,top=(lineHeight-h)/2;
+            if(x>=px&&x<px+w&&y>=top&&y<top+h)return part.name;
             px+=w;
         }
         return null;

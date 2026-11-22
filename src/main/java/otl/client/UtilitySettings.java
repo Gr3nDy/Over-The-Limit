@@ -51,31 +51,25 @@ public final class UtilitySettings {
     public static boolean teamBar=true;
     /** Heads per side (1-75) and the bar's scale; below 10 heads they stay full size. */
     public static int teamBarPlayers=10,teamBarSize=150,teamBarDeadOpacity=50;
+    public static int teamBarBackgroundOpacity=25,teamBarOutlineOpacity=25;
     public static boolean teamBarHideBoss=false;
     public static boolean teamBarHideVanillaBossHealth=false;
     public static boolean teamBarHideOnTab=false;
     /** Hide the vanilla sidebar, which repeats the clock and objectives the bar already shows. */
     public static boolean teamBarHideScoreboard=false;
-    public static boolean teamBarHideHeads=false;
     /** Draw each head as a rounded tile instead of a square one. */
     public static boolean teamBarRoundedHeads=false;
-    /** Count the players online instead of drawing their heads, with the team colour under it. */
-    public static boolean teamBarCount=false;
+    /** Show each team's alive count instead of its heads. The one display switch. */
+    public static boolean teamBarNumbers=false;
     /** Middle-clicking the player list opens a clickable list with the same player actions. */
     public static boolean tabPlayerMenu=true;
     /** One chat line on join when a newer release is on GitHub. */
     public static boolean updateNotice=true;
     /** Keep showing the bar while watching as an observer. */
     public static boolean teamBarObserver=true;
-    /** A thin vertical bar of the team's colour beside each team row. */
-    public static boolean teamBarTeamColor=true;
     /** PGM's objective rows - wool states, goal statuses and scores - beside the match clock. */
     public static boolean teamBarObjectives=true;
-    /** Compact objectives: the markers only, beside the clock instead of named under it. */
-    public static boolean teamBarObjectivesCompact=false;
     public static boolean teamBarControlPoints=true;
-    /** Team score display with a known target: 0 text, 1 horizontal bar, 2 vertical bar, 3 stacked text. */
-    public static int teamBarScoreStyle=0;
     /** Line above the clock: 0 off, 1 the map name, 2 the gamemode from the sidebar title. */
     public static int teamBarHeader=0;
     public static boolean killFeed=true,hideKillChat=true;
@@ -182,21 +176,24 @@ public final class UtilitySettings {
         read(j,"team_bar_players",e->teamBarPlayers=Math.max(1,Math.min(75,e.getAsInt())));
         read(j,"team_bar_size",e->teamBarSize=Math.max(50,Math.min(150,e.getAsInt())));
         read(j,"team_bar_dead_opacity",e->teamBarDeadOpacity=Math.max(25,Math.min(100,e.getAsInt())));
+        read(j,"team_bar_background_opacity",e->teamBarBackgroundOpacity=Math.max(0,Math.min(100,e.getAsInt())));
+        teamBarOutlineOpacity=teamBarBackgroundOpacity; // Older profiles used one opacity for both.
+        read(j,"team_bar_outline_opacity",e->teamBarOutlineOpacity=Math.max(0,Math.min(100,e.getAsInt())));
         read(j,"team_bar_hide_boss",e->teamBarHideBoss=e.getAsBoolean());
         read(j,"team_bar_hide_vanilla_boss_health",e->teamBarHideVanillaBossHealth=e.getAsBoolean());
         read(j,"team_bar_hide_on_tab",e->teamBarHideOnTab=e.getAsBoolean());
     read(j,"team_bar_hide_scoreboard",e->teamBarHideScoreboard=e.getAsBoolean());
-        read(j,"team_bar_hide_heads",e->teamBarHideHeads=e.getAsBoolean());
         read(j,"team_bar_rounded_heads",e->teamBarRoundedHeads=e.getAsBoolean());
-        read(j,"team_bar_count",e->teamBarCount=e.getAsBoolean());
+        // The old count flag becomes the new single display switch, so a profile that counted
+        // players keeps counting instead of silently reverting to heads.
+        read(j,"team_bar_count",e->teamBarNumbers=teamBarNumbers||e.getAsBoolean());
+        read(j,"team_bar_hide_heads",e->teamBarNumbers=teamBarNumbers||e.getAsBoolean());
+        read(j,"team_bar_numbers",e->teamBarNumbers=e.getAsBoolean());
         read(j,"tab_player_menu",e->tabPlayerMenu=e.getAsBoolean());
         read(j,"update_notice",e->updateNotice=e.getAsBoolean());
         read(j,"team_bar_observer",e->teamBarObserver=e.getAsBoolean());
-        read(j,"team_bar_team_color",e->teamBarTeamColor=e.getAsBoolean());
         read(j,"team_bar_objectives",e->teamBarObjectives=e.getAsBoolean());
-        read(j,"team_bar_objectives_compact",e->teamBarObjectivesCompact=e.getAsBoolean());
         read(j,"team_bar_control_points",e->teamBarControlPoints=e.getAsBoolean());
-        read(j,"team_bar_score_style",e->teamBarScoreStyle=Math.max(0,Math.min(3,e.getAsInt())));
         read(j,"team_bar_header",e->teamBarHeader=Math.max(0,Math.min(2,e.getAsInt())));
         read(j,"kill_feed",e->killFeed=e.getAsBoolean());
         read(j,"kill_feed_heads",e->killFeedHeads=KillFeedRules.HeadMode.parse(e.getAsString()));
@@ -326,19 +323,19 @@ public final class UtilitySettings {
             j.addProperty("emote_camera",emoteCamera);
             j.addProperty("team_bar",teamBar);
             j.addProperty("team_bar_players",teamBarPlayers);j.addProperty("team_bar_size",teamBarSize);
-            j.addProperty("team_bar_dead_opacity",teamBarDeadOpacity);
+        j.addProperty("team_bar_dead_opacity",teamBarDeadOpacity);
+        j.addProperty("team_bar_background_opacity",teamBarBackgroundOpacity);
+        j.addProperty("team_bar_outline_opacity",teamBarOutlineOpacity);
             j.addProperty("team_bar_hide_boss",teamBarHideBoss);
             j.addProperty("team_bar_hide_vanilla_boss_health",teamBarHideVanillaBossHealth);
             j.addProperty("team_bar_hide_on_tab",teamBarHideOnTab);
     j.addProperty("team_bar_hide_scoreboard",teamBarHideScoreboard);
-            j.addProperty("team_bar_hide_heads",teamBarHideHeads);j.addProperty("tab_player_menu",tabPlayerMenu);j.addProperty("update_notice",updateNotice);
-            j.addProperty("team_bar_rounded_heads",teamBarRoundedHeads);j.addProperty("team_bar_count",teamBarCount);
+            j.addProperty("team_bar_hide_heads",teamBarNumbers);j.addProperty("tab_player_menu",tabPlayerMenu);j.addProperty("update_notice",updateNotice);
+            j.addProperty("team_bar_rounded_heads",teamBarRoundedHeads);j.addProperty("team_bar_count",teamBarNumbers);
+            j.addProperty("team_bar_numbers",teamBarNumbers);
             j.addProperty("team_bar_observer",teamBarObserver);
-        j.addProperty("team_bar_team_color",teamBarTeamColor);
         j.addProperty("team_bar_objectives",teamBarObjectives);
-        j.addProperty("team_bar_objectives_compact",teamBarObjectivesCompact);
         j.addProperty("team_bar_control_points",teamBarControlPoints);
-        j.addProperty("team_bar_score_style",teamBarScoreStyle);
         j.addProperty("team_bar_header",teamBarHeader);
             j.addProperty("kill_feed",killFeed);j.addProperty("hide_kill_chat",hideKillChat);
             j.addProperty("kill_feed_heads",killFeedHeads.name());

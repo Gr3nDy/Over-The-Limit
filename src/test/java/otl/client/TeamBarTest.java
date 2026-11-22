@@ -44,19 +44,6 @@ public class TeamBarTest {
         assertFalse(TeamBar.recentlyRenderedPlayerList(seen,0));
         assertFalse(TeamBar.recentlyRenderedPlayerList(seen-1,seen));
     }
-    @Test public void horizontalScoresFillFromEachTeamsOuterEdge(){
-        assertEquals(0,TeamBar.horizontalScoreStart(0,false));
-        assertEquals(Objectives.BAR_W,TeamBar.horizontalScoreStart(0,true));
-        assertEquals(0,TeamBar.horizontalScoreStart(6,false));
-        assertEquals(Objectives.BAR_W-6,TeamBar.horizontalScoreStart(6,true));
-        assertEquals(0,TeamBar.horizontalScoreStart(Objectives.BAR_W,true));
-        assertEquals(6,TeamBar.scoreTick(1));
-        assertEquals(12,TeamBar.scoreTick(2));
-        assertEquals(18,TeamBar.scoreTick(3));
-        assertEquals(4,TeamBar.verticalScoreTick(1));
-        assertEquals(9,TeamBar.verticalScoreTick(2));
-        assertEquals(13,TeamBar.verticalScoreTick(3));
-    }
     @Test public void emptyAndUnknownTeamsNeverShareAReservedColumn(){
         java.util.Map<String,Integer> columns=TeamBar.teamColumns(
             java.util.Arrays.asList("Blue","Red","Green"),java.util.Arrays.asList("Red","Blue"));
@@ -80,7 +67,7 @@ public class TeamBarTest {
         TeamBar.Bar bar=new TeamBar.Bar(rows,16,24,30,null,"0:00",null,0,scores);
         for(int i=0;i<rows.size();i++){
             java.util.List<String> row=rows.get(i);
-            assertTrue(Math.abs(2*bar.leftStart(row)+(row.size()-1)*bar.advance+bar.head-bar.width)<=1);
+            assertTrue(Math.abs(2*bar.headX(0,i)+(row.size()-1)*bar.advance+bar.head-bar.width)<=1);
             int[] bounds=TeamBar.headBounds(bar,row.get(0));
             assertEquals(row.get(0),TeamBar.headAt(bar,bounds[0]+1,bounds[1]+1));
         }
@@ -117,11 +104,11 @@ public class TeamBarTest {
         java.util.List<java.util.List<String>> left=java.util.Arrays.asList(java.util.Arrays.asList("Alex","Sam"),java.util.Collections.singletonList("Pat"));
         java.util.List<java.util.List<String>> right=java.util.Collections.singletonList(java.util.Collections.singletonList("Kai"));
         TeamBar.Bar bar=new TeamBar.Bar(left,right,16,20,null,"");
-        int x=bar.leftStart(left.get(0));
+        int x=bar.headX(0,0);
         assertEquals("Alex",TeamBar.headAt(bar,x,0));
         assertEquals("Sam",TeamBar.headAt(bar,x+bar.advance,0));
-        assertEquals("Pat",TeamBar.headAt(bar,bar.leftStart(left.get(1)),bar.band+TeamBar.ROW_GAP));
-        assertEquals("Kai",TeamBar.headAt(bar,bar.rightStart(right.get(0)),0));
+        assertEquals("Pat",TeamBar.headAt(bar,bar.headX(0,1),bar.rowTop(0,1)+(bar.band-bar.head)/2));
+        assertEquals("Kai",TeamBar.headAt(bar,bar.headX(1,0),0));
         assertNull(TeamBar.headAt(bar,x,bar.band));
         assertNull(TeamBar.headAt(bar,-1,0));
     }
@@ -232,9 +219,86 @@ public class TeamBarTest {
             "\u00a7m== \u00a7lAvalon\u00a7m ==\n\u00a77Control the wool!\n\u00a77Created by jcane"));
         // Not a welcome block: no rule, a player talking, or a rule around no name.
         assertNull(TeamBar.welcomeHeading("Avalon"));
+        assertNull(TeamBar.welcomeHeading("    \u00a7lMatch Stats\u00a7r    "));
         assertNull(TeamBar.welcomeHeading("\u00a7m----------------\u00a7m"));
         assertNull(TeamBar.welcomeHeading("\u00a7fAlex: \u00a7mhi\u00a7m"));
         assertNull(TeamBar.welcomeHeading(null));
+        // PGM wraps the name in plain spaces on some maps, and no translated sentence is a rule.
+        assertEquals("Cursed Library",TeamBar.welcomeHeading("             Cursed Library             "));
+        assertNull(TeamBar.welcomeHeading("\u6bd4\u8d5b\u5f00\u59cb\u4e86"));
+        assertNull(TeamBar.welcomeHeading("\u8c22\u8c22\u8c22\u8c22"));
+    }
+
+    /**
+     * A team's plate hugs the clock: the left team's plate ends on the clock's left edge and the
+     * right team's starts on its right, so the heads on each side run outward from the time. The
+     * name is centred on its own plate rather than pushed to the outer edge.
+     */
+    @Test public void eachTeamsNameIsCentredOverItsOwnPlate(){
+        java.util.List<Objectives.Strip> none=java.util.Collections.emptyList();
+        java.util.List<String> left=java.util.Arrays.asList("A","B"),right=java.util.Collections.singletonList("C");
+        TeamBar.Bar bar=new TeamBar.Bar(java.util.Collections.singletonList(left),
+            java.util.Collections.singletonList(right),16,24,null,"10:00",0,none,none,false,null,null,0,
+            java.util.Collections.singletonList("Red"),java.util.Collections.singletonList("Blue"),false,0);
+        TeamBar.Block red=bar.blocks(0).get(0),blue=bar.blocks(1).get(0);
+        assertEquals("the left plate did not end on the clock",bar.leftEnd,red.x+red.w);
+        assertEquals("the right plate did not start on the clock",bar.rightX,blue.x);
+        // Centred: the text's own centre is the plate's centre, whatever its width.
+        for(TeamBar.Block block:java.util.Arrays.asList(red,blue))
+            for(int width:new int[]{6,20,39})
+                assertTrue("the name was not centred on its plate",
+                    Math.abs(TeamBar.labelX(block,0,width)+width/2-(block.x+block.w/2))<=1);
+        // The name is drawn in screen space, so the bar's own x has to move it with the card. This
+        // is the bug that left the names at the far left of the screen: the offset was dropped.
+        int barX=500;
+        for(TeamBar.Block block:java.util.Arrays.asList(red,blue)){
+            int width=12;
+            assertEquals("the name did not follow the bar",TeamBar.labelX(block,0,width)+barX,
+                TeamBar.labelX(block,barX,width));
+        }
+    }
+
+    @Test public void teamScoreIsCentredBelowHeadsWithoutMovingThemOffTheClockRow(){
+        java.util.List<Objectives.Strip> none=java.util.Collections.emptyList();
+        java.util.List<String> left=java.util.Collections.singletonList("A");
+        java.util.List<String> owners=java.util.Collections.singletonList("Red");
+        Objectives.Strip score=new Objectives.Strip(java.util.Collections.singletonList(
+            new Objectives.Part("5",TeamBar.WHITE,-1)),5,"Red",true);
+        TeamBar.Bar scored=new TeamBar.Bar(java.util.Collections.singletonList(left),
+            java.util.Collections.<java.util.List<String>>emptyList(),16,20,null,"10:00",0,
+            java.util.Collections.singletonList(score),none,false,null,null,0,owners,null,false,0);
+        // The name line above the heads sits above the clock's row too, so the clock is level with
+        // those heads instead of floating a line higher.
+        assertEquals(TeamBar.LABEL_H,scored.labelTop);
+        TeamBar.Block card=scored.blocks(0).get(0);
+        assertEquals(scored.labelTop,scored.rowTop(0,0));
+        assertEquals(scored.rowTop(0,0)+scored.band+TeamBar.OBJECTIVE_GAP,scored.stripTop(0,0));
+        assertEquals(card.x+(card.w-score.width)/2,scored.stripX(0,score));
+        assertEquals(card.y+card.h,scored.stripTop(0,0)+TeamBar.STRIP_LINE);
+        assertTrue("the bar did not make room for the score",
+            scored.height>=scored.stripTop(0,0)+TeamBar.STRIP_LINE);
+    }
+
+    /**
+     * PGM prints a bare team-name row above that team's objectives. The card prints the name
+     * itself, so the row is dropped rather than doubling it; a team with nobody online has no
+     * card, so its row stays as the only thing naming its objectives.
+     */
+    @Test public void aTeamNameRowIsDroppedWhenThatTeamHasACard(){
+        java.util.List<Objectives.Strip> none=java.util.Collections.emptyList();
+        Objectives.Strip header=new Objectives.Strip(java.util.Collections.singletonList(
+            new Objectives.Part("Red",TeamBar.WHITE,-1)),18,"Red",false,true);
+        java.util.List<Objectives.Strip> withHeader=java.util.Collections.singletonList(header);
+        TeamBar.Bar online=new TeamBar.Bar(
+            java.util.Collections.singletonList(java.util.Collections.singletonList("A")),
+            java.util.Collections.<java.util.List<String>>emptyList(),16,20,null,"10:00",0,withHeader,none,
+            false,null,null,0,java.util.Collections.singletonList("Red"),null,false,0);
+        assertTrue("the team name was printed twice",online.strips(0).isEmpty());
+        TeamBar.Bar empty=new TeamBar.Bar(
+            java.util.Collections.<java.util.List<String>>emptyList(),
+            java.util.Collections.<java.util.List<String>>emptyList(),16,20,null,"10:00",0,withHeader,none,
+            false,null,null,0,java.util.Collections.<String>emptyList(),java.util.Collections.<String>emptyList(),false,0);
+        assertEquals("an empty team lost the only name it had",1,empty.strips(0).size());
     }
 
     /** A count replaces a team's heads with one cell, so every team still fits on the bar. */
@@ -263,11 +327,6 @@ public class TeamBarTest {
         assertTrue("the goals did not make the bar taller",withGoals.height>bar.height);
     }
 
-    @Test public void eightTeamsAreCountedInsteadOfDrawn(){
-        assertFalse(TeamBar.countsForced(java.util.Arrays.asList("a","b","c","d","e","f","g")));
-        assertTrue(TeamBar.countsForced(java.util.Arrays.asList("a","b","c","d","e","f","g","h")));
-    }
-
     /**
      * With the heads hidden there is no head row to fill, so a team's name takes the bar's top edge
      * and its objectives follow straight after, instead of hanging below an empty head row.
@@ -292,7 +351,7 @@ public class TeamBarTest {
             false,null,null,0,owners,null,false,0);
         assertTrue("the name did not move up",noHeads.stripTop(0,0)<withHeads.stripTop(0,0));
         // No head row at all: the name sits one gap below the bar's own top edge.
-        assertEquals(TeamBar.OBJECTIVE_GAP,noHeads.stripTop(0,0));
+        assertEquals(TeamBar.LABEL_H+TeamBar.OBJECTIVE_GAP,noHeads.stripTop(0,0));
         assertTrue("the bar kept the empty head row",noHeads.height<withHeads.height);
         // Its objectives follow immediately after the name, and the clock still fits the bar.
         TeamBar.Bar stacked=new TeamBar.Bar(java.util.Collections.singletonList(left),

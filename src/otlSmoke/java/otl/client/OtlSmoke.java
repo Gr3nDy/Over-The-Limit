@@ -164,20 +164,6 @@ public final class OtlSmoke {
     }
     GuiButton find(GuiScreen s,String label){for(GuiButton b:buttons(s))if(b.displayString.equals(label))return b;throw new AssertionError("Missing button "+label);}
 
-    /** Rounded heads change the shape drawn, never the space a head takes. */
-    void checkRoundedHeads(Minecraft mc,TeamBarSettings headOptions){
-        GuiButton row=null;
-        for(GuiButton b:buttons(headOptions))
-            if(b.displayString.startsWith("Rounded heads:")){row=b;break;}
-        require(row!=null,"The team bar has no rounded-heads option");
-        boolean before=UtilitySettings.teamBarRoundedHeads;
-        int squareHead=TeamBar.INSTANCE.bar(mc,false).head;
-        headOptions.actionPerformed(row);
-        require(UtilitySettings.teamBarRoundedHeads!=before,"The rounded-heads option did not toggle");
-        require(TeamBar.INSTANCE.bar(mc,false).head==squareHead,"Rounded heads changed the head size");
-        headOptions.actionPerformed(row);
-        require(UtilitySettings.teamBarRoundedHeads==before,"The rounded-heads option did not toggle back");
-    }
 
     /**
      * Every extra team must still put its heads on the bar. The live server's own teams decide how
@@ -334,12 +320,6 @@ public final class OtlSmoke {
         buildGamemode(mc,gm);
         TeamBar.Bar bar=TeamBar.INSTANCE.bar(mc,true);
         assertMirrored(mc,gm,bar,false);
-        UtilitySettings.teamBarObjectivesCompact=true;
-        try{
-            assertMirrored(mc,gm,TeamBar.INSTANCE.bar(mc,true),true);
-        }finally{
-            UtilitySettings.teamBarObjectivesCompact=false;
-        }
         System.out.println("OTL_GAMEMODE: "+gm.name
             +" left="+bar.owner(0,0)+" right="+bar.owner(1,0)
             +" strips="+bar.leftStrips.size()+"/"+bar.rightStrips.size()
@@ -782,8 +762,8 @@ public final class OtlSmoke {
     /** Two real teams with tab entries, so every gamemode fixture has heads to mirror. */
     void prepareGamemodes(Minecraft mc){
         UtilitySettings.teamBar=true;UtilitySettings.teamBarObjectives=true;
-        UtilitySettings.teamBarControlPoints=false;UtilitySettings.teamBarObjectivesCompact=false;
-        UtilitySettings.teamBarHideHeads=false;UtilitySettings.teamBarPlayers=5;UtilitySettings.teamBarSize=100;
+        UtilitySettings.teamBarControlPoints=false;
+        UtilitySettings.teamBarNumbers=false;UtilitySettings.teamBarPlayers=5;UtilitySettings.teamBarSize=100;
         net.minecraft.scoreboard.Scoreboard board=mc.theWorld.getScoreboard();
         for(String team:new String[]{"red","blue"})if(board.getTeam(team)==null)board.createTeam(team);
         board.getTeam("red").setNamePrefix("\u00a7c");
@@ -1357,11 +1337,11 @@ public final class OtlSmoke {
                 ((KillFeedSettings)mc.currentScreen).actionPerformed(find(mc.currentScreen,"Back"));require(mc.currentScreen==editor,"Widget settings did not return to editor");
                 editor.actionPerformed(find(editor,"Mods"));require(mc.currentScreen instanceof ModulesScreen,"Mods button did not open modules");
                 ModulesScreen modules=(ModulesScreen)mc.currentScreen;
-                String home=UtilitySettings.profile;UtilitySettings.minimapBorder=true;UtilitySettings.teamBarTeamColor=false;
+                String home=UtilitySettings.profile;UtilitySettings.minimapBorder=true;UtilitySettings.teamBarObjectives=false;
                 String created=Profiles.newProfile();
                 require(created!=null&&created.equals(UtilitySettings.profile),"New profile was not activated");
                 require(UtilitySettings.minimapBorder,"New profile did not start from defaults");
-                require(UtilitySettings.teamBarTeamColor,"A new profile did not get the Team Bar colour line default");
+                require(UtilitySettings.teamBarObjectives,"A new profile did not get the Team Bar default");
                 String json=Profiles.profileExport(created);
                 require(json!=null&&json.contains("\"profile\""),"Profile export was empty");
                 String renamed=Profiles.renameProfile(created,"Shared test");
@@ -1370,8 +1350,8 @@ public final class OtlSmoke {
                 String numbered=Profiles.renameProfile(second,"Shared test");
                 require(numbered.startsWith("Shared test ")&&!numbered.equals("Shared test"),"Duplicate profile name was not numbered");
                 Profiles.switchProfile(home);require(home.equals(UtilitySettings.profile),"Profile switch did not return");
-                require(!UtilitySettings.teamBarTeamColor,"Switching back did not restore the profile's Team Bar colour line");
-                UtilitySettings.teamBarTeamColor=true;
+                require(!UtilitySettings.teamBarObjectives,"Switching back did not restore the profile's Team Bar setting");
+                UtilitySettings.teamBarObjectives=true;
                 UtilitySettings.minimapBorder=true;UtilitySettings.save();
                 require(Profiles.deleteProfile(renamed)&&Profiles.deleteProfile(numbered),"Could not delete temporary profiles");
                 String imported=Profiles.importProfile(json);
@@ -2115,21 +2095,8 @@ public final class OtlSmoke {
                 require(mirror.leftStart(shortRow)+((shortRow.size()-1)*mirror.advance+16)==mirror.column,"A short left row left a gap next to the clock");
                 // Stacked teams must be visibly apart, not butted into one block of heads.
                 require(mirror.height==2*16+TeamBar.ROW_GAP,"Stacked team rows were not separated: "+mirror.height);
-                // Team-colour line: at each row's own outer end, clock still centred.
-                java.util.List<java.util.List<String>> oneRow=java.util.Collections.singletonList(longRow);
-                TeamBar.Bar lined=new TeamBar.Bar(oneRow,oneRow,16,24,null,"",7);
-                require(lined.leftLine(longRow)==0,"The left team line did not sit on the row's outer end");
-                require(lined.rightLine(longRow)+(7-2)==lined.width,"The right team line did not sit on the row's outer end");
-                require(lined.textX+lined.textW/2==lined.width/2,"The team line moved the clock off centre");
-                boolean lineSetting=UtilitySettings.teamBarTeamColor;
-                UtilitySettings.teamBarTeamColor=true;
-                int withLine=TeamBar.INSTANCE.bar(mc,false).width;
-                UtilitySettings.teamBarTeamColor=false;
-                int withoutLine=TeamBar.INSTANCE.bar(mc,false).width;
-                require(withLine>withoutLine,"Turning the team colour line on did not make room for it: "+withLine+" vs "+withoutLine);
-                require(TeamBar.teamColour(mc,sides.get(2).members)==0xFFFF5555,"The team colour line did not read the team's colour: "+Integer.toHexString(TeamBar.teamColour(mc,sides.get(2).members)));
+                require(TeamBar.teamColour(mc,sides.get(2).members)==0xFFFF5555,"The team card did not read the team's colour: "+Integer.toHexString(TeamBar.teamColour(mc,sides.get(2).members)));
                 require(TeamBar.teamColour(mc,sides.get(0).members)==0xFF5555FF,"The second team got the wrong colour");
-                UtilitySettings.teamBarTeamColor=lineSetting;
                 require(bar.head==16,"Five heads per side were not kept at full size");
                 // The Size option still scales the five-player base.
                 int wasSize=UtilitySettings.teamBarSize;
@@ -2187,14 +2154,13 @@ public final class OtlSmoke {
                 // DTM: a monument partly destroyed shows PGM's touch glyph, then a percentage pair.
                 sidebarRow(objBoard,objSidebar,"otl_obj5","\u00a7e\u2733 \u00a7cSouth Monument",2);
                 sidebarRow(objBoard,objSidebar,"otl_obj6","\u00a7e55% \u00a7755/100 \u00a7cEast Monument",1);
-                // The protected settings.json may have compact objectives on; this block tests names.
+                // The protected settings.json may have objectives off; this block tests names.
                 UtilitySettings.teamBarObjectives=true;
-                UtilitySettings.teamBarObjectivesCompact=false;
                 TeamBar.Bar withObjectives=TeamBar.INSTANCE.bar(mc,false);
                 int namedRows=Math.max(withObjectives.left.size(),withObjectives.right.size());
                 require(withObjectives.stripY>=namedRows*withObjectives.band+(namedRows-1)*TeamBar.ROW_GAP,
                     "Named objectives did not stay below the team heads: stripY="+withObjectives.stripY+" rows="+namedRows
-                        +" band="+withObjectives.band+" compact="+UtilitySettings.teamBarObjectivesCompact
+                        +" band="+withObjectives.band
                         +" left="+withObjectives.leftStrips.size()+" right="+withObjectives.rightStrips.size());
                 // Red's column decides its side; its objectives must land on that same side.
                 java.util.Map<String,Integer> objColumns=new java.util.HashMap<>();
@@ -2212,9 +2178,9 @@ public final class OtlSmoke {
                 require(redSide.get(1).parts.size()==3,"The wool row lost a square: "+redSide.get(1).parts.size());
                 require(redSide.get(1).parts.get(0).text==null&&redSide.get(1).parts.get(0).state==0,"A wool row did not start as an untouched square");
                 require(redSide.get(1).parts.get(2).state==2,"A placed wool was not read as placed");
-                // The score row's name sits outward and its number against the clock.
-                require("Red".equals(redSide.get(2).parts.get(0).text)&&"12".equals(redSide.get(2).parts.get(1).text),
-                    "A score row was not mirrored against the clock");
+                // The score row is just the number; the card's own label names the team.
+                require(redSide.get(2).parts.size()==1&&"12".equals(redSide.get(2).parts.get(0).text),
+                    "A score row lost its number");
                 require("North Monument".equals(redSide.get(3).parts.get(0).text),"A goal row lost its name: "+redSide.get(3).parts.get(0).text);
                 require(redSide.get(3).parts.size()==2&&"\u2714".equals(redSide.get(3).parts.get(1).text),
                     "A named monument did not mirror the scoreboard icon");
@@ -2227,23 +2193,15 @@ public final class OtlSmoke {
                     &&"55% 55/100".equals(ChatRules.plain(redSide.get(5).parts.get(1).text)),
                     "A part-destroyed monument folded its precise progress into its name: "
                         +(redSide.get(5).parts.get(1).text==null?"none":ChatRules.plain(redSide.get(5).parts.get(1).text)));
-                UtilitySettings.teamBarHideHeads=false;
-                TeamBarSettings headOptions=new TeamBarSettings(null);headOptions.setWorldAndResolution(mc,854,480);
-                for(boolean compactHeads:new boolean[]{false,true}){
-                    UtilitySettings.teamBarObjectivesCompact=compactHeads;
-                    TeamBar.Bar headsVisible=TeamBar.INSTANCE.bar(mc,false);
-                    headOptions.actionPerformed(find(headOptions,"Hide player heads: OFF"));
-                    TeamBar.Bar headsHidden=TeamBar.INSTANCE.bar(mc,false);
-                    require(headsHidden.head==0&&TeamBar.headAt(headsHidden,0,0)==null,"The hide-heads setting left player heads visible");
-                    require(!headsHidden.leftStrips.isEmpty()||!headsHidden.rightStrips.isEmpty(),"Hiding heads removed objectives");
-                    require(headsHidden.height<=headsVisible.height,"Hiding heads did not reclaim their vertical space");
-                    headOptions.actionPerformed(find(headOptions,"Hide player heads: ON"));
-                    require(!UtilitySettings.teamBarHideHeads,"Player heads did not return after turning the option off");
-                }
-                UtilitySettings.teamBarObjectivesCompact=false;
-                checkRoundedHeads(mc,headOptions);
-                // Left on so the next state's frame shows the rounded shape; reset there.
-                UtilitySettings.teamBarRoundedHeads=true;
+                UtilitySettings.teamBarNumbers=false;
+                TeamBar.Bar headsVisible=TeamBar.INSTANCE.bar(mc,false);
+                UtilitySettings.teamBarNumbers=true;
+                TeamBar.Bar headsHidden=TeamBar.INSTANCE.bar(mc,false);
+                require(headsHidden.head==0&&TeamBar.headAt(headsHidden,0,0)==null,"The numbers mode left player heads visible");
+                require(!headsHidden.leftStrips.isEmpty()||!headsHidden.rightStrips.isEmpty(),"Numbers mode removed objectives");
+                require(headsHidden.height<=headsVisible.height,"Numbers mode did not reclaim the heads' vertical space");
+                UtilitySettings.teamBarNumbers=false;
+                require(TeamBar.INSTANCE.bar(mc,false).head>0,"Player heads did not return after switching back");
                 String longGoal="The Very Long Monument Name Beside The Northern Bridge";
                 java.util.List<Objectives.Part> longObjectiveRow=java.util.Arrays.asList(
                     new Objectives.Part(longGoal,TeamBar.WHITE,-1),
@@ -2278,8 +2236,7 @@ public final class OtlSmoke {
                 sidebarRow(objBoard,objSidebar,"otl_cp1","\u00a7f\u29be \u00a7fTop",9);
                 sidebarRow(objBoard,objSidebar,"otl_cp2","\u00a7c\u29bf \u00a7cCave",8);
                 sidebarRow(objBoard,objSidebar,"otl_cp3","\u00a7925% \u00a7fValley",7);
-                for(boolean compactPointMode:new boolean[]{false,true}){
-                    UtilitySettings.teamBarObjectivesCompact=compactPointMode;
+                {
                     TeamBar.Bar cp=TeamBar.INSTANCE.bar(mc,false);
                     require(cp.pointStrips.get(2).size()==2,"Unclaimed/in-progress neutral points did not stay centred");
                     require(cp.pointStrips.get(redColumn%2).size()==1,"Owned control point did not follow its team");
@@ -2322,12 +2279,9 @@ public final class OtlSmoke {
                 }
                 for(String holder:new String[]{"otl_cp1","otl_cp2","otl_cp3"})objBoard.removeTeam(objBoard.getTeam(holder));
                 objSidebar.setDisplayName(oldPointTitle);
-                UtilitySettings.teamBarObjectivesCompact=false;
-                // Symbolic Touchdown scores are team-coloured arrows and coloured/grey point slots.
-                // They must work independently of the control-point tracking option.
+                UtilitySettings.teamBarObjectives=true;
                 UtilitySettings.teamBarControlPoints=false;
-                for(boolean compactScores:new boolean[]{false,true})for(int blueScore:new int[]{0,3,5}){
-                    UtilitySettings.teamBarObjectivesCompact=compactScores;
+                for(int blueScore:new int[]{0,3,5}){
                     StringBuilder blueSymbols=new StringBuilder("\u00a79\u2794 ");
                     for(int i=0;i<5;i++){
                         if(i==blueScore)blueSymbols.append("\u00a77");
@@ -2349,39 +2303,7 @@ public final class OtlSmoke {
                     require(scoresFound==2,"Symbolic Touchdown scores did not appear as live numbers in both layouts");
                     TeamBar.drawPreview();
                 }
-                // Score display: a bar replaces the number and keeps it for the hover tooltip.
-                for(int scoreStyle=1;scoreStyle<=2;scoreStyle++){
-                    UtilitySettings.teamBarScoreStyle=scoreStyle;
-                    TeamBar.Bar barScores=TeamBar.INSTANCE.bar(mc,false);
-                    int bars=0;
-                    for(int sideIndex=0;sideIndex<2;sideIndex++)for(Objectives.Strip scoreLine:barScores.strips(sideIndex))
-                        for(Objectives.Part part:scoreLine.parts)if(part.fraction>=0){
-                            bars++;
-                            require(part.text==null&&part.name!=null&&part.name.endsWith("/5"),
-                                "A score bar lost its hover number: "+part.name);
-                            require(part.width(mc.fontRendererObj)==(scoreStyle==2?Objectives.BAR_VW:Objectives.BAR_W),
-                                "A score bar used the wrong width");
-                        }
-                    require(bars==2,"The score bar replaced "+bars+" of the two symbolic scores");
-                    TeamBar.drawPreview();
-                    require(org.lwjgl.opengl.GL11.glGetError()==0,"Score bar rendering left a GL error");
-                }
-                UtilitySettings.teamBarScoreStyle=3;
-                boolean previousCompact=UtilitySettings.teamBarObjectivesCompact;
-                for(boolean compactScores:new boolean[]{false,true}){
-                    UtilitySettings.teamBarObjectivesCompact=compactScores;
-                    TeamBar.Bar stackedScores=TeamBar.INSTANCE.bar(mc,false);
-                    int stacked=0;
-                    for(int sideIndex=0;sideIndex<2;sideIndex++)for(Objectives.Strip line:stackedScores.strips(sideIndex))
-                        for(Objectives.Part part:line.parts)if(part.stacked){
-                            stacked++;require(part.text!=null&&ChatRules.plain(part.text).endsWith("/5"),"Stacked score lost its numbers");
-                        }
-                    require(stacked==2&&stackedScores.stripLine>=Objectives.STACK_H,"Stacked scores were missing or overlapped");
-                    TeamBar.drawPreview();
-                    require(org.lwjgl.opengl.GL11.glGetError()==0,"Stacked score rendering left a GL error");
-                }
-                UtilitySettings.teamBarObjectivesCompact=previousCompact;
-                UtilitySettings.teamBarScoreStyle=0;
+                // Score display is always the plain number; nothing else to switch.
                 TeamBar.INSTANCE.symbolicScores.clear();
                 sidebarRow(objBoard,objSidebar,"otl_symB","\u00a79\u2794 \u2b24\u2b24",9);
                 sidebarRow(objBoard,objSidebar,"otl_symR","\u00a7c\u2794 ",8);
@@ -2400,21 +2322,10 @@ public final class OtlSmoke {
                 }
                 objBoard.removeTeam(objBoard.getTeam("otl_symB"));objBoard.removeTeam(objBoard.getTeam("otl_symR"));
                 UtilitySettings.teamBarControlPoints=true;
-                UtilitySettings.teamBarObjectivesCompact=false;
                 UtilitySettings.teamBarObjectives=false;
                 TeamBar.Bar withoutObjectives=TeamBar.INSTANCE.bar(mc,false);
                 require(withoutObjectives.leftStrips.isEmpty()&&withoutObjectives.rightStrips.isEmpty(),"The Objectives option did not hide the strip");
                 UtilitySettings.teamBarObjectives=true;
-                // Compact: markers only, beside the clock on each team's own side.
-                UtilitySettings.teamBarObjectivesCompact=true;
-                TeamBar.Bar compact=TeamBar.INSTANCE.bar(mc,false);
-                int compactRows=Math.max(compact.leftStrips.size(),compact.rightStrips.size());
-                require(compact.stripY==(compact.band-((compactRows-1)*TeamBar.STRIP_LINE+Objectives.HEIGHT))/2,
-                    "Compact marker rows were not aligned with the clock and heads");
-                java.util.List<Objectives.Strip> redCompact=redColumn%2==0?compact.leftStrips:compact.rightStrips;
-                require(redCompact.size()==2&&redCompact.get(0).parts.size()==3&&redCompact.get(1).parts.size()==3,
-                    "Six objectives did not form two balanced compact rows");
-                require(!compact.leftStrips.isEmpty()||!compact.rightStrips.isEmpty(),"Compact objectives vanished");
                 // A team with nobody online still needs its own side of the clock: PGM keeps
                 // printing that team's goals, and with no column they all fell in on the left.
                 net.minecraft.scoreboard.Scoreboard sideBoard=mc.theWorld.getScoreboard();
@@ -2426,8 +2337,7 @@ public final class OtlSmoke {
                 sidebarRow(sideBoard,sideObjective,"otl_sideBH","\u00a79Blue",12);
                 sidebarRow(sideBoard,sideObjective,"otl_sideNB","\u00a7c0% \u00a7cNorth Monument",11);
                 sidebarRow(sideBoard,sideObjective,"otl_sideSB","\u00a7c0% \u00a7cSouth Monument",10);
-                for(boolean markersOnly:new boolean[]{false,true}){
-                    UtilitySettings.teamBarObjectivesCompact=markersOnly;
+                {
                     TeamBar.Bar monuments=TeamBar.INSTANCE.bar(mc,false);
                     int blueCount=0,redCount=0;
                     for(int sideIndex=0;sideIndex<2;sideIndex++){
@@ -2446,7 +2356,6 @@ public final class OtlSmoke {
                     require(blueCount==2,"Multiple blue monuments did not reach blue's side: "+blueCount);
                     require(redCount==2,"Multiple red monuments did not reach red's side: "+redCount);
                 }
-                UtilitySettings.teamBarObjectivesCompact=true;
                 if(sideBoard.getTeam("playerless")==null)sideBoard.createTeam("playerless");
                 sidebarRow(sideBoard,sideObjective,"otl_side1","\u00a7aPlayerless",2);
                 sidebarRow(sideBoard,sideObjective,"otl_side2"," \u00a7a\u2B1C",1);
@@ -2475,28 +2384,9 @@ public final class OtlSmoke {
                 for(String holder:new String[]{"otl_sideRH","otl_sideBH","otl_sideNR","otl_sideSR","otl_sideNB","otl_sideSB"})
                     sideBoard.removeTeam(sideBoard.getTeam(holder));
                 sideBoard.removeTeam(sideBoard.getTeam("playerless"));
-                java.util.List<Objectives.Strip> compactLines=new ArrayList<>(compact.leftStrips);
-                compactLines.addAll(compact.rightStrips);
-                for(Objectives.Strip s:compactLines)
-                    for(Objectives.Part part:s.parts)if(part.text!=null)
-                        require(part.marker,"Compact objectives kept a name: "+part.text);
-                require(compact.leftStripX+TeamBar.stripWidth(compact.leftStrips)<compact.textX,"The left objectives overlapped the clock");
-                require(compact.rightStripX>compact.textX+compact.textW,"The right objectives overlapped the clock");
-                require(compact.textX+compact.textW/2==compact.width/2,"Compact objectives pushed the clock off centre");
-                // Hovering a compact objective names it, since compact mode draws no names.
-                if(!compact.leftStrips.isEmpty()){
-                    Objectives.Strip line=compact.leftStrips.get(0);
-                    int x=compact.stripX(0,line)+line.parts.get(0).space+1;
-                    int y=compact.stripY+1;
-                    require(TeamBar.objectiveAt(compact,x,y,mc.fontRendererObj)!=null,
-                        "Hovering a compact objective showed no name");
-                    require(TeamBar.objectiveAt(compact,0,0,mc.fontRendererObj)==null,
-                        "Empty space named an objective");
-                }
                 // The editor's own preview bar, measured numerically: the strip and the clock must
                 // share one centre there too, and a screenshot would only show the previous frame.
                 mc.displayGuiScreen(new HudEditor());
-                UtilitySettings.teamBarObjectivesCompact=false;
                 TeamBar.Bar previewBar=TeamBar.INSTANCE.bar(mc,true);
                 require(!previewBar.leftStrips.isEmpty()||!previewBar.rightStrips.isEmpty(),"The editor preview lost the objective strip");
                 require(previewBar.textX+previewBar.textW/2==previewBar.width/2,"The editor preview clock is off centre");
@@ -2545,14 +2435,8 @@ public final class OtlSmoke {
             }else if(state==81){
                 // The frame drawn during the wait above carries the named objectives: keep it.
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-team-bar-objectives.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
-                // Rounded heads were switched on at the end of the previous state, so this frame has them.
-                System.out.println("OTL_SMOKE: rounded heads at capture="+UtilitySettings.teamBarRoundedHeads);
-                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-team-bar-rounded.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
-                UtilitySettings.teamBarRoundedHeads=false;
                 // The frame drawn during the wait above used the 150% bar; keep it as evidence.
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-team-bar-large.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
-                // Compact for the next frame, so 82 can screenshot it with its markers drawn.
-                UtilitySettings.teamBarObjectivesCompact=true;
                 UtilitySettings.teamBarPlayers=5;UtilitySettings.teamBarSize=100;
                 // The respawn lands a tick after the grey name, so the head clears here.
                 tabEntry(mc,"RedPlayer0","\u00a7cRedPlayer0");
@@ -2669,17 +2553,15 @@ public final class OtlSmoke {
                 UtilitySettings.teamBarHeader=0;
                 headerObjective.setDisplayName(oldTitle);
                 // The sidebar wipes above dropped the objective rows; put them back so the next
-                // frame draws the compact strip and 82 can screenshot it.
+                // frame draws the strip and 82 can screenshot it.
                 sidebar(mc.theWorld.getScoreboard(),mc.theWorld.getScoreboard().getObjective("otl_teambar"),"Time Remaining: 9:50");
                 sidebarRow(mc.theWorld.getScoreboard(),mc.theWorld.getScoreboard().getObjective("otl_teambar"),"otl_obj1","\u00a7cRed",6);
                 sidebarRow(mc.theWorld.getScoreboard(),mc.theWorld.getScoreboard().getObjective("otl_teambar"),"otl_obj2"," \u00a7c\u2B1C \u00a79\u2592 \u00a7e\u2B1B",5);
                 sidebarRow(mc.theWorld.getScoreboard(),mc.theWorld.getScoreboard().getObjective("otl_teambar"),"otl_obj3","\u00a7f12 \u00a7cRed",4);
                 sidebarRow(mc.theWorld.getScoreboard(),mc.theWorld.getScoreboard().getObjective("otl_teambar"),"otl_obj4","\u00a7a\u2714 \u00a7cNorth Monument",3);
-                UtilitySettings.teamBarObjectivesCompact=true;
             }else if(state==82){
-                // The frame drawn during the wait above is compact: markers only, beside the clock.
-                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-team-bar-compact.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
-                UtilitySettings.teamBarObjectivesCompact=false;
+                // The frame drawn during the wait above still shows the objective strip.
+                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-team-bar-objectives.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
                 // The strip must follow the sidebar rows away, not outlive them.
                 net.minecraft.scoreboard.Scoreboard gone=mc.theWorld.getScoreboard();
                 net.minecraft.scoreboard.ScoreObjective goneSidebar=gone.getObjective("otl_teambar");
@@ -3006,13 +2888,12 @@ public final class OtlSmoke {
                 TeamBar.Bar ffa=TeamBar.INSTANCE.bar(mc,false);
                 require(ffa!=null,"The FFA bar vanished");
                 require(ffa.ffa&&"12/200".equals(ffa.ffaScores.get("ffaplayer1"))&&"7".equals(ffa.ffaScores.get("ffaplayer2")),"FFA scores were not matched to their players");
-                UtilitySettings.teamBarHideHeads=true;
+                UtilitySettings.teamBarNumbers=true;
                 TeamBar.Bar ffaHidden=TeamBar.INSTANCE.bar(mc,false);
                 require(ffaHidden.head==0&&"12/200".equals(ffaHidden.ffaScores.get("ffaplayer1"))&&ffaHidden.height<ffa.height,
-                    "Hiding FFA heads removed scores or failed to reclaim their space");
+                    "Numbers mode removed FFA scores or failed to reclaim their space");
                 require(TeamBar.headBounds(ffaHidden,"FfaPlayer1")==null,"A hidden FFA head remained clickable");
-                UtilitySettings.teamBarHideHeads=false;
-                require(ffa.line==0,"FFA still drew a team-colour line: "+ffa.line);
+                UtilitySettings.teamBarNumbers=false;
                 int heads=0;
                 for(java.util.List<String> members:ffa.left)heads+=members.size();
                 for(java.util.List<String> members:ffa.right)heads+=members.size();
@@ -3044,7 +2925,7 @@ public final class OtlSmoke {
                 java.util.List<TeamBar.Side> withParty=TeamBar.sides(mc);
                 require(TeamBar.isFfa(withParty),"A party stopped the bar reading FFA as FFA");
                 TeamBar.Bar partyBar=TeamBar.INSTANCE.bar(mc,false);
-                require(partyBar!=null&&partyBar.line==0,"A party brought the team-colour line back to FFA");
+                require(partyBar!=null&&!partyBar.ffa,"A party stopped the bar reading FFA as FFA");
                 int partyHeads=0;
                 for(java.util.List<String> members:partyBar.left)partyHeads+=members.size();
                 for(java.util.List<String> members:partyBar.right)partyHeads+=members.size();

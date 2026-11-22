@@ -8,23 +8,8 @@ import static org.junit.Assert.*;
 
 /** The objective strip is read from PGM's own sidebar rows, so nothing can be invented. */
 public class ObjectivesTest {
-    @Test public void stackedTextUsesOnlyKnownNumericTargets(){
-        int previous=UtilitySettings.teamBarScoreStyle;
-        try{
-            UtilitySettings.teamBarScoreStyle=3;
-            Objectives.Part score=one("\u00a7f100\u00a78/\u00a77200 \u00a7cRed").get(0);
-            assertTrue(score.stacked);assertEquals("100/200",ChatRules.plain(score.text));
-            assertFalse(one("5 Red").get(0).stacked);
-            assertFalse(one("5/0 Red").get(0).stacked);
-            Objectives.Part percent=one("55% Core").get(0);
-            assertEquals("55%",percent.text);assertFalse(percent.stacked);
-        }finally{UtilitySettings.teamBarScoreStyle=previous;}
-    }
     @Test public void sharedFlagsStayCentredWhateverTheirState(){
-        int previous=UtilitySettings.teamBarScoreStyle;
-        try{
-            UtilitySettings.teamBarScoreStyle=0;
-            java.util.Map<String,Integer> columns=new java.util.HashMap<>();columns.put("red",0);columns.put("blue",1);
+        java.util.Map<String,Integer> columns=new java.util.HashMap<>();columns.put("red",0);columns.put("blue",1);
             java.util.Map<Character,String> colours=new java.util.HashMap<>();colours.put('c',"red");colours.put('9',"blue");
             for(boolean compact:new boolean[]{false,true}){
                 for(boolean trackPoints:new boolean[]{false,true}){
@@ -48,13 +33,9 @@ public class ObjectivesTest {
             assertEquals("\u2794",leftArrow.text);assertFalse(leftArrow.mirror);
             java.util.List<Objectives.Entry> returned=Objectives.entries(java.util.Collections.singletonList("\u00a79\u2691 \u00a7fFootball"),TEAMS,null,colours);
             assertTrue(returned.get(0).shared);
-        }finally{UtilitySettings.teamBarScoreStyle=previous;}
     }
     @Test public void carriedFlagArrowsMirrorOnTheRightWithoutMovingTheirTeam(){
-        int previous=UtilitySettings.teamBarScoreStyle;
-        try{
-            UtilitySettings.teamBarScoreStyle=0;
-            java.util.Map<String,Integer> columns=new java.util.HashMap<>();columns.put("red",0);columns.put("blue",1);
+        java.util.Map<String,Integer> columns=new java.util.HashMap<>();columns.put("red",0);columns.put("blue",1);
             java.util.List<Objectives.Entry> entries=Objectives.entries(java.util.Arrays.asList(
                 "Red","\u00a7c\u2794 \u00a7fRed Flag","Blue","\u00a79\u2794 \u00a7fBlue Flag"),TEAMS);
             for(boolean compact:new boolean[]{false,true}){
@@ -69,7 +50,6 @@ public class ObjectivesTest {
                 assertEquals(TeamBar.chatColour('9'),rightArrow.colour);
                 if(!compact)assertEquals("Blue Flag",right.get(1).text);
             }
-        }finally{UtilitySettings.teamBarScoreStyle=previous;}
     }
     private static final List<String> TEAMS=Arrays.asList("red","blue");
 
@@ -250,66 +230,43 @@ public class ObjectivesTest {
         assertEquals(TeamBar.chatColour('c'),parts.get(1).colour);
     }
 
-    @Test public void scoreRowsKeepPgmOrderWithTheTeamsOwnColour(){
+    @Test public void scoreRowsKeepTheNumberAndItsOwnColour(){
         List<Objectives.Part> parts=one("\u00a7f5 \u00a7cRed");
+        assertEquals(1,parts.size());
         assertEquals("5",parts.get(0).text);
         assertEquals(TeamBar.WHITE,parts.get(0).colour);
-        assertEquals("Red",parts.get(1).text);
-        assertEquals(TeamBar.chatColour('c'),parts.get(1).colour);
+        assertEquals("red",parts.get(0).name);
         assertEquals("3/10",one("\u00a7f3/10 \u00a79Blue").get(0).text);
     }
 
-    @Test public void numericTeamScoresUseTheirExplicitTargetForBars(){
-        int previous=UtilitySettings.teamBarScoreStyle;
-        try{
-            for(int style=1;style<=2;style++){
-                UtilitySettings.teamBarScoreStyle=style;
-                for(boolean compact:new boolean[]{false,true}){
-                    java.util.Map<String,Integer> columns=new java.util.HashMap<>();
-                    columns.put("red",0);columns.put("blue",1);
-                    List<List<List<Objectives.Part>>> rows=Objectives.split(Objectives.entries(Arrays.asList(
-                        "\u00a7f0\u00a78/\u00a77200 \u00a7cRed", "\u00a7f100/200 \u00a79Blue"),TEAMS),columns,compact);
-                    Objectives.Part red=rows.get(0).get(0).get(compact?0:1),blue=rows.get(1).get(0).get(0);
-                    assertEquals(0F,red.fraction,0.001F);
-                    assertEquals(0.5F,blue.fraction,0.001F);
-                    assertEquals("Red 0/200",red.name);
-                    assertEquals(TeamBar.chatColour('c'),red.colour);
-                    assertNull(red.text);
-                }
-                assertEquals(-1F,one("5 Red").get(0).fraction,0F);
-                assertEquals(-1F,one("5/0 Red").get(0).fraction,0F);
-                assertEquals(1F,one("250/200 Red").get(0).fraction,0F);
-            }
-            UtilitySettings.teamBarScoreStyle=0;
-            assertEquals("0/200",one("0/200 Red").get(0).text);
-        }finally{UtilitySettings.teamBarScoreStyle=previous;}
+    @Test public void numericTeamScoresShowTheNumberAndTheTeamName(){
+        for(boolean compact:new boolean[]{false,true}){
+            java.util.Map<String,Integer> columns=new java.util.HashMap<>();
+            columns.put("red",0);columns.put("blue",1);
+            List<List<List<Objectives.Part>>> rows=Objectives.split(Objectives.entries(Arrays.asList(
+                "\u00a7f0\u00a78/\u00a77200 \u00a7cRed", "\u00a7f100/200 \u00a79Blue"),TEAMS),columns,compact);
+            Objectives.Part red=rows.get(0).get(0).get(0),blue=rows.get(1).get(0).get(0);
+            assertEquals("0/200",ChatRules.plain(red.text));
+            assertEquals("100/200",ChatRules.plain(blue.text));
+            assertEquals("red",red.name);
+        }
+        assertEquals("0/200",ChatRules.plain(one("0/200 Red").get(0).text));
+        assertEquals("5",ChatRules.plain(one("5 Red").get(0).text));
     }
 
-    @Test public void percentageObjectivesFollowTheDisplayChoiceAndKeepExactHover(){
-        int previous=UtilitySettings.teamBarScoreStyle;
-        try{
-            for(int style=1;style<=2;style++){
-                UtilitySettings.teamBarScoreStyle=style;
-                for(boolean compact:new boolean[]{false,true}){
-                    java.util.Map<String,Integer> columns=new java.util.HashMap<>();columns.put("red",0);
-                    java.util.List<Objectives.Entry> entries=Objectives.entries(java.util.Arrays.asList(
-                        "Red","\u00a7e55% \u00a7755/100 \u00a7cCore"),TEAMS);
-                    java.util.List<java.util.List<java.util.List<Objectives.Part>>> sides=Objectives.split(entries,columns,compact);
-                    java.util.List<Objectives.Part> row=sides.get(0).get(compact?0:1);
-                    Objectives.Part bar=row.get(compact?0:1);
-                    assertNull(bar.text);
-                    assertEquals(.55F,bar.fraction,0.001F);
-                    assertEquals("Core 55% 55/100",bar.name);
-                    assertEquals(TeamBar.chatColour('e'),bar.colour);
-                    Objectives.Strip strip=new Objectives.Strip(java.util.Collections.singletonList(bar),24);
-                    assertEquals(.55F,Objectives.packPointLines(java.util.Collections.singletonList(strip),40).get(0).parts.get(0).fraction,0.001F);
-                }
-                assertEquals(1F,one("999% Core").get(0).fraction,0F);
-                assertEquals(-1F,one("\u2714 Core").get(0).fraction,0F);
-            }
-            UtilitySettings.teamBarScoreStyle=0;
-            assertEquals("55%",one("55% Core").get(0).text);
-        }finally{UtilitySettings.teamBarScoreStyle=previous;}
+    @Test public void percentageObjectivesKeepTheirExactHover(){
+        for(boolean compact:new boolean[]{false,true}){
+            java.util.Map<String,Integer> columns=new java.util.HashMap<>();columns.put("red",0);
+            java.util.List<Objectives.Entry> entries=Objectives.entries(java.util.Arrays.asList(
+                "Red","\u00a7e55% \u00a7755/100 \u00a7cCore"),TEAMS);
+            java.util.List<java.util.List<java.util.List<Objectives.Part>>> sides=Objectives.split(entries,columns,compact);
+            java.util.List<Objectives.Part> row=sides.get(0).get(compact?0:1);
+            Objectives.Part shown=row.get(compact?0:1);
+            assertEquals("55% 55/100",ChatRules.plain(shown.text));
+            assertEquals("Core",shown.name);
+            assertEquals(TeamBar.chatColour('e'),shown.colour);
+        }
+        assertEquals("999%",ChatRules.plain(one("999% Core").get(0).text));
     }
 
     @Test public void pgmScoreKeepsWhiteCurrentDarkGreySlashAndGreyLimitInBothModes(){
@@ -319,14 +276,11 @@ public class ObjectivesTest {
             List<List<List<Objectives.Part>>> sides=Objectives.split(Objectives.entries(Arrays.asList(
                 "\u00a7f340\u00a78/\u00a77750 \u00a7cRed",
                 "\u00a7f254 \u00a78/\u00a77750 \u00a79Blue"),TEAMS),columns,compact);
-            Objectives.Part left=sides.get(0).get(0).get(compact?0:1),right=sides.get(1).get(0).get(0);
+            Objectives.Part left=sides.get(0).get(0).get(0),right=sides.get(1).get(0).get(0);
             assertEquals("340\u00a78/\u00a77750",left.text);
             assertEquals("254 \u00a78/\u00a77750",right.text);
             assertEquals(TeamBar.WHITE,left.colour);assertEquals(TeamBar.WHITE,right.colour);
-            if(!compact){
-                assertEquals(TeamBar.chatColour('c'),sides.get(0).get(0).get(0).colour);
-                assertEquals(TeamBar.chatColour('9'),sides.get(1).get(0).get(1).colour);
-            }
+            assertEquals("red",left.name);assertEquals("blue",right.name);
         }
         assertEquals("1234\u00a78/\u00a771500",one("\u00a7f1234\u00a78/\u00a771500 \u00a7cRed").get(0).text);
     }

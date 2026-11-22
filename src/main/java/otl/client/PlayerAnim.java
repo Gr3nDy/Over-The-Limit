@@ -31,7 +31,12 @@ final class PlayerAnim {
     private static final int PUSH_TICKS=9;
     /** Ticks the emote pose takes to fade in. */
     private static final float EMOTE_FADE=4f;
-
+    /**
+     * The mesh is baked in real-world metres (0.815 x 0.217 x 0.131, wheels at Y=0). Real size is
+     * tiny next to a Minecraft player, whose head alone is half a block wide, so the board is drawn
+     * 1.6x: about 1.3 blocks long, the size a boat reads at. This is the one number to change.
+     */
+    private static final float BOARD_SCALE=1.6f;
     private static final class State {
         float board,prevBoard;
         boolean wantsBoard;
@@ -66,41 +71,71 @@ final class PlayerAnim {
         return mc!=null&&mc.thePlayer!=null&&state(mc.thePlayer).wantsBoard;
     }
 
-    /** Pushes the pose for one render frame onto the model, before its limbs draw. */
+    /** True while this player has an emote running, so the rig is installed only for emotes. */
+    static boolean emoting(EntityPlayer p){
+        Minecraft mc=MinecraftAccess.get();
+        if(mc==null||p==null)return false;
+        State s=STATES.get(p.getEntityId());
+        return s!=null&&s.emote>=0;
+    }
+
+    /**
+     * Draws the board under the local skater after the vanilla model has rendered. This replaces
+     * the old mainModel swap, which Lunar/OptiFine turned into a full-screen white flash.
+     *
+     * <p>{@code RenderPlayerEvent.Post} runs in camera space, after the renderer popped the entity
+     * transform, so the player's own position has to be applied here before anything else.
+     */
+    static void renderBoard(EntityPlayer p,float partial,double x,double y,double z){
+        Minecraft mc=MinecraftAccess.get();
+        if(mc==null||p!=mc.thePlayer)return;
+        State s=STATES.get(p.getEntityId());
+        if(s==null||s.board<=0.001f)return;
+        float board=s.prevBoard+(s.board-s.prevBoard)*partial;
+        float boardDrop=(1f-board)*0.40f;
+        float boardX=-0.9f*(1f-board),boardY=0f,boardZ=0f;
+        if(s.ollieAt>=0){
+            float phase=(p.ticksExisted+partial-s.ollieAt)/OLLIE_TICKS;
+            if(phase>=0f&&phase<=1f){
+                if(s.trick==0)boardX+=-0.85f*phase;
+                else if(s.trick==1)boardZ=2f*(float)Math.PI*phase;
+                else boardY=(float)Math.PI*phase;
+            }
+        }
+        net.minecraft.client.renderer.GlStateManager.pushMatrix();
+        try{
+            // The x/y/z given to the renderer are already camera-relative: RendererLivingEntity
+            // translates by exactly these before drawing the model. They are the player's feet.
+            net.minecraft.client.renderer.GlStateManager.translate(x,y,z);
+            // Vanilla turns the model by 180 - bodyYaw; the board needs the same turn, or it keeps
+            // pointing the same way no matter which direction the player rides.
+            net.minecraft.client.renderer.GlStateManager.rotate(180f-bodyYaw(p,partial),0f,1f,0f);
+            // The mesh already has the wheels at Y=0, so no lift is needed to rest on the ground.
+            net.minecraft.client.renderer.GlStateManager.translate(0f,boardDrop,0f);
+            net.minecraft.client.renderer.GlStateManager.rotate(boardX*57.29578f,1f,0f,0f);
+            net.minecraft.client.renderer.GlStateManager.rotate(boardY*57.29578f,0f,1f,0f);
+            net.minecraft.client.renderer.GlStateManager.rotate(boardZ*57.29578f,0f,0f,1f);
+            // Scaled about the wheels, which sit at Y=0, so the board grows upward and stays grounded.
+            net.minecraft.client.renderer.GlStateManager.scale(BOARD_SCALE,BOARD_SCALE,BOARD_SCALE);
+            ObjSkateboard.render();
+        }finally{
+            net.minecraft.client.renderer.GlStateManager.popMatrix();
+        }
+    }
+
+    /** The body yaw vanilla would use for this frame, wrapped the same way it wraps it. */
+    private static float bodyYaw(EntityPlayer p,float partial){
+        float d=p.renderYawOffset-p.prevRenderYawOffset;
+        while(d<-180f)d+=360f;
+        while(d>=180f)d-=360f;
+        return p.prevRenderYawOffset+d*partial;
+    }
+
+    /** Pushes the emote pose for one render frame. Riding never touches the player's model. */
     static void apply(AnimatedModelPlayer model,EntityPlayer p,float swing,float amount,float age){
         Minecraft mc=MinecraftAccess.get();
-        float partial=Math.max(0f,Math.min(1f,age-p.ticksExisted));
         State s=STATES.get(p.getEntityId());
-        // Nothing is touched until the player asks for it: vanilla behaviour stays exactly vanilla.
-        if(s!=null&&s.board>0.001f&&p==mc.thePlayer){
-            AnimPose pose=SCRATCH;
-            pose.reset();
-            float board=s.prevBoard+(s.board-s.prevBoard)*partial;
-            float push=-1f;
-            if(s.pushAt>=0){
-                float phase=(age-s.pushAt)/PUSH_TICKS;
-                if(phase>=0f&&phase<=1f)push=phase;
-            }
-            AnimClips.skate(pose,push);
-            pose.board=true;
-            // Blocks, not model units: this translate runs in the same space as a rotation point.
-            pose.boardDrop=(1f-board)*0.40f;
-            pose.boardX=-0.9f*(1f-board);
-            if(s.ollieAt>=0){
-                float phase=(age-s.ollieAt)/OLLIE_TICKS;
-                if(phase>=0f&&phase<=1f)AnimClips.ollie(pose,phase,s.trick);
-            }
-            poseModel(model,pose);
-            model.boardOut=true;
-            model.boardX=pose.boardX;
-            model.boardY=pose.boardY;
-            model.boardZ=pose.boardZ;
-            model.boardDrop=pose.boardDrop;
-            model.elbowRight=pose.elbowRight;model.elbowLeft=pose.elbowLeft;
-            model.kneeRight=pose.kneeRight;model.kneeLeft=pose.kneeLeft;
-            model.elbowRightZ=pose.elbowRightZ;model.elbowLeftZ=pose.elbowLeftZ;
-            model.kneeRightZ=pose.kneeRightZ;model.kneeLeftZ=pose.kneeLeftZ;
-        }
+        // The skateboard is drawn separately in renderBoard; the player model stays vanilla.
         if(s!=null&&p==mc.thePlayer)emote(model,s,age);
     }
 

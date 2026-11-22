@@ -7,6 +7,9 @@
 - **Emotes** - press **B** to cycle wave, dance and cheer. You need to be standing still; the pose fades in over a fifth of a second and the camera switches to the front third-person view so you can see it. Left-clicking ends the emote and that click is swallowed, so it cannot also punch. Taking damage, walking, opening a screen, pressing F5, dying or leaving the world ends it too, and the saved perspective is restored. Both keys are rebindable in Controls, and the module has its own switch plus an **Emote camera** switch.
 
 ### Fixed
+- English kill feed messages such as `Alex was slain by Player's Iron Sword` now show the attacker and weapon instead of treating the whole phrase as a mob.
+- Team cards sit side by side with heads level with the clock, scores on their own cards, aligned objectives, and separate background and outline opacity.
+- Improved translated kill-feed messages and tooltip layout, and enlarged the client-side skateboard.
 - **Team Bar clock sat left of centre** - the bar's default anchor was a hand-tuned fraction that only landed on the screen centre at the width of the editor's preview bar. Every real bar sat a pixel or three left, and a wide one drifted far enough to see. It is now a true centre anchor, exact at every bar and screen width.
 
 ### Notes

@@ -67,15 +67,20 @@ public class AnimPoseTest {
         assertJointsSane("skate",p);
     }
 
-    @Test public void theSkateStanceTurnsOnlyTheBodyForSidewaysRiding(){
-        // A controlled body yaw is intentional for skating; head roll and sideways tilt are not.
+    @Test public void theSkateStanceTurnsTheFeetAcrossTheDeck(){
+        // Riding side-on is the whole stance: both feet turn about the hip, the chest stays part
+        // way back toward the direction of travel, and the head is left to the game.
         for(float push=-1f;push<1.01f;push+=0.11f){
             AnimPose p=new AnimPose();
             AnimClips.skate(p,push);
+            assertTrue("the front foot did not turn across the deck",
+                Math.abs(p.angle[AnimPose.LEFT_LEG+1])>0.9f);
+            assertTrue("the back foot did not turn across the deck",
+                Math.abs(p.angle[AnimPose.RIGHT_LEG+1])>0.9f);
             assertEquals("head turned",0f,p.angle[AnimPose.HEAD+1],1e-6f);
             assertEquals("head tilted sideways",0f,p.angle[AnimPose.HEAD+2],1e-6f);
             assertEquals("body tilted sideways",0f,p.angle[AnimPose.BODY+2],1e-6f);
-            assertEquals("body yaw",-0.58f,p.angle[AnimPose.BODY+1],1e-6f);
+            assertEquals("body yaw",0.42f,p.angle[AnimPose.BODY+1],1e-6f);
         }
     }
 

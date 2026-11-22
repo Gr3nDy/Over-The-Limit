@@ -36,7 +36,8 @@ public class KillFeedRulesTest {
         assertNotNull(german);
         assertEquals("Alex",german.victim);
         assertEquals("Bob",german.killer);
-        assertEquals(KillFeedRules.Cause.DEATH,german.cause);
+        // A named killer is a player kill, so it keeps the melee icon instead of an unknown bone.
+        assertEquals(KillFeedRules.Cause.MELEE,german.cause);
         assertFalse(german.suicide());
         assertTrue(german.ownKill("Bob"));
         // The same rule has to hold in a language with no Latin word order to lean on.
@@ -146,8 +147,12 @@ public class KillFeedRulesTest {
         KillFeedRules.Death lava=KillFeedRules.parse("Victim was punched into lava by Killer");
         assertEquals(KillFeedRules.Cause.MELEE,lava.cause);assertEquals(KillFeedRules.Context.LAVA,lava.context());assertTrue(lava.extraContext());
         KillFeedRules.Death fire=KillFeedRules.parse("Victim went up in flames");
-        assertEquals(KillFeedRules.Context.FIRE,fire.context());assertTrue(fire.suicide());assertTrue(fire.extraContext());
-        assertEquals(KillFeedRules.Context.LAVA,KillFeedRules.parse("Victim fell into lava").context());
+        assertEquals(KillFeedRules.Context.FIRE,fire.context());assertTrue(fire.suicide());
+        // Nobody attacked, so the one icon in front says it; a second at the end would repeat it.
+        assertFalse(fire.extraContext());
+        KillFeedRules.Death drowned=KillFeedRules.parse("Victim fell into lava");
+        assertEquals(KillFeedRules.Context.LAVA,drowned.context());
+        assertTrue(drowned.suicide());assertFalse(drowned.extraContext());
         assertEquals(KillFeedRules.Context.LAVA,KillFeedRules.parse("Victim was burnt to a crisp by Killer's Lava").context());
         assertEquals(KillFeedRules.Context.FALL,KillFeedRules.parse("Victim hit the ground too hard").context());
         assertEquals(KillFeedRules.Context.VOID,KillFeedRules.parse("Victim fell out of the world").context());
@@ -283,14 +288,14 @@ public class KillFeedRulesTest {
         assertEquals(KillFeedRules.Cause.DROWN,KillFeedRules.parse("Alex \u0437\u0430\u0431\u044b\u043b, \u043a\u0430\u043a \u0434\u044b\u0448\u0430\u0442\u044c","ru_RU").cause);
         // English keeps using the hand-written templates rather than the generated table.
         assertEquals(KillFeedRules.Cause.BOW,KillFeedRules.parse("Alex was shot by Bob from 12 blocks","en_US").cause);
-        // A language with no table falls back to reading the names, and stays a plain death. Without
-        // a list of known accounts there is nothing to read, so nothing is claimed.
+        // A language with no table falls back to reading the names. A named killer is a player kill
+        // (a melee icon, not a bone); a lone victim is never enough to claim a death at all.
         assertNull(KillFeedRules.parse("Alex \u0432\u044b\u043f\u0430\u043b \u0438\u0437 \u043c\u0438\u0440\u0430","tlh_AA"));
         java.util.function.Predicate<String> players=known("Alex","Bob");
         KillFeedRules.Death unknown=KillFeedRules.parse("Alex wurde durch Bob get\u00f6tet",players,"tlh_AA");
         assertNotNull(unknown);
         assertEquals("Alex",unknown.victim);
         assertEquals("Bob",unknown.killer);
-        assertEquals(KillFeedRules.Cause.DEATH,unknown.cause);
+        assertEquals(KillFeedRules.Cause.MELEE,unknown.cause);
     }
 }

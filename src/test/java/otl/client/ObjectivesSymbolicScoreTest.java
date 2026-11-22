@@ -26,11 +26,11 @@ public class ObjectivesSymbolicScoreTest {
                 for(int side=0;side<2;side++){
                     boolean blueSide=side==columns.get(MapInfo.norm(blue));
                     List<Objectives.Part> row=sides.get(side).get(0);
-                    Objectives.Part score=row.get(compact||side==1?0:1);
+                    Objectives.Part score=row.get(0);
                     assertEquals(blueSide?"0/5":"2/5",ChatRules.plain(score.text));
                     assertEquals(TeamBar.chatColour(blueSide?'9':'c'),score.colour);
                     assertEquals(blueSide?"Pats":"Bucs",score.name);
-                    if(!compact)assertEquals(blueSide?"Pats":"Bucs",row.get(side==0?0:1).text);
+                    assertEquals(1,row.size());
                     assertEquals(1,Objectives.compactRows(Collections.singletonList(Collections.singletonList(score))).size());
                 }
             }
@@ -85,40 +85,17 @@ public class ObjectivesSymbolicScoreTest {
         assertEquals(-1,tracker.limit);
     }
 
-    @Test public void scoreDisplayCanBeAHorizontalOrVerticalBarWithTheNumberOnHover(){
+    @Test public void scoreDisplayIsAlwaysThePlainNumber(){
         Map<Character,String> colours=Collections.singletonMap('9',"blue");
         List<String> teams=Collections.singletonList("blue");
         String row="\u00a79\u2794 \u2b24\u2b24\u00a77\u2b24\u2b24\u2b24";
-        int was=UtilitySettings.teamBarScoreStyle;
-        try{
-            for(int style:new int[]{0,1,2,3}){
-                UtilitySettings.teamBarScoreStyle=style;
-                Objectives.ScoreTracker tracker=new Objectives.ScoreTracker();
-                Objectives.Part part=Objectives.entries(Collections.singletonList(row),teams,null,colours,tracker).get(0).parts.get(0);
-                if(style==0||style==3){
-                    assertEquals("2/5",ChatRules.plain(part.text));
-                    assertEquals(-1F,part.fraction,0F);
-                    assertEquals("blue",part.name);
-                    assertEquals(style==3,part.stacked);
-                }else{
-                    assertNull(part.text);
-                    assertEquals(.4F,part.fraction,1e-6F);
-                    assertEquals("blue 2/5",part.name);
-                    assertEquals(style==2?Objectives.BAR_VW:Objectives.BAR_W,part.width(null));
-                }
-            }
-            // No confirmed target: there is nothing to fill, so the number stays as points.
-            UtilitySettings.teamBarScoreStyle=1;
-            Objectives.Part points=Objectives.entries(Collections.singletonList("\u00a79\u2794 \u2b24\u2b24"),
-                teams,null,colours,new Objectives.ScoreTracker()).get(0).parts.get(0);
-            assertEquals("2 pts",points.text);
-            assertEquals(-1F,points.fraction,0F);
-            UtilitySettings.teamBarScoreStyle=3;
-            points=Objectives.entries(Collections.singletonList("\u00a79\u2794 \u2b24\u2b24"),
-                teams,null,colours,new Objectives.ScoreTracker()).get(0).parts.get(0);
-            assertEquals("2 pts",points.text);assertFalse(points.stacked);
-        }finally{
-            UtilitySettings.teamBarScoreStyle=was;
-        }
+        Objectives.Part part=Objectives.entries(Collections.singletonList(row),teams,null,colours,
+            new Objectives.ScoreTracker()).get(0).parts.get(0);
+        assertEquals("2/5",ChatRules.plain(part.text));
+        assertEquals("blue",part.name);
+        // No confirmed target: the number stays as points.
+        Objectives.Part points=Objectives.entries(Collections.singletonList("\u00a79\u2794 \u2b24\u2b24"),
+            teams,null,colours,new Objectives.ScoreTracker()).get(0).parts.get(0);
+        assertEquals("2 pts",points.text);
     }
 }

@@ -54,14 +54,16 @@ final class TeamBar {
     private static final int BASE_HEAD=16,MIN_HEAD=2,GAP=8;
     /** Space between stacked team rows, so two teams never read as one block of heads. */
     static final int ROW_GAP=4;
-    /** Gap between the team-colour line and its heads. */
-    private static final int LINE_GAP=2;
     /** Gap between an objective line and the clock it sits beside. */
     static final int OBJECTIVE_GAP=4;
     /** Height of one objective line; the stack is this tall per sidebar row. */
     static final int STRIP_LINE=10;
     /** A team count row: the number, then the team's colour bar underneath. */
-    static final int COUNT_BAND=12,COUNT_LINE=2;
+    static final int COUNT_BAND=20,COUNT_LINE=2;
+    /** The team name line at the top of each card, and the plate's inner padding. */
+    static final int LABEL_H=10,CARD_PAD=3;
+    /** Minimum card width, so a one-head team still has room for its name. */
+    static final int LABEL_MIN=40;
     /** Teams at which heads no longer fit under the clock, so the bar counts them instead. */
     static final int COUNT_TEAMS=8;
     /** The sixteen chat colour codes as RGB, for the team-colour line. */
@@ -79,8 +81,13 @@ final class TeamBar {
     private static final Pattern COLOUR=Pattern.compile("\u00a7([0-9a-fA-F])");
     /** PGM puts observers in their own team; it must never become one of the two sides. */
     private static final Pattern OBSERVERS=Pattern.compile("(?i).*\\b(observers?|spectators?|spec)\\b.*");
-    /** A welcome block's heading: the map name between runs of dashes or spaces. */
-    private static final Pattern HEADING=Pattern.compile("^\\W{2,}\\s*(\\S(?:.*?\\S)?)\\s*\\W{2,}$");
+    /**
+     * A welcome block's heading: the map name between two runs of one repeated non-word character.
+     * PGM wraps it in strikethrough on one map and in plain spaces on another, and both read the
+     * same on every client. A sentence in any language is not a run of one character, so it can
+     * never be mistaken for a rule.
+     */
+    private static final Pattern HEADING=Pattern.compile("^(\\W)\\1+\\s*(\\S(?:.*?\\S)?)\\s*(\\W)\\3+$");
     /**
      * Dead state for drawing only. It changes on a death or respawn, not between frames, and each
      * lookup is a tab-list read plus a regex, so it is refreshed a few times a second.
@@ -211,8 +218,6 @@ final class TeamBar {
     /** One frame of the bar: a stack of team rows per column plus the clock, already sized to fit. */
     static final class Bar {
         final List<List<String>> left,right;
-        /** Space reserved on the outer edge of each column for the team-colour line; 0 when off. */
-        final int line;
         final int head,advance,column,leftEnd,rightX,textX,textW,width,height,band;
         /** Team counts instead of heads: one cell per team, and how wide that cell is. */
         final boolean counts;
@@ -226,8 +231,12 @@ final class TeamBar {
         /** Top of the objective stack and its total height, both inside the bar. */
         final int stripY,stripH;
         final int stripLine,pointLine,neutralLine;
+        /** Height of the team-name line above each card's heads: the clock's row starts below it. */
+        final int labelTop;
         /** Row tops per column, and where each objective line is drawn. */
         final int[] leftRowTops,rightRowTops,leftStripTops,rightStripTops;
+        /** Each row's team block: where it starts and how wide it is. Blocks sit side by side. */
+        private final int[] leftRowX,leftRowW,rightRowX,rightRowW;
         /** The team each head row belongs to; null, or shorter than the rows, means unknown. */
         private final List<String> leftOwners,rightOwners;
         final Timer timer;
@@ -271,38 +280,37 @@ final class TeamBar {
             this.ffa=false;this.ffaScores=Collections.emptyMap();
             this.left=left;this.right=right;this.head=head;this.advance=advance(head);this.timer=timer;
             this.compact=compact;this.counts=counts;this.cell=cell;
-            this.line=line;
             this.header=header;
             this.leftOwners=leftOwners;this.rightOwners=rightOwners;
-            this.leftStrips=leftStrips==null?Collections.<Objectives.Strip>emptyList():leftStrips;
-            this.rightStrips=rightStrips==null?Collections.<Objectives.Strip>emptyList():rightStrips;
+            this.leftStrips=cardHeadersDropped(leftStrips,left,leftOwners);
+            this.rightStrips=cardHeadersDropped(rightStrips,right,rightOwners);
             this.pointStrips=points==null?Arrays.asList(Collections.<Objectives.Strip>emptyList(),Collections.<Objectives.Strip>emptyList(),Collections.<Objectives.Strip>emptyList()):points;
-            boolean vertical=UtilitySettings.teamBarScoreStyle==2&&(hasScoreBars(this.leftStrips)||hasScoreBars(this.rightStrips)
-                ||hasScoreBars(this.pointStrips.get(0))||hasScoreBars(this.pointStrips.get(1))||hasScoreBars(this.pointStrips.get(2)));
-            boolean stacked=hasStackedScores(this.leftStrips)||hasStackedScores(this.rightStrips)
-                ||hasStackedScores(this.pointStrips.get(0))||hasStackedScores(this.pointStrips.get(1))||hasStackedScores(this.pointStrips.get(2));
-            int contentHeight=stacked?Objectives.STACK_H:vertical?Objectives.BAR_VH:Objectives.HEIGHT;
-            this.stripLine=stacked||vertical?contentHeight+2:STRIP_LINE;
-            this.pointLine=pointLine(this.pointStrips.get(0),this.pointStrips.get(1));
-            this.neutralLine=pointLine(this.pointStrips.get(2),Collections.<Objectives.Strip>emptyList());
-            // Both columns take the widest row, so the clock keeps the exact centre of the bar
-            // and does not shift when players join or leave one side.
-            int w=0;
-            for(List<String> members:left)w=Math.max(w,rowWidth(members));
-            for(List<String> members:right)w=Math.max(w,rowWidth(members));
-            // The colour line sits on the outer edge, so the widest row plus the line is the column.
-            this.column=w+line;
+            boolean vertical=false;
+            boolean stacked=false;
+            int contentHeight=Objectives.HEIGHT;
+            this.stripLine=STRIP_LINE;
+            this.pointLine=STRIP_LINE;
+            this.neutralLine=STRIP_LINE;
+            // Each side is one row of team blocks, side by side: a four-team map grows the bar
+            // sideways instead of stacking its teams into a tall column that eats the screen.
+            int[] leftBlocks=blockWidths(left,leftOwners),rightBlocks=blockWidths(right,rightOwners);
+            // The colour line sits on the outer edge, so the widest block plus the line is the column.
+            this.column=Math.max(widest(leftBlocks),widest(rightBlocks))+line;
             this.textW=textW;
-            // A side is as wide as its longest line, and each side's heads hug their own strip.
-            // The bar is sized for the wider side and the clock sits on its exact centre, so the
-            // narrower side just leaves its spare room on the outside instead of a gap by the clock.
             int leftW=TeamBar.stripWidth(this.leftStrips),rightW=TeamBar.stripWidth(this.rightStrips);
             this.leftStripW=leftW;
-            int leftRoom=compact?column+GAP+(leftW==0?0:leftW+OBJECTIVE_GAP):Math.max(column+GAP,leftW+OBJECTIVE_GAP);
-            int rightRoom=compact?column+GAP+(rightW==0?0:rightW+OBJECTIVE_GAP):Math.max(column+GAP,rightW+OBJECTIVE_GAP);
+            // The objectives are printed under the cards, not beside the heads, so they are not
+            // allowed to size the bar: a line that grows or disappears (a score, a wool state, a
+            // control point) would otherwise shove every head sideways while the match runs.
+            int leftRoom=compact?column+GAP+(leftW==0?0:leftW+OBJECTIVE_GAP):blocksWide(leftBlocks)+GAP;
+            int rightRoom=compact?column+GAP+(rightW==0?0:rightW+OBJECTIVE_GAP):blocksWide(rightBlocks)+GAP;
             int half=Math.max(leftRoom,rightRoom);
-            half=Math.max(half,TeamBar.stripWidth(pointStrips.get(0))+GAP+(compact&&leftW>0?leftW+OBJECTIVE_GAP:0));
-            half=Math.max(half,TeamBar.stripWidth(pointStrips.get(1))+GAP+(compact&&rightW>0?rightW+OBJECTIVE_GAP:0));
+            if(compact){
+                half=Math.max(half,TeamBar.stripWidth(pointStrips.get(0))+GAP+(leftW>0?leftW+OBJECTIVE_GAP:0));
+                half=Math.max(half,TeamBar.stripWidth(pointStrips.get(1))+GAP+(rightW>0?rightW+OBJECTIVE_GAP:0));
+            }
+            // A control point is centred under the clock, so it is the one line that must be able to
+            // fit on the bar: it cannot be pulled to an edge without losing its centre.
             half=Math.max(half,(TeamBar.stripWidth(pointStrips.get(2))-textW+1)/2);
             for(Objectives.Strip strip:pointStrips.get(2))
                 half=Math.max(half,Math.max(strip.centre,strip.width-strip.centre)-(textW/2));
@@ -312,6 +320,17 @@ final class TeamBar {
             this.textX=half;
             this.leftEnd=textX-GAP-(!compact||leftW==0?0:leftW+OBJECTIVE_GAP);
             this.rightX=textX+textW+GAP+(!compact||rightW==0?0:rightW+OBJECTIVE_GAP);
+            // Blocks are packed outward from the clock: the left side ends on its own edge, the
+            // right starts at the clock, so a team keeps its place on the bar for the whole match.
+            this.leftRowX=new int[left.size()];this.leftRowW=new int[left.size()];
+            this.rightRowX=new int[right.size()];this.rightRowW=new int[right.size()];
+            placeBlocks(left,leftOwners,leftBlocks,leftRowX,leftRowW,leftEnd-blocksWide(leftBlocks));
+            placeBlocks(right,rightOwners,rightBlocks,rightRowX,rightRowW,rightX);
+            if(compact){
+                // No cards here: every row keeps hugging the clock, as it always did.
+                for(int r=0;r<leftRowX.length;r++)leftRowX[r]=leftEnd-leftRowW[r];
+                for(int r=0;r<rightRowX.length;r++)rightRowX[r]=rightX;
+            }
             // Each line sits against the clock on its own side, right-aligned on the left.
             this.rightStripX=textX+textW+OBJECTIVE_GAP;
             this.leftStripX=textX-OBJECTIVE_GAP-leftW;
@@ -327,6 +346,10 @@ final class TeamBar {
             this.leftStripTops=new int[this.leftStrips.size()];
             this.rightStripTops=new int[this.rightStrips.size()];
             this.stripY=compact?(band-(lines==0?Objectives.HEIGHT:(lines-1)*stripLine+contentHeight))/2:stack+OBJECTIVE_GAP;
+            // The clock is read level with the first head row, so the team-name line that sits
+            // above those heads also sits above the clock's row; otherwise the clock looked like it
+            // floated a few pixels high and the heads hung under it.
+            this.labelTop=compact?0:(labelled(leftOwners)||labelled(rightOwners)?LABEL_H:0);
             int standardHeight;
             if(compact){
                 for(int r=0;r<left.size();r++)leftRowTops[r]=r*(band+ROW_GAP);
@@ -341,9 +364,10 @@ final class TeamBar {
                 // With heads hidden there is no head row to fill: the team's name takes the bar's
                 // own top edge and everything under it moves up, instead of hanging below a gap.
                 int rowH=head>0||counts?band:0;
+                int headsBottom=labelTop+rowH*Math.max(maxTeamRows(leftOwners),maxTeamRows(rightOwners));
                 standardHeight=Math.max(
-                    layout(left,leftOwners,this.leftStrips,leftRowTops,leftStripTops,band,rowH,stripLine),
-                    layout(right,rightOwners,this.rightStrips,rightRowTops,rightStripTops,band,rowH,stripLine));
+                    layout(left,leftOwners,this.leftStrips,leftRowTops,leftStripTops,band,rowH,stripLine,headsBottom),
+                    layout(right,rightOwners,this.rightStrips,rightRowTops,rightStripTops,band,rowH,stripLine,headsBottom));
             }
             this.pointY=standardHeight+OBJECTIVE_GAP;
             int ownedRows=Math.max(pointStrips.get(0).size(),pointStrips.get(1).size());
@@ -364,7 +388,7 @@ final class TeamBar {
         Bar(List<List<String>> rows,int head,int cell,int textW,Timer timer,String label,Header header,int headerW,
             Map<String,String> scores,List<Objectives.Strip> middle){
             this.ffa=true;this.ffaScores=scores;this.left=rows;this.right=Collections.emptyList();
-            this.head=head;this.advance=cell;this.line=0;this.compact=false;this.header=header;
+            this.head=head;this.advance=cell;this.compact=false;this.header=header;
             this.counts=false;this.cell=0;
             this.timer=timer;this.label=label;this.textW=textW;this.leftOwners=null;this.rightOwners=null;
             this.leftStrips=Collections.emptyList();this.rightStrips=Collections.emptyList();
@@ -372,18 +396,18 @@ final class TeamBar {
             // Shared flags already use this slot on a team map; in FFA everything does.
             this.pointStrips=Arrays.asList(Collections.<Objectives.Strip>emptyList(),
                 Collections.<Objectives.Strip>emptyList(),centre);
-            boolean vertical=UtilitySettings.teamBarScoreStyle==2&&hasScoreBars(centre);
-            boolean stacked=hasStackedScores(centre);
-            int contentHeight=stacked?Objectives.STACK_H:vertical?Objectives.BAR_VH:Objectives.HEIGHT;
-            this.neutralLine=stacked||vertical?contentHeight+2:STRIP_LINE;
+            this.neutralLine=STRIP_LINE;
             this.stripLine=STRIP_LINE;this.pointLine=STRIP_LINE;
             int widest=0;for(List<String> row:rows)widest=Math.max(widest,row.size()*cell);
             for(Objectives.Strip one:centre)widest=Math.max(widest,2*Math.max(one.centre,one.width-one.centre));
             this.width=Math.max(Math.max(widest,textW),headerW)+2;
             this.textX=(width-textW)/2;this.column=0;this.leftEnd=0;this.rightX=0;
             this.leftStripX=0;this.rightStripX=0;this.leftStripW=0;this.band=head;
+            this.labelTop=0;
             this.leftRowTops=new int[rows.size()];this.rightRowTops=new int[0];
             this.leftStripTops=new int[0];this.rightStripTops=new int[0];
+            this.leftRowX=new int[0];this.leftRowW=new int[0];
+            this.rightRowX=new int[0];this.rightRowW=new int[0];
             // Clock, then the grid, then the objectives under the last head row: on a free-for-all
             // map a control point or a flag scores the players above it, so it belongs under them.
             this.stripY=0;this.stripH=0;this.pointY=0;
@@ -394,12 +418,24 @@ final class TeamBar {
             this.height=Math.max(9,centre.isEmpty()?rowsBottom:neutralPointY+centre.size()*neutralLine)
                 +(header==null?0:HEADER_H);
         }
-        /** Left edge of one objective line, against the clock on its own side. */
+        /** Left edge of one objective line: on its own team's card, or beside the clock. */
         int stripX(int side,Objectives.Strip one){
-            if(side==2)return leftEnd-one.width;
-            if(side==3)return rightX;
-            if(side==4)return width/2-one.centre;
-            return side==0?textX-OBJECTIVE_GAP-one.width:rightStripX;
+            // Kept inside the bar: a line wider than the room reserved for it is pulled to the
+            // bar's edge instead of running off the screen.
+            if(side==2)return Math.max(0,leftEnd-one.width);
+            if(side==3)return Math.min(rightX,width-one.width);
+            if(side==4)return Math.max(0,Math.min(width/2-one.centre,width-one.width));
+            if(!compact){
+                List<String> owners=side==0?leftOwners:rightOwners;
+                int[] xs=side==0?leftRowX:rightRowX;
+                if(owners!=null)for(int r=0;r<owners.size()&&r<xs.length;r++)
+                    if(sameTeam(owners.get(r),one.team)){
+                        int spare=rowW(side,r)-one.width;
+                        int offset=one.score?spare/2:side==0?spare:0;
+                        return Math.max(0,Math.min(xs[r]+offset,width-one.width));
+                    }
+            }
+            return side==0?Math.max(0,textX-OBJECTIVE_GAP-one.width):Math.min(rightStripX,width-one.width);
         }
         List<Objectives.Strip> strips(int side){return side==0?leftStrips:side==1?rightStrips:pointStrips.get(side-2);}
         int lineHeight(int side){return side<2?stripLine:side==4?neutralLine:pointLine;}
@@ -418,22 +454,27 @@ final class TeamBar {
             return stripTop(side)+index*lineHeight(side);
         }
         /**
-         * Stacks one column's head blocks and gives each team's objectives the space directly
-         * under that team's own block, so a block can never drift under another team's row.
-         * Objectives of teams with no heads online fall in below the stack, as they did before.
+         * Lays each of a side's team blocks out from the same top line and lets every block grow
+         * downwards on its own, so the blocks sit side by side instead of in a tall stack. Each
+         * team's objectives stay directly under its own heads.
          * {@code band} is the clock's own row, which the column never gets shorter than;
          * {@code rowH} is what a head row takes, which is nothing when the heads are hidden.
          * Returns the column's bottom, measured inside the bar.
          */
         private static int layout(List<List<String>> rows,List<String> owners,List<Objectives.Strip> strips,
-                                  int[] rowTops,int[] stripTops,int band,int rowH,int stripLine){
+                                  int[] rowTops,int[] stripTops,int band,int rowH,int stripLine,int headsBottom){
             boolean[] placed=new boolean[strips.size()];
-            int y=0,r=0;
+            int bottom=band;
+            int r=0;
             while(r<rows.size()){
                 String owner=ownerAt(owners,r);
                 int from=r;
                 if(owner==null)r++;
                 else do{r++;}while(r<rows.size()&&owner.equals(ownerAt(owners,r)));
+                // Each named team's block starts with its own name line, so the card can enclose
+                // the label, the heads and that team's objectives as one thing.
+                int y=0;
+                if(owner!=null&&r>from)y+=LABEL_H;
                 for(int i=from;i<r;i++){rowTops[i]=y;y+=rowH;}
                 if(owner!=null){
                     boolean any=false;
@@ -443,32 +484,48 @@ final class TeamBar {
                     // team's heads or pile up at the bottom.
                     for(int i=0;i<strips.size();i++){
                         if(placed[i]||!sameTeam(strips.get(i).team,owner))continue;
-                        if(!any){y+=OBJECTIVE_GAP;any=true;}
+                        if(!any){y=headsBottom+OBJECTIVE_GAP;any=true;}
                         stripTops[i]=y;y+=stripLine;placed[i]=true;
                     }
                 }
-                if(r<rows.size())y+=ROW_GAP;
+                bottom=Math.max(bottom,y);
             }
-            boolean leftover=false;
-            for(boolean done:placed)if(!done){leftover=true;break;}
             if(rows.isEmpty()){
-                // No heads at all: keep the stack below the clock's own row.
-                y=rowH+(strips.isEmpty()?0:OBJECTIVE_GAP);
-            }else if(leftover)y+=OBJECTIVE_GAP;
-            for(int i=0;i<strips.size();i++)if(!placed[i]){stripTops[i]=y;y+=stripLine;}
-            return Math.max(band,y);
+                int y=rowH+(strips.isEmpty()?0:OBJECTIVE_GAP);
+                for(int i=0;i<strips.size();i++)if(!placed[i]){stripTops[i]=y;y+=stripLine;}
+                return Math.max(band,y);
+            }
+            // Objectives of teams with no heads online fall in below every card.
+            int y=bottom+OBJECTIVE_GAP;
+            for(int i=0;i<strips.size();i++)if(!placed[i]){stripTops[i]=y;y+=stripLine;bottom=y;}
+            return bottom;
         }
-        private static boolean hasScoreBars(List<Objectives.Strip> strips){
-            for(Objectives.Strip strip:strips)for(Objectives.Part part:strip.parts)if(part.fraction>=0)return true;
-            return false;
+        private static int maxTeamRows(List<String> owners){
+            int max=0,run=0;
+            String last=null;
+            if(owners!=null)for(String team:owners){
+                run=team!=null&&team.equals(last)?run+1:1;
+                max=Math.max(max,run);
+                last=team;
+            }
+            return max;
         }
-        private static int pointLine(List<Objectives.Strip> a,List<Objectives.Strip> b){
-            if(hasStackedScores(a)||hasStackedScores(b))return Objectives.STACK_H+2;
-            if(UtilitySettings.teamBarScoreStyle==2&&(hasScoreBars(a)||hasScoreBars(b)))return Objectives.BAR_VH+2;
-            return STRIP_LINE;
+        /**
+         * A bare team-name row is dropped when that team already has a card, because the card
+         * prints the name itself. A team with nobody online keeps its row: it has no card, so the
+         * row is the only thing naming its objectives.
+         */
+        private static List<Objectives.Strip> cardHeadersDropped(List<Objectives.Strip> strips,List<List<String>> rows,List<String> owners){
+            if(strips==null||strips.isEmpty())return Collections.emptyList();
+            List<Objectives.Strip> out=new ArrayList<>();
+            for(Objectives.Strip one:strips){
+                if(one.header&&hasHeads(rows,owners,one.team))continue;
+                out.add(one);
+            }
+            return out;
         }
-        private static boolean hasStackedScores(List<Objectives.Strip> strips){
-            for(Objectives.Strip strip:strips)for(Objectives.Part part:strip.parts)if(part.stacked)return true;
+        private static boolean hasHeads(List<List<String>> rows,List<String> owners,String team){
+            for(int r=0;r<rows.size();r++)if(sameTeam(ownerAt(owners,r),team))return true;
             return false;
         }
         private static String ownerAt(List<String> owners,int row){
@@ -477,17 +534,111 @@ final class TeamBar {
         private static boolean sameTeam(String a,String b){
             return a!=null&&b!=null&&Objectives.sameTeam(a,b);
         }
+        /** Whether any row on this side prints a team name above its heads. */
+        private static boolean labelled(List<String> owners){
+            if(owners!=null)for(String owner:owners)if(owner!=null)return true;
+            return false;
+        }
         /**
-         * Where a right-column row starts: flush against the clock, growing outward to the right,
-         * so an empty tail always falls on the bar's outside and never next to the clock.
+         * The width of each run of rows, one per team block: its widest head row, or its name when
+         * that is wider. Runs are contiguous by construction (see {@link #layout}).
          */
-        int rightStart(List<String> members){return rightX;}
-        /** Where a left-column row starts: flush against the clock, growing outward to the left. */
-        int leftStart(List<String> members){return ffa?(width-members.size()*advance)/2+(advance-head)/2:leftEnd-rowWidth(members);}
-        /** The team-colour line for a left row: at the row's outer end, not stranded in the gap. */
-        int leftLine(List<String> members){return leftEnd-line-rowWidth(members);}
-        /** The team-colour line for a right row: just past the row's outer end. */
-        int rightLine(List<String> members){return rightX+rowWidth(members)+LINE_GAP;}
+        private int[] blockWidths(List<List<String>> rows,List<String> owners){
+            int[] out=new int[rows.size()];
+            int r=0,n=0;
+            while(r<rows.size()){
+                String owner=ownerAt(owners,r);
+                int from=r;
+                if(owner==null)r++;
+                else do{r++;}while(r<rows.size()&&owner.equals(ownerAt(owners,r)));
+                int w=0;
+                for(int i=from;i<r;i++)w=Math.max(w,rowWidth(rows.get(i)));
+                if(owner!=null)w=Math.max(w,nameWidth(owner));
+                out[n++]=w;
+            }
+            return n==out.length?out:Arrays.copyOf(out,n);
+        }
+        private static int widest(int[] widths){
+            int w=0;
+            for(int one:widths)w=Math.max(w,one);
+            return w;
+        }
+        /** How much room a side's blocks need: their widths plus one gap between each pair. */
+        private static int blocksWide(int[] widths){
+            int w=0;
+            for(int one:widths)w+=one;
+            return widths.length<2?w:w+(widths.length-1)*GAP;
+        }
+        /** Packs one side's blocks in a row from {@code start}, so they must never overlap. */
+        private static void placeBlocks(List<List<String>> rows,List<String> owners,int[] widths,
+                                        int[] rowX,int[] rowW,int start){
+            int r=0,g=0,x=start;
+            while(r<rows.size()){
+                String owner=ownerAt(owners,r);
+                int from=r;
+                if(owner==null)r++;
+                else do{r++;}while(r<rows.size()&&owner.equals(ownerAt(owners,r)));
+                int w=g<widths.length?widths[g++]:0;
+                for(int i=from;i<r;i++){rowX[i]=x;rowW[i]=w;}
+                x+=w+GAP;
+            }
+        }
+        /** The left edge and width of the block that holds one row. */
+        int rowX(int side,int row){return side==0?leftRowX[row]:rightRowX[row];}
+        int rowW(int side,int row){return side==0?leftRowW[row]:rightRowW[row];}
+        /**
+         * Where one row's heads start: inside its own team's block, right-aligned on the left so a
+         * block hugs the clock and left-aligned on the right.
+         */
+        int headX(int side,int row){
+            List<String> members=(side==0?left:right).get(row);
+            if(ffa)return (width-members.size()*advance)/2+(advance-head)/2;
+            return side==0?rowX(0,row)+rowW(0,row)-rowWidth(members):rowX(1,row);
+        }
+        /**
+         * One team's rows merged into a single rectangle, so the card can enclose them. A team's
+         * rows are contiguous by construction (see {@link #layout}), so a run of equal owners is
+         * one team. Rows with no owner - the editor's placeholders - are their own block and get
+         * no card.
+         */
+        List<Block> blocks(int side){
+            if(ffa)return Collections.emptyList();
+            List<List<String>> rows=side==0?left:right;
+            List<String> owners=side==0?leftOwners:rightOwners;
+            List<Block> out=new ArrayList<>();
+            int r=0;
+            while(r<rows.size()){
+                String owner=ownerAt(owners,r);
+                int from=r;
+                if(owner==null)r++;
+                else do{r++;}while(r<rows.size()&&owner.equals(ownerAt(owners,r)));
+                int w=rowW(side,from);
+                List<String> members=new ArrayList<>();
+                for(int i=from;i<r;i++)members.addAll(rows.get(i));
+                // The plate must also hold the team's name, which can be wider than one head;
+                // blockWidths already reserved it, so the block's own width is the whole plate.
+                // The card starts on the team's name line and runs down over its own objectives.
+                int top=owner==null?rowTop(side,from):rowTop(side,from)-LABEL_H;
+                int bottom=rowTop(side,r-1)+band;
+                if(owner!=null)for(int i=0;i<strips(side).size();i++){
+                    if(!sameTeam(strips(side).get(i).team,owner))continue;
+                    bottom=Math.max(bottom,stripTop(side,i)+lineHeight(side));
+                }
+                out.add(new Block(owner,rowX(side,from),top,w,bottom-top,members));
+            }
+            return out;
+        }
+    }
+
+    /** One team's card: where it sits, and who is on it. */
+    static final class Block {
+        /** The scoreboard team, or null for the editor's placeholder rows. */
+        final String team;
+        final int x,y,w,h;
+        final List<String> members;
+        Block(String team,int x,int y,int w,int h,List<String> members){
+            this.team=team;this.x=x;this.y=y;this.w=w;this.h=h;this.members=members;
+        }
     }
 
     @SubscribeEvent(priority=EventPriority.LOWEST,receiveCanceled=true) public void chat(ClientChatReceivedEvent event){
@@ -497,15 +648,16 @@ final class TeamBar {
             return;
         }
         String formatted=event.message.getFormattedText();
-        // A welcome block always opens with the map name wrapped in a rule of dashes or spaces, so
-        // the name is the first line between them. That rule carries no words, which is what makes
-        // this read the same on every client; the author line below it is translated, so it is only
-        // read when the client's own language is English.
-        // Only a line that actually is a heading replaces the pending one: every other message would
-        // otherwise clear it before the author line that completes it arrives.
+        // A welcome block always opens with the map name wrapped in a rule, so the name is the
+        // first line between the runs. That rule carries no words, which is what makes this read
+        // the same on every client; the author line below it is translated, so it is only read
+        // when the client's own language is English.
+        // The heading is the map change itself, so it announces on its own: on a translated client
+        // the "Playing <map>" line and the kickoff line are both translated, and the block's
+        // closing rule can be spaces, which is not a welcomeEnd.
         if(!ChatRules.playerMessage(formatted)){
             String heading=welcomeHeading(formatted);
-            if(heading!=null)welcomeTitle=heading;
+            if(heading!=null){announce(heading,"");welcomeTitle=heading;}
         }
         for(String line:ChatRules.plain(event.message.getUnformattedText()).split("[\\r\\n]+")){
             String text=line.trim();
@@ -548,17 +700,17 @@ final class TeamBar {
     }
 
     /**
-     * The map name at the top of a welcome block: the first line, wrapped in the strikethrough rule
-     * PGM puts around it. Strikethrough is formatting, not a word, so this reads the same on every
-     * client; the name between the rule is the map itself.
+     * The map name at the top of a welcome block: the first line, wrapped in the rule PGM puts
+     * around it. The rule is formatting, not a word - strikethrough on one map, plain spaces on
+     * another - so this reads the same on every client; the name between the rule is the map.
      */
     static String welcomeHeading(String formatted){
         if(formatted==null)return null;
         for(String line:formatted.split("[\\r\\n]+")){
             if(line.trim().isEmpty())continue;
-            if(!line.contains("\u00a7m"))return null;
             Matcher m=HEADING.matcher(ChatRules.plain(line));
-            String title=m.matches()?m.group(1).trim():"";
+            String title=m.matches()?m.group(2).trim():"";
+            if("Match Stats".equalsIgnoreCase(title))return null;
             // A rule with no name in it is not a heading: a map name always has a letter or digit.
             return title.matches(".*[A-Za-z0-9\\u00C0-\\uFFFF].*")?title:null;
         }
@@ -818,7 +970,7 @@ final class TeamBar {
         // needs to be known and still needs a side.
         Map<String,Integer> columns=teamColumns(allTeams,teamOrder);
         if(ffa){
-            if(UtilitySettings.teamBarHideHeads)head=0;
+            if(UtilitySettings.teamBarNumbers)head=0;
             List<String> pool=preview?new ArrayList<String>():ffaSlots;
             if(preview)for(Side side:sides)pool.addAll(side.members);
             List<String> players=new ArrayList<>();
@@ -842,14 +994,17 @@ final class TeamBar {
             }
             return new Bar(rows,head,cell,textW,timer,label,header,headerW,scores,middle);
         }
-        // Eight teams of heads no longer fit under the clock, so those maps count them instead.
-        boolean counts=!UtilitySettings.teamBarHideHeads&&(UtilitySettings.teamBarCount||countsForced(allTeams));
+        // One mode switch instead of three overlapping flags: heads, or the alive count. Nothing
+        // auto-switches any more, so the option never lies about what you are looking at.
+        boolean counts=UtilitySettings.teamBarNumbers;
         // Wide enough for a two-digit count; the editor's placeholder rows have no team to measure.
         int cell=counts?14:0;
         if(counts)for(Side side:sides)cell=Math.max(cell,mc.fontRendererObj.getStringWidth(Integer.toString(side.members.size()))+8);
         // Objectives go below the counts, never beside the clock, so each team's goals read as part
         // of its own row.
-        boolean compact=UtilitySettings.teamBarObjectivesCompact&&!counts;
+        // Objectives always read as named lines under their own team's card; the compact markers
+        // are gone, because a card with no label cannot say which team it belongs to.
+        boolean compact=false;
         if(UtilitySettings.teamBarObjectives){
             // Each team's objectives sit on the same side of the clock as that team's heads, so a
             // team's goals are always next to its own row. Compact mode keeps only the state icons.
@@ -862,7 +1017,16 @@ final class TeamBar {
             pointStrips=beside.subList(2,5);
         }
         int beside=compact?Math.max(stripWidth(leftStrips)+OBJECTIVE_GAP,stripWidth(rightStrips)+OBJECTIVE_GAP):0;
-        int perRow=perRow(head,line(head,ffa),textW+2*beside,screen);
+        // Each side holds one card per team, side by side, so on a four-team map one side shows
+        // two cards and each gets half the row: the bar widens instead of growing taller.
+        int leftCards=0,rightCards=0;
+        for(int i=0;i<sides.size();i++){
+            Integer columnIndex=columns.get(MapInfo.norm(sides.get(i).name));
+            int index=columnIndex==null?i:columnIndex;
+            if(index%2==0)leftCards++;else rightCards++;
+        }
+        int cards=Math.max(1,Math.max(leftCards,rightCards));
+        int perRow=Math.max(1,perRow(head,0,textW+2*beside,screen)/cards);
         List<List<String>> left=new ArrayList<>(),right=new ArrayList<>();
         // Which team each row belongs to, so a team's objectives can sit under its own block.
         List<String> leftOwners=new ArrayList<>(),rightOwners=new ArrayList<>();
@@ -881,7 +1045,7 @@ final class TeamBar {
             // ten heads; the rest wrap onto the rows below rather than shrinking. A right-column
             // block hugs the clock, so the local head moves to the outer end of its last row.
             // A count is one cell per team, so nothing wraps and nobody is left out of the number.
-            int wrap=counts||UtilitySettings.teamBarHideHeads?Integer.MAX_VALUE:perRow;
+            int wrap=counts?Integer.MAX_VALUE:perRow;
             for(int i=0;i<sides.size();i++){
                 Side side=sides.get(i);
                 List<String> members=new ArrayList<>(side.members.subList(0,Math.min(counts?side.members.size():shown,side.members.size())));
@@ -896,14 +1060,14 @@ final class TeamBar {
                 }
             }
         }
-        // Hidden heads still keep one row per team, so the team-colour line and the objectives stay
-        // where they belong; the row itself shrinks to the line.
-        boolean hideHeads=UtilitySettings.teamBarHideHeads;
+        // Hidden heads still keep one row per team, so the objectives stay where they belong; the
+        // row itself shrinks to the count.
+        boolean hideHeads=counts;
         // Last resort, height only: a stack of many teams can still be taller than the screen.
         int band=COUNT_BAND;
         while(true){
             int h=hideHeads||counts?0:head;
-            Bar fit=new Bar(left,right,h,textW,timer,label,counts?0:line(h,ffa),leftStrips,rightStrips,compact,pointStrips,header,headerW,leftOwners,rightOwners,counts,cell,band);
+            Bar fit=new Bar(left,right,h,textW,timer,label,0,leftStrips,rightStrips,compact,pointStrips,header,headerW,leftOwners,rightOwners,counts,cell,band);
             if(fit.height<=screenH-8)break;
             // Counting has no head to shrink, so the count rows themselves get shorter instead.
             if(counts){if(band<=COUNT_LINE+5)break;band--;}
@@ -911,11 +1075,8 @@ final class TeamBar {
             else break;
         }
         int drawnHead=hideHeads||counts?0:head;
-        return new Bar(left,right,drawnHead,textW,timer,label,counts?0:line(drawnHead,ffa),leftStrips,rightStrips,compact,pointStrips,header,headerW,leftOwners,rightOwners,counts,cell,band);
+        return new Bar(left,right,drawnHead,textW,timer,label,0,leftStrips,rightStrips,compact,pointStrips,header,headerW,leftOwners,rightOwners,counts,cell,band);
     }
-
-    /** Eight teams of heads no longer fit under the clock, so the bar counts them instead. */
-    static boolean countsForced(List<String> teams){return teams.size()>=COUNT_TEAMS;}
 
     /** PGM prints numeric scores as "current/target player" or "current player". */
     static Map<String,String> ffaScores(List<String> rows,List<String> players){
@@ -1054,11 +1215,6 @@ final class TeamBar {
             for(String slot:slots)if(slot!=null&&slot.equalsIgnoreCase(name)){found=true;break;}
             if(!found){int free=slots.indexOf(null);if(free<0)slots.add(name);else slots.set(free,name);}
         }
-    }
-
-    /** Width of the team-colour bar plus the gap to the heads; 0 when off or in FFA. */
-    private static int line(int head,boolean ffa){
-        return !ffa&&UtilitySettings.teamBarTeamColor?Math.max(2,head/5)+LINE_GAP:0;
     }
 
     private static List<String> placeholders(int count){
@@ -1477,10 +1633,10 @@ final class TeamBar {
         int my=sr.getScaledHeight()-Mouse.getY()*sr.getScaledHeight()/mc.displayHeight-1;
         String name=Mouse.isGrabbed()?null:headerAt(bar,mx-box.x,my-box.y,mc.fontRendererObj);
         // A count stands in for the whole team, so hovering it lists who the number is made of.
-        if(name==null&&!Mouse.isGrabbed())name=countAt(bar,mx-box.x,my-box.y,sr.getScaledHeight());
         if(name==null&&!Mouse.isGrabbed())name=headAt(bar,mx-box.x,my-box.y);
-        // The colour line is its own target now that heads can be hidden.
-        if(name==null&&!Mouse.isGrabbed())name=lineAt(bar,mx-box.x,my-box.y);
+        // The card is the group: hovering anywhere on it lists the team, so a card with more
+        // players than it can show still has every head one hover away.
+        if(name==null&&!Mouse.isGrabbed())name=cardAt(bar,mx-box.x,my-box.y,sr.getScaledHeight());
         // Compact objectives have no room for names, so hovering one shows what it is.
         if(name==null&&!Mouse.isGrabbed())name=objectiveAt(bar,mx-box.x,my-box.y,mc.fontRendererObj);
         if(!java.util.Objects.equals(name,hovered)){hovered=name;hoverSince=System.nanoTime();}
@@ -1596,7 +1752,7 @@ final class TeamBar {
             List<List<String>> rows=side==0?bar.left:bar.right;
             for(int row=0;row<rows.size();row++){
                 List<String> members=rows.get(row);int index=members.indexOf(player);
-                if(index>=0)return new int[]{(side==0?bar.leftStart(members):bar.rightStart(members))+index*bar.advance,
+                if(index>=0)return new int[]{bar.headX(side,row)+index*bar.advance,
                     y0+bar.rowTop(side,row)+(bar.band-bar.head)/2};
             }
         }
@@ -1645,48 +1801,28 @@ final class TeamBar {
         return null;
     }
 
-    /** The team whose colour line the pointer is on, so the line names the team it belongs to. */
-    static String lineAt(Bar bar,int x,int y){
-        if(bar.line<=0)return null;
-        int height=bar.head>0?bar.head:bar.band,width=bar.line-LINE_GAP;
+    /**
+     * The roster a team card stands for, shown on hover in both modes. Null when the pointer is
+     * not over a card. The card is the whole group, so this is the "open the group" view.
+     */
+    static String cardAt(Bar bar,int x,int y,int screenHeight){
         y-=bar.header==null?0:HEADER_H;
-        for(int side=0;side<2;side++){
-            List<List<String>> rows=side==0?bar.left:bar.right;
-            for(int r=0;r<rows.size();r++){
-                List<String> members=rows.get(r);
-                int top=bar.rowTop(side,r)+(bar.band-height)/2;
-                int left=side==0?bar.leftLine(members):bar.rightLine(members);
-                if(x>=left-1&&x<left+width+1&&y>=top&&y<top+height)return bar.owner(side,r);
-            }
+        for(int side=0;side<2;side++)for(Block block:bar.blocks(side)){
+            if(block.team==null)continue;
+            if(x<block.x-CARD_PAD||x>=block.x+block.w+CARD_PAD)continue;
+            if(y<block.y||y>=block.y+block.h)continue;
+            return roster(block.team,block.members,screenHeight);
         }
         return null;
     }
 
-    /**
-     * The roster a team count stands for: the team and its size, then one player per line. Null when
-     * the pointer is not over a count. Long teams are cut to what the screen can show.
-     */
-    static String countAt(Bar bar,int x,int y,int screenHeight){
-        if(!bar.counts)return null;
-        y-=bar.header==null?0:HEADER_H;
-        for(int side=0;side<2;side++){
-            List<List<String>> rows=side==0?bar.left:bar.right;
-            for(int r=0;r<rows.size();r++){
-                List<String> members=rows.get(r);
-                if(members.isEmpty())continue;
-                int left=side==0?bar.leftStart(members):bar.rightStart(members);
-                int top=bar.rowTop(side,r);
-                if(x<left||x>=left+bar.cell||y<top||y>=top+bar.band)continue;
-                String team=bar.owner(side,r);
-                StringBuilder out=new StringBuilder(team==null?members.size()+" players"
-                    :team+" ("+members.size()+")");
-                int shown=Math.min(members.size(),Math.max(3,(screenHeight-24)/10-1));
-                for(int i=0;i<shown;i++)out.append('\n').append(members.get(i));
-                if(shown<members.size())out.append("\n+").append(members.size()-shown).append(" more");
-                return out.toString();
-            }
-        }
-        return null;
+    /** A team's name and size, then one player per line, cut to what the screen can show. */
+    static String roster(String team,List<String> members,int screenHeight){
+        StringBuilder out=new StringBuilder(team==null?members.size()+" players":team+" ("+members.size()+")");
+        int shown=Math.min(members.size(),Math.max(3,(screenHeight-24)/10-1));
+        for(int i=0;i<shown;i++)out.append('\n').append(members.get(i));
+        if(shown<members.size())out.append("\n+").append(members.size()-shown).append(" more");
+        return out.toString();
     }
 
     static String headAt(Bar bar,int x,int y){
@@ -1697,7 +1833,7 @@ final class TeamBar {
             for(int r=0;r<rows.size();r++){
                 List<String> members=rows.get(r);
                 int top=bar.rowTop(side,r)+(bar.band-bar.head)/2;
-                int start=side==0?bar.leftStart(members):bar.rightStart(members);
+                int start=bar.headX(side,r);
                 for(int i=0;i<members.size();i++){
                     int left=start+i*bar.advance;
                     if(x>=left&&x<left+bar.head&&y>=top&&y<top+bar.head)return members.get(i);
@@ -1724,7 +1860,9 @@ final class TeamBar {
         if(bar.header!=null)y+=HEADER_H;
         int band=bar.band;
         int hx=0,hy=0;boolean found=false;
-        int lineW=bar.line>0?bar.line-LINE_GAP:0;
+        // Each team is one card: the plate and its border go into the quad pass before the heads,
+        // so the faces sit on top of their own colour.
+        List<Block> leftBlocks=bar.blocks(0),rightBlocks=bar.blocks(1);
         // One tessellator pass for the whole bar: a head is up to 64 quads, and drawing each one
         // as its own rect was thousands of draw calls per frame in a full match.
         Tessellator tessellator=Tessellator.getInstance();
@@ -1734,15 +1872,14 @@ final class TeamBar {
         GlStateManager.tryBlendFuncSeparate(770,771,1,0);
         GlStateManager.color(1F,1F,1F,1F);
         world.begin(7,DefaultVertexFormats.POSITION_COLOR);
-        // Hidden heads leave the line on its own, so it takes the whole row.
-        int lineH=bar.head>0?bar.head:bar.band;
+        if(!bar.ffa){
+            for(Block block:leftBlocks)if(block.team!=null)card(world,mc,block,x,y);
+            for(Block block:rightBlocks)if(block.team!=null)card(world,mc,block,x,y);
+        }
         for(int r=0;r<bar.left.size();r++){
             List<String> members=bar.left.get(r);
             int top=y+bar.rowTop(0,r)+(band-bar.head)/2;
-            int lineTop=y+bar.rowTop(0,r)+(band-lineH)/2;
-            // The line sits at the row's own outer end, so it stays attached to its heads.
-            if(lineW>0)quad(world,x+bar.leftLine(members),lineTop,x+bar.leftLine(members)+lineW,lineTop+lineH,teamColour(mc,members));
-            int start=x+bar.leftStart(members);
+            int start=x+bar.headX(0,r);
             // A count is the whole row: the number follows the pass, with the team colour under it.
             if(bar.counts&&!members.isEmpty()){
                 int rowTop=y+bar.rowTop(0,r);
@@ -1756,10 +1893,8 @@ final class TeamBar {
         for(int r=0;r<bar.right.size();r++){
             List<String> members=bar.right.get(r);
             int top=y+bar.rowTop(1,r)+(band-bar.head)/2;
-            int lineTop=y+bar.rowTop(1,r)+(band-lineH)/2;
             // Rows are flush with the clock and grow outward, so both columns read from the middle.
-            int start=x+bar.rightStart(members);
-            if(lineW>0)quad(world,x+bar.rightLine(members),lineTop,x+bar.rightLine(members)+lineW,lineTop+lineH,teamColour(mc,members));
+            int start=x+bar.headX(1,r);
             if(bar.counts&&!members.isEmpty()){
                 int rowTop=y+bar.rowTop(1,r);
                 quad(world,start,rowTop+bar.band-COUNT_LINE,start+bar.cell,rowTop+bar.band,teamColour(mc,members));
@@ -1778,9 +1913,7 @@ final class TeamBar {
                 int px=x+bar.stripX(side,one),py=y+bar.stripTop(side,i);
                 for(Objectives.Part part:one.parts){
                     px+=part.space;
-                    if(part.stacked)quad(world,px,py+10,px+part.width(mc.fontRendererObj),py+11,chatColour('8'));
-                    else if(part.fraction>=0)scoreBar(world,px,py,part.colour,part.fraction,side==1||side==3);
-                    else if(part.text==null)wool(world,px,py+(bar.lineHeight(side)-STRIP_LINE)/2,part.colour,part.state);
+                    if(part.text==null)wool(world,px,py+(bar.lineHeight(side)-Objectives.ICON)/2,part.colour,part.state);
                     px+=part.width(mc.fontRendererObj);
                 }
             }
@@ -1796,7 +1929,8 @@ final class TeamBar {
         }
         if(bar.textW>0){
             // Sits on the first head row, not the middle of the stack, so extra teams stack below it.
-            mc.fontRendererObj.drawStringWithShadow(bar.label,x+bar.textX,y+(bar.ffa?0:(band-8)/2),colour(bar.timer));
+            mc.fontRendererObj.drawStringWithShadow(bar.label,x+bar.textX,
+                y+(bar.ffa?0:bar.labelTop+(band-8)/2),colour(bar.timer));
         }
         if(bar.counts)for(int side=0;side<2;side++){
             List<List<String>> rows=side==0?bar.left:bar.right;
@@ -1804,14 +1938,20 @@ final class TeamBar {
                 List<String> members=rows.get(r);
                 if(members.isEmpty())continue;
                 String count=Integer.toString(members.size());
-                int start=x+(side==0?bar.leftStart(members):bar.rightStart(members));
+                int start=x+bar.headX(side,r);
                 mc.fontRendererObj.drawStringWithShadow(count,
                     start+(bar.cell-mc.fontRendererObj.getStringWidth(count))/2,y+bar.rowTop(side,r),WHITE);
             }
         }
+        // The team's own name on the top line of its card, in the team colour brightened enough to
+        // read on the plate. This is what tells two blocks apart without relying on colour alone.
+        if(!bar.ffa){
+            for(Block block:leftBlocks)if(block.team!=null)label(mc,block,x,y);
+            for(Block block:rightBlocks)if(block.team!=null)label(mc,block,x,y);
+        }
         if(bar.ffa)for(int r=0;r<bar.left.size();r++){
             List<String> members=bar.left.get(r);
-            int start=x+bar.leftStart(members),top=y+bar.rowTop(0,r);
+            int start=x+bar.headX(0,r),top=y+bar.rowTop(0,r);
             for(int i=0;i<members.size();i++){
                 String score=bar.ffaScores.get(members.get(i).toLowerCase(Locale.ROOT));
                 if(score!=null)mc.fontRendererObj.drawStringWithShadow(score,
@@ -1826,13 +1966,8 @@ final class TeamBar {
                 for(Objectives.Part part:one.parts){
                     px+=part.space;
                     if(part.text!=null){
-                        int textY=py+(bar.lineHeight(side)-STRIP_LINE)/2;
-                        if(part.stacked){
-                            int slash=part.text.indexOf('/'),width=part.width(mc.fontRendererObj);
-                            String top=part.text.substring(0,slash).trim(),bottom=part.text.substring(slash+1).trim();
-                            mc.fontRendererObj.drawStringWithShadow(top,px+(width-mc.fontRendererObj.getStringWidth(top))/2,py,part.colour);
-                            mc.fontRendererObj.drawStringWithShadow(bottom,px+(width-mc.fontRendererObj.getStringWidth(bottom))/2,py+13,part.colour);
-                        }else if(part.mirror){
+                        int textY=py+(bar.lineHeight(side)-Objectives.HEIGHT)/2;
+                        if(part.mirror){
                             GlStateManager.pushMatrix();
                             boolean cull=org.lwjgl.opengl.GL11.glIsEnabled(org.lwjgl.opengl.GL11.GL_CULL_FACE);
                             try{
@@ -1849,41 +1984,6 @@ final class TeamBar {
         }
     }
 
-
-    /**
-     * A score as a bar: vertical fills upward; horizontal fills from the team's outer edge.
-     */
-    private static void scoreBar(WorldRenderer world,int x,int y,int argb,float fraction,boolean right){
-        int filled=Math.round(Math.max(0F,Math.min(1F,fraction))*(UtilitySettings.teamBarScoreStyle==2?Objectives.BAR_VH:Objectives.BAR_W));
-        int track=(argb&0xFFFFFF)|0x55000000;
-        if(UtilitySettings.teamBarScoreStyle==2){
-            roundedScoreBar(world,x,y,Objectives.BAR_VW,Objectives.BAR_VH,track);
-            if(filled>0)roundedScoreBar(world,x,y+Objectives.BAR_VH-filled,Objectives.BAR_VW,filled,argb);
-            for(int tick=1;tick<4;tick++){
-                int at=y+verticalScoreTick(tick);
-                quad(world,x+1,at,x+Objectives.BAR_VW-1,at+1,0x99000000);
-            }
-        }else{
-            int top=y+(STRIP_LINE-Objectives.BAR_H)/2;
-            roundedScoreBar(world,x,top,Objectives.BAR_W,Objectives.BAR_H,track);
-            if(filled>0)roundedScoreBar(world,x+horizontalScoreStart(filled,right),top,filled,Objectives.BAR_H,argb);
-            for(int tick=1;tick<4;tick++){
-                int at=x+scoreTick(tick);
-                quad(world,at,top+1,at+1,top+Objectives.BAR_H-1,0x99000000);
-            }
-        }
-    }
-
-    static int horizontalScoreStart(int filled,boolean right){return right?Objectives.BAR_W-filled:0;}
-    static int scoreTick(int quarter){return Objectives.BAR_W*quarter/4;}
-    static int verticalScoreTick(int quarter){return Objectives.BAR_VH*quarter/4;}
-
-    private static void roundedScoreBar(WorldRenderer world,int x,int y,int width,int height,int colour){
-        if(width<=2||height<=2){quad(world,x,y,x+width,y+height,colour);return;}
-        quad(world,x+1,y,x+width-1,y+height,colour);
-        quad(world,x,y+1,x+1,y+height-1,colour);
-        quad(world,x+width-1,y+1,x+width,y+height-1,colour);
-    }
 
     /** A wool state square: hollow untouched, checkerboard picked up, solid placed. */
     private static void wool(WorldRenderer world,int x,int y,int argb,int state){
@@ -1905,6 +2005,57 @@ final class TeamBar {
         world.pos(x2,y2,0).color(r,g,b,a).endVertex();
         world.pos(x2,y1,0).color(r,g,b,a).endVertex();
         world.pos(x1,y1,0).color(r,g,b,a).endVertex();
+    }
+
+    /**
+     * A team colour pulled toward white. PGM's dark red and dark blue are almost black, so at the
+     * alpha a plate needs they would vanish over a night sky; the name stays at full colour.
+     */
+    static int cardTint(int colour,float amount,int alpha){
+        int r=colour>>16&255,g=colour>>8&255,b=colour&255;
+        r=(int)(r+(255-r)*amount);g=(int)(g+(255-g)*amount);b=(int)(b+(255-b)*amount);
+        return (alpha&255)<<24|r<<16|g<<8|b;
+    }
+
+    /** The plate and its border: one rectangle behind a team's whole block. */
+    private static void card(WorldRenderer world,Minecraft mc,Block block,int x,int y){
+        int colour=teamColour(mc,block.members);
+        int left=x+block.x-CARD_PAD,right=x+block.x+block.w+CARD_PAD;
+        int top=y+block.y,bottom=y+block.y+block.h;
+        int alpha=UtilitySettings.teamBarBackgroundOpacity*255/100;
+        int edge=cardTint(colour,.45F,UtilitySettings.teamBarOutlineOpacity*255/100);
+        quad(world,left,top,right,bottom,cardTint(colour,.25F,alpha));
+        quad(world,left,top,right,top+1,edge);
+        quad(world,left,bottom-1,right,bottom,edge);
+        quad(world,left,top,left+1,bottom,edge);
+        quad(world,right-1,top,right,bottom,edge);
+    }
+
+    /** The team name on the card's top line, centred over its own block, above its heads. */
+    private static void label(Minecraft mc,Block block,int x,int y){
+        int colour=cardTint(teamColour(mc,block.members),.35F,0xFF);
+        // Trimmed to the plate, so a name longer than its card is shortened instead of spilling.
+        String name=mc.fontRendererObj.trimStringToWidth(block.team,block.w);
+        mc.fontRendererObj.drawStringWithShadow(name,labelX(block,x,mc.fontRendererObj.getStringWidth(name)),
+            y+block.y+1,colour);
+    }
+
+    /**
+     * Centres the name on its plate, so a short name does not sit against the heads' edge.
+     * {@code barX} is the bar's own screen x: the block's x is measured inside the bar, so leaving
+     * it out put the name at the left edge of the screen instead of on its card.
+     */
+    static int labelX(Block block,int barX,int textWidth){
+        // Kept inside its own plate: a name wider than the plate would otherwise spill off the
+        // card and read as loose text floating beside the bar.
+        int left=barX+block.x,x=left+(block.w-textWidth)/2;
+        return Math.max(left,Math.min(x,left+block.w-textWidth));
+    }
+
+    /** How much room a team's name needs, never less than a plate's minimum width. */
+    static int nameWidth(String team){
+        Minecraft mc=MinecraftAccess.get();
+        return mc==null?LABEL_MIN:Math.max(LABEL_MIN,mc.fontRendererObj.getStringWidth(team));
     }
 
     /** Gold count-up, yellow limit, red at 25 seconds and dark red at 5 seconds. */

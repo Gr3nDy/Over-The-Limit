@@ -23,20 +23,21 @@ final class AnimClips {
     /** Clean skate base pose: a quiet side-on balance, with one short push layered on top. */
     static void skate(AnimPose p,float push){
         float k=push<0f?0f:smooth(push);
-        // Back foot kicks once, then returns smoothly to the same planted base pose.
-        p.set(AnimPose.RIGHT_LEG,-0.10f+0.65f*k,0f,0.08f);
-        p.set(AnimPose.LEFT_LEG,0.08f,0f,-0.08f);
-        p.kneeRight=0.34f-0.30f*k;
-        p.kneeLeft=0.38f;
-        p.kneeRightZ=0.025f;p.kneeLeftZ=-0.025f;
-        // Skate sideways: the head remains under vanilla camera control, while the torso turns
-        // mostly left with a small forward-facing bias. Keep the feet nearly square to the deck;
-        // rotating every part together makes the player look like a rigid statue.
-        p.set(AnimPose.BODY,0.035f,-0.58f,0f);
-        // Absolute, quiet balance arms: never inherit vanilla walking swing and never fold inward.
-        p.set(AnimPose.RIGHT_ARM,-0.10f,-0.10f,0.10f);
-        p.set(AnimPose.LEFT_ARM,-0.02f,0.10f,-0.10f);
-        p.elbowRight=0.08f;p.elbowLeft=0.08f;
+        // A skater rides side-on, so both feet turn across the deck about the hip. Without the Y
+        // rotation the player stands on the board like it is a bench, facing the way it rolls.
+        // The back foot kicks once, then returns to the same planted base pose.
+        p.set(AnimPose.RIGHT_LEG,-0.05f+0.75f*k,1.15f,0.10f);
+        p.set(AnimPose.LEFT_LEG,0.06f,1.25f,-0.10f);
+        p.kneeRight=0.28f+0.30f*k;
+        p.kneeLeft=0.32f;
+        p.kneeRightZ=0.03f;p.kneeLeftZ=-0.03f;
+        // The chest opens back toward the direction of travel while the feet stay across the
+        // deck; the head is left to the game so it still follows where the player looks.
+        p.set(AnimPose.BODY,0.07f,0.42f,0f);
+        // Arms hang out from the body for balance with soft elbows, never folded inward.
+        p.set(AnimPose.RIGHT_ARM,-0.12f,0.18f,0.42f);
+        p.set(AnimPose.LEFT_ARM,-0.08f,-0.18f,-0.42f);
+        p.elbowRight=0.22f;p.elbowLeft=0.22f;
     }
 
     /** One ollie: crouch, tuck both knees, pop the deck. Trick 0 ollie, 1 kickflip, 2 shove-it. */

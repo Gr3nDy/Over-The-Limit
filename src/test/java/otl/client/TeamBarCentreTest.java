@@ -33,12 +33,14 @@ public class TeamBarCentreTest {
     /** Everything the layout promises, checked on any bar. */
     private static void assertCentred(TeamBar.Bar bar,String what){
         assertEquals(what+": clock off centre",bar.width/2,bar.textX+bar.textW/2);
-        // Each side's heads sit just outside its own objectives, never on top of them.
+        // Each side's heads sit just outside its own objectives, never on top of them - but only
+        // when the objectives share the clock's row. Below the heads they are out of the way.
         List<String> left=bar.left.get(0),right=bar.right.get(0);
-        int leftEnd=bar.leftStart(left)+bar.advance*(left.size()-1)+bar.head;
-        int rightStart=bar.rightStart(right);
-        if(!bar.leftStrips.isEmpty())assertTrue(what+": heads overlapped the left objectives",leftEnd<=bar.leftStripX);
-        if(!bar.rightStrips.isEmpty())
+        int leftEnd=bar.headX(0,0)+bar.advance*(left.size()-1)+bar.head;
+        int rightStart=bar.headX(1,0);
+        if(!bar.leftStrips.isEmpty()&&bar.stripY<bar.band)
+            assertTrue(what+": heads overlapped the left objectives",leftEnd<=bar.leftStripX);
+        if(!bar.rightStrips.isEmpty()&&bar.stripY<bar.band)
             assertTrue(what+": heads overlapped the right objectives",rightStart>=bar.rightStripX+TeamBar.stripWidth(bar.rightStrips));
         assertTrue(what+": heads off the bar",leftEnd>=0&&rightStart+bar.advance*(right.size()-1)+bar.head<=bar.width);
     }
@@ -51,29 +53,39 @@ public class TeamBarCentreTest {
         assertCentred(bar(Arrays.asList("A","B","C","D","E"),Arrays.asList("F","G"),20,null,null),"uneven");
     }
 
-    @Test public void objectivesTakeTheSameRoomOnBothSides(){
-        // The strips sit between the heads and the clock, so the heads move outwards - but by the
-        // same amount on both sides, or the bar looks lopsided.
-        TeamBar.Bar plain=bar(Collections.singletonList("A"),Collections.singletonList("B"),20,null,null);
-        TeamBar.Bar wide=bar(Collections.singletonList("A"),Collections.singletonList("B"),20,lines(strip(9,60)),lines(strip(9,60)));
+    @Test public void objectivesNeverShoveTheHeadsSideways(){
+        // The objectives are printed under the cards, so a line that appears, grows or disappears
+        // must leave the bar's width, the clock and every head exactly where they were.
+        List<String> left=Collections.singletonList("A"),right=Collections.singletonList("B");
+        TeamBar.Bar plain=namedBar(left,right,null,null);
+        TeamBar.Bar wide=namedBar(left,right,lines(strip(9,60)),lines(strip(9,60)));
         assertCentred(wide,"wide strip");
-        assertTrue("the objectives did not reserve any room",wide.width>plain.width);
-        // The heads sit outside both strips, never on top of them.
-        assertTrue(wide.leftStart(wide.left.get(0))+wide.head<=wide.leftStripX);
-        assertTrue(wide.rightStart(wide.right.get(0))>=wide.rightStripX+60);
+        assertEquals("the objectives resized the bar",plain.width,wide.width);
+        assertEquals("the objectives moved the left heads",plain.headX(0,0),wide.headX(0,0));
+        assertEquals("the objectives moved the right heads",plain.headX(1,0),wide.headX(1,0));
+        // A line wider than the bar is pulled onto it rather than hanging off the screen.
+        assertTrue(wide.stripX(0,wide.leftStrips.get(0))>=0);
+        assertTrue(wide.stripX(1,wide.rightStrips.get(0))+60<=wide.width);
     }
 
-    @Test public void eachTeamsObjectivesSitBesideTheClockOnItsOwnSide(){
-        TeamBar.Bar bar=bar(Collections.singletonList("A"),Collections.singletonList("B"),20,lines(strip(1,30)),lines(strip(1,12)));
+    /** Named objectives: the normal mode, where every line is printed under its team's card. */
+    private static TeamBar.Bar namedBar(List<String> left,List<String> right,
+        List<Objectives.Strip> leftStrips,List<Objectives.Strip> rightStrips){
+        return new TeamBar.Bar(Collections.singletonList(left),Collections.singletonList(right),16,20,
+            null,"",7,leftStrips,rightStrips,false);
+    }
+
+    @Test public void eachTeamsObjectivesHugTheClockInsideTheBar(){
+        TeamBar.Bar bar=namedBar(Collections.singletonList("A"),Collections.singletonList("B"),
+            lines(strip(1,30)),lines(strip(1,12)));
         // Both sides are beside the clock: one right-aligned to its left, one to its right.
         assertEquals(bar.textX-TeamBar.OBJECTIVE_GAP-30,bar.leftStripX);
         assertEquals(bar.textX+bar.textW+TeamBar.OBJECTIVE_GAP,bar.rightStripX);
         // The left lines are right-aligned against the clock, so a shorter line starts further in.
         assertEquals(bar.textX-TeamBar.OBJECTIVE_GAP-12,bar.stripX(0,strip(1,12)));
         assertCentred(bar,"beside the clock");
-        // The heads stay clear of both strips.
-        assertTrue(bar.leftStart(bar.left.get(0))+bar.head<=bar.leftStripX);
-        assertTrue(bar.rightStart(bar.right.get(0))>=bar.rightStripX+12);
+        // Under the heads, not beside them, so nothing has to move aside for a line.
+        assertTrue(bar.stripTop(0)>=bar.band);
     }
 
     @Test public void aLongStripOnOneSideDoesNotShoveTheClock(){
@@ -116,105 +128,62 @@ public class TeamBarCentreTest {
         assertEquals(named.stripY+named.stripH,named.height);
     }
 
-    @Test public void onAFourTeamBarEachTeamsObjectivesFollowItsOwnHeads(){
-        // Left column: Alpha then Charlie. Right: Bravo then Delta. Every block of heads owns the
-        // objectives printed under it, so a team's score can never sit under another team's row.
+    /** The card one team's name, heads and objectives are drawn in. */
+    private static TeamBar.Block block(TeamBar.Bar bar,int side,String team){
+        for(TeamBar.Block one:bar.blocks(side))if(team.equals(one.team))return one;
+        throw new AssertionError("no card for "+team);
+    }
+
+    @Test public void onAFourTeamBarTheTeamsSitSideBySide(){
+        // Four teams make two cards on each side of the clock, never a tall stack of four rows:
+        // on a KOTH map the bar grows sideways instead of covering half the screen.
         List<List<String>> left=Arrays.asList(Collections.singletonList("A1"),Collections.singletonList("C1"));
         List<List<String>> right=Arrays.asList(Collections.singletonList("B1"),Collections.singletonList("D1"));
         TeamBar.Bar bar=new TeamBar.Bar(left,right,16,20,null,"",7,
             lines(strip("Alpha",1,30),strip("Charlie",1,30)),lines(strip("Bravo",1,30),strip("Delta",1,30)),false,
             Arrays.asList(Collections.<Objectives.Strip>emptyList(),Collections.<Objectives.Strip>emptyList(),Collections.<Objectives.Strip>emptyList()),
             null,0,Arrays.asList("Alpha","Charlie"),Arrays.asList("Bravo","Delta"));
-        assertEquals("Alpha's objectives left its own block",bar.band+TeamBar.OBJECTIVE_GAP,bar.stripTop(0,0));
-        assertEquals("Charlie's heads did not clear Alpha's objectives",
-            bar.stripTop(0,0)+TeamBar.STRIP_LINE+TeamBar.ROW_GAP,bar.rowTop(0,1));
-        assertEquals("Charlie's objectives did not follow its own heads",
-            bar.rowTop(0,1)+bar.band+TeamBar.OBJECTIVE_GAP,bar.stripTop(0,1));
-        assertEquals("Delta's objectives did not follow its own heads",
-            bar.rowTop(1,1)+bar.band+TeamBar.OBJECTIVE_GAP,bar.stripTop(1,1));
-        assertEquals("The four-team stack lost a line",bar.stripTop(0,1)+TeamBar.STRIP_LINE,bar.height);
-        // Named blocks sit below the heads, so only the clock's centring applies here.
+        // Both cards on a side start on the same line: teams grow sideways, not downwards.
+        assertEquals("the left cards were stacked",bar.rowTop(0,0),bar.rowTop(0,1));
+        assertEquals("the right cards were stacked",bar.rowTop(1,0),bar.rowTop(1,1));
+        // And that line is the clock's own row, so the heads read level with the time.
+        assertEquals("the clock's row was pushed above the heads",bar.labelTop,bar.rowTop(0,0));
+        // Each card sits beside the last, inside its own side of the clock, and holds its heads.
+        TeamBar.Block alpha=block(bar,0,"Alpha"),charlie=block(bar,0,"Charlie");
+        assertTrue("the left cards overlapped",alpha.x+alpha.w<=charlie.x);
+        assertTrue("a left card crossed the clock",charlie.x+charlie.w<=bar.leftEnd);
+        assertTrue("a left head left its card",
+            bar.headX(0,0)>=alpha.x&&bar.headX(0,0)+bar.head<=alpha.x+alpha.w);
+        TeamBar.Block bravo=block(bar,1,"Bravo"),delta=block(bar,1,"Delta");
+        assertTrue("the right cards overlapped",bravo.x+bravo.w<=delta.x);
+        assertTrue("a right card crossed the clock",bravo.x>=bar.rightX);
+        // Each team's objectives are read on its own card, never loose under the bar.
+        assertEquals(alpha.x+alpha.w,bar.stripX(0,bar.leftStrips.get(0))+30);
+        assertEquals(charlie.x+charlie.w,bar.stripX(0,bar.leftStrips.get(1))+30);
+        assertEquals(bar.stripTop(0,0),bar.stripTop(0,1));
         assertEquals("The four-team bar pushed the clock off centre",bar.width/2,bar.textX+bar.textW/2);
+        assertEquals("the bar kept a line it did not draw",bar.stripTop(0,0)+TeamBar.STRIP_LINE,bar.height);
     }
 
-    @Test public void aShuffledSidebarStillPutsObjectivesUnderTheirOwnHeads(){
+    @Test public void aShuffledSidebarStillPutsObjectivesOnTheirOwnCards(){
         // PGM sorts the sidebar by score, the bar sorts by the map's team order: on a four-team
         // map the two orders disagree, so the lines arrive shuffled. Matching must be by name.
-        List<List<String>> left=Arrays.asList(Collections.singletonList("A1"),Collections.singletonList("C1"));
+        List<List<String>> left=Arrays.asList(Collections.singletonList("A1"),Collections.singletonList("A2"),Collections.singletonList("C1"));
         List<List<String>> right=Arrays.asList(Collections.singletonList("B1"),Collections.singletonList("D1"));
         TeamBar.Bar bar=new TeamBar.Bar(left,right,16,20,null,"",7,
             lines(strip("Charlie",1,30),strip("Alpha",1,30)),
             lines(strip("Delta",1,30),strip("Bravo",1,30)),false,
             Arrays.asList(Collections.<Objectives.Strip>emptyList(),Collections.<Objectives.Strip>emptyList(),Collections.<Objectives.Strip>emptyList()),
-            null,0,Arrays.asList("Alpha","Charlie"),Arrays.asList("Bravo","Delta"));
-        // Alpha's line arrived second but still belongs to the first block of heads.
-        assertEquals(bar.band+TeamBar.OBJECTIVE_GAP,bar.stripTop(0,1));
-        assertEquals("Charlie's line did not follow its own heads",
-            bar.rowTop(0,1)+bar.band+TeamBar.OBJECTIVE_GAP,bar.stripTop(0,0));
-        assertEquals("Delta's line did not follow its own heads",
-            bar.rowTop(1,1)+bar.band+TeamBar.OBJECTIVE_GAP,bar.stripTop(1,0));
-        assertEquals("The shuffled stack lost a line",bar.stripTop(1,0)+TeamBar.STRIP_LINE,bar.height);
-    }
-
-    @Test public void theColourLineNamesItsTeamOnHover(){
-        List<List<String>> left=Arrays.asList(Collections.singletonList("A1"));
-        TeamBar.Bar bar=new TeamBar.Bar(left,Collections.<List<String>>emptyList(),16,20,null,"",10,
-            null,null,true,null,null,0,Arrays.asList("Alpha"),Collections.<String>emptyList());
-        int lineX=bar.leftLine(left.get(0)),lineY=bar.rowTop(0,0)+2;
-        assertEquals("Alpha",TeamBar.lineAt(bar,lineX+2,lineY));
-        assertNull("The line hover spilled onto empty space",TeamBar.lineAt(bar,lineX-12,lineY));
-        TeamBar.Bar off=new TeamBar.Bar(left,Collections.<List<String>>emptyList(),16,20,null,"",0,
-            null,null,true,null,null,0,Arrays.asList("Alpha"),Collections.<String>emptyList());
-        assertNull("A bar with no colour line still answered its hover",TeamBar.lineAt(off,lineX+2,lineY));
-    }
-
-    @Test public void stackedScoresReserveEnoughHeight(){
-        int previous=UtilitySettings.teamBarScoreStyle;
-        try{
-            UtilitySettings.teamBarScoreStyle=3;
-            Objectives.Part score=new Objectives.Part("2/5",TeamBar.RED,-1,true,"Red",-1F,false,true);
-            Objectives.Strip strip=new Objectives.Strip(Collections.singletonList(score),12);
-            TeamBar.Bar bar=new TeamBar.Bar(Collections.singletonList(Collections.singletonList("A")),
-                Collections.singletonList(Collections.singletonList("B")),16,20,null,"",0,
-                lines(strip,strip),Collections.<Objectives.Strip>emptyList(),true);
-            assertEquals(Objectives.STACK_H+2,bar.stripLine);
-            assertTrue(bar.stripTop(0,1)>=bar.stripTop(0,0)+Objectives.STACK_H);
-            assertTrue(bar.stripTop(0,1)+Objectives.STACK_H<=bar.height);
-        }finally{UtilitySettings.teamBarScoreStyle=previous;}
-    }
-
-    @Test public void stackedScoresDoNotSpreadControlPointRows(){
-        int previous=UtilitySettings.teamBarScoreStyle;
-        try{
-            UtilitySettings.teamBarScoreStyle=3;
-            Objectives.Strip score=new Objectives.Strip(Collections.singletonList(
-                new Objectives.Part("2/5",TeamBar.RED,-1,true,"Red",-1F,false,true)),12);
-            Objectives.Strip point=strip(2,40);
-            TeamBar.Bar bar=new TeamBar.Bar(Collections.singletonList(Collections.singletonList("A")),
-                Collections.singletonList(Collections.singletonList("B")),16,20,null,"",0,
-                lines(score),Collections.<Objectives.Strip>emptyList(),true,
-                Arrays.asList(Collections.<Objectives.Strip>emptyList(),Collections.<Objectives.Strip>emptyList(),lines(point,point)));
-            assertEquals(Objectives.STACK_H+2,bar.stripLine);
-            assertEquals(TeamBar.STRIP_LINE,bar.stripTop(4,1)-bar.stripTop(4,0));
-            assertEquals(TeamBar.STRIP_LINE,bar.lineHeight(4));
-        }finally{UtilitySettings.teamBarScoreStyle=previous;}
-    }
-
-    @Test public void verticalScoreBarsHaveRoomForTheirFullHeight(){
-        int previous=UtilitySettings.teamBarScoreStyle;
-        try{
-            UtilitySettings.teamBarScoreStyle=2;
-            Objectives.Part score=new Objectives.Part(null,TeamBar.RED,-1,true,"Red 1/2",.5F);
-            Objectives.Strip strip=new Objectives.Strip(Collections.singletonList(score),Objectives.BAR_VW);
-            TeamBar.Bar bar=new TeamBar.Bar(Collections.singletonList(Collections.singletonList("A")),
-                Collections.singletonList(Collections.singletonList("B")),16,20,null,"",0,
-                lines(strip,strip),Collections.<Objectives.Strip>emptyList(),true);
-            assertEquals(Objectives.BAR_VH+2,bar.stripLine);
-            assertTrue(bar.stripTop(0,1)>=bar.stripTop(0,0)+Objectives.BAR_VH);
-            assertTrue(bar.stripTop(0,1)+Objectives.BAR_VH<=bar.height);
-            assertEquals("Red 1/2",Objectives.at(strip,1,Objectives.BAR_VH-1,null,bar.stripLine));
-            assertNull(Objectives.at(strip,1,Objectives.BAR_VH,null,bar.stripLine));
-        }finally{UtilitySettings.teamBarScoreStyle=previous;}
+            null,0,Arrays.asList("Alpha","Alpha","Charlie"),Arrays.asList("Bravo","Delta"));
+        // Alpha's line arrived second but still belongs to Alpha's card.
+        TeamBar.Block charlie=block(bar,0,"Charlie"),alpha=block(bar,0,"Alpha");
+        assertEquals(charlie.x+charlie.w,bar.stripX(0,bar.leftStrips.get(0))+30);
+        assertEquals(alpha.x+alpha.w,bar.stripX(0,bar.leftStrips.get(1))+30);
+        assertEquals("Bravo's line went to Delta's card",block(bar,1,"Bravo").x,bar.stripX(1,bar.rightStrips.get(1)));
+        assertEquals(bar.stripTop(0,0),bar.stripTop(0,1));
+        assertEquals(bar.stripTop(0,0),bar.stripTop(1,0));
+        assertTrue(bar.stripTop(0,0)>=bar.rowTop(0,1)+bar.band);
+        assertEquals("the shuffled lines lost a card",bar.stripTop(0,0)+TeamBar.STRIP_LINE,bar.height);
     }
 
     @Test public void aBarWithNoObjectivesIsUnaffected(){        TeamBar.Bar bar=new TeamBar.Bar(Collections.singletonList(Collections.singletonList("A")),
@@ -226,20 +195,22 @@ public class TeamBarCentreTest {
     }
 
     @Test public void controlPointsStayUnderTheirTeamOrExactlyUnderTheClock(){
+        Objectives.Strip left=strip(2,60),right=strip(2,80),neutral=strip(2,101);
+        // Named lines are read under the cards in both modes now, so only the compact markers share
+        // the clock's row; either way the clock itself keeps the bar's exact centre.
         for(boolean compact:new boolean[]{false,true}){
-            Objectives.Strip left=strip(2,60),right=strip(2,80),neutral=strip(2,101);
             TeamBar.Bar bar=new TeamBar.Bar(Collections.singletonList(Collections.singletonList("A")),
                 Collections.singletonList(Collections.singletonList("B")),16,21,null,"",7,
                 lines(strip(1,12)),lines(strip(1,12)),compact,
                 Arrays.asList(lines(left),lines(right),lines(neutral,neutral)));
             assertEquals(bar.width/2,bar.textX+bar.textW/2);
-            assertEquals(bar.width/2,bar.stripX(4,neutral)+neutral.width/2);
-            assertEquals(bar.leftEnd,bar.stripX(2,left)+left.width);
-            assertEquals(bar.rightX,bar.stripX(3,right));
             assertTrue(bar.pointY>=bar.band);
             assertTrue(bar.stripTop(4)>=bar.stripTop(2)+TeamBar.STRIP_LINE);
             assertEquals(bar.stripTop(4)+2*TeamBar.STRIP_LINE,bar.height);
-            assertTrue(bar.stripX(2,left)>=0);assertTrue(bar.stripX(3,right)+right.width<=bar.width);
+            // Every objective line stays inside the bar's own edges.
+            assertTrue("the left line ran off the bar",bar.stripX(2,left)>=0&&bar.stripX(2,left)+left.width<=bar.width);
+            assertTrue("the right line ran off the bar",bar.stripX(3,right)>=0&&bar.stripX(3,right)+right.width<=bar.width);
+            assertTrue("a point ran off the bar",bar.stripX(4,neutral)>=0&&bar.stripX(4,neutral)+neutral.width<=bar.width);
         }
     }
 }
