@@ -334,17 +334,16 @@ public final class OtlSmoke {
         for(TeamBar.Side side:sides)if(side.name.equals(name))return side;
         return null;
     }
-    /** Clicks the switch on a module card in the browser grid. The grid is sorted, ALL is not. */
+    /** Clicks the switch on a module row. The list is sorted, ALL is not. */
     void cardToggle(ModulesScreen s,int index)throws java.io.IOException{
         OtlModule m=OtlModule.ALL.get(index);
         int at=s.visibleIndex(m);
-        require(at>=0,"Module missing from the grid: "+m.id);
-        int columns=ReflectionHelper.getPrivateValue(ModulesScreen.class,s,"columns");
-        int row=at/columns,scroll=Math.min(row,Math.max(0,s.rowCount()-2));
+        require(at>=0,"Module missing from the list: "+m.id);
+        // Keep the row on screen, then click the switch at its right edge.
+        int scroll=at;
         ReflectionHelper.setPrivateValue(ModulesScreen.class,s,scroll,"scrollRow");
-        // cardBox() takes an index inside the current scroll window, not an absolute one.
-        int[] box=s.cardBox((row-scroll)*columns+at%columns);
-        s.mouseClicked(box[0]+8,box[1]+box[3]-12,0);
+        int[] box=s.rowBox(at-scroll);
+        s.mouseClicked(box[0]+box[2]-20,box[1]+box[3]/2,0);
     }
     /** All is the client's own chat object; every other tab is one of our own buffers. */
     List<ChatLine> chatHistory(String key){return ReflectionHelper.getPrivateValue(GuiNewChat.class,ChatRules.ALL.equals(key)?MinecraftAccess.get().ingameGUI.getChatGUI():ReliableChat.session().views.get(key).hud,"chatLines","field_146252_h");}
@@ -1646,27 +1645,33 @@ public final class OtlSmoke {
                 importer.drawScreen(0,0,0);
                 mc.displayGuiScreen(browser);
                 require(!hasButton(browser,"EDIT HUD LAYOUT"),"Old HUD footer still present");
-                // The module grid scrolls past two rows: the scrollbar must actually move it.
-                require(browser.rowCount()>2,"The module grid has nothing to scroll");
+                // The list scrolls past one screen: the scrollbar must actually move it.
+                int visible=browser.visibleRows();
+                require(browser.rowCount()>visible,"The module list has nothing to scroll");
                 int tx=browser.trackLeft();
                 browser.mouseClicked(tx,browser.trackBottomY()-2,0);
-                require(browser.firstRow()==browser.rowCount()-2,"Clicking the module scrollbar track did not reach the last row");
+                require(browser.firstRow()==browser.rowCount()-visible,"Clicking the list scrollbar track did not reach the last row");
                 browser.mouseReleased(tx,browser.trackBottomY()-2,0);
                 browser.mouseClicked(tx,browser.trackTopY()+2,0);
-                require(browser.firstRow()==0,"Clicking the module scrollbar top did not return to the first row");
+                require(browser.firstRow()==0,"Clicking the list scrollbar top did not return to the first row");
                 browser.mouseReleased(tx,browser.trackTopY()+2,0);
-                // The wheel over the grid must move the same list the scrollbar shows.
-                int gridX=browser.trackLeft()-120;
-                for(int i=0;i<3;i++)browser.scrollWheel(gridX,browser.trackTopY()+40,-120);
-                require(browser.firstRow()==3,"The mouse wheel did not scroll the module grid: "+browser.firstRow());
-                for(int i=0;i<9;i++)browser.scrollWheel(gridX,browser.trackTopY()+40,120);
-                require(browser.firstRow()==0,"The wheel did not scroll the module grid back to the top");
-                // A wheel over the profile rail must leave the grid alone.
-                browser.scrollWheel(gridX,browser.trackTopY()+40,-120);
+                // The wheel over the list scrolls it.
+                int listLeft=browser.rowBox(0)[0],listMid=browser.trackTopY()+40;
+                for(int i=0;i<3;i++)browser.scrollWheel(listLeft+40,listMid,-120);
+                require(browser.firstRow()==3,"The mouse wheel did not scroll the module list: "+browser.firstRow());
+                for(int i=0;i<9;i++)browser.scrollWheel(listLeft+40,listMid,120);
+                require(browser.firstRow()==0,"The wheel did not scroll the module list back to the top");
+                // The profile menu owns the wheel while it is open; the list behind it must not move.
+                browser.scrollWheel(listLeft+40,listMid,-120);
                 int gridRow=browser.firstRow();
-                browser.scrollWheel(browser.trackLeft()-420,browser.trackTopY()-10,-120);
-                require(browser.firstRow()==gridRow,"A wheel over the profile rail moved the module grid");
-                browser.scrollWheel(gridX,browser.trackTopY()+40,-120);
+                int[] chip=browser.profileChipBox();
+                browser.mouseClicked(chip[0]+8,chip[1]+8,0);
+                require(browser.profileMenuOpen(),"The profile menu did not open");
+                browser.scrollWheel(browser.trackLeft()-60,browser.popupTopY()+8,-120);
+                require(browser.firstRow()==gridRow,"A wheel over the profile menu moved the module list");
+                browser.mouseClicked(browser.trackLeft()-60,browser.trackTopY()-24,0);
+                require(!browser.profileMenuOpen(),"Clicking away did not close the profile menu");
+                browser.scrollWheel(listLeft+40,listMid,-120);
                 browser.drawScreen(0,0,0);
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-modules-scrolled.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
                 // Search: a query filters across every category, and the chips go quiet.
@@ -2090,9 +2095,8 @@ public final class OtlSmoke {
                 java.util.List<String> shortRow=java.util.Arrays.asList("A","B"),longRow=java.util.Arrays.asList("A","B","C","D","E");
                 TeamBar.Bar mirror=new TeamBar.Bar(java.util.Collections.singletonList(shortRow),
                     java.util.Arrays.asList(longRow,shortRow),16,0,null,"");
-                require(mirror.rightStart(longRow)==mirror.rightX&&mirror.rightStart(shortRow)==mirror.rightX,"A right row was not flush with the clock");
-                require(mirror.leftStart(longRow)==mirror.column-((longRow.size()-1)*mirror.advance+16),"A left row was not flush with the clock");
-                require(mirror.leftStart(shortRow)+((shortRow.size()-1)*mirror.advance+16)==mirror.column,"A short left row left a gap next to the clock");
+                require(mirror.headX(1,0)==mirror.rightX,"A right row was not flush with the clock");
+                require(mirror.headX(0,0)+((shortRow.size()-1)*mirror.advance+mirror.head)==mirror.column,"A left row was not flush with the clock");
                 // Stacked teams must be visibly apart, not butted into one block of heads.
                 require(mirror.height==2*16+TeamBar.ROW_GAP,"Stacked team rows were not separated: "+mirror.height);
                 require(TeamBar.teamColour(mc,sides.get(2).members)==0xFFFF5555,"The team card did not read the team's colour: "+Integer.toHexString(TeamBar.teamColour(mc,sides.get(2).members)));
@@ -2908,7 +2912,7 @@ public final class OtlSmoke {
                             "A head was drawn on both sides of the FFA bar: "+name);
                 for(int r=0;r<ffa.left.size();r++){
                     java.util.List<String> members=ffa.left.get(r);
-                    int start=ffa.leftStart(members);
+                    int start=ffa.headX(0,r);
                     require(Math.abs((2*start+(members.size()-1)*ffa.advance+ffa.head)-ffa.width)<=1,"An FFA head row was not centred");
                     require(ffa.rowTop(0,r)>=12,"FFA heads overlapped the clock");
                     int[] target=TeamBar.headBounds(ffa,members.get(0));
@@ -3358,17 +3362,18 @@ public final class OtlSmoke {
                 int bx=ReflectionHelper.getPrivateValue(ModulesScreen.class,browser,"x");
                 int by=ReflectionHelper.getPrivateValue(ModulesScreen.class,browser,"y");
                 int bh=ReflectionHelper.getPrivateValue(ModulesScreen.class,browser,"h");
-                browser.mouseClicked(bx+150,by+bh-16,0);
+                int[] onOnly=browser.onOnlyBox();
+                browser.mouseClicked(onOnly[0]+4,onOnly[1]+8,0);
                 require(browser.visibleCount()==OtlModule.ALL.stream().filter(m->m.enabled()).count(),
                     "Enabled-only filter includes disabled modules or omits enabled modules");
-                browser.mouseClicked(bx+150,by+bh-16,0);
+                browser.mouseClicked(onOnly[0]+4,onOnly[1]+8,0);
                 require(browser.visibleCount()==OtlModule.ALL.size(),"Enabled-only filter did not clear");
-                // The header strip carries the PGM settings section; it must open the shared settings page.
-                browser.mouseClicked(browser.settingsNavX()+4,browser.navTop()+10,0);
+                // The header gear carries the PGM settings section; it must open the shared settings page.
+                browser.mouseClicked(browser.settingsGearX()+4,browser.headerY()+10,0);
                 require(mc.currentScreen instanceof PgmSettingsScreen,"Settings header did not open the PGM page");
                 ((PgmSettingsScreen)mc.currentScreen).actionPerformed(find(mc.currentScreen,"Back"));
                 require(mc.currentScreen==browser,"PGM settings did not return to the module browser");
-                int[] box=browser.cardBox(0);
+                int[] box=browser.rowBox(0);
                 boolean before=OtlModule.ALL.get(0).enabled();
                 browser.mouseClicked(box[0]+box[2]/2,box[1]+8,0);
                 require(mc.currentScreen!=browser,"Module body did not open settings");

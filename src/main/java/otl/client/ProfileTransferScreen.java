@@ -18,7 +18,7 @@ final class ProfileTransferScreen extends GuiScreen {
     public void initGui(){
         w=Math.min(470,width-16);h=Math.min(272,height-16);x=(width-w)/2;y=(height-h)/2;buttonList.clear();
         buttonList.add(new NeutralButton(0,x+(w-140)/2,y+h-28,140,20,name==null?"Paste from Clipboard":"Copy to Clipboard",false));
-        buttonList.add(new NeutralButton(1,x+w-92,y+h-28,80,20,"Back",false));
+        buttonList.add(new NeutralButton(1,x+w-92,y+h-28,80,BedrockTokens.CONTROL_H,"Back",false));
     }
     protected void actionPerformed(GuiButton b){
         if(b.id==1){mc.displayGuiScreen(parent);return;}

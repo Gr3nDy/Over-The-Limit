@@ -29,6 +29,19 @@ final class BedrockUi {
         Gui.drawRect(x,y+r,x+w,y+h-r,colour);
     }
 
+    /** Capsule: mirrored round caps and a straight middle, for switches and status pills. */
+    static void capsule(int x,int y,int w,int h,int colour){
+        int r=h/2;
+        if(r<1||w<2*r){Gui.drawRect(x,y,x+w,y+h,colour);return;}
+        for(int i=0;i<r;i++){
+            double dy=r-(i+0.5);
+            int inset=r-(int)Math.round(Math.sqrt(Math.max(0,r*r-dy*dy)));
+            Gui.drawRect(x+inset,y+i,x+w-inset,y+i+1,colour);
+            Gui.drawRect(x+inset,y+h-1-i,x+w-inset,y+h-i,colour);
+        }
+        Gui.drawRect(x,y+r,x+w,y+h-r,colour);
+    }
+
     /** 1px Lunar card outline. */
     static void outline(int x,int y,int w,int h,int colour){
         Gui.drawRect(x,y,x+w,y+1,colour);
@@ -69,6 +82,27 @@ final class BedrockUi {
     }
     static void backArrow(FontRenderer font,int x,int y,boolean hover){
         plainCentered(font,"<",x+9,y+4,hover?0xFFFFFFFF:DIM);
+    }
+    /** Screen title at 2x: the only type size the game font offers above 8px. */
+    static void title2x(FontRenderer font,String text,int x,int y,int colour){
+        GlStateManager.pushMatrix();
+        GlStateManager.translate(x,y,0);
+        GlStateManager.scale(2,2,1);
+        font.drawString(text,0,0,colour);
+        GlStateManager.popMatrix();
+    }
+    /** Gear: opens the shared settings page. */
+    static void gear(int x,int y,boolean hover){
+        int ink=hover?0xFFFFFFFF:DIM;
+        // Hollow cog: an 8x8 ring, four teeth, nothing in the middle.
+        Gui.drawRect(x+2,y+1,x+8,y+2,ink);
+        Gui.drawRect(x+2,y+9,x+8,y+10,ink);
+        Gui.drawRect(x+1,y+2,x+2,y+8,ink);
+        Gui.drawRect(x+8,y+2,x+9,y+8,ink);
+        Gui.drawRect(x+4,y,x+6,y+1,ink);
+        Gui.drawRect(x+4,y+10,x+6,y+11,ink);
+        Gui.drawRect(x,y+4,x+1,y+6,ink);
+        Gui.drawRect(x+9,y+4,x+10,y+6,ink);
     }
     static void button(FontRenderer font,int x,int y,int w,int h,String label,boolean hover,boolean enabled){
         button(font,x,y,w,h,label,hover,enabled,255);

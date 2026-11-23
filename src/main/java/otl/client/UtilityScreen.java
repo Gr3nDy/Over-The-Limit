@@ -44,7 +44,7 @@ public final class UtilityScreen extends SettingsScreen {
             panel.note("White underline marks the selected channel.");
             panel.note("Drag the chat scrollbar to browse history.");
         }
-        pin(new NeutralButton(2,actionX(),footerY(),110,20,"Reset chat options",false));
+        pin(new NeutralButton(2,actionX(),footerY(),110,BedrockTokens.CONTROL_H,"Reset chat options",false));
         back(3);
     }
     private void toggle(int id,String label,boolean on){

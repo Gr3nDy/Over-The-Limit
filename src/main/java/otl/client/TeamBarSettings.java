@@ -14,8 +14,8 @@ public final class TeamBarSettings extends SettingsScreen {
         resetButton("team_bar");
         panel.section("DISPLAY");
         int visible=panel.row();
-        buttonList.add(new NeutralButton(0,panel.columnX(2,0),visible,panel.columnWidth(2),20,"Team Bar: "+(UtilitySettings.teamBar?"ON":"OFF"),false));
-        buttonList.add(new NeutralButton(3,panel.columnX(2,1),visible,panel.columnWidth(2),20,"Scoreboard: "+(UtilitySettings.teamBarHideScoreboard?"Hidden":"Visible"),false));
+        buttonList.add(new NeutralButton(0,panel.columnX(2,0),visible,panel.columnWidth(2),BedrockTokens.CONTROL_H,"Team Bar: "+(UtilitySettings.teamBar?"ON":"OFF"),false));
+        buttonList.add(new NeutralButton(3,panel.columnX(2,1),visible,panel.columnWidth(2),BedrockTokens.CONTROL_H,"Scoreboard: "+(UtilitySettings.teamBarHideScoreboard?"Hidden":"Visible"),false));
         buttonList.add(new ChoiceButton(this,4,panel.left(),panel.choice(),panel.width(),"Above the clock",new String[]{"None","Map name","Game mode"},UtilitySettings.teamBarHeader,v->UtilitySettings.teamBarHeader=v));
         panel.section("TEAM CARDS");
         buttonList.add(new ChoiceButton(this,1,panel.left(),panel.choice(),panel.width(),"Player display",new String[]{"Heads","Numbers"},UtilitySettings.teamBarNumbers?1:0,v->UtilitySettings.teamBarNumbers=v==1));

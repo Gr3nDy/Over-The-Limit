@@ -44,7 +44,7 @@ abstract class SettingsScreen extends GuiScreen {
 
     /** Header and footer buttons stay put while the content scrolls. */
     protected final <T extends GuiButton> T pin(T b){pinned.add(b);buttonList.add(b);return b;}
-    protected final void back(int id){pin(new NeutralButton(id,backX(),footerY(),80,20,"Back",false));}
+    protected final void back(int id){pin(new NeutralButton(id,backX(),footerY(),80,BedrockTokens.CONTROL_H,"Back",false));}
     protected final void resetButton(String moduleId){pin(new ModuleReset(90,panelX()+panelW()-PAD-11,contentTop()-TOOL+1,moduleId));}
 
     @Override public void initGui(){

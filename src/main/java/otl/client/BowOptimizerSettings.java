@@ -11,36 +11,36 @@ public final class BowOptimizerSettings extends SettingsScreen {
     protected String subtitle(){return "Accuracy = server-reported player hits / shots.";}
     protected void buildPanel(){
         resetButton("bow_optimizer");
-        buttonList.add(new NeutralButton(0,panel.left(),panel.row(),panel.width(),20,"Bow Optimizer: "+(UtilitySettings.bowOptimizer?"ON":"OFF"),false));
+        buttonList.add(new NeutralButton(0,panel.left(),panel.row(),panel.width(),BedrockTokens.CONTROL_H,"Bow Optimizer: "+(UtilitySettings.bowOptimizer?"ON":"OFF"),false));
         int tabs=panel.row(18);
         buttonList.add(new NeutralButton(20,panel.columnX(2,0),tabs,panel.columnWidth(2),18,"General",page==0));
         buttonList.add(new NeutralButton(21,panel.columnX(2,1),tabs,panel.columnWidth(2),18,"Bow Accuracy",page==1));
         if(page==0){
             panel.section("FEEDBACK");
-            buttonList.add(new NeutralButton(1,panel.left(),panel.row(),panel.width(),20,"Optimization: "+(UtilitySettings.bowOptimization?"ON":"OFF"),false));
-            buttonList.add(new NeutralButton(17,panel.left(),panel.row(),panel.width(),20,"Arrow trail: "+(UtilitySettings.bowArrowTrail?"ON":"OFF"),false));
-            buttonList.add(new NeutralButton(18,panel.left(),panel.row(),panel.width(),20,"Hide arrow particles: "+(UtilitySettings.bowHideArrowParticles?"ON":"OFF"),false));
+            buttonList.add(new NeutralButton(1,panel.left(),panel.row(),panel.width(),BedrockTokens.CONTROL_H,"Optimization: "+(UtilitySettings.bowOptimization?"ON":"OFF"),false));
+            buttonList.add(new NeutralButton(17,panel.left(),panel.row(),panel.width(),BedrockTokens.CONTROL_H,"Arrow trail: "+(UtilitySettings.bowArrowTrail?"ON":"OFF"),false));
+            buttonList.add(new NeutralButton(18,panel.left(),panel.row(),panel.width(),BedrockTokens.CONTROL_H,"Hide arrow particles: "+(UtilitySettings.bowHideArrowParticles?"ON":"OFF"),false));
             panel.note("Arrow trail draws a thin line behind a flying arrow. Hide arrow particles removes the vanilla critical sparkle close to an arrow; melee crits stay.");
-            buttonList.add(new NeutralButton(8,panel.left(),panel.row(),panel.width(),20,"Bow Hit Sound: "+(UtilitySettings.bowHitSound?"ON":"OFF"),false));
-            buttonList.add(new NeutralButton(14,panel.left(),panel.row(),panel.width(),20,"Bow-Kill Sound: "+(UtilitySettings.bowKillSound?"ON":"OFF"),false));
-            buttonList.add(new NeutralButton(9,panel.left(),panel.row(),panel.width(),20,"Hit Marker: "+(UtilitySettings.bowHitMarker?"ON":"OFF"),false));
+            buttonList.add(new NeutralButton(8,panel.left(),panel.row(),panel.width(),BedrockTokens.CONTROL_H,"Bow Hit Sound: "+(UtilitySettings.bowHitSound?"ON":"OFF"),false));
+            buttonList.add(new NeutralButton(14,panel.left(),panel.row(),panel.width(),BedrockTokens.CONTROL_H,"Bow-Kill Sound: "+(UtilitySettings.bowKillSound?"ON":"OFF"),false));
+            buttonList.add(new NeutralButton(9,panel.left(),panel.row(),panel.width(),BedrockTokens.CONTROL_H,"Hit Marker: "+(UtilitySettings.bowHitMarker?"ON":"OFF"),false));
             buttonList.add(new PresetSlider(10,panel.left(),panel.row(),panel.width(),"Hit marker size: ","%",PresetSlider.HIT_SIZE,UtilitySettings.bowHitMarkerSize,100,s->UtilitySettings.bowHitMarkerSize=s.getValueInt()));
         }else{
             panel.section("ACCURACY READOUT");
-            buttonList.add(new NeutralButton(2,panel.left(),panel.row(),panel.width(),20,"Live Bow Accuracy: "+(UtilitySettings.bowAccuracy?"ON":"OFF"),false));
+            buttonList.add(new NeutralButton(2,panel.left(),panel.row(),panel.width(),BedrockTokens.CONTROL_H,"Live Bow Accuracy: "+(UtilitySettings.bowAccuracy?"ON":"OFF"),false));
             int row=panel.row();
             buttonList.add(new PresetSlider(3,panel.columnX(2,0),row,panel.columnWidth(2),"Background: ","%",PresetSlider.PERCENT,UtilitySettings.bowAccuracyOpacity,25,s->UtilitySettings.bowAccuracyOpacity=s.getValueInt()));
             buttonList.add(new PresetSlider(5,panel.columnX(2,1),row,panel.columnWidth(2),"Size: ","%",PresetSlider.SIZE,UtilitySettings.bowAccuracySize,100,s->UtilitySettings.bowAccuracySize=s.getValueInt()));
             row=panel.choice();
             buttonList.add(new ChoiceButton(this,4,panel.columnX(2,0),row,panel.columnWidth(2),"Decimal places",new String[]{"0","1","2"},UtilitySettings.bowAccuracyDecimals,v->UtilitySettings.bowAccuracyDecimals=v));
-            buttonList.add(new NeutralButton(11,panel.columnX(2,1),row,panel.columnWidth(2),20,"Prefix: "+(UtilitySettings.bowAccuracyPrefix?"ON":"OFF"),false));
+            buttonList.add(new NeutralButton(11,panel.columnX(2,1),row,panel.columnWidth(2),BedrockTokens.CONTROL_H,"Prefix: "+(UtilitySettings.bowAccuracyPrefix?"ON":"OFF"),false));
             row=panel.row();
             buttonList.add(new PresetSlider(15,panel.columnX(2,0),row,panel.columnWidth(2),"Fade In: ","%",PresetSlider.PERCENT,UtilitySettings.bowAccuracyFadeIn,0,s->UtilitySettings.bowAccuracyFadeIn=s.getValueInt()));
             buttonList.add(new PresetSlider(16,panel.columnX(2,1),row,panel.columnWidth(2),"Fade Out: ","%",PresetSlider.PERCENT,UtilitySettings.bowAccuracyFadeOut,50,s->UtilitySettings.bowAccuracyFadeOut=s.getValueInt()));
             buttonList.add(new ChoiceButton(this,12,panel.left(),panel.choice(),panel.width(),"Mode",java.util.Arrays.stream(BowAccuracy.Mode.values()).map(v->v.label).toArray(String[]::new),UtilitySettings.bowAccuracyMode.ordinal(),v->UtilitySettings.bowAccuracyMode=BowAccuracy.Mode.values()[v]));
-            buttonList.add(new NeutralButton(13,panel.left(),panel.row(),panel.width(),20,"Animate Percentage: "+(UtilitySettings.bowAccuracyAnimate?"ON":"OFF"),false));
+            buttonList.add(new NeutralButton(13,panel.left(),panel.row(),panel.width(),BedrockTokens.CONTROL_H,"Animate Percentage: "+(UtilitySettings.bowAccuracyAnimate?"ON":"OFF"),false));
         }
-        pin(new NeutralButton(6,actionX(),footerY(),110,20,"Reset HUD position",false));
+        pin(new NeutralButton(6,actionX(),footerY(),110,BedrockTokens.CONTROL_H,"Reset HUD position",false));
         back(7);
     }
     protected void actionPerformed(GuiButton button){

@@ -53,11 +53,11 @@ final class MapGalleryScreen extends GuiScreen {
         search.setText(query);
         search.setFocused(true);
         buttonList.clear();
-        buttonList.add(new NeutralButton(1,width/2-160,height-28,60,20,"Prev",false));
-        buttonList.add(new NeutralButton(2,width/2-40,height-28,80,20,"Back",false));
-        buttonList.add(new NeutralButton(3,width/2+100,height-28,60,20,"Next",false));
-        buttonList.add(new NeutralButton(4,width-166,18,60,20,"All",!favoritesOnly));
-        buttonList.add(new NeutralButton(5,width-102,18,90,20,"Favorites",favoritesOnly));
+        buttonList.add(new NeutralButton(1,width/2-160,height-28,60,BedrockTokens.CONTROL_H,"Prev",false));
+        buttonList.add(new NeutralButton(2,width/2-40,height-28,80,BedrockTokens.CONTROL_H,"Back",false));
+        buttonList.add(new NeutralButton(3,width/2+100,height-28,60,BedrockTokens.CONTROL_H,"Next",false));
+        buttonList.add(new NeutralButton(4,width-166,18,60,BedrockTokens.CONTROL_H,"All",!favoritesOnly));
+        buttonList.add(new NeutralButton(5,width-102,18,90,BedrockTokens.CONTROL_H,"Favorites",favoritesOnly));
     }
 
     /** Return map paths matching the current search text. */

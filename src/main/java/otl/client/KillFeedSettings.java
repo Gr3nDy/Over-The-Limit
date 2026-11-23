@@ -20,13 +20,13 @@ public final class KillFeedSettings extends SettingsScreen {
         for(int i=0;i<3;i++)buttonList.add(new NeutralButton(10+i,panel.columnX(3,i),tabs,panel.columnWidth(3),18,new String[]{"General","Appearance","Colors"}[i],page==i));
         if(page==0){
             panel.section("ENTRIES & CHAT");
-            buttonList.add(new NeutralButton(0,panel.left(),panel.row(),panel.width(),20,"Kill Feed: "+(UtilitySettings.killFeed?"ON":"OFF"),false));
-            buttonList.add(new NeutralButton(1,panel.left(),panel.row(),panel.width(),20,"Hide deaths in chat: "+(UtilitySettings.hideKillChat?"ON":"OFF"),false));
+            buttonList.add(new NeutralButton(0,panel.left(),panel.row(),panel.width(),BedrockTokens.CONTROL_H,"Kill Feed: "+(UtilitySettings.killFeed?"ON":"OFF"),false));
+            buttonList.add(new NeutralButton(1,panel.left(),panel.row(),panel.width(),BedrockTokens.CONTROL_H,"Hide deaths in chat: "+(UtilitySettings.hideKillChat?"ON":"OFF"),false));
             buttonList.add(new PresetSlider(14,panel.left(),panel.row(),panel.width(),"Visible entries: ","",PresetSlider.ROWS,UtilitySettings.killFeedRows,5,s->UtilitySettings.killFeedRows=s.getValueInt()));
             buttonList.add(new PresetSlider(15,panel.left(),panel.row(),panel.width(),"Fade out after: "," seconds",PresetSlider.SECONDS,UtilitySettings.killFeedSeconds,10,s->UtilitySettings.killFeedSeconds=s.getValueInt()));
-            buttonList.add(new NeutralButton(18,panel.left(),panel.row(),panel.width(),20,"Slide animation: "+(UtilitySettings.killFeedSlide?"ON":"OFF"),false));
+            buttonList.add(new NeutralButton(18,panel.left(),panel.row(),panel.width(),BedrockTokens.CONTROL_H,"Slide animation: "+(UtilitySettings.killFeedSlide?"ON":"OFF"),false));
             buttonList.add(new ChoiceButton(this,25,panel.left(),panel.choice(),panel.width(),"Show entries",java.util.Arrays.stream(KillFeedRules.FilterMode.values()).map(v->v.label).toArray(String[]::new),UtilitySettings.killFeedFilter.ordinal(),v->UtilitySettings.killFeedFilter=KillFeedRules.FilterMode.values()[v]));
-            pin(new NeutralButton(2,actionX(),footerY(),110,20,"Clear kill history",false));
+            pin(new NeutralButton(2,actionX(),footerY(),110,BedrockTokens.CONTROL_H,"Clear kill history",false));
         }else if(page==1){
             panel.section("APPEARANCE");
             buttonList.add(new PresetSlider(4,panel.left(),panel.row(),panel.width(),"Size: ","%",PresetSlider.SIZE,UtilitySettings.killFeedSize,96,s->UtilitySettings.killFeedSize=s.getValueInt()));

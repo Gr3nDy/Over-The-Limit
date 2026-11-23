@@ -2,6 +2,7 @@ package otl.client;
 
 /** Shared geometry and semantic colors for OTL screens (Lunar Client design tokens). */
 final class BedrockTokens {
+    /** Every interactive row is CONTROL_H tall; the settings row step follows it so rows cannot overlap. */
     static final int PANEL_PAD=14,HEADER_H=26,CONTROL_H=20,CHOICE_H=34,FOOTER_H=20,ICON=12,GAP=6;
     /** Surfaces keep a little world visible through the chrome, like the reference menu. */
     static final int SURFACE_PANEL=0xB412141B,SURFACE_EDGE=0xFF2A2E38,SURFACE_INSET=0xB80E1015,SURFACE_CARD=0xA81A1D24;

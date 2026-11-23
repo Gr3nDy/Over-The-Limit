@@ -30,12 +30,12 @@ final class TeamRosterScreen extends GuiScreen {
         page=Math.min(page,pages-1);
         buttonList.clear();
         if(pages>1){
-            GuiButton prev=new GuiButton(1,width/2-70,height-24,28,20,"<");
-            GuiButton next=new GuiButton(2,width/2+42,height-24,28,20,">");
+            GuiButton prev=new GuiButton(1,width/2-70,height-24,28,BedrockTokens.CONTROL_H,"<");
+            GuiButton next=new GuiButton(2,width/2+42,height-24,28,BedrockTokens.CONTROL_H,">");
             prev.enabled=page>0;next.enabled=page+1<pages;
             buttonList.add(prev);buttonList.add(next);
         }
-        buttonList.add(new GuiButton(0,width/2-36,height-24,72,20,"Back"));
+        buttonList.add(new GuiButton(0,width/2-36,height-24,72,BedrockTokens.CONTROL_H,"Back"));
     }
     public void drawScreen(int mx,int my,float ticks){
         drawDefaultBackground();

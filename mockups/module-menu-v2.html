@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>OTL module menu — redesigned</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          /* v2 palette — 5 surfaces, 3 text tones, 2 semantic. Nothing else. */
+          bg: '#0d0f13', surf: '#12151a', hov: '#171b22', line: '#1e2229',
+          ink: '#eceff4', mid: '#9aa2af', low: '#6b7280',
+          accent: '#3b82f6', ok: '#22c55e', warn: '#e0a11b',
+        },
+      },
+    },
+  };
+</script>
+<style>
+  .mc { zoom: 2; font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+  .wd { letter-spacing: .16em; }
+  .tr { letter-spacing: .08em; }
+</style>
+
+<body class="m-0 bg-[#08090c] text-[#eceff4] font-mono p-8">
+
+  <div class="text-[11px] tracking-[.16em] text-[#6b7280] mb-1">OTL · MODULE MENU v2</div>
+  <p class="text-[11px] text-[#6b7280] max-w-[860px] leading-[1.8] m-0 mb-7">
+    Full width list, one line per module, no rail and no cards. Hierarchy comes from colour and spacing only,
+    because the game font has one size. Everything below is integer pixels inside 520×300 game units at 2×.
+  </p>
+
+  <!-- ═════════════ state 1: list ═════════════ -->
+  <div class="text-[11px] text-[#9aa2af] mb-2">List — eight modules visible, nothing truncated</div>
+  <div class="mc">
+    <div class="relative w-[520px] h-[300px] overflow-hidden rounded-[2px] bg-bg text-ink text-[8px] leading-[10px] ring-1 ring-line">
+
+      <!-- header -->
+      <div class="absolute left-[12px] right-[12px] top-0 h-[30px] flex items-center gap-[10px] border-b border-line">
+        <span class="text-mid text-[10px]">&#8249;</span>
+        <span class="wd text-[12px] font-bold tracking-[.18em]">MODULES</span>
+        <div class="ml-auto h-[18px] pl-[7px] pr-[9px] rounded-[9px] bg-surf flex items-center gap-[5px]">
+          <i class="w-[6px] h-[6px] rounded-full bg-ok"></i>
+          <span class="text-mid">Online</span><span class="text-low">&middot;</span><span class="text-mid">3</span>
+        </div>
+      </div>
+
+      <!-- search + filters -->
+      <div class="absolute left-[12px] right-[12px] top-[38px] h-[20px] flex items-center gap-[8px]">
+        <div class="w-[188px] h-[20px] rounded-[2px] bg-surf flex items-center px-[7px] gap-[6px]">
+          <span class="text-low">&#8981;</span><span class="text-low">Search modules</span>
+        </div>
+        <div class="ml-auto flex items-center gap-[2px]">
+          <span class="h-[18px] px-[7px] rounded-[2px] bg-surf text-ink flex items-center">All</span>
+          <span class="h-[18px] px-[7px] rounded-[2px] text-mid flex items-center">Hud</span>
+          <span class="h-[18px] px-[7px] rounded-[2px] text-mid flex items-center">Visual</span>
+          <span class="h-[18px] px-[7px] rounded-[2px] text-mid flex items-center">Mechanic</span>
+        </div>
+      </div>
+
+      <!-- rows -->
+      <div class="absolute left-[12px] right-[12px] top-[64px] flex flex-col">
+
+        <div class="h-[22px] flex items-center gap-[8px] px-[7px] rounded-[2px] bg-hov shadow-[inset_2px_0_0_#3b82f6]">
+          <div class="w-[12px] h-[12px] rounded-[2px] bg-[#3b82f62b] flex items-center justify-center">
+            <div class="w-[6px] h-[6px] ring-1 ring-accent rounded-[1px]"></div></div>
+          <span class="text-ink">Team Bar</span>
+          <span class="text-low truncate">See teams, scores and flags</span>
+          <div class="ml-auto w-[18px] h-[10px] rounded-full bg-ok relative flex-none">
+            <i class="absolute right-[1px] top-[1px] w-[8px] h-[8px] rounded-full bg-white"></i></div>
+        </div>
+
+        <div class="h-[22px] flex items-center gap-[8px] px-[7px] rounded-[2px]">
+          <div class="w-[12px] h-[12px] rounded-[2px] bg-[#3b82f62b] flex items-center justify-center">
+            <div class="w-[6px] h-[1px] bg-accent"></div><div class="w-[4px] h-[1px] bg-accent mt-[2px]"></div></div>
+          <span class="text-ink">Kill Feed</span>
+          <span class="text-low truncate">Recent kills without chat spam</span>
+          <div class="ml-auto w-[18px] h-[10px] rounded-full bg-ok relative flex-none">
+            <i class="absolute right-[1px] top-[1px] w-[8px] h-[8px] rounded-full bg-white"></i></div>
+        </div>
+
+        <div class="h-[22px] flex items-center gap-[8px] px-[7px] rounded-[2px]">
+          <div class="w-[12px] h-[12px] rounded-[2px] bg-[#3b82f62b] flex items-center justify-center">
+            <div class="w-[6px] h-[6px] ring-1 ring-accent rounded-[1px]"></div></div>
+          <span class="text-ink">Reliable Chat</span>
+          <span class="text-low truncate">Team, global and admin chat</span>
+          <div class="ml-auto w-[18px] h-[10px] rounded-full bg-ok relative flex-none">
+            <i class="absolute right-[1px] top-[1px] w-[8px] h-[8px] rounded-full bg-white"></i></div>
+        </div>
+
+        <div class="h-[22px] flex items-center gap-[8px] px-[7px] rounded-[2px]">
+          <div class="w-[12px] h-[12px] rounded-[2px] bg-[#7c3aed2b] flex items-center justify-center">
+            <div class="w-[6px] h-[2px] bg-[#7c3aed]"></div></div>
+          <span class="text-ink">Map Preview</span>
+          <span class="text-low truncate">Next map before voting</span>
+          <div class="ml-auto w-[18px] h-[10px] rounded-full bg-surf relative flex-none">
+            <i class="absolute left-[1px] top-[1px] w-[8px] h-[8px] rounded-full bg-[#5b6069]"></i></div>
+        </div>
+
+        <div class="h-[22px] flex items-center gap-[8px] px-[7px] rounded-[2px]">
+          <div class="w-[12px] h-[12px] rounded-[2px] bg-[#7c3aed2b] flex items-center justify-center">
+            <div class="w-[6px] h-[6px] ring-1 ring-[#7c3aed] rounded-full"></div></div>
+          <span class="text-ink">Face Rig</span>
+          <span class="text-low truncate">Expressive marks on your skin</span>
+          <div class="ml-auto w-[18px] h-[10px] rounded-full bg-ok relative flex-none">
+            <i class="absolute right-[1px] top-[1px] w-[8px] h-[8px] rounded-full bg-white"></i></div>
+        </div>
+
+        <div class="h-[22px] flex items-center gap-[8px] px-[7px] rounded-[2px]">
+          <div class="w-[12px] h-[12px] rounded-[2px] bg-[#22c55e2b] flex items-center justify-center">
+            <div class="w-[2px] h-[7px] bg-ok"></div></div>
+          <span class="text-ink">Player Animation</span>
+          <span class="text-low truncate">Emotes and a skateboard</span>
+          <div class="ml-auto w-[18px] h-[10px] rounded-full bg-ok relative flex-none">
+            <i class="absolute right-[1px] top-[1px] w-[8px] h-[8px] rounded-full bg-white"></i></div>
+        </div>
+
+        <div class="h-[22px] flex items-center gap-[8px] px-[7px] rounded-[2px]">
+          <div class="w-[12px] h-[12px] rounded-[2px] bg-[#22c55e2b] flex items-center justify-center">
+            <div class="w-[6px] h-[1px] bg-ok"></div><div class="w-[3px] h-[1px] bg-ok mt-[2px]"></div></div>
+          <span class="text-ink">Auto GG</span>
+          <span class="text-low truncate">Send GG when matches end</span>
+          <div class="ml-auto w-[18px] h-[10px] rounded-full bg-surf relative flex-none">
+            <i class="absolute left-[1px] top-[1px] w-[8px] h-[8px] rounded-full bg-[#5b6069]"></i></div>
+        </div>
+
+        <div class="h-[22px] flex items-center gap-[8px] px-[7px] rounded-[2px] opacity-45">
+          <div class="w-[12px] h-[12px] rounded-[2px] bg-[#ffffff12] flex items-center justify-center">
+            <div class="w-[6px] h-[6px] ring-1 ring-[#6b7280] rounded-full"></div></div>
+          <span class="text-ink">Touchdown</span>
+          <span class="text-low truncate">Player and ball details</span>
+          <span class="ml-auto text-low tr text-[7px]">LOCKED</span>
+        </div>
+      </div>
+
+      <!-- footer -->
+      <div class="absolute left-[12px] right-[12px] bottom-0 h-[28px] border-t border-line flex items-center gap-[8px]">
+        <div class="h-[18px] pl-[7px] pr-[6px] rounded-[2px] bg-surf flex items-center gap-[6px]">
+          <span class="text-low">Profile</span><span class="text-ink">Default</span><span class="text-low">&#9662;</span>
+        </div>
+        <span class="text-low">9 of 14 on</span>
+        <div class="ml-auto h-[18px] px-[10px] rounded-[2px] bg-accent text-white flex items-center tr">DONE</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════════════ state 2: row expanded ═════════════ -->
+  <div class="text-[11px] text-[#9aa2af] mt-9 mb-2">Hover / expanded row — options inline, so no second screen for the common case</div>
+  <div class="mc">
+    <div class="relative w-[520px] h-[300px] overflow-hidden rounded-[2px] bg-bg text-ink text-[8px] leading-[10px] ring-1 ring-line">
+
+      <div class="absolute left-[12px] right-[12px] top-0 h-[30px] flex items-center gap-[10px] border-b border-line">
+        <span class="text-mid text-[10px]">&#8249;</span>
+        <span class="wd text-[12px] font-bold tracking-[.18em]">MODULES</span>
+        <div class="ml-auto h-[18px] pl-[7px] pr-[9px] rounded-[9px] bg-surf flex items-center gap-[5px]">
+          <i class="w-[6px] h-[6px] rounded-full bg-ok"></i><span class="text-mid">Online</span><span class="text-low">&middot;</span><span class="text-mid">3</span>
+        </div>
+      </div>
+
+      <div class="absolute left-[12px] right-[12px] top-[38px] h-[20px] flex items-center gap-[8px]">
+        <div class="w-[188px] h-[20px] rounded-[2px] bg-surf flex items-center px-[7px] gap-[6px]">
+          <span class="text-low">&#8981;</span><span class="text-low">Search modules</span>
+        </div>
+        <div class="ml-auto flex items-center gap-[2px]">
+          <span class="h-[18px] px-[7px] rounded-[2px] bg-surf text-ink flex items-center">All</span>
+          <span class="h-[18px] px-[7px] rounded-[2px] text-mid flex items-center">Hud</span>
+          <span class="h-[18px] px-[7px] rounded-[2px] text-mid flex items-center">Visual</span>
+          <span class="h-[18px] px-[7px] rounded-[2px] text-mid flex items-center">Mechanic</span>
+        </div>
+      </div>
+
+      <div class="absolute left-[12px] right-[12px] top-[64px] flex flex-col">
+
+        <!-- open row -->
+        <div class="rounded-[2px] bg-hov shadow-[inset_2px_0_0_#3b82f6]">
+          <div class="h-[22px] flex items-center gap-[8px] px-[7px]">
+            <div class="w-[12px] h-[12px] rounded-[2px] bg-[#3b82f62b] flex items-center justify-center">
+              <div class="w-[6px] h-[6px] ring-1 ring-accent rounded-[1px]"></div></div>
+            <span class="text-ink">Team Bar</span>
+            <span class="text-low truncate">See teams, scores and flags</span>
+            <div class="ml-auto w-[18px] h-[10px] rounded-full bg-ok relative flex-none">
+              <i class="absolute right-[1px] top-[1px] w-[8px] h-[8px] rounded-full bg-white"></i></div>
+          </div>
+          <!-- inline options -->
+          <div class="mt-[2px] mx-[7px] mb-[6px] rounded-[2px] bg-[#0a0c10] border border-line p-[7px] flex flex-col gap-[6px]">
+            <div class="flex items-center gap-[8px]">
+              <span class="text-mid w-[78px]">Players</span>
+              <div class="flex-1 h-[3px] rounded-full bg-line relative">
+                <div class="absolute left-0 top-0 h-[3px] w-[46%] rounded-full bg-accent"></div>
+                <div class="absolute left-[46%] -top-[3px] w-[9px] h-[9px] rounded-full bg-ink"></div>
+              </div>
+              <span class="text-ink w-[22px] text-right">10</span>
+            </div>
+            <div class="flex items-center gap-[8px]">
+              <span class="text-mid w-[78px]">Size</span>
+              <div class="flex-1 h-[3px] rounded-full bg-line relative">
+                <div class="absolute left-0 top-0 h-[3px] w-[62%] rounded-full bg-accent"></div>
+                <div class="absolute left-[62%] -top-[3px] w-[9px] h-[9px] rounded-full bg-ink"></div>
+              </div>
+              <span class="text-ink w-[22px] text-right">100%</span>
+            </div>
+            <div class="flex items-center gap-[8px]">
+              <span class="text-mid w-[78px]">Scoreboard</span>
+              <span class="text-mid">Visible</span>
+              <div class="ml-auto w-[18px] h-[10px] rounded-full bg-ok relative flex-none">
+                <i class="absolute right-[1px] top-[1px] w-[8px] h-[8px] rounded-full bg-white"></i></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- rest, dimmed while one row is open -->
+        <div class="opacity-55 flex flex-col">
+          <div class="h-[22px] flex items-center gap-[8px] px-[7px]">
+            <div class="w-[12px] h-[12px] rounded-[2px] bg-[#3b82f62b] flex items-center justify-center"><div class="w-[6px] h-[1px] bg-accent"></div></div>
+            <span class="text-ink">Kill Feed</span><span class="text-low truncate">Recent kills without chat spam</span>
+            <div class="ml-auto w-[18px] h-[10px] rounded-full bg-ok relative flex-none"><i class="absolute right-[1px] top-[1px] w-[8px] h-[8px] rounded-full bg-white"></i></div>
+          </div>
+          <div class="h-[22px] flex items-center gap-[8px] px-[7px]">
+            <div class="w-[12px] h-[12px] rounded-[2px] bg-[#3b82f62b] flex items-center justify-center"><div class="w-[6px] h-[6px] ring-1 ring-accent rounded-[1px]"></div></div>
+            <span class="text-ink">Reliable Chat</span><span class="text-low truncate">Team, global and admin chat</span>
+            <div class="ml-auto w-[18px] h-[10px] rounded-full bg-ok relative flex-none"><i class="absolute right-[1px] top-[1px] w-[8px] h-[8px] rounded-full bg-white"></i></div>
+          </div>
+          <div class="h-[22px] flex items-center gap-[8px] px-[7px]">
+            <div class="w-[12px] h-[12px] rounded-[2px] bg-[#7c3aed2b] flex items-center justify-center"><div class="w-[6px] h-[2px] bg-[#7c3aed]"></div></div>
+            <span class="text-ink">Map Preview</span><span class="text-low truncate">Next map before voting</span>
+            <div class="ml-auto w-[18px] h-[10px] rounded-full bg-surf relative flex-none"><i class="absolute left-[1px] top-[1px] w-[8px] h-[8px] rounded-full bg-[#5b6069]"></i></div>
+          </div>
+          <div class="h-[22px] flex items-center gap-[8px] px-[7px]">
+            <div class="w-[12px] h-[12px] rounded-[2px] bg-[#22c55e2b] flex items-center justify-center"><div class="w-[2px] h-[7px] bg-ok"></div></div>
+            <span class="text-ink">Player Animation</span><span class="text-low truncate">Emotes and a skateboard</span>
+            <div class="ml-auto w-[18px] h-[10px] rounded-full bg-ok relative flex-none"><i class="absolute right-[1px] top-[1px] w-[8px] h-[8px] rounded-full bg-white"></i></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="absolute left-[12px] right-[12px] bottom-0 h-[28px] border-t border-line flex items-center gap-[8px]">
+        <div class="h-[18px] pl-[7px] pr-[6px] rounded-[2px] bg-surf flex items-center gap-[6px]">
+          <span class="text-low">Profile</span><span class="text-ink">Default</span><span class="text-low">&#9662;</span>
+        </div>
+        <span class="text-low">9 of 14 on</span>
+        <div class="ml-auto h-[18px] px-[10px] rounded-[2px] bg-accent text-white flex items-center tr">DONE</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════════════ port spec ═════════════ -->
+  <div class="text-[11px] text-[#6b7280] mt-9 max-w-[860px]">
+    <div class="text-[11px] tracking-[.16em] text-[#9aa2af] mb-2">PORT SPEC — every number above</div>
+    <table class="text-[11px] leading-[1.9] border-collapse">
+      <tr><td class="pr-6 text-[#6b7280]">Panel</td><td class="text-[#eceff4]">520×300 · r2 · bg #0d0f13 · 1px #1e2229</td></tr>
+      <tr><td class="pr-6 text-[#6b7280]">Pad</td><td class="text-[#eceff4]">12 sides · header 30 · search row 20 at y38 · list at y64 · footer 28</td></tr>
+      <tr><td class="pr-6 text-[#6b7280]">Row</td><td class="text-[#eceff4]">22 high · 7px inset · gap 8 · hover #171b22 · open: inset 2px accent</td></tr>
+      <tr><td class="pr-6 text-[#6b7280]">Icon</td><td class="text-[#eceff4]">12×12 r2 · tint 17% alpha · glyph 6px in category colour</td></tr>
+      <tr><td class="pr-6 text-[#6b7280]">Switch</td><td class="text-[#eceff4]">18×10 r5 · track #22c55e / #12151a · knob 8px white / #5b6069</td></tr>
+      <tr><td class="pr-6 text-[#6b7280]">Text</td><td class="text-[#eceff4]">name #eceff4 · detail #6b7280 · label #9aa2af — one size, 8px, 10px lines</td></tr>
+      <tr><td class="pr-6 text-[#6b7280]">Slider</td><td class="text-[#eceff4]">track 3 high r2 · fill accent · knob 9px #eceff4</td></tr>
+    </table>
+    <p class="mt-3 text-[11px] text-[#6b7280] leading-[1.8] max-w-[820px]">
+      Port notes: the screen title is the only 16px text (scale 2 of the 8px font). Letter-spacing on
+      <em>MODULES</em> and <em>DONE</em> ports as +1px per glyph, or is dropped. Hairlines and inset highlights are
+      plain rects; the 17% icon tint is the only alpha fill.
+    </p>
+  </div>
+</body>
+</html>

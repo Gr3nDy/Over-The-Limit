@@ -13,9 +13,9 @@ public final class PlayerAnimSettings extends SettingsScreen {
     protected void buildPanel(){
         resetButton("player_animation");
         panel.section("ANIMATION");
-        buttonList.add(new NeutralButton(0,panel.left(),panel.row(),panel.width(),20,"Player Animation: "+(UtilitySettings.playerAnimation?"ON":"OFF"),false));
-        buttonList.add(new NeutralButton(1,panel.left(),panel.row(),panel.width(),20,"Emote camera: "+(UtilitySettings.emoteCamera?"ON":"OFF"),false));
-        buttonList.add(new NeutralButton(3,panel.left(),panel.row(),panel.width(),20,"Online features: "+(UtilitySettings.boardShare?"ON":"OFF"),false));
+        buttonList.add(new NeutralButton(0,panel.left(),panel.row(),panel.width(),BedrockTokens.CONTROL_H,"Player Animation: "+(UtilitySettings.playerAnimation?"ON":"OFF"),false));
+        buttonList.add(new NeutralButton(1,panel.left(),panel.row(),panel.width(),BedrockTokens.CONTROL_H,"Emote camera: "+(UtilitySettings.emoteCamera?"ON":"OFF"),false));
+        buttonList.add(new NeutralButton(3,panel.left(),panel.row(),panel.width(),BedrockTokens.CONTROL_H,"Online features: "+(UtilitySettings.boardShare?"ON":"OFF"),false));
         panel.section("KEYS");
         panel.note("Play Emote and Pull Out Skateboard are rebindable in Controls.");
         panel.note("Nothing changes until you press a key: idle players stay exactly vanilla.");

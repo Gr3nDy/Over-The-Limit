@@ -17,14 +17,14 @@ public final class TouchdownSettings extends SettingsScreen {
         if(page==0){
         panel.section("TOUCHDOWN");
         panel.note("With 3D football on, the post flag becomes a football. The flag a carrier wears stays a flag.");
-        buttonList.add(new NeutralButton(1,panel.left(),panel.row(),panel.width(),20,"3D football: "+(UtilitySettings.touchdownFootball3d?"ON":"OFF"),false));
-        buttonList.add(new NeutralButton(0,panel.left(),panel.row(),panel.width(),20,"Ball trail: "+(UtilitySettings.touchdownTrail?"ON":"OFF"),false));
+        buttonList.add(new NeutralButton(1,panel.left(),panel.row(),panel.width(),BedrockTokens.CONTROL_H,"3D football: "+(UtilitySettings.touchdownFootball3d?"ON":"OFF"),false));
+        buttonList.add(new NeutralButton(0,panel.left(),panel.row(),panel.width(),BedrockTokens.CONTROL_H,"Ball trail: "+(UtilitySettings.touchdownTrail?"ON":"OFF"),false));
         panel.note("Draws a fading contrail behind the thrown Football, so long passes are easy to follow. A line, not particles.");
-        buttonList.add(new NeutralButton(2,panel.left(),panel.row(),panel.width(),20,"Hide ball particles: "+(UtilitySettings.touchdownHideBallParticles?"ON":"OFF"),false));
+        buttonList.add(new NeutralButton(2,panel.left(),panel.row(),panel.width(),BedrockTokens.CONTROL_H,"Hide ball particles: "+(UtilitySettings.touchdownHideBallParticles?"ON":"OFF"),false));
         panel.note("Hides the server's particle trail near the ball; the contrail setting above is separate.");
         }else{
         panel.section("PLAYER CARD");
-        buttonList.add(new NeutralButton(3,panel.left(),panel.row(),panel.width(),20,"Touchdown player card: "+(UtilitySettings.touchdownCard?"ON":"OFF"),false));
+        buttonList.add(new NeutralButton(3,panel.left(),panel.row(),panel.width(),BedrockTokens.CONTROL_H,"Touchdown player card: "+(UtilitySettings.touchdownCard?"ON":"OFF"),false));
         String[] animations={"Fade","Left","Right","Up","Down"};
         buttonList.add(new ChoiceButton(this,5,panel.left(),panel.choice(),panel.width(),"Card animation",animations,UtilitySettings.touchdownCardAnimation,v->UtilitySettings.touchdownCardAnimation=v));
         panel.note("Shows the scorer and a confirmed passer; move the card in the HUD editor.");

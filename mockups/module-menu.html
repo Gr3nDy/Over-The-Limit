@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>OTL module menu — Tailwind port spec</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  /* Tokens mirror BedrockTokens.java 1:1. Change a value here and the same line changes in Java. */
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          panel: '#12141b', edge: '#2a2e38', inset: '#0e1015', card: '#1a1d24',
+          ink: '#e8eaf0', muted: '#a0a5b0', dim: '#8a919e',
+          accent: '#3b82f6', ok: '#16a34a', bad: '#d93025', locked: '#6b7280',
+          vis: '#7c3aed', hov: '#232832',
+        },
+      },
+    },
+  };
+</script>
+<style>
+  /* One Minecraft GUI unit = 1px below; 2x like GUI scale 2. */
+  .mc { zoom: 2; font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+  .pix { image-rendering: pixelated; }
+</style>
+
+<body class="m-0 bg-[#0a0b0e] text-[#e8eaf0] font-mono p-8">
+
+  <p class="text-[11px] tracking-[.14em] text-[#a0a5b0] m-0 mb-1">OTL MODULE MENU — TAILWIND PORT SPEC</p>
+  <p class="text-[11px] text-[#8a919e] max-w-[820px] leading-[1.7] m-0 mb-8">
+    Every screen is 520×300 Minecraft GUI units, zoomed 2×. Colours are the real BedrockTokens.
+    Every class here is an integer pixel value, so the Java port is a transcription of <em>w-[132px]</em> →
+    <em>drawRect(x,y,x+132,y+h,INSET)</em>. Text width is approximate: the game font is narrower than this monospace.
+  </p>
+
+  <!-- ══════════════════════════ A — refined grid ══════════════════════════ -->
+  <div class="text-[11px] text-[#8a919e] mb-2"><b class="text-[#e8eaf0]">A · Refined grid</b> — current structure, cleaned: rail kept, cards get an icon tile and a real footer line.</div>
+  <div class="mc">
+    <div class="relative w-[520px] h-[300px] overflow-hidden rounded-[2px] bg-panel ring-1 ring-edge text-ink text-[8px] leading-[10px]">
+
+      <!-- profile rail -->
+      <div class="absolute left-0 top-0 w-[132px] h-[300px] bg-inset border-r border-edge">
+        <div class="absolute left-0 right-0 top-[9px] text-center font-bold tracking-[.06em] text-muted">4 PROFILES</div>
+        <div class="absolute left-[6px] right-[6px] top-[30px] h-[20px] rounded-[2px] bg-hov text-white flex items-center pl-[8px] shadow-[inset_2px_0_0_#3b82f6]">Default</div>
+        <div class="absolute left-[6px] right-[6px] top-[50px] h-[20px] rounded-[2px] text-[#c8c8c8] flex items-center pl-[8px]">PvP</div>
+        <div class="absolute left-[6px] right-[6px] top-[70px] h-[20px] rounded-[2px] text-[#c8c8c8] flex items-center pl-[8px]">Scrim</div>
+        <div class="absolute left-[6px] right-[6px] top-[90px] h-[20px] rounded-[2px] text-[#c8c8c8] flex items-center pl-[8px]">Casting</div>
+        <div class="absolute left-[6px] right-[6px] bottom-[26px] h-[16px] rounded-[2px] bg-edge flex items-center justify-center">+ NEW</div>
+        <div class="absolute left-[6px] right-[6px] bottom-[6px] h-[16px] rounded-[2px] bg-edge flex items-center justify-center">IMPORT</div>
+      </div>
+
+      <!-- header -->
+      <div class="absolute left-[140px] right-[8px] top-0 h-[24px] border-b border-edge">
+        <div class="absolute left-0 top-[8px] text-white shadow-[inset_0_-1px_0_#3b82f6]">MODS</div>
+        <div class="absolute left-[38px] top-[8px] text-muted">SETTINGS</div>
+        <div class="absolute right-0 top-[3px] w-[118px] h-[18px] rounded-[2px] bg-inset ring-1 ring-edge flex items-center px-[6px] text-dim">&#8981; Search</div>
+      </div>
+
+      <!-- cards -->
+      <div class="absolute left-[140px] right-[14px] top-[32px] grid grid-cols-3 gap-[4px]">
+
+        <div class="h-[96px] rounded-[2px] bg-hov ring-1 ring-[#3a4150] p-[7px] relative">
+          <div class="flex items-center gap-[6px]">
+            <div class="w-[18px] h-[18px] rounded-[2px] bg-inset flex items-center justify-center"><div class="w-[10px] h-[10px] ring-1 ring-accent rounded-[1px]"></div></div>
+            <div>Team Bar</div>
+          </div>
+          <div class="mt-[5px] text-muted">See teams, scores and flags at a glance</div>
+          <div class="absolute left-[7px] right-[7px] bottom-[13px] h-[1px] bg-edge"></div>
+          <div class="absolute left-[7px] right-[7px] bottom-0 h-[13px] flex items-center gap-[5px]">
+            <div class="w-[18px] h-[9px] rounded-full bg-ok relative"><i class="absolute right-[1px] top-[1px] w-[7px] h-[7px] rounded-full bg-white"></i></div>
+            <span class="text-ok">ON</span><span class="ml-auto text-accent">EDIT &rsaquo;</span>
+          </div>
+        </div>
+
+        <div class="h-[96px] rounded-[2px] bg-card ring-1 ring-edge p-[7px] relative">
+          <div class="flex items-center gap-[6px]">
+            <div class="w-[18px] h-[18px] rounded-[2px] bg-inset flex items-center justify-center">
+              <div class="w-[10px] h-[10px] relative text-accent">
+                <i class="absolute left-0 top-[1px] w-[10px] h-[1px] bg-current"></i>
+                <i class="absolute left-0 top-[4px] w-[7px] h-[1px] bg-current"></i>
+                <i class="absolute left-0 top-[7px] w-[9px] h-[1px] bg-current"></i>
+              </div>
+            </div>
+            <div>Kill Feed</div>
+          </div>
+          <div class="mt-[5px] text-muted">Track recent kills without chat spam</div>
+          <div class="absolute left-[7px] right-[7px] bottom-[13px] h-[1px] bg-edge"></div>
+          <div class="absolute left-[7px] right-[7px] bottom-0 h-[13px] flex items-center gap-[5px]">
+            <div class="w-[18px] h-[9px] rounded-full bg-ok relative"><i class="absolute right-[1px] top-[1px] w-[7px] h-[7px] rounded-full bg-white"></i></div>
+            <span class="text-ok">ON</span><span class="ml-auto text-accent">EDIT &rsaquo;</span>
+          </div>
+        </div>
+
+        <div class="h-[96px] rounded-[2px] bg-card ring-1 ring-edge p-[7px] relative">
+          <div class="flex items-center gap-[6px]">
+            <div class="w-[18px] h-[18px] rounded-[2px] bg-inset flex items-center justify-center">
+              <div class="w-[10px] h-[10px] relative text-vis"><i class="absolute left-[1px] top-[4px] w-[8px] h-[2px] bg-current"></i></div>
+            </div>
+            <div>Map Preview</div>
+          </div>
+          <div class="mt-[5px] text-muted">Preview the next map before voting</div>
+          <div class="absolute left-[7px] right-[7px] bottom-[13px] h-[1px] bg-edge"></div>
+          <div class="absolute left-[7px] right-[7px] bottom-0 h-[13px] flex items-center gap-[5px]">
+            <div class="w-[18px] h-[9px] rounded-full bg-edge relative"><i class="absolute left-[1px] top-[1px] w-[7px] h-[7px] rounded-full bg-[#9aa0ac]"></i></div>
+            <span class="text-dim">OFF</span><span class="ml-auto text-accent">EDIT &rsaquo;</span>
+          </div>
+        </div>
+
+        <div class="h-[96px] rounded-[2px] bg-card ring-1 ring-edge p-[7px] relative">
+          <div class="flex items-center gap-[6px]">
+            <div class="w-[18px] h-[18px] rounded-[2px] bg-inset flex items-center justify-center"><div class="w-[10px] h-[10px] ring-1 ring-accent rounded-[1px]"></div></div>
+            <div>Reliable Chat</div>
+          </div>
+          <div class="mt-[5px] text-muted">Organize team, global and admin chat</div>
+          <div class="absolute left-[7px] right-[7px] bottom-[13px] h-[1px] bg-edge"></div>
+          <div class="absolute left-[7px] right-[7px] bottom-0 h-[13px] flex items-center gap-[5px]">
+            <div class="w-[18px] h-[9px] rounded-full bg-ok relative"><i class="absolute right-[1px] top-[1px] w-[7px] h-[7px] rounded-full bg-white"></i></div>
+            <span class="text-ok">ON</span><span class="ml-auto text-accent">EDIT &rsaquo;</span>
+          </div>
+        </div>
+
+        <div class="h-[96px] rounded-[2px] bg-card ring-1 ring-edge p-[7px] relative">
+          <div class="flex items-center gap-[6px]">
+            <div class="w-[18px] h-[18px] rounded-[2px] bg-inset flex items-center justify-center">
+              <div class="w-[10px] h-[10px] relative text-ok"><i class="absolute left-[3px] top-0 w-[2px] h-[10px] bg-current"></i></div>
+            </div>
+            <div>Player Animation</div>
+          </div>
+          <div class="mt-[5px] text-muted">Emotes and a pull-out skateboard</div>
+          <div class="absolute left-[7px] right-[7px] bottom-[13px] h-[1px] bg-edge"></div>
+          <div class="absolute left-[7px] right-[7px] bottom-0 h-[13px] flex items-center gap-[5px]">
+            <div class="w-[18px] h-[9px] rounded-full bg-ok relative"><i class="absolute right-[1px] top-[1px] w-[7px] h-[7px] rounded-full bg-white"></i></div>
+            <span class="text-ok">ON</span><span class="ml-auto text-accent">EDIT &rsaquo;</span>
+          </div>
+        </div>
+
+        <div class="h-[96px] rounded-[2px] bg-card ring-1 ring-edge p-[7px] relative opacity-70">
+          <div class="flex items-center gap-[6px]">
+            <div class="w-[18px] h-[18px] rounded-[2px] bg-inset flex items-center justify-center"><div class="w-[10px] h-[10px] ring-1 ring-locked rounded-full"></div></div>
+            <div class="text-locked">Touchdown</div>
+          </div>
+          <div class="mt-[5px] text-muted">Show Touchdown player and ball details</div>
+          <div class="absolute left-[7px] right-[7px] bottom-[13px] h-[1px] bg-edge"></div>
+          <div class="absolute left-[7px] right-[7px] bottom-0 h-[13px] flex items-center gap-[5px]">
+            <span class="text-locked">LOCKED</span><span class="ml-auto text-locked">DETAILS &rsaquo;</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- footer -->
+      <div class="absolute left-[140px] right-[8px] bottom-0 h-[24px] border-t border-edge flex items-center">
+        <div class="h-[18px] px-[7px] rounded-[2px] bg-card flex items-center text-muted">Enabled only</div>
+        <span class="ml-[8px] text-dim">9 / 14 ON</span>
+        <div class="ml-auto w-[44px] h-[16px] rounded-[2px] bg-edge flex items-center justify-center">DONE</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════ B — option rows ══════════════════════════ -->
+  <div class="text-[11px] text-[#8a919e] mt-10 mb-2"><b class="text-[#e8eaf0]">B · Option rows</b> — one module per line. Seven visible instead of six, nothing truncates, scanning is vertical like the game's own options.</div>
+  <div class="mc">
+    <div class="relative w-[520px] h-[300px] overflow-hidden rounded-[2px] bg-panel ring-1 ring-edge text-ink text-[8px] leading-[10px]">
+
+      <div class="absolute left-[8px] right-[8px] top-0 h-[26px] border-b border-edge flex items-center gap-[8px]">
+        <span class="w-[18px] text-center text-muted">&#8249;</span>
+        <span class="font-bold tracking-[.1em]">OTL</span>
+        <span class="h-[18px] px-[7px] rounded-[2px] bg-accent text-white flex items-center">MODS</span>
+        <span class="h-[18px] px-[7px] rounded-[2px] bg-card text-muted flex items-center">SETTINGS</span>
+        <span class="ml-auto flex items-center gap-[4px] text-muted"><i class="w-[6px] h-[6px] rounded-full bg-ok"></i>Online &middot; 3</span>
+      </div>
+
+      <div class="absolute left-[8px] right-[8px] top-[30px] flex gap-[4px]">
+        <span class="h-[18px] px-[7px] rounded-[2px] bg-accent text-white flex items-center">ALL</span>
+        <span class="h-[18px] px-[7px] rounded-[2px] bg-card text-muted flex items-center">HUD</span>
+        <span class="h-[18px] px-[7px] rounded-[2px] bg-card text-muted flex items-center">VISUAL</span>
+        <span class="h-[18px] px-[7px] rounded-[2px] bg-card text-muted flex items-center">MECHANIC</span>
+        <span class="ml-auto h-[18px] px-[7px] rounded-[2px] bg-card text-dim flex items-center">Search</span>
+      </div>
+
+      <div class="absolute left-[8px] right-[14px] top-[52px] flex flex-col gap-[2px]">
+        <div class="h-[24px] flex items-center gap-[7px] px-[7px] rounded-[2px] bg-hov">
+          <i class="w-[2px] h-[14px] rounded-[1px] bg-accent"></i>
+          <div><div>Team Bar</div><div class="text-dim">See teams, scores and flags at a glance</div></div>
+          <div class="ml-auto w-[18px] h-[9px] rounded-full bg-ok relative"><i class="absolute right-[1px] top-[1px] w-[7px] h-[7px] rounded-full bg-white"></i></div>
+        </div>
+        <div class="h-[24px] flex items-center gap-[7px] px-[7px] rounded-[2px]">
+          <i class="w-[2px] h-[14px] rounded-[1px] bg-accent"></i>
+          <div><div>Kill Feed</div><div class="text-dim">Track recent kills without chat spam</div></div>
+          <div class="ml-auto w-[18px] h-[9px] rounded-full bg-ok relative"><i class="absolute right-[1px] top-[1px] w-[7px] h-[7px] rounded-full bg-white"></i></div>
+        </div>
+        <div class="h-[24px] flex items-center gap-[7px] px-[7px] rounded-[2px]">
+          <i class="w-[2px] h-[14px] rounded-[1px] bg-accent"></i>
+          <div><div>Reliable Chat</div><div class="text-dim">Organize team, global and admin chat</div></div>
+          <div class="ml-auto w-[18px] h-[9px] rounded-full bg-ok relative"><i class="absolute right-[1px] top-[1px] w-[7px] h-[7px] rounded-full bg-white"></i></div>
+        </div>
+        <div class="h-[24px] flex items-center gap-[7px] px-[7px] rounded-[2px]">
+          <i class="w-[2px] h-[14px] rounded-[1px] bg-vis"></i>
+          <div><div>Map Preview</div><div class="text-dim">Preview the next map before voting</div></div>
+          <div class="ml-auto w-[18px] h-[9px] rounded-full bg-edge relative"><i class="absolute left-[1px] top-[1px] w-[7px] h-[7px] rounded-full bg-[#9aa0ac]"></i></div>
+        </div>
+        <div class="h-[24px] flex items-center gap-[7px] px-[7px] rounded-[2px]">
+          <i class="w-[2px] h-[14px] rounded-[1px] bg-vis"></i>
+          <div><div>Face Rig</div><div class="text-dim">Add expressive face marks to your skin</div></div>
+          <div class="ml-auto w-[18px] h-[9px] rounded-full bg-ok relative"><i class="absolute right-[1px] top-[1px] w-[7px] h-[7px] rounded-full bg-white"></i></div>
+        </div>
+        <div class="h-[24px] flex items-center gap-[7px] px-[7px] rounded-[2px]">
+          <i class="w-[2px] h-[14px] rounded-[1px] bg-ok"></i>
+          <div><div>Player Animation</div><div class="text-dim">Emotes and a pull-out skateboard</div></div>
+          <div class="ml-auto w-[18px] h-[9px] rounded-full bg-ok relative"><i class="absolute right-[1px] top-[1px] w-[7px] h-[7px] rounded-full bg-white"></i></div>
+        </div>
+        <div class="h-[24px] flex items-center gap-[7px] px-[7px] rounded-[2px]">
+          <i class="w-[2px] h-[14px] rounded-[1px] bg-ok"></i>
+          <div><div>Auto GG</div><div class="text-dim">Send a friendly GG when matches end</div></div>
+          <div class="ml-auto w-[18px] h-[9px] rounded-full bg-edge relative"><i class="absolute left-[1px] top-[1px] w-[7px] h-[7px] rounded-full bg-[#9aa0ac]"></i></div>
+        </div>
+      </div>
+
+      <div class="absolute right-[2px] top-[52px] bottom-[28px] w-[4px] rounded-[2px] bg-inset">
+        <i class="absolute left-0 right-0 top-[6%] h-[40%] rounded-[2px] bg-[#7a7a7a]"></i>
+      </div>
+
+      <div class="absolute left-[8px] right-[8px] bottom-[6px] h-[20px] border-t border-edge flex items-center gap-[8px] text-dim">
+        <span>9 / 14 ON</span><span class="ml-auto">Click a row to configure</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════ C — list + detail ══════════════════════════ -->
+  <div class="text-[11px] text-[#8a919e] mt-10 mb-2"><b class="text-[#e8eaf0]">C · List + detail</b> — the web-admin pattern the current code is closest to: pick a module on the left, configure it on the right, no second screen.</div>
+  <div class="mc">
+    <div class="relative w-[520px] h-[300px] overflow-hidden rounded-[2px] bg-panel ring-1 ring-edge text-ink text-[8px] leading-[10px]">
+
+      <div class="absolute left-[8px] right-[8px] top-0 h-[26px] border-b border-edge flex items-center gap-[8px]">
+        <span class="w-[18px] text-center text-muted">&#8249;</span>
+        <span class="font-bold tracking-[.1em]">OTL</span>
+        <span class="h-[18px] px-[7px] rounded-[2px] bg-accent text-white flex items-center">MODS</span>
+        <span class="h-[18px] px-[7px] rounded-[2px] bg-card text-muted flex items-center">SETTINGS</span>
+        <span class="ml-auto flex items-center gap-[4px] text-muted"><i class="w-[6px] h-[6px] rounded-full bg-ok"></i>Online &middot; 3</span>
+      </div>
+
+      <div class="absolute left-[8px] top-[30px] bottom-[8px] w-[186px] flex flex-col gap-[2px]">
+        <div class="h-[20px] flex items-center gap-[6px] px-[6px] rounded-[2px] bg-hov text-white shadow-[inset_2px_0_0_#3b82f6]">Team Bar<div class="ml-auto w-[18px] h-[9px] rounded-full bg-ok relative scale-[.85]"><i class="absolute right-[1px] top-[1px] w-[7px] h-[7px] rounded-full bg-white"></i></div></div>
+        <div class="h-[20px] flex items-center gap-[6px] px-[6px] rounded-[2px] text-muted">Kill Feed<div class="ml-auto w-[18px] h-[9px] rounded-full bg-ok relative scale-[.85]"><i class="absolute right-[1px] top-[1px] w-[7px] h-[7px] rounded-full bg-white"></i></div></div>
+        <div class="h-[20px] flex items-center gap-[6px] px-[6px] rounded-[2px] text-muted">Reliable Chat<div class="ml-auto w-[18px] h-[9px] rounded-full bg-ok relative scale-[.85]"><i class="absolute right-[1px] top-[1px] w-[7px] h-[7px] rounded-full bg-white"></i></div></div>
+        <div class="h-[20px] flex items-center gap-[6px] px-[6px] rounded-[2px] text-muted">Map Preview<div class="ml-auto w-[18px] h-[9px] rounded-full bg-edge relative scale-[.85]"><i class="absolute left-[1px] top-[1px] w-[7px] h-[7px] rounded-full bg-[#9aa0ac]"></i></div></div>
+        <div class="h-[20px] flex items-center gap-[6px] px-[6px] rounded-[2px] text-muted">Face Rig<div class="ml-auto w-[18px] h-[9px] rounded-full bg-ok relative scale-[.85]"><i class="absolute right-[1px] top-[1px] w-[7px] h-[7px] rounded-full bg-white"></i></div></div>
+        <div class="h-[20px] flex items-center gap-[6px] px-[6px] rounded-[2px] text-muted">Player Animation<div class="ml-auto w-[18px] h-[9px] rounded-full bg-ok relative scale-[.85]"><i class="absolute right-[1px] top-[1px] w-[7px] h-[7px] rounded-full bg-white"></i></div></div>
+        <div class="h-[20px] flex items-center gap-[6px] px-[6px] rounded-[2px] text-muted">Auto GG<div class="ml-auto w-[18px] h-[9px] rounded-full bg-edge relative scale-[.85]"><i class="absolute left-[1px] top-[1px] w-[7px] h-[7px] rounded-full bg-[#9aa0ac]"></i></div></div>
+        <div class="h-[20px] flex items-center gap-[6px] px-[6px] rounded-[2px] text-locked">Touchdown</div>
+      </div>
+
+      <div class="absolute left-[202px] right-[8px] top-[30px] bottom-[8px] rounded-[2px] bg-card ring-1 ring-edge p-[9px]">
+        <div class="w-[26px] h-[26px] rounded-[2px] bg-inset flex items-center justify-center mb-[7px]"><div class="w-[14px] h-[14px] ring-1 ring-accent rounded-[1px]"></div></div>
+        <div class="text-[9px] font-semibold mb-[5px]">Team Bar</div>
+        <p class="text-muted leading-[11px] m-0 mb-[8px]">See teams, scores and flags at a glance. Works for 2 to 6 teams and never covers the clock.</p>
+        <div class="flex justify-between text-dim py-[3px] border-t border-[#ffffff0b]"><span>Category</span><span class="text-ink">HUD</span></div>
+        <div class="flex justify-between text-dim py-[3px] border-t border-[#ffffff0b]"><span>Players shown</span><span class="text-ink">10</span></div>
+        <div class="flex justify-between text-dim py-[3px] border-t border-[#ffffff0b]"><span>Size</span><span class="text-ink">100%</span></div>
+        <div class="absolute left-[9px] right-[9px] bottom-[9px] flex gap-[4px]">
+          <div class="flex-1 h-[18px] rounded-[2px] bg-edge flex items-center justify-center">Settings</div>
+          <div class="flex-1 h-[18px] rounded-[2px] bg-edge flex items-center justify-center">Disable</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="text-[11px] text-[#8a919e] mt-10 max-w-[820px] leading-[1.7]">
+    Nothing above needs a primitive the mod lacks: filled rectangles, 1px borders, 1–2px rounded corners,
+    and 8px text. Gradients, blur and real shadows are absent on purpose — they do not port.
+  </p>
+</body>
+</html>

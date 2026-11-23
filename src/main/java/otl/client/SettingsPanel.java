@@ -9,7 +9,8 @@ import net.minecraft.client.gui.FontRenderer;
  * renumbering the ones below it; the whole canvas scrolls as one in {@link SettingsScreen}.
  */
 final class SettingsPanel {
-    static final int PAD=14,ROW=20,CHOICE=34,SECTION=15,NOTE=11,GAP=4;
+    /** The row step is the control height, so a button always fills its row and cannot overlap the next. */
+    static final int PAD=14,ROW=BedrockTokens.CONTROL_H,CHOICE=34,SECTION=15,NOTE=11,GAP=4;
     private static final int RULE=0,LABEL=1,TEXT=2;
     private static final class Caption{
         final String text;final int y,kind;

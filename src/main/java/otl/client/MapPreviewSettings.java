@@ -11,10 +11,10 @@ public final class MapPreviewSettings extends SettingsScreen {
     protected String subtitle(){return "Map images in vote books and gold chat links.";}
     protected void buildPanel(){
         resetButton("map_preview");
-        buttonList.add(new NeutralButton(0,panel.left(),panel.row(),panel.width(),20,"Map Preview: "+state(UtilitySettings.mapPreview),false));
-        buttonList.add(new NeutralButton(3,panel.left(),panel.row(),panel.width(),20,"Preview on command: "+state(UtilitySettings.previewOnCommand),false));
+        buttonList.add(new NeutralButton(0,panel.left(),panel.row(),panel.width(),BedrockTokens.CONTROL_H,"Map Preview: "+state(UtilitySettings.mapPreview),false));
+        buttonList.add(new NeutralButton(3,panel.left(),panel.row(),panel.width(),BedrockTokens.CONTROL_H,"Preview on command: "+state(UtilitySettings.previewOnCommand),false));
         buttonList.add(new ChoiceButton(this,4,panel.left(),panel.choice(),panel.width(),"Preview size",new String[]{"Small","Large"},UtilitySettings.largeMapPreview?1:0,v->UtilitySettings.largeMapPreview=v==1));
-        buttonList.add(new NeutralButton(1,panel.left(),panel.row(),panel.width(),20,"Open Map Gallery",false));
+        buttonList.add(new NeutralButton(1,panel.left(),panel.row(),panel.width(),BedrockTokens.CONTROL_H,"Open Map Gallery",false));
         back(2);
     }
     private String state(boolean on){return on?"ON":"OFF";}
