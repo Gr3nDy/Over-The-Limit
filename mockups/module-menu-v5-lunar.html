@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OTL Modules — Lunar direction</title>
+<style>
+  :root{--frame:#161714e8;--panel:#242521cc;--card:#30312dcc;--line:#63645d8a;--white:#f3f2ed;--muted:#b4b3ab;--blue:#4e8ce7;--blue-hi:#6ba4f0;--green:#3cb574;--red:#c93e59;--gray:#8b8c86}
+  *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:28px;background:radial-gradient(circle at 19% 11%,#7d266f 0 10%,transparent 29%),linear-gradient(125deg,#2a3025,#ad936c 45%,#20211d 46% 67%,#d4d2ba 68%);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--white)}
+  .note{width:1040px;max-width:100%;margin:0 0 16px;color:#d1d0ca;font-size:13px;line-height:1.55;text-shadow:0 1px 5px #000}.note b{color:#fff}.canvas{width:520px;height:300px;zoom:2;position:relative;overflow:hidden;background:var(--frame);border:1px solid #898980;border-radius:4px;box-shadow:0 4px 0 #0008,0 22px 60px #000a;backdrop-filter:blur(10px);font-size:8px}
+  .header{height:33px;display:flex;align-items:center;padding:0 11px;border-bottom:1px solid var(--line)}.brand{font-weight:800;font-size:11px;letter-spacing:-.06em;display:flex;align-items:center;gap:5px}.moon{display:inline-grid;place-items:center;width:15px;height:15px;border:1px solid #fff;border-radius:50%;font-size:11px}.brand span{font-weight:400}.nav{display:flex;gap:6px;margin-left:28px}.nav b{height:17px;padding:5px 9px 0;border:1px solid #686963;border-radius:2px;letter-spacing:.22em;font-size:6px;color:var(--muted)}.nav b.active{background:#3e3f3b;color:#fff}.close{margin-left:auto;width:17px;height:17px;display:grid;place-items:center;border-radius:2px;background:#757670;color:#333;font-size:16px;font-weight:900}
+  .sidebar{position:absolute;left:0;top:33px;bottom:0;width:108px;background:#1a1b18a8;border-right:1px solid var(--line)}.profile{height:23px;padding:7px 9px 0;border-bottom:1px solid #53544f9a;color:#d9d8d1;letter-spacing:.22em;font-size:6px;position:relative}.profile:after{content:"⌕";position:absolute;right:7px;color:#96968e;letter-spacing:0}.profile.active{background:#ffffff0d}.servers{margin-top:5px}.server{height:15px;padding:4px 8px 0;color:#dad9d2;font-size:6px;letter-spacing:.12em}.server i{font-style:normal;color:#e8c461;margin-right:5px}.share{position:absolute;left:7px;right:7px;bottom:28px;height:25px;border:1px solid #5f605a;border-radius:2px;color:#b7b7af;font-size:5px;letter-spacing:.15em;text-align:center;padding-top:6px}.layout{position:absolute;left:9px;right:9px;bottom:7px;height:15px;background:var(--blue);border:1px solid #8bb4f0;border-radius:2px;color:#fff;text-align:center;padding-top:4px;font-size:5px;letter-spacing:.16em}
+  .main{position:absolute;left:108px;top:33px;right:0;bottom:0;padding:10px 9px}.filters{height:19px;display:flex;gap:4px;align-items:center}.chip{height:15px;padding:4px 7px 0;border-radius:2px;background:#4b4d49;border:1px solid #686a65;letter-spacing:.17em;color:#e5e4de;font-size:6px;font-weight:700}.chip.all{background:var(--blue-hi);border-color:#9ac0f4;color:#fff}.chip.new{background:#57830e;border-color:#729f21}.search{margin-left:auto;width:103px;height:15px;border:1px solid #6c6d67;border-radius:2px;background:#20211eaa;color:#9a9a94;padding:4px 7px;font-size:6px}.grid{margin-top:7px;display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+  .card{height:113px;border:1px solid #6b6c66;border-radius:4px;overflow:hidden;background:var(--card);position:relative}.card .icon{height:71px;display:grid;place-items:center;font-size:28px;color:#f4f3ee;text-shadow:0 2px 2px #0007}.card .name{position:absolute;top:53px;left:0;right:0;text-align:center;color:#d7d6cf;font-size:9px;text-shadow:0 1px #000}.option{position:absolute;left:0;right:0;bottom:20px;height:20px;border-top:1px solid #696a64;border-bottom:1px solid #696a64;display:flex;align-items:center;justify-content:center;font-size:6px;font-weight:800;letter-spacing:.2em;color:#ecebe5}.option i{position:absolute;right:9px;font-size:10px;font-style:normal;letter-spacing:0}.state{position:absolute;bottom:0;left:0;right:0;height:20px;display:grid;place-items:center;background:var(--green);border-top:1px solid #78d5a5;color:#fff;font-size:6px;font-weight:800;letter-spacing:.24em}.off .state{background:var(--red);border-color:#e27086}.locked .state{background:var(--gray);border-color:#bbbcb5}.locked .icon,.locked .name{opacity:.48}
+  @media(max-width:1100px){.canvas{zoom:1.35}}@media(max-width:740px){.canvas{zoom:1;width:100%;height:300px}.note{font-size:12px}}
+</style>
+</head>
+<body>
+  <main>
+    <p class="note"><b>OTL Modules · Lunar-inspired grid</b><br>Directly based on your reference: translucent menu, profile rail, category chips, and 3-column module cards. This is a visual mockup only; we can flatten the blur/transparency for the 1.8.9 port after you approve it.</p>
+    <section class="canvas" aria-label="OTL Lunar-inspired module grid">
+      <header class="header"><div class="brand"><i class="moon">◔</i>OTL <span>CLIENT</span></div><nav class="nav"><b class="active">MODS</b><b>SETTINGS</b><b>WAYPOINTS</b></nav><i class="close">×</i></header>
+      <aside class="sidebar"><div class="profile active">DEFAULT</div><div class="profile">PROFILE 235083542</div><div class="profile">WYN</div><div class="profile">MODERN</div><div class="servers"><div class="server"><i>⚑</i>1.8</div><div class="server"><i>●</i>UHC</div><div class="server"><i>H</i>HYPIXEL SKYWARS</div><div class="server"><i>×</i>ARENA PVP</div></div><div class="share">PROFILE SHARING<br><br>SAVE AS NEW PROFILE</div><div class="layout">EDIT HUD LAYOUT</div></aside>
+      <main class="main"><div class="filters"><b class="chip all">ALL</b><b class="chip new">NEW</b><b class="chip">HUD</b><b class="chip">SERVER</b><b class="chip">MECHANIC</b><div class="search">⌕&nbsp;&nbsp;Search modules</div></div>
+        <section class="grid">
+          <article class="card"><div class="icon">◉</div><div class="name">Team Bar</div><div class="option">OPTIONS<i>⚙</i></div><div class="state">ENABLED</div></article>
+          <article class="card"><div class="icon">◒</div><div class="name">Kill Feed</div><div class="option">OPTIONS<i>⚙</i></div><div class="state">ENABLED</div></article>
+          <article class="card"><div class="icon">◇</div><div class="name">Reliable Chat</div><div class="option">OPTIONS<i>⚙</i></div><div class="state">ENABLED</div></article>
+          <article class="card locked"><div class="icon">▣</div><div class="name">Map Preview</div><div class="option">OPTIONS<i>⚙</i></div><div class="state">LOCKED</div></article>
+          <article class="card"><div class="icon">◌</div><div class="name">Face Rig</div><div class="option">OPTIONS<i>⚙</i></div><div class="state">ENABLED</div></article>
+          <article class="card off"><div class="icon">⌁</div><div class="name">Player Animation</div><div class="option">OPTIONS<i>⚙</i></div><div class="state">DISABLED</div></article>
+        </section>
+      </main>
+    </section>
+  </main>
+</body>
+</html>

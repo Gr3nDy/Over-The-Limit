@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OTL Modules — grid direction</title>
+<style>
+  :root{--ink:#10110f;--panel:#191b18;--card:#242722;--card-on:#2b3028;--line:#373c35;--paper:#eef0e8;--muted:#a3a99d;--quiet:#6e756c;--acid:#d4ff3f;--acid-ink:#1a2200}
+  *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:28px;background:#0c0d0b;color:var(--paper);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+  .intro{width:1040px;max-width:100%;margin:0 0 16px;color:#9ca194;font-size:13px;line-height:1.55}.intro b{color:#f0f2eb}.canvas{width:520px;height:300px;zoom:2;position:relative;overflow:hidden;border:1px solid var(--line);border-radius:3px;background:var(--panel);box-shadow:0 24px 70px #000a}
+  .top{height:46px;padding:0 13px;display:flex;align-items:center;border-bottom:1px solid var(--line)}.back{width:17px;color:var(--muted);font-size:15px}.wordmark{margin-left:8px;font-size:10px;font-weight:800;letter-spacing:-.045em}.count{margin-left:auto;font-size:7px;color:var(--muted)}.count b{color:var(--acid);font-weight:700}
+  .content{padding:12px 13px}.overline{color:var(--quiet);font-size:6px;font-weight:700;letter-spacing:.16em;margin-bottom:8px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+  .card{position:relative;height:68px;padding:9px 10px;border:1px solid var(--line);border-radius:2px;background:var(--card);cursor:pointer;transition:background .15s,border-color .15s,transform .15s}.card:hover{transform:translateY(-1px);border-color:#687065}.card.on{background:var(--card-on)}.number{font-size:6px;color:var(--quiet);letter-spacing:.08em}.state{position:absolute;right:9px;top:10px;width:5px;height:5px;border-radius:50%;background:#5e655d}.on .state{background:var(--acid);box-shadow:0 0 0 2px #d4ff3f1e}.name{margin-top:6px;font-size:10px;font-weight:700;letter-spacing:-.045em;color:var(--paper)}.desc{position:absolute;left:10px;bottom:9px;color:var(--muted);font-size:6px}.card.active{border-color:var(--acid);box-shadow:inset 0 -2px var(--acid)}.card.active .number{color:var(--acid)}
+  .footer{position:absolute;bottom:0;left:13px;right:13px;height:29px;border-top:1px solid var(--line);display:flex;align-items:center;font-size:7px}.profile{color:var(--quiet);letter-spacing:.08em}.profile b{margin-left:5px;color:var(--paper);letter-spacing:0}.done{margin-left:auto;border:0;border-radius:1px;background:var(--acid);color:var(--acid-ink);padding:5px 9px;font-size:6px;font-weight:800;letter-spacing:.09em}
+  @media(max-width:1100px){.canvas{zoom:1.35}}@media(max-width:740px){.canvas{zoom:1;width:100%;height:300px}.intro{font-size:12px}}
+</style>
+</head>
+<body>
+  <main>
+    <p class="intro"><b>OTL Modules · grid direction</b><br>A full visual reset: tactile, high-contrast cards, oversized names, and one active colour. The dot is the only status control; click a card to configure it.</p>
+    <section class="canvas" aria-label="OTL module menu grid mockup">
+      <header class="top"><span class="back">‹</span><span class="wordmark">MODULES</span><span class="count"><b>08</b> / 14 ACTIVE</span></header>
+      <main class="content">
+        <div class="overline">PINNED MODULES</div>
+        <div class="grid">
+          <article class="card on active"><span class="number">01 / HUD</span><i class="state"></i><div class="name">Team Bar</div><div class="desc">Score, teams, objectives</div></article>
+          <article class="card on"><span class="number">02 / HUD</span><i class="state"></i><div class="name">Kill Feed</div><div class="desc">Eliminations, quietly</div></article>
+          <article class="card on"><span class="number">03 / HUD</span><i class="state"></i><div class="name">Reliable Chat</div><div class="desc">Team and global chat</div></article>
+          <article class="card"><span class="number">04 / VISUAL</span><i class="state"></i><div class="name">Map Preview</div><div class="desc">Next map before voting</div></article>
+          <article class="card on"><span class="number">05 / VISUAL</span><i class="state"></i><div class="name">Face Rig</div><div class="desc">Details for your skin</div></article>
+          <article class="card on"><span class="number">06 / MECHANIC</span><i class="state"></i><div class="name">Player Motion</div><div class="desc">Emotes and skateboard</div></article>
+        </div>
+      </main>
+      <footer class="footer"><span class="profile">PROFILE <b>Default</b></span><button class="done">DONE</button></footer>
+    </section>
+  </main>
+</body>
+</html>

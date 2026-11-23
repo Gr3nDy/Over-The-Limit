@@ -18,7 +18,6 @@ public final class KillConfirmSettings extends SettingsScreen {
         buttonList.add(new NeutralButton(6,panel.left(),panel.row(),panel.width(),BedrockTokens.CONTROL_H,"Hide rewards in chat: "+(UtilitySettings.hideKillConfirmChat?"ON":"OFF"),false));
         buttonList.add(new NeutralButton(7,panel.left(),panel.row(),panel.width(),BedrockTokens.CONTROL_H,"Kill/assist sounds: "+(UtilitySettings.killConfirmSounds?"ON":"OFF"),false));
         buttonList.add(new NeutralButton(8,panel.left(),panel.row(),panel.width(),BedrockTokens.CONTROL_H,"Total EXP, Kills & Assists: "+(UtilitySettings.totalExpKills?"ON":"OFF"),false));
-        pin(new NeutralButton(4,actionX(),footerY(),110,BedrockTokens.CONTROL_H,"Reset position",false));
         back(5);
     }
     protected void actionPerformed(GuiButton b){
@@ -26,7 +25,6 @@ public final class KillConfirmSettings extends SettingsScreen {
         if(b.id==1||b.id==3)return;
         if(b.id==5){mc.displayGuiScreen(parent);return;}
         if(b.id==0){UtilitySettings.killConfirm=!UtilitySettings.killConfirm;KillConfirm.state.clear();}
-        if(b.id==4)UtilitySettings.hudPositions.remove(HudLayout.CONFIRM);
         if(b.id==6)UtilitySettings.hideKillConfirmChat=!UtilitySettings.hideKillConfirmChat;
         if(b.id==7)UtilitySettings.killConfirmSounds=!UtilitySettings.killConfirmSounds;
         if(b.id==8)UtilitySettings.totalExpKills=!UtilitySettings.totalExpKills;

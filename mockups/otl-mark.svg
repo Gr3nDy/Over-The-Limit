@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <title>OTL limit-break mark</title>
+  <!-- An open track that climbs beyond its own boundary: no lunar/orbital motifs. -->
+  <path d="M13 18v29l19 11 19-11V31" stroke="#F4F7FF" stroke-width="7" stroke-linecap="square" stroke-linejoin="miter"/>
+  <path d="M18 36 31 23l8 8L53 17" stroke="#F4F7FF" stroke-width="7" stroke-linecap="square" stroke-linejoin="miter"/>
+  <path d="M43 17h10v10" stroke="#6EA5FF" stroke-width="7" stroke-linecap="square" stroke-linejoin="miter"/>
+</svg>

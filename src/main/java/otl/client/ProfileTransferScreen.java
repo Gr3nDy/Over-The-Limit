@@ -50,8 +50,9 @@ final class ProfileTransferScreen extends GuiScreen {
         else super.mouseClickMove(mx,my,btn,time);
     }
     public void drawScreen(int mx,int my,float partial){
-        drawDefaultBackground();BedrockUi.panel(x,y,w,h);
-        drawRect(x+2,y+25,x+w-2,y+26,BedrockUi.EDGE);
+        drawRect(0,0,width,height,0x10000000);
+        BedrockUi.panel(x,y,w,h);
+        BedrockUi.menuSkin(6,x+7,y+5,w-14,22);
         BedrockUi.plainCentered(fontRendererObj,name==null?"Import Profile":"Export Profile: "+name,x+w/2,y+9,BedrockUi.TEXT);
         BedrockUi.inset(x+12,y+32,w-24,h-112);
         lines=new ArrayList<>();

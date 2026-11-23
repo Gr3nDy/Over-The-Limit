@@ -6,7 +6,7 @@ final class ColorSwatches extends SettingsScreen {
     static final int[] COLORS={0x000000,0x555555,0xAAAAAA,0xFFFFFF,0xAA0000,0xFF5555,0xFFAA00,0xFFBD45,0xFFFF55,0x00AA00,0x55FF55,0x00AAAA,0x55FFFF,0x0000AA,0x5555FF,0xAA00AA,0xFF55FF,0xFF88AA};
     private static final int COLUMNS=6;
     private final GuiScreen parent;private final int kind;
-    ColorSwatches(GuiScreen parent,int kind){this.parent=parent;this.kind=kind;}
+    ColorSwatches(GuiScreen parent,int kind){this.parent=parent;this.kind=kind;if(parent instanceof SettingsScreen)menu=((SettingsScreen)parent).menu;}
     public boolean doesGuiPauseGame(){return false;}
     protected String title(){return "Border Color";}
     protected String subtitle(){return (kind==0?"Your kill border":kind==1?"Your death border":"Your assist border")+" - pick a swatch.";}

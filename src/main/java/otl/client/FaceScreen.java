@@ -16,11 +16,17 @@ public final class FaceScreen extends GuiScreen {
     private String status="";
     public FaceScreen(){this(null);}
     public FaceScreen(GuiScreen parent){this.parent=parent;}
+    private ModulesScreen menu(){return parent instanceof ModulesScreen?(ModulesScreen)parent:null;}
     public boolean doesGuiPauseGame(){return false;}
     private ResourceLocation skin(){return mc.thePlayer.getLocationSkin();}
     public void initGui(){
         FaceConfig.load();UtilitySettings.load();
-        contentW=Math.min(620,width-24);contentX=(width-contentW)/2;
+        if(menu()!=null){
+            if(menu().width!=width||menu().height!=height)menu().setWorldAndResolution(mc,width,height);
+            else menu().initGui();
+        }
+        contentW=menu()==null?Math.min(620,width-24):Math.min(520,width-16)-119;
+        contentX=menu()==null?(width-contentW)/2:(width-Math.min(520,width-16))/2+119;
         leftWidth=Math.max(170,(contentW-24)/2);
         if(editing)FaceMarks.replace(skin(),working,false);
         rebuild();
@@ -38,7 +44,19 @@ public final class FaceScreen extends GuiScreen {
             }));
         }else button(id,contentX,y,leftWidth,text);
     }
-    public void handleMouseInput()throws IOException{super.handleMouseInput();int wheel=org.lwjgl.input.Mouse.getEventDWheel();if(!editing&&wheel!=0){scroll=Math.max(0,Math.min(Math.max(0,9-(height-80)/38),scroll+(wheel>0?-1:1)));rebuild();}}
+    public void handleMouseInput()throws IOException{
+        super.handleMouseInput();
+        int wheel=org.lwjgl.input.Mouse.getEventDWheel();
+        if(wheel!=0&&menu()!=null){
+            int mx=org.lwjgl.input.Mouse.getEventX()*width/mc.displayWidth;
+            if(mx<contentX){
+                int my=height-org.lwjgl.input.Mouse.getEventY()*height/mc.displayHeight-1;
+                menu().scrollWheel(mx,my,wheel);
+                return;
+            }
+        }
+        if(!editing&&wheel!=0){scroll=Math.max(0,Math.min(Math.max(0,9-(height-80)/38),scroll+(wheel>0?-1:1)));rebuild();}
+    }
     private String on(boolean value){return value?"ON":"OFF";}
     private void rebuild(){
         buttonList.clear();
@@ -100,9 +118,18 @@ public final class FaceScreen extends GuiScreen {
     private void updateEdits(){dirty=true;FaceMarks.replace(skin(),working,false);}
     private void cancel(){FaceMarks.replace(skin(),original,false);editing=false;dirty=false;}
     private void drawPanel(int mx,int my,float partial){
-        drawDefaultBackground();
+        drawRect(0,0,width,height,0x10000000);
+        if(menu()!=null){
+            int outerW=Math.min(520,width-16),outerX=(width-outerW)/2,outerY=(height-Math.min(300,height-16))/2;
+            BedrockUi.menuSkin(0,outerX,outerY,outerW,Math.min(300,height-16));
+            menu().drawSidebar(mx,my);
+            BedrockUi.menuSkin(6,contentX-3,outerY+4,contentW+5,28);
+            BedrockUi.menuText("nav_modules_active",7,contentX+27,outerY+19,49);
+            BedrockUi.menuText("nav_settings",8,contentX+83,outerY+19,56);
+        }
         BedrockUi.panel(contentX-5,60,leftWidth+10,Math.max(1,height-98));
-        drawCenteredString(fontRendererObj,editing?"FACE MAPPING":"FACE RIG",width/2,14,0xFFFFFFFF);
+        if(menu()==null)drawCenteredString(fontRendererObj,editing?"FACE MAPPING":"FACE RIG",width/2,14,0xFFFFFFFF);
+        else if(!editing)BedrockUi.menuText("face_rig",8,contentX+40,48,90);
         int px=contentX+leftWidth+16,pw=contentW-leftWidth-16;
         BedrockUi.panel(px,60,pw,Math.max(1,height-98));
         drawCenteredString(fontRendererObj,editing?"TOOLS":"SETTINGS",contentX+leftWidth/2,30,BedrockUi.MUTED);
@@ -138,10 +165,32 @@ public final class FaceScreen extends GuiScreen {
         drawPanel(mx,my,partial);
     }
     private boolean paint(int x,int y,int button){if(!editing||button>1||x<gx||y<gy||x>=gx+cell*8||y>=gy+cell*8)return false;int index=(y-gy)/cell*8+(x-gx)/cell,value=button==1?0:tool;if(working[index]!=value){undo.push(working.clone());while(undo.size()>64)undo.removeLast();working[index]=value;updateEdits();}return true;}
-    protected void mouseClicked(int x,int y,int button)throws IOException{if(!paint(x,y,button))super.mouseClicked(x,y,button);}
+    protected void mouseClicked(int x,int y,int button)throws IOException{
+        if(button==0&&menu()!=null){
+            if(x<contentX){menu().clickSidebar(x,y,this);if(mc.currentScreen==this)rebuild();return;}
+            int top=(height-Math.min(300,height-16))/2;
+            if(y>=top+8&&y<top+28){
+                if(x<contentX+50){mc.displayGuiScreen(menu());return;}
+                if(x<contentX+114){
+                    PgmSettingsScreen settings=new PgmSettingsScreen(menu());
+                    settings.menu=menu();
+                    mc.displayGuiScreen(settings);
+                    return;
+                }
+            }
+        }
+        if(!paint(x,y,button))super.mouseClicked(x,y,button);
+    }
     /** Smoke/editor compatibility entry point using the compact canvas coordinates. */
     void panelMouseClicked(int x,int y,int button)throws IOException{if(!paint(x,y,button))super.mouseClicked(x,y,button);}
-    protected void mouseClickMove(int x,int y,int button,long elapsed){paint(x,y,button);}
+    protected void mouseClickMove(int x,int y,int button,long elapsed){
+        if(menu()!=null&&x<contentX){menu().mouseClickMove(x,y,button,elapsed);return;}
+        paint(x,y,button);
+    }
+    protected void mouseReleased(int x,int y,int button){
+        if(menu()!=null)menu().mouseReleased(x,y,button);
+        super.mouseReleased(x,y,button);
+    }
     protected void keyTyped(char typed,int key)throws IOException{if(key==1){if(editing){cancel();rebuild();}else mc.displayGuiScreen(parent);return;}super.keyTyped(typed,key);}
     public void onGuiClosed(){if(editing&&mc.thePlayer!=null)FaceMarks.replace(skin(),original,false);FaceDoll.preview=false;}
 }

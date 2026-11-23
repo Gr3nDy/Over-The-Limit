@@ -7,9 +7,11 @@ import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.Minecraft;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.util.ResourceLocation;
 
 /** Shared dark menu chrome. */
 final class BedrockUi {
+    private static final ResourceLocation MENU_UI=new ResourceLocation("otl","textures/menu/ui.png");
     // Sidebar/panel grays (neutral, lighter than Java's near-black menus).
     static final int PANEL=BedrockTokens.SURFACE_PANEL,EDGE=BedrockTokens.SURFACE_EDGE,INSET=BedrockTokens.SURFACE_INSET,SLOT=BedrockTokens.SURFACE_CARD;
     static final int TEXT=BedrockTokens.TEXT_PRIMARY,MUTED=BedrockTokens.TEXT_MUTED,DIM=BedrockTokens.TEXT_DIM,ACCENT=BedrockTokens.STATE_ACCENT,CAPTION=BedrockTokens.TEXT_PRIMARY;
@@ -50,17 +52,20 @@ final class BedrockUi {
         Gui.drawRect(x+w-1,y,x+w,y+h,colour);
     }
     static void panel(int x,int y,int w,int h){
-        // Body first, border second: filling the whole rect opaque would hide the world behind it.
-        Gui.drawRect(x+1,y+1,x+w-1,y+h-1,PANEL);
-        outline(x,y,w,h,EDGE);
+        menuSkin(0,x,y,w,h);
     }
     static void inset(int x,int y,int w,int h){
-        Gui.drawRect(x,y,x+w,y+h,INSET);
+        menuSkin(2,x,y,w,h);
     }
     static void header(FontRenderer font,String title,int x,int y,int w){
-        Gui.drawRect(x+2,y+24,x+w-2,y+25,EDGE);
-        Gui.drawRect(x+14,y+9,x+17,y+18,ACCENT);
-        font.drawString(font.trimStringToWidth(title,Math.max(0,w-40)),x+23,y+10,TEXT);
+        menuSkin(6,x+3,y+3,w-6,22);
+        OtlModule module=null;
+        for(OtlModule m:OtlModule.ALL)if(m.name.equalsIgnoreCase(title)){module=m;break;}
+        if(module==null&&title.equals("Isometric Minimap"))module=OtlModule.byId("minimap");
+        if(module==null&&title.equals("Preferred Hand"))module=OtlModule.byId("left_hand");
+        if(module!=null)menuText(module.id,module.name.length(),x+16+Math.min(w-40,module.name.length()*7)/2,y+14,w-40);
+        else if(title.equalsIgnoreCase("Settings"))menuText("nav_settings_active",8,x+16+28,y+14,w-40);
+        else font.drawString(font.trimStringToWidth(title,Math.max(0,w-40)),x+14,y+10,TEXT);
     }
     static void headerCentered(FontRenderer font,String title,int x,int y,int w){
         Gui.drawRect(x+2,y+24,x+w-2,y+25,EDGE);
@@ -91,24 +96,54 @@ final class BedrockUi {
         font.drawString(text,0,0,colour);
         GlStateManager.popMatrix();
     }
-    /** Gear: opens the shared settings page. */
-    static void gear(int x,int y,boolean hover){
-        int ink=hover?0xFFFFFFFF:DIM;
-        // Hollow cog: an 8x8 ring, four teeth, nothing in the middle.
-        Gui.drawRect(x+2,y+1,x+8,y+2,ink);
-        Gui.drawRect(x+2,y+9,x+8,y+10,ink);
-        Gui.drawRect(x+1,y+2,x+2,y+8,ink);
-        Gui.drawRect(x+8,y+2,x+9,y+8,ink);
-        Gui.drawRect(x+4,y,x+6,y+1,ink);
-        Gui.drawRect(x+4,y+10,x+6,y+11,ink);
-        Gui.drawRect(x,y+4,x+1,y+6,ink);
-        Gui.drawRect(x+9,y+4,x+10,y+6,ink);
+    /** Shared 256x160 pixel-art atlas; skins stretch only their middle pixels. */
+    static void menuIcon(int id,int x,int y,boolean hover){
+        Minecraft.getMinecraft().getTextureManager().bindTexture(MENU_UI);
+        GlStateManager.color(1,1,1,1);
+        GlStateManager.enableBlend();
+        Gui.drawModalRectWithCustomSizedTexture(x,y,id*16,hover?112:96,16,16,256,160);
+    }
+    static void menuLogo(int x,int y){
+        Minecraft.getMinecraft().getTextureManager().bindTexture(MENU_UI);
+        GlStateManager.color(1,1,1,1);
+        GlStateManager.enableBlend();
+        Gui.drawModalRectWithCustomSizedTexture(x,y,0,0,96,40,256,160);
+    }
+    /** Baked 7px-cell bitmap lettering for fixed UI labels, centered without blurring. */
+    static void menuText(String file,int characters,int cx,int cy,int maxWidth){
+        int sourceW=characters*7;
+        if(sourceW<=0)return;
+        float scale=Math.min(1f,(float)maxWidth/sourceW);
+        int w=Math.max(1,Math.round(sourceW*scale)),h=Math.max(1,Math.round(13*scale));
+        Minecraft.getMinecraft().getTextureManager().bindTexture(new ResourceLocation("otl","textures/menu/labels/"+file+".png"));
+        GlStateManager.color(1,1,1,1);
+        GlStateManager.enableBlend();
+        Gui.drawScaledCustomSizeModalRect(cx-w/2,cy-h/2,0,0,sourceW,13,w,h,sourceW,13);
+    }
+    static void menuSkin(int id,int x,int y,int w,int h){
+        if(w<8||h<8)return;
+        int sx=id%8*24,sy=40+id/8*24;
+        Minecraft.getMinecraft().getTextureManager().bindTexture(MENU_UI);
+        GlStateManager.color(1,1,1,1);
+        GlStateManager.enableBlend();
+        for(int row=0;row<3;row++)for(int col=0;col<3;col++){
+            int dx=x+(col==0?0:col==1?4:w-4),dy=y+(row==0?0:row==1?4:h-4);
+            int dw=col==1?w-8:4,dh=row==1?h-8:4;
+            Gui.drawScaledCustomSizeModalRect(dx,dy,sx+(col==0?0:col==1?4:20),
+                sy+(row==0?0:row==1?4:20),col==1?16:4,row==1?16:4,dw,dh,256,160);
+        }
     }
     static void button(FontRenderer font,int x,int y,int w,int h,String label,boolean hover,boolean enabled){
         button(font,x,y,w,h,label,hover,enabled,255);
     }
     /** Alpha lets ghost chrome (e.g. the Mods button) keep the game visible behind it. */
     static void button(FontRenderer font,int x,int y,int w,int h,String label,boolean hover,boolean enabled,int alpha){
+        if(alpha==255&&w>=8&&h>=8){
+            menuSkin(enabled?(hover?7:6):10,x,y,w,h);
+            String visible=font.trimStringToWidth(label,Math.max(0,w-8));
+            plainCentered(font,visible,x+w/2,y+(h-font.FONT_HEIGHT)/2,enabled?BUTTON_TEXT:DISABLED_TEXT);
+            return;
+        }
         int face=!enabled?BUTTON_DISABLED:hover?BUTTON_HOVER:BUTTON_FACE;
         int a=Math.max(0,Math.min(255,alpha))<<24;
         Gui.drawRect(x,y,x+w,y+h,a|(face&0xFFFFFF));
@@ -118,9 +153,10 @@ final class BedrockUi {
     }
     /** Lunar switch: green pill when on, red pill when off, white knob. */
     static void toggle(int x,int y,boolean on,boolean hover){
-        rounded(x,y,26,12,3,on?BedrockTokens.STATE_ENABLED:BedrockTokens.STATE_DISABLED);
-        if(hover)Gui.drawRect(x,y,x+26,y+12,0x22FFFFFF);
-        rounded(on?x+15:x+2,y+2,9,8,2,0xFFFFFFFF);
+        Minecraft.getMinecraft().getTextureManager().bindTexture(MENU_UI);
+        GlStateManager.color(1,1,1,1);
+        GlStateManager.enableBlend();
+        Gui.drawModalRectWithCustomSizedTexture(x,y,(hover?64:0)+(on?0:32),128,26,12,256,160);
     }
     /** Lunar module state pill: ENABLED green, DISABLED red, LOCKED gray, white caps text. */
     static void statePill(FontRenderer font,int x,int y,int w,int h,String label,int colour){
@@ -129,14 +165,7 @@ final class BedrockUi {
     }
     /** Lunar filter chip: blue when active, outlined card when idle. */
     static void chip(FontRenderer font,int x,int y,int w,int h,String label,boolean active,boolean hover){
-        if(active)rounded(x,y,w,h,2,BedrockTokens.STATE_SELECTED);
-        else rounded(x,y,w,h,2,hover?BedrockTokens.STATE_HOVER:BedrockTokens.SURFACE_CARD);
-        if(!active){
-            Gui.drawRect(x,y,x+w,y+1,BedrockTokens.SURFACE_EDGE);
-            Gui.drawRect(x,y+h-1,x+w,y+h,BedrockTokens.SURFACE_EDGE);
-            Gui.drawRect(x,y,x+1,y+h,BedrockTokens.SURFACE_EDGE);
-            Gui.drawRect(x+w-1,y,x+w,y+h,BedrockTokens.SURFACE_EDGE);
-        }
+        menuSkin(active?12:hover?7:6,x,y,w,h);
         plainCentered(font,label,x+w/2,y+(h-font.FONT_HEIGHT)/2,active?0xFFFFFFFF:BedrockTokens.TEXT_MUTED);
     }
     /** Small square icon button used for row actions; glyph stays a string fallback. */
@@ -148,22 +177,6 @@ final class BedrockUi {
     static void iconBox(int x,int y,boolean hover,boolean danger){
         if(hover)Gui.drawRect(x,y,x+11,y+12,0xFF4A4A4A);
     }
-    /** Pencil: rename. Vertical pencil, eraser up, lead down. */
-    static void pencil(int x,int y,boolean hover){
-        int ink=hover?TEXT:0xFFB8B9BA;
-        for(int i=0;i<6;i++)Gui.drawRect(x+3+i,y+8-i,x+5+i,y+10-i,ink);
-        Gui.drawRect(x+2,y+10,x+5,y+11,ink);
-    }
-    /** Two overlapping pages: copy. */
-    static void duplicate(int x,int y,boolean hover){
-        int ink=hover?0xFFFFFFFF:0xFFE0E0E0,face=hover?0xFF3C3C3C:0xFF2C2C2C;
-        Gui.drawRect(x+1,y+1,x+9,y+8,face);
-        Gui.drawRect(x+1,y+1,x+9,y+2,ink);Gui.drawRect(x+1,y+1,x+2,y+8,ink);
-        Gui.drawRect(x+1,y+7,x+9,y+8,ink);Gui.drawRect(x+8,y+1,x+9,y+8,ink);
-        Gui.drawRect(x+3,y+3,x+11,y+10,face);
-        Gui.drawRect(x+3,y+3,x+11,y+4,ink);Gui.drawRect(x+3,y+3,x+4,y+10,ink);
-        Gui.drawRect(x+3,y+9,x+11,y+10,ink);Gui.drawRect(x+10,y+3,x+11,y+10,ink);
-    }
     static boolean hit(int mx,int my,int x,int y,int w,int h){return mx>=x&&mx<x+w&&my>=y&&my<y+h;}
     static void item(Item item,int x,int y){
         if(item==null)return;
@@ -172,18 +185,5 @@ final class BedrockUi {
         Minecraft.getMinecraft().getRenderItem().renderItemAndEffectIntoGUI(new ItemStack(item),x,y);
         RenderHelper.disableStandardItemLighting();
         GlStateManager.popMatrix();
-    }
-    /** Counterclockwise circular arrow, chunky 2px pixels like Bedrock glyphs. */
-    static void resetArrow(int x,int y,boolean hover){
-        int ink=hover?0xFFFFFFFF:0xFFF0F1F2;
-        float cx=x+6f,cy=y+6f,r=4.2f;
-        for(int deg=225;deg<=525;deg+=9){
-            double rad=Math.toRadians(deg);
-            int px=Math.round(cx+r*(float)Math.cos(rad)),py=Math.round(cy+r*(float)Math.sin(rad));
-            Gui.drawRect(px,py,px+2,py+2,ink);
-        }
-        int tipX=Math.round(cx+r*(float)Math.cos(Math.toRadians(225))),tipY=Math.round(cy+r*(float)Math.sin(Math.toRadians(225)));
-        Gui.drawRect(tipX,tipY-2,tipX+2,tipY+2,ink);
-        Gui.drawRect(tipX-2,tipY,tipX+4,tipY+1,ink);
     }
 }

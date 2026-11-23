@@ -334,16 +334,15 @@ public final class OtlSmoke {
         for(TeamBar.Side side:sides)if(side.name.equals(name))return side;
         return null;
     }
-    /** Clicks the switch on a module row. The list is sorted, ALL is not. */
+    /** Clicks a module card's full-width state button. */
     void cardToggle(ModulesScreen s,int index)throws java.io.IOException{
         OtlModule m=OtlModule.ALL.get(index);
         int at=s.visibleIndex(m);
         require(at>=0,"Module missing from the list: "+m.id);
-        // Keep the row on screen, then click the switch at its right edge.
-        int scroll=at;
+        int scroll=at/3;
         ReflectionHelper.setPrivateValue(ModulesScreen.class,s,scroll,"scrollRow");
-        int[] box=s.rowBox(at-scroll);
-        s.mouseClicked(box[0]+box[2]-20,box[1]+box[3]/2,0);
+        int[] box=s.rowBox(at%3);
+        s.mouseClicked(box[0]+box[2]/2,box[1]+box[3]-10,0);
     }
     /** All is the client's own chat object; every other tab is one of our own buffers. */
     List<ChatLine> chatHistory(String key){return ReflectionHelper.getPrivateValue(GuiNewChat.class,ChatRules.ALL.equals(key)?MinecraftAccess.get().ingameGUI.getChatGUI():ReliableChat.session().views.get(key).hud,"chatLines","field_146252_h");}
@@ -857,7 +856,7 @@ public final class OtlSmoke {
                 mc.displayGuiScreen(new ModulesScreen(null));
             }else if(state==6){
                 ModulesScreen menu=(ModulesScreen)mc.currentScreen;
-                require(find(menu,"DONE")!=null,"Modules menu missing its Done button");
+                require(menu.visibleCount()==OtlModule.ALL.size(),"Modules grid did not show every module");
                 checks.animatedModel(mc);
                 boolean faceRig=UtilitySettings.faceRig;
                 cardToggle(menu,OtlModule.ALL.indexOf(OtlModule.byId("face_rig")));
@@ -1360,7 +1359,8 @@ public final class OtlSmoke {
                 UtilitySettings.minimap=true;UtilitySettings.minimapSize=125;UtilitySettings.minimapOpacity=75;
                 minimapModule.reset();
                 require(UtilitySettings.minimapSize==100&&UtilitySettings.minimapOpacity==25&&!UtilitySettings.minimap,"Card reset did not restore module defaults");
-                modules.initGui();modules.actionPerformed(find(modules,"DONE"));require(mc.currentScreen==editor,"Modules did not return to editor");
+                modules.initGui();int mx=ReflectionHelper.getPrivateValue(ModulesScreen.class,modules,"x"),mw=ReflectionHelper.getPrivateValue(ModulesScreen.class,modules,"w"),my=ReflectionHelper.getPrivateValue(ModulesScreen.class,modules,"y");
+                modules.mouseClicked(mx+mw-14,my+14,0);require(mc.currentScreen==editor,"Modules did not return to editor");
                 mc.displayGuiScreen(new ModulesScreen(editor));
             }else if(state==38){
                 require(mc.currentScreen instanceof ModulesScreen,"Modules menu missing for the layout screenshot");
@@ -1661,16 +1661,20 @@ public final class OtlSmoke {
                 require(browser.firstRow()==3,"The mouse wheel did not scroll the module list: "+browser.firstRow());
                 for(int i=0;i<9;i++)browser.scrollWheel(listLeft+40,listMid,120);
                 require(browser.firstRow()==0,"The wheel did not scroll the module list back to the top");
+                // Dragging the thumb: the held position is polled, so the list must follow.
+                browser.mouseClicked(tx,browser.trackTopY()+2,0);
+                browser.drawScreen(tx,browser.trackTopY()+90,0);
+                require(browser.firstRow()>0,"Dragging the list scrollbar did not scroll the module list");
+                browser.mouseReleased(tx,browser.trackTopY()+90,0);
+                browser.mouseClicked(tx,browser.trackTopY()+2,0);
+                browser.mouseReleased(tx,browser.trackTopY()+2,0);
+                require(browser.firstRow()==0,"Dragging the list scrollbar top did not return to the first row");
                 // The profile menu owns the wheel while it is open; the list behind it must not move.
                 browser.scrollWheel(listLeft+40,listMid,-120);
                 int gridRow=browser.firstRow();
-                int[] chip=browser.profileChipBox();
-                browser.mouseClicked(chip[0]+8,chip[1]+8,0);
-                require(browser.profileMenuOpen(),"The profile menu did not open");
-                browser.scrollWheel(browser.trackLeft()-60,browser.popupTopY()+8,-120);
-                require(browser.firstRow()==gridRow,"A wheel over the profile menu moved the module list");
-                browser.mouseClicked(browser.trackLeft()-60,browser.trackTopY()-24,0);
-                require(!browser.profileMenuOpen(),"Clicking away did not close the profile menu");
+                int railX=ReflectionHelper.<Integer,ModulesScreen>getPrivateValue(ModulesScreen.class,browser,"x")+15;
+                browser.scrollWheel(railX,browser.popupTopY()+8,-120);
+                require(browser.firstRow()==gridRow,"A wheel over the profile rail moved the module grid");
                 browser.scrollWheel(listLeft+40,listMid,-120);
                 browser.drawScreen(0,0,0);
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-modules-scrolled.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
@@ -1682,8 +1686,9 @@ public final class OtlSmoke {
                 ReflectionHelper.setPrivateValue(ModulesScreen.class,browser,"","query");
                 browser.initGui();
                 int bx=ReflectionHelper.getPrivateValue(ModulesScreen.class,browser,"x"),by=ReflectionHelper.getPrivateValue(ModulesScreen.class,browser,"y");
-                browser.mouseClicked(bx+10,by+10,0);
-                require(mc.currentScreen instanceof HudEditor,"Top-left back arrow did not open HUD editor");
+                int bw=ReflectionHelper.getPrivateValue(ModulesScreen.class,browser,"w");
+                browser.mouseClicked(bx+bw-14,by+14,0);
+                require(mc.currentScreen==null,"Close button did not return to its parent");
                 SettingsScreen[] screens={new KillFeedSettings(null),new KillConfirmSettings(null),new MinimapSettings(null),new TeamBarSettings(null),new UtilityScreen(),new MapPreviewSettings(null),new PreferedHandSettings(null),new BowOptimizerSettings(null),new RegionSettings(null),new ColorSwatches(null,0),new AutoGgSettings(null)};
                 int scrollable=0;
                 for(SettingsScreen screen:screens){
@@ -3362,29 +3367,30 @@ public final class OtlSmoke {
                 int bx=ReflectionHelper.getPrivateValue(ModulesScreen.class,browser,"x");
                 int by=ReflectionHelper.getPrivateValue(ModulesScreen.class,browser,"y");
                 int bh=ReflectionHelper.getPrivateValue(ModulesScreen.class,browser,"h");
-                int[] onOnly=browser.onOnlyBox();
-                browser.mouseClicked(onOnly[0]+4,onOnly[1]+8,0);
-                require(browser.visibleCount()==OtlModule.ALL.stream().filter(m->m.enabled()).count(),
-                    "Enabled-only filter includes disabled modules or omits enabled modules");
-                browser.mouseClicked(onOnly[0]+4,onOnly[1]+8,0);
-                require(browser.visibleCount()==OtlModule.ALL.size(),"Enabled-only filter did not clear");
-                // The header gear carries the PGM settings section; it must open the shared settings page.
-                browser.mouseClicked(browser.settingsGearX()+4,browser.headerY()+10,0);
+                int[] visual=browser.onOnlyBox();
+                browser.mouseClicked(visual[0]+visual[2]+4,visual[1]+8,0);
+                require(browser.visibleCount()==OtlModule.ALL.stream().filter(m->m.category.equals("HUD")).count(),
+                    "HUD category filter did not show HUD modules");
+                browser.mouseClicked(visual[0]+4,visual[1]+8,0);
+                require(browser.visibleCount()==OtlModule.ALL.size(),"All category did not restore modules");
+                browser.mouseClicked(browser.settingsGearX()+55,browser.headerY()+10,0);
                 require(mc.currentScreen instanceof PgmSettingsScreen,"Settings header did not open the PGM page");
+                require(((PgmSettingsScreen)mc.currentScreen).menu==browser,"Settings lost the profile rail");
                 ((PgmSettingsScreen)mc.currentScreen).actionPerformed(find(mc.currentScreen,"Back"));
                 require(mc.currentScreen==browser,"PGM settings did not return to the module browser");
                 int[] box=browser.rowBox(0);
-                boolean before=OtlModule.ALL.get(0).enabled();
+                OtlModule first=OtlModule.ALL.stream().filter(m->browser.visibleIndex(m)==0).findFirst().get();
+                boolean before=first.enabled();
                 browser.mouseClicked(box[0]+box[2]/2,box[1]+8,0);
                 require(mc.currentScreen!=browser,"Module body did not open settings");
-                require(OtlModule.ALL.get(0).enabled()==before,"Opening module settings toggled its state");
-                uiScale=mc.gameSettings.guiScale;mc.gameSettings.guiScale=1;
-                mc.displayGuiScreen(browser);
+                require(mc.currentScreen instanceof SettingsScreen&&((SettingsScreen)mc.currentScreen).menu==browser,
+                    "Module Options lost the profile rail");
+                require(first.enabled()==before,"Opening module settings toggled its state");
             }else if(state==133){
-                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-modules-large.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
-                mc.gameSettings.guiScale=uiScale;
+                ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-module-options.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+                mc.displayGuiScreen(((SettingsScreen)mc.currentScreen).menu);
                 require(org.lwjgl.opengl.GL11.glGetError()==0,"Module artwork left an OpenGL error");
-                System.out.println("OTL_SMOKE: search typing, Escape, enabled filter and card navigation PASS");
+                System.out.println("OTL_SMOKE: search typing, Escape, category filter and card navigation PASS");
             }
             if(state==134){
                 for(String name:new String[]{"TabAlpha","TabBravo","TabCharlie"})tabEntry(mc,name,"\u00a7a"+name);

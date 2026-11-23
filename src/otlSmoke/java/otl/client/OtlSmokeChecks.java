@@ -53,11 +53,7 @@ final class OtlSmokeChecks {
         UtilitySettings.teamBar=true;
     }
 
-    /**
-     * Deleting a profile asks first. The Yes callback refreshed the menu without making it current
-     * again, so a successful delete left the confirmation sitting on screen with nothing behind it.
-     * This drives the real rail click and the real callback rather than rebuilding the dialog.
-     */
+    /** The pencil opens Edit Profile; removal there asks before deleting. */
     void profileDeleteDialog(Minecraft mc,ModulesScreen menu){
         String home=UtilitySettings.profile,doomed="zz delete me";
         try{UtilitySettings.write(Profiles.file(doomed),UtilitySettings.DEFAULTS);}
@@ -69,15 +65,17 @@ final class OtlSmokeChecks {
         int x=ReflectionHelper.getPrivateValue(ModulesScreen.class,menu,"x");
         int y=ReflectionHelper.getPrivateValue(ModulesScreen.class,menu,"y");
         int h=ReflectionHelper.getPrivateValue(ModulesScreen.class,menu,"h");
-        int rows=Math.max(1,(h-104)/22);
+        int rows=Math.max(1,(h-113)/19);
         // The rail shows only the first rows; scroll the new profile into view before clicking it.
         int scroll=Math.max(0,Math.min(index,rail.size()-rows));
-        ReflectionHelper.setPrivateValue(ModulesScreen.class,menu,scroll,"railScroll");
+        ReflectionHelper.setPrivateValue(ModulesScreen.class,menu,scroll,"profileScroll");
         int row=index-scroll;
         require(row>=0&&row<rows,"The test profile could not be scrolled into the rail's view");
-        // The rail is 132 wide with 52 reserved for its actions: the X starts 32px into that.
-        try{menu.mouseClicked(x+8+120-52+34,y+30+row*22+5,0);}
+        try{menu.mouseClicked(x+82,y+60+row*19+5,0);}
         catch(java.io.IOException e){throw new AssertionError("Rail click failed: "+e.getMessage());}
+        require(mc.currentScreen instanceof ProfileEditScreen,"Pencil did not open Edit Profile");
+        ProfileEditScreen editor=(ProfileEditScreen)mc.currentScreen;
+        editor.actionPerformed(new net.minecraft.client.gui.GuiButton(2,0,0,"Remove"));
         require(mc.currentScreen instanceof net.minecraft.client.gui.GuiYesNo,"Deleting a profile did not ask first");
         net.minecraft.client.gui.GuiYesNo dialog=(net.minecraft.client.gui.GuiYesNo)mc.currentScreen;
         net.minecraft.client.gui.GuiYesNoCallback callback=

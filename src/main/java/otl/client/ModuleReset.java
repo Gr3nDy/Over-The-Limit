@@ -8,14 +8,13 @@ import net.minecraft.client.gui.FontRenderer;
 /** Top-right undo-style button that restores the module's factory settings; tooltip on hover. */
 final class ModuleReset extends GuiButton {
     private final String moduleId;
-    ModuleReset(int id,int x,int y,String moduleId){super(id,x,y,11,12,"");this.moduleId=moduleId;}
+    ModuleReset(int id,int x,int y,String moduleId){super(id,x,y,16,16,"");this.moduleId=moduleId;}
     /** Resets the module and persists; screens refresh themselves afterwards. */
     boolean reset(){OtlModule module=OtlModule.byId(moduleId);if(module==null)return false;module.reset();UtilitySettings.save();return true;}
     public void drawButton(Minecraft mc,int mx,int my){
         if(!visible)return;
         hovered=BedrockUi.hit(mx,my,xPosition,yPosition,width,height);
-        // Header reset stays a glyph; hover changes only the glyph colour.
-        BedrockUi.resetArrow(xPosition,yPosition,hovered);
+        BedrockUi.menuIcon(6,xPosition,yPosition,hovered);
         if(hovered){
             FontRenderer font=mc.fontRendererObj;String tip="Reset Module";
             int tw=font.getStringWidth(tip)+10;

@@ -14,14 +14,17 @@ final class NeutralButton extends GuiButton {
         if(displayString.endsWith(": ON")||displayString.endsWith(": OFF")){
             boolean on=displayString.endsWith(": ON");
             String label=displayString.substring(0,displayString.lastIndexOf(": "));
-            if(hovered&&enabled)BedrockUi.rounded(xPosition,yPosition,width,height,BedrockTokens.STATE_HOVER);
+            BedrockUi.menuSkin(enabled?(hovered?7:6):10,xPosition,yPosition,width,height);
             int available=Math.max(0,width-42);
             label=mc.fontRendererObj.trimStringToWidth(label,available);
             mc.fontRendererObj.drawString(label,xPosition+6,yPosition+(height-8)/2,enabled?BedrockUi.TEXT:BedrockUi.DIM);
             BedrockUi.toggle(xPosition+width-32,yPosition+(height-12)/2,on,hovered&&enabled);
             return;
         }
-        BedrockUi.button(mc.fontRendererObj,xPosition,yPosition,width,height,displayString,hovered,enabled,alpha);
-        if(selected)drawRect(xPosition+2,yPosition+height-2,xPosition+width-2,yPosition+height-1,BedrockTokens.STATE_ACCENT);
+        if(selected&&alpha==255){
+            BedrockUi.menuSkin(12,xPosition,yPosition,width,height);
+            BedrockUi.plainCentered(mc.fontRendererObj,mc.fontRendererObj.trimStringToWidth(displayString,width-8),
+                xPosition+width/2,yPosition+(height-mc.fontRendererObj.FONT_HEIGHT)/2,0xFFFFFFFF);
+        }else BedrockUi.button(mc.fontRendererObj,xPosition,yPosition,width,height,displayString,hovered,enabled,alpha);
     }
 }

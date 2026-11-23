@@ -81,7 +81,7 @@ final class PgmSettingsScreen extends SettingsScreen {
         if(ServerScope.active()&&mc.thePlayer!=null)mc.thePlayer.sendChatMessage("/toggle "+r.key+" "+r.values[index]);
     }
 
-    private int catY(){return panelY()+HEADER+1;}
+    private int catY(){return panelY()+(menu==null?HEADER+1:52);}
     private int catW(int i){return fontRendererObj.getStringWidth(CATS[i])+16;}
     private int catX(int i){return panelX()+PAD+(i==0?0:catW(0)+6);}
 

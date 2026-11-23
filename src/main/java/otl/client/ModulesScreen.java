@@ -1,479 +1,258 @@
 package otl.client;
 
 import java.io.IOException;
-import java.util.*;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Locale;
+import net.minecraft.client.gui.GuiScreen;
+import net.minecraft.client.gui.GuiTextField;
+import net.minecraft.client.gui.Gui;
+import net.minecraft.client.renderer.GlStateManager;
+import net.minecraft.util.ResourceLocation;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
 
-/**
- * Module browser: one row per module, filtered by search and category, with the settings for a
- * module opening on click. Profiles live in a footer menu so the list gets the full panel width.
- *
- * <p>Rows are 22 tall and carry everything on one line - icon, name, what it does, and its switch -
- * so nine modules are visible at once and nothing is truncated the way the old card grid was.
- */
+/** OTL's compact module desk: translucent chrome, independent profile rail and 3 x 2 card viewport. */
 final class ModulesScreen extends GuiScreen {
-    private static final String[] TABS={"ALL","HUD","VISUAL","MECHANIC"};
-    private static final String[] TAB_LABELS={"All","Hud","Visual","Mechanic"};
-    private static final int PAD=12,HEADER=30,SEARCH_Y=38,SEARCH_H=20,LIST_Y=64,ROW_H=22,FOOTER=28;
-    private static final int POPUP_W=172,POPUP_ROW=18,POPUP_PAD=6;
+    private static final String[] CATS={"All","HUD","Visual","Mechanic"};
+    private static final int SIDE=110,GAP=7,PROFILE_ROW=19;
     private final GuiScreen parent;
-    private int x,y,w,h,tab,scrollRow,popupScroll;
+    private int x,y,w,h,tab,scrollRow,profileScroll;
+    private boolean scrollDrag,profileDrag;
+    private String query="";
+    private GuiTextField search;
     private List<String> profiles=new ArrayList<>();
-    private GuiTextField renameField,search;
-    private String editing,status="",query="";
-    private boolean scrollDrag,enabledOnly,profileOpen,profileDrag;
-    private String dragName;
 
     ModulesScreen(GuiScreen parent){this.parent=parent;}
-    public boolean doesGuiPauseGame(){return false;}
-
-    public void initGui(){
+    @Override public boolean doesGuiPauseGame(){return false;}
+    @Override public void initGui(){
         UtilitySettings.load();
-        // Match the compact Lunar modal proportions at GUI scale 2; do not grow to fill the screen.
         w=Math.min(520,width-16);h=Math.min(300,height-16);x=(width-w)/2;y=(height-h)/2;
         profiles=Profiles.profileNames();
-        scrollRow=Math.max(0,Math.min(scrollRow,list().size()-visibleRows()));
-        popupScroll=Math.max(0,Math.min(popupScroll,Math.max(0,profiles.size()-popupRows())));
-        status="";
+        scrollRow=Math.max(0,Math.min(scrollRow,rowCount()-visibleRows()));
+        profileScroll=Math.max(0,Math.min(profileScroll,Math.max(0,profiles.size()-profileRows())));
         buttonList.clear();
-        buttonList.add(new PillButton(3,x+w-PAD-54,y+h-FOOTER+5,54,18,"DONE"));
-        search=new GuiTextField(80,fontRendererObj,listX()+18,SEARCH_Y+y+5,searchW()-24,12);
+        search=new GuiTextField(80,fontRendererObj,bodyX()+bodyW()-111,y+12,89,12);
         search.setMaxStringLength(40);
         search.setText(query);
         search.setEnableBackgroundDrawing(false);
-        search.setFocused(!query.isEmpty());
-        renameField=null;
-        if(editing==null)return;
-        int row=profiles.indexOf(editing);
-        if(row<0||row<popupScroll||row>=popupScroll+popupRows()){editing=null;return;}
-        renameField=new GuiTextField(90,fontRendererObj,popupX()+6,popupRowY(row),POPUP_W-12,12);
-        renameField.setMaxStringLength(24);
-        renameField.setText(editing);
-        renameField.setFocused(true);
-        renameField.setCursorPositionEnd();
     }
 
-    // ── geometry ────────────────────────────────────────────────────────────────────────────
-    private int listX(){return x+PAD;}
-    private int listW(){return w-2*PAD;}
-    /** Rows that fit between the filter strip and the footer. */
-    int visibleRows(){return Math.max(1,(h-FOOTER-4-LIST_Y)/ROW_H);}
-    private int rowY(int index){return y+LIST_Y+(index-scrollRow)*ROW_H;}
-    private int trackX(){return x+w-6;}
-    private int trackTop(){return y+LIST_Y;}
-    private int trackBottom(){return y+h-FOOTER-4;}
-    private int trackH(){return trackBottom()-trackTop();}
-    private int thumbH(){int total=list().size();return Math.max(16,trackH()*visibleRows()/Math.max(visibleRows(),total));}
-    private int thumbY(){int max=list().size()-visibleRows();return max<=0?trackTop():trackTop()+(trackH()-thumbH())*scrollRow/max;}
-    private boolean overTrack(int mx,int my){return mx>=trackX()&&mx<trackX()+6&&my>=trackTop()&&my<trackBottom()&&list().size()>visibleRows();}
-    private int switchX(){return x+w-PAD-7-18;}
-    private int chipY(){return y+SEARCH_Y+1;}
-    private int chipH(){return 18;}
-    /** The search box is the only thing that gives up width, so tabs and filter never overlap. */
-    private int searchW(){
-        int tabs=0;
-        for(int i=0;i<TABS.length;i++)tabs+=tabWidth(i)+4;
-        return Math.max(70,Math.min(188,listW()-tabs-filterW()-18));
-    }
+    private int bodyX(){return x+SIDE+9;}
+    private int bodyW(){return w-SIDE-18;}
+    private int gridY(){return y+58;}
+    private int gridBottom(){return y+h-10;}
+    private int cardW(){return Math.max(20,(bodyW()-14-5)/3);}
+    private int cardH(){return Math.max(48,(gridBottom()-gridY()-GAP)/2);}
+    private int rowStep(){return cardH()+GAP;}
+    private int profileTop(){return y+60;}
+    private int profileBottom(){return y+h-53;}
+    private int profileRows(){return Math.max(1,(profileBottom()-profileTop())/PROFILE_ROW);}
+    private int profileY(int index){return profileTop()+(index-profileScroll)*PROFILE_ROW;}
     private int tabX(int i){
-        int tx=listX()+searchW()+8;
-        for(int j=0;j<i;j++)tx+=fontRendererObj.getStringWidth(TAB_LABELS[j])+14+4;
-        return tx;
+        int xx=bodyX();
+        for(int j=0;j<i;j++)xx+=fontRendererObj.getStringWidth(CATS[j])+14+3;
+        return xx;
     }
-    private int tabWidth(int i){return fontRendererObj.getStringWidth(TAB_LABELS[i])+14;}
-    private int filterX(){return listX()+listW()-filterW();}
-    private int filterW(){return fontRendererObj.getStringWidth("On only")+14;}
-    private int pillW(){return 7+6+5+fontRendererObj.getStringWidth(serviceLabel())+9;}
-    private int pillX(){return x+w-PAD-pillW();}
-    private int gearX(){return pillX()-8-18;}
-    private int popupX(){return listX()-2;}
-    private int popupRows(){return Math.max(1,(h-FOOTER-LIST_Y-POPUP_PAD*2-36)/POPUP_ROW);}
-    private int popupRowY(int index){return popupTop()+POPUP_PAD+(index-popupScroll)*POPUP_ROW;}
-    private int popupTop(){return y+h-FOOTER-4-popupH();}
-    private int popupH(){return POPUP_PAD*2+Math.min(profiles.size(),popupRows())*POPUP_ROW+36;}
-    private int popupActionY(int index){return popupTop()+POPUP_PAD+Math.min(profiles.size(),popupRows())*POPUP_ROW+4+index*POPUP_ROW;}
+    private int tabW(int i){return fontRendererObj.getStringWidth(CATS[i])+14;}
+    private int trackX(){return bodyX()+bodyW()-3;}
+    private int trackTop(){return gridY();}
+    private int trackBottom(){return gridBottom();}
+    private int thumbH(){return Math.max(15,(trackBottom()-trackTop())*visibleRows()/Math.max(visibleRows(),rowCount()));}
+    private int thumbY(){int max=rowCount()-visibleRows();return max<=0?trackTop():trackTop()+(trackBottom()-trackTop()-thumbH())*scrollRow/max;}
+    int visibleRows(){return 2;}
+    int rowCount(){return (list().size()+2)/3;}
+    int firstRow(){return scrollRow;}
+    int visibleCount(){return list().size();}
+    int visibleIndex(OtlModule m){return list().indexOf(m);}
+    int[] rowBox(int index){int col=index%3,row=index/3;return new int[]{bodyX()+col*(cardW()+GAP),gridY()+row*rowStep(),cardW(),cardH()};}
+    int trackLeft(){return trackX();}
+    int trackTopY(){return trackTop();}
+    int trackBottomY(){return trackBottom();}
+    int settingsGearX(){return tabX(0);}
+    int headerY(){return y+4;}
+    int[] onOnlyBox(){return new int[]{tabX(0),y+37,tabW(0),16};}
+    int[] profileChipBox(){return new int[]{x+6,y+40,SIDE-12,17};}
+    int popupTopY(){return profileTop();}
+    boolean profileMenuOpen(){return true;}
 
-    // ── data ────────────────────────────────────────────────────────────────────────────────
     private List<OtlModule> list(){
         String q=query.trim().toLowerCase(Locale.ROOT);
         List<OtlModule> out=new ArrayList<>();
-        for(OtlModule m:OtlModule.ALL){
-            boolean cat=q.isEmpty()?(tab==0||m.category.equals(TABS[tab])):true;
-            if(cat&&matches(m,q)&&(!enabledOnly||m.enabled()))out.add(m);
-        }
-        Collections.sort(out,(a,b)->{
-            int ca=categoryRank(a.category),cb=categoryRank(b.category);
-            if(ca!=cb)return ca-cb;
-            int oa=moduleRank(a.id),ob=moduleRank(b.id);
-            return oa==ob?a.name.compareToIgnoreCase(b.name):oa-ob;
-        });
+        for(OtlModule m:OtlModule.ALL)
+            if((tab==0||m.category.equalsIgnoreCase(CATS[tab]))&&
+               (q.isEmpty()||m.name.toLowerCase(Locale.ROOT).contains(q)||m.category.toLowerCase(Locale.ROOT).contains(q)))out.add(m);
+        Collections.sort(out,Comparator.comparingInt((OtlModule m)->m.category.equals("HUD")?0:m.category.equals("VISUAL")?1:2)
+            .thenComparing(m->m.name,String.CASE_INSENSITIVE_ORDER));
         return out;
     }
-    private int categoryRank(String category){
-        if("HUD".equals(category))return 0;
-        if("VISUAL".equals(category))return 1;
-        return 2;
-    }
-    /** Stable product order: high-frequency modules first, niche tools later. */
-    private int moduleRank(String id){
-        String order="reliable_chat team_bar kill_feed kill_confirm map_preview face_rig player_animation minimap left_hand bow_optimizer auto_gg region_overlay touchdown custom_votebook";
-        int at=order.indexOf(id);
-        return at<0?10000:at;
-    }
-    private boolean matches(OtlModule m,String q){
-        if(q.isEmpty())return true;
-        if(m.name.toLowerCase(Locale.ROOT).contains(q))return true;
-        String desc=DESC.get(m.id);
-        return (desc!=null&&desc.toLowerCase(Locale.ROOT).contains(q))||m.category.toLowerCase(Locale.ROOT).contains(q);
-    }
-    private void close(){mc.displayGuiScreen(parent);}
-
-    // ── input ───────────────────────────────────────────────────────────────────────────────
-    protected void actionPerformed(GuiButton b){
-        if(!b.enabled)return;
-        if(b.id==3)close();
-    }
-
-    private void commitRename(){
-        String source=editing;editing=null;
-        String text=renameField==null?null:renameField.getText();
-        renameField=null;
-        if(source==null)return;
-        if(text!=null){
-            String result=Profiles.renameProfile(source,text);
-            initGui();
-            status=result.equals(source)?"Name unchanged":"";
+    private void leave(){mc.displayGuiScreen(parent);}
+    @Override protected void keyTyped(char c,int key)throws IOException{
+        if(search.isFocused()){
+            if(key==Keyboard.KEY_ESCAPE){query="";search.setText("");search.setFocused(false);scrollRow=0;return;}
+            if(key==Keyboard.KEY_RETURN){search.setFocused(false);return;}
+            search.textboxKeyTyped(c,key);
+            if(!query.equals(search.getText())){query=search.getText();scrollRow=0;}
             return;
         }
-        initGui();
+        if(key==Keyboard.KEY_ESCAPE){leave();return;}
+        if(key==Keyboard.KEY_F&&isCtrlKeyDown()){search.setFocused(true);return;}
+        if(c>=32&&c!=127){search.setFocused(true);search.textboxKeyTyped(c,key);query=search.getText();scrollRow=0;return;}
+        super.keyTyped(c,key);
     }
-    private void copyProfile(String name){mc.displayGuiScreen(new ProfileTransferScreen(this,name));}
-    private void importProfile(){mc.displayGuiScreen(new ProfileTransferScreen(this,null));}
-
-    protected void keyTyped(char typedChar,int keyCode)throws IOException{
-        if(editing!=null){
-            if(keyCode==Keyboard.KEY_RETURN){commitRename();return;}
-            if(keyCode==Keyboard.KEY_ESCAPE){editing=null;renameField=null;initGui();return;}
-            if(renameField!=null)renameField.textboxKeyTyped(typedChar,keyCode);
-            return;
-        }
-        if(profileOpen&&keyCode==Keyboard.KEY_ESCAPE){profileOpen=false;return;}
-        if(search!=null&&search.isFocused()){
-            if(keyCode==Keyboard.KEY_ESCAPE){search.setText("");query="";scrollRow=0;search.setFocused(false);initGui();return;}
-            if(keyCode==Keyboard.KEY_RETURN){search.setFocused(false);return;}
-            if(keyCode==Keyboard.KEY_F&&GuiScreen.isCtrlKeyDown()){search.setText("");query="";scrollRow=0;return;}
-            search.textboxKeyTyped(typedChar,keyCode);
-            if(!search.getText().equals(query)){query=search.getText();scrollRow=0;}
-            return;
-        }
-        if(keyCode==Keyboard.KEY_ESCAPE){close();return;}
-        if(keyCode==Keyboard.KEY_F&&GuiScreen.isCtrlKeyDown()){search.setFocused(true);return;}
-        // Typing anywhere in the menu starts a search, like a launcher's mod list.
-        if(typedChar>=32&&typedChar!=127&&search!=null){
-            search.setFocused(true);
-            search.textboxKeyTyped(typedChar,keyCode);
-            if(!search.getText().equals(query)){query=search.getText();scrollRow=0;}
-            return;
-        }
-        super.keyTyped(typedChar,keyCode);
-    }
-
-    public void handleMouseInput()throws IOException{
+    @Override public void handleMouseInput()throws IOException{
+        super.handleMouseInput();
         int wheel=Mouse.getEventDWheel();
         if(wheel!=0)scrollWheel(Mouse.getEventX()*width/mc.displayWidth,height-Mouse.getEventY()*height/mc.displayHeight-1,wheel);
-        super.handleMouseInput();
     }
-
-    /** One wheel notch: the open profile menu scrolls its own list, the wheel elsewhere scrolls modules. */
     void scrollWheel(int mx,int my,int wheel){
-        if(profileOpen&&BedrockUi.hit(mx,my,popupX(),popupTop(),POPUP_W,popupH())){
-            popupScroll=Math.max(0,Math.min(popupScroll+(wheel>0?-1:1),Math.max(0,profiles.size()-popupRows())));
-            return;
+        if(BedrockUi.hit(mx,my,x+2,profileTop(),SIDE-4,profileBottom()-profileTop())){
+            profileScroll=Math.max(0,Math.min(Math.max(0,profiles.size()-profileRows()),profileScroll+(wheel>0?-1:1)));
+        }else if(BedrockUi.hit(mx,my,bodyX(),gridY(),bodyW(),gridBottom()-gridY())){
+            scrollRow=Math.max(0,Math.min(Math.max(0,rowCount()-visibleRows()),scrollRow+(wheel>0?-1:1)));
         }
-        scrollRow=Math.max(0,Math.min(scrollRow+(wheel>0?-1:1),Math.max(0,list().size()-visibleRows())));
     }
-
-    protected void mouseClicked(int mx,int my,int button)throws IOException{
-        if(editing!=null){
-            if(renameField!=null&&BedrockUi.hit(mx,my,renameField.xPosition,renameField.yPosition,renameField.width,renameField.height)){
-                renameField.mouseClicked(mx,my,button);return;
-            }
-            commitRename();
-            return;
-        }
+    @Override protected void mouseClicked(int mx,int my,int button)throws IOException{
         if(button!=0){super.mouseClicked(mx,my,button);return;}
-        if(profileOpen){
-            // Any click outside the menu dismisses it, including one on the footer chip that opened it.
-            if(!BedrockUi.hit(mx,my,popupX(),popupTop(),POPUP_W,popupH())){profileOpen=false;return;}
-            if(clickProfileMenu(mx,my))return;
+        if(BedrockUi.hit(mx,my,x+w-22,y+6,16,16)){leave();return;}
+        if(BedrockUi.hit(mx,my,x+8,y+4,SIDE-16,40)){tab=0;query="";scrollRow=0;initGui();return;}
+        if(BedrockUi.hit(mx,my,bodyX(),y+8,46,20))return;
+        if(BedrockUi.hit(mx,my,bodyX()+51,y+8,62,20)){
+            PgmSettingsScreen settings=new PgmSettingsScreen(this);
+            settings.menu=this;
+            mc.displayGuiScreen(settings);
+            return;
         }
-        for(GuiButton b:buttonList)if(b.visible&&b.enabled&&mx>=b.xPosition&&mx<b.xPosition+b.width&&my>=b.yPosition&&my<b.yPosition+b.height){
-            super.mouseClicked(mx,my,button);return;
+        if(BedrockUi.hit(mx,my,search.xPosition-17,y+7,bodyW()-(search.xPosition-bodyX())+17,24)){search.setFocused(true);return;}
+        for(int i=0;i<CATS.length;i++)if(BedrockUi.hit(mx,my,tabX(i),y+37,tabW(i),17)){
+            tab=i;scrollRow=0;initGui();return;
         }
-        if(BedrockUi.hit(mx,my,x+6,y+4,18,22)){close();return;}
-        if(BedrockUi.hit(mx,my,gearX(),y+6,18,18)){mc.displayGuiScreen(new PgmSettingsScreen(this));return;}
-        if(search!=null&&BedrockUi.hit(mx,my,listX(),chipY(),searchW(),SEARCH_H)){search.setFocused(true);return;}
-        for(int i=0;i<TABS.length;i++){
-            if(BedrockUi.hit(mx,my,tabX(i),chipY(),tabWidth(i),chipH())){
-                tab=i;query="";if(search!=null){search.setText("");search.setFocused(false);}
-                scrollRow=0;initGui();return;
-            }
+        if(clickSidebar(mx,my,this))return;
+        if(list().size()>6&&BedrockUi.hit(mx,my,trackX()-4,trackTop(),8,trackBottom()-trackTop())){scrollDrag=true;scrollTo(my);return;}
+        if(BedrockUi.hit(mx,my,bodyX(),gridY(),bodyW()-8,gridBottom()-gridY())){
+            int col=(mx-bodyX())/(cardW()+GAP),row=(my-gridY())/rowStep();
+            if(col>=3||row>=2)return;
+            int[] box=rowBox(row*3+col);
+            if(!BedrockUi.hit(mx,my,box[0],box[1],box[2],box[3]))return;
+            int index=(scrollRow+row)*3+col;
+            List<OtlModule> shown=list();if(index>=shown.size())return;
+            OtlModule m=shown.get(index);if(!m.available())return;
+            if(my>=box[1]+box[3]-20){m.setEnabled(!m.enabled());UtilitySettings.save();return;}
+            GuiScreen settings=m.settings(this);
+            if(settings instanceof SettingsScreen)((SettingsScreen)settings).menu=this;
+            if(settings!=null)mc.displayGuiScreen(settings);
         }
-        if(BedrockUi.hit(mx,my,filterX(),chipY(),filterW(),chipH())){
-            enabledOnly=!enabledOnly;scrollRow=0;initGui();return;
-        }
-        if(BedrockUi.hit(mx,my,listX(),y+h-FOOTER+3,popupChipW(),20)){profileOpen=!profileOpen;initGui();return;}
-        if(overTrack(mx,my)){scrollDrag=true;scrollTo(my);return;}
-        for(int i=0;i<visibleRows();i++){
-            int index=scrollRow+i;
-            if(index>=list().size())return;
-            int ry=rowY(index);
-            if(my<ry||my>=ry+ROW_H)continue;
-            OtlModule m=list().get(index);
-            if(!m.available())return;
-            if(mx>=switchX()-6){
-                m.setEnabled(!m.enabled());UtilitySettings.save();initGui();return;
-            }
-            GuiScreen s=m.settings(this);if(s!=null)mc.displayGuiScreen(s);return;
-        }
-        super.mouseClicked(mx,my,button);
     }
-
-    /** Profile menu clicks: pick, rename, copy, delete, or the two actions at the bottom. */
-    private boolean clickProfileMenu(int mx,int my){
-        int shown=Math.min(profiles.size(),popupRows());
-        for(int i=0;i<shown;i++){
-            int index=popupScroll+i;
-            if(!BedrockUi.hit(mx,my,popupX(),popupRowY(index),POPUP_W,POPUP_ROW))continue;
-            String name=profiles.get(index);
-            int renameX=popupX()+POPUP_W-44,copyX=renameX+15,deleteX=copyX+15;
-            if(mx>=deleteX){
-                if(name.equals(UtilitySettings.profile)||name.equals("Default"))return true;
-                mc.displayGuiScreen(new GuiYesNo((yes,id)->{
-                    if(yes)Profiles.deleteProfile(name);
-                    // displayGuiScreen re-inits this screen, which reloads the list behind the dialog.
-                    mc.displayGuiScreen(this);
-                },"Delete profile \""+name+"\"?","This cannot be undone.",0));
-                return true;
-            }
-            if(mx>=copyX){copyProfile(name);return true;}
-            if(mx>=renameX){editing=name;initGui();return true;}
+    boolean clickSidebar(int mx,int my,GuiScreen back){
+        if(BedrockUi.hit(mx,my,x+8,y+4,SIDE-16,40)){
+            tab=0;query="";scrollRow=0;initGui();mc.displayGuiScreen(this);return true;
+        }
+        if(BedrockUi.hit(mx,my,x+5,y+h-48,SIDE-10,20)){Profiles.newProfile();initGui();return true;}
+        if(BedrockUi.hit(mx,my,x+5,y+h-26,SIDE-10,20)){mc.displayGuiScreen(new ProfileTransferScreen(back,null));return true;}
+        if(profiles.size()>profileRows()&&BedrockUi.hit(mx,my,x+SIDE-7,profileTop(),7,profileBottom()-profileTop())){
+            profileDrag=true;scrollProfilesTo(my);return true;
+        }
+        if(BedrockUi.hit(mx,my,x+4,profileTop(),SIDE-8,profileBottom()-profileTop())){
+            int at=(my-profileTop())/PROFILE_ROW+profileScroll;
+            if(at>=profiles.size())return true;
+            String name=profiles.get(at);
+            if(mx>=x+SIDE-21){mc.displayGuiScreen(new ProfileTransferScreen(back,name));return true;}
+            if(mx>=x+SIDE-37&&!name.equals("Default")){mc.displayGuiScreen(new ProfileEditScreen(back,name));return true;}
             Profiles.switchProfile(name);initGui();return true;
         }
-        if(BedrockUi.hit(mx,my,popupX(),popupActionY(0),POPUP_W,POPUP_ROW)){Profiles.newProfile();initGui();return true;}
-        if(BedrockUi.hit(mx,my,popupX(),popupActionY(1),POPUP_W,POPUP_ROW)){importProfile();return true;}
-        return true;
+        return false;
     }
-
-    protected void mouseClickMove(int mx,int my,int button,long elapsed){
+    @Override protected void mouseClickMove(int mx,int my,int button,long elapsed){
         if(scrollDrag)scrollTo(my);
-        if(profileDrag&&dragName!=null&&button==0&&BedrockUi.hit(mx,my,popupX(),popupTop(),POPUP_W,popupH())){
-            int from=profiles.indexOf(dragName),to=popupScroll+(my-popupTop()-POPUP_PAD)/POPUP_ROW;
-            to=Math.max(0,Math.min(profiles.size()-1,to));
-            if(from>=0&&to!=from){profiles.add(to,profiles.remove(from));Profiles.saveProfileOrder(profiles);}
-        }
+        if(profileDrag)scrollProfilesTo(my);
         super.mouseClickMove(mx,my,button,elapsed);
     }
-    protected void mouseReleased(int mx,int my,int state){
-        scrollDrag=false;profileDrag=false;dragName=null;
-        super.mouseReleased(mx,my,state);
-    }
-
+    @Override protected void mouseReleased(int mx,int my,int button){scrollDrag=false;profileDrag=false;super.mouseReleased(mx,my,button);}
     private void scrollTo(int my){
-        int max=Math.max(0,list().size()-visibleRows());
-        if(max==0){scrollRow=0;return;}
-        double t=(my-trackTop()-thumbH()/2D)/Math.max(1,trackH()-thumbH());
+        int max=Math.max(0,rowCount()-visibleRows());
+        double t=(my-trackTop()-thumbH()/2.0)/Math.max(1,trackBottom()-trackTop()-thumbH());
         scrollRow=Math.max(0,Math.min(max,(int)Math.round(t*max)));
     }
-
-    // ── drawing ─────────────────────────────────────────────────────────────────────────────
-    public void drawScreen(int mx,int my,float partial){
-        drawRect(0,0,width,height,0x40101010);
-        BedrockUi.panel(x,y,w,h);
-        drawHeader(mx,my);
-        drawFilterRow(mx,my);
-        drawList(mx,my);
-        drawFooter(mx,my);
-        if(profileOpen)drawProfileMenu(mx,my);
+    private void scrollProfilesTo(int my){
+        int max=Math.max(0,profiles.size()-profileRows());
+        int height=profileBottom()-profileTop(),thumb=Math.max(10,height*profileRows()/Math.max(1,profiles.size()));
+        double t=(my-profileTop()-thumb/2.0)/Math.max(1,height-thumb);
+        profileScroll=Math.max(0,Math.min(max,(int)Math.round(t*max)));
+    }
+    @Override public void drawScreen(int mx,int my,float partial){
+        // 1.8.9 never calls mouseClickMove during drags, so the held position is polled here.
+        if(scrollDrag)scrollTo(my);
+        if(profileDrag)scrollProfilesTo(my);
+        drawRect(0,0,width,height,0x10000000);
+        BedrockUi.menuSkin(0,x,y,w,h);
+        drawSidebar(mx,my);
+        drawTop(mx,my);
+        drawCards(mx,my);
         super.drawScreen(mx,my,partial);
-        drawTips(mx,my);
     }
-
-    private void drawHeader(int mx,int my){
-        drawRect(x+2,y+HEADER-1,x+w-2,y+HEADER,BedrockUi.EDGE);
-        BedrockUi.backArrow(fontRendererObj,x+4,y+5,BedrockUi.hit(mx,my,x+6,y+4,18,22));
-        BedrockUi.title2x(fontRendererObj,"MODULES",x+30,y+7,BedrockUi.TEXT);
-        BedrockUi.gear(gearX(),y+8,BedrockUi.hit(mx,my,gearX(),y+6,18,18));
-        int status=OtlService.status();
-        int px=pillX(),pw=pillW();
-        BedrockUi.capsule(px,y+6,pw,18,BedrockUi.SLOT);
-        BedrockUi.capsule(px+7,y+12,6,6,OtlService.statusColour(status));
-        drawString(fontRendererObj,serviceLabel(),px+18,y+11,
-            status==OtlService.ONLINE?BedrockUi.TEXT:BedrockUi.MUTED);
-    }
-
-    private void drawFilterRow(int mx,int my){
-        BedrockUi.rounded(listX(),chipY(),searchW(),SEARCH_H,2,BedrockUi.SLOT);
-        if(search.isFocused())BedrockUi.outline(listX(),chipY(),searchW(),SEARCH_H,BedrockTokens.STATE_SELECTED);
-        drawSearchIcon(listX()+7,chipY()+7,BedrockUi.DIM);
-        if(search.getText().isEmpty())
-            drawString(fontRendererObj,fontRendererObj.trimStringToWidth("Search modules",searchW()-26),
-                listX()+18,chipY()+6,BedrockUi.DIM);
-        search.drawTextBox();
-        for(int i=0;i<TABS.length;i++){
-            BedrockUi.chip(fontRendererObj,tabX(i),chipY(),tabWidth(i),chipH(),TAB_LABELS[i],
-                tab==i&&query.isEmpty(),BedrockUi.hit(mx,my,tabX(i),chipY(),tabWidth(i),chipH()));
-        }
-        BedrockUi.chip(fontRendererObj,filterX(),chipY(),filterW(),chipH(),"On only",
-            enabledOnly,BedrockUi.hit(mx,my,filterX(),chipY(),filterW(),chipH()));
-    }
-
-    private void drawList(int mx,int my){
-        List<OtlModule> list=list();
-        if(list.isEmpty()){
-            String empty=query.isEmpty()?"No enabled modules":"No matches";
-            drawCenteredString(fontRendererObj,empty,(listX()+x+w-PAD)/2,y+LIST_Y+rowHint()/2-4,BedrockUi.MUTED);
-        }
-        for(int i=0;i<visibleRows();i++){
-            int index=scrollRow+i;
-            if(index>=list.size())break;
-            drawRow(list.get(index),index,rowY(index),mx,my);
-        }
-        if(list.size()>visibleRows()){
-            BedrockUi.rounded(trackX(),trackTop(),3,trackH(),1,BedrockUi.INSET);
-            boolean grab=scrollDrag||BedrockUi.hit(mx,my,trackX()-2,thumbY(),7,thumbH());
-            BedrockUi.rounded(trackX(),thumbY(),3,thumbH(),1,grab?0xFFB0B0B0:0xFF6F747D);
-        }
-    }
-    private int rowHint(){return Math.min(ROW_H*visibleRows(),40);}
-
-    /** One module: tinted icon, name, what it does, and its switch, all on the same line. */
-    private void drawRow(OtlModule m,int index,int ry,int mx,int my){
-        boolean hover=BedrockUi.hit(mx,my,listX(),ry,listW(),ROW_H);
-        boolean usable=m.available();
-        if(hover&&usable)BedrockUi.rounded(listX(),ry,listW(),ROW_H,2,BedrockTokens.STATE_HOVER);
-        int tint=categoryColour(m);
-        int iconX=listX()+7,iconY=ry+5;
-        BedrockUi.rounded(iconX,iconY,12,12,2,(0x2B<<24)|(tint&0xFFFFFF));
-        drawIcon(m.id,iconX+1,iconY+1,tint);
-        int nameX=listX()+27;
-        String name=fontRendererObj.trimStringToWidth(m.name,110);
-        drawString(fontRendererObj,name,nameX,ry+7,usable?BedrockUi.TEXT:BedrockTokens.STATE_LOCKED);
-        if(usable){
-            int descX=nameX+fontRendererObj.getStringWidth(name)+8;
-            int descW=switchX()-8-descX;
-            String desc=DESC.get(m.id);
-            if(desc!=null&&descW>10)
-                drawString(fontRendererObj,fontRendererObj.trimStringToWidth(desc,descW),descX,ry+7,BedrockUi.DIM);
-            drawSwitch(switchX(),ry+6,18,10,m.enabled());
-        }else{
-            String label="LOCKED";
-            drawString(fontRendererObj,label,switchX()+18-fontRendererObj.getStringWidth(label),ry+7,BedrockTokens.STATE_LOCKED);
-        }
-    }
-
-    private void drawFooter(int mx,int my){
-        int cy=y+h-FOOTER+5;
-        int cw=popupChipW();
-        BedrockUi.rounded(listX(),cy,cw,18,2,BedrockTokens.STATE_HOVER);
-        drawString(fontRendererObj,"Profile",listX()+7,cy+6,BedrockUi.DIM);
-        String name=fontRendererObj.trimStringToWidth(UtilitySettings.profile,cw-58);
-        drawString(fontRendererObj,name,listX()+7+fontRendererObj.getStringWidth("Profile")+6,cy+6,BedrockUi.TEXT);
-        drawString(fontRendererObj,"v",listX()+cw-9,cy+6,BedrockUi.DIM);
-        int on=0;for(OtlModule m:OtlModule.ALL)if(m.enabled())on++;
-        String count=on+" of "+OtlModule.ALL.size()+" on";
-        drawString(fontRendererObj,count,listX()+cw+10,cy+6,BedrockUi.DIM);
-        if(!status.isEmpty())
-            drawString(fontRendererObj,fontRendererObj.trimStringToWidth(status,110),
-                x+w-PAD-54-8-fontRendererObj.getStringWidth(fontRendererObj.trimStringToWidth(status,110)),cy+6,
-                BedrockUi.MUTED);
-    }
-    private int popupChipW(){return 7+fontRendererObj.getStringWidth("Profile")+6
-        +fontRendererObj.getStringWidth(fontRendererObj.trimStringToWidth(UtilitySettings.profile,90))+14;}
-
-    /** Profile menu: pick, rename, copy or delete, plus the two actions the rail used to hold. */
-    private void drawProfileMenu(int mx,int my){
-        int px=popupX(),top=popupTop();
-        BedrockUi.rounded(px,top,POPUP_W,popupH(),2,0xF212141B);
-        BedrockUi.outline(px,top,POPUP_W,popupH(),BedrockUi.EDGE);
-        int shown=Math.min(profiles.size(),popupRows());
-        for(int i=0;i<shown;i++){
-            int index=popupScroll+i;
-            String name=profiles.get(index);
-            int ry=popupRowY(index);
-            boolean active=name.equals(UtilitySettings.profile),hover=BedrockUi.hit(mx,my,px,ry,POPUP_W,POPUP_ROW);
-            if(active)BedrockUi.rounded(px+3,ry,POPUP_W-6,POPUP_ROW,2,BedrockTokens.STATE_HOVER);
-            if(name.equals(editing))continue;
-            int renameX=px+POPUP_W-44,copyX=renameX+15,deleteX=copyX+15;
-            drawString(fontRendererObj,fontRendererObj.trimStringToWidth(name,POPUP_W-52),px+8,ry+5,
-                active?0xFFFFFFFF:BedrockUi.TEXT);
-            if(hover&&active)drawRect(px+3,ry,px+5,ry+POPUP_ROW,BedrockUi.ACCENT);
+    void drawSidebar(int mx,int my){
+        BedrockUi.menuSkin(1,x+1,y+1,SIDE-1,h-2);
+        BedrockUi.menuLogo(x+7,y+4);
+        drawString(fontRendererObj,"PROFILES",x+9,y+46,0xFFBFC6BE);
+        BedrockUi.menuSkin(2,x+5,profileTop()-2,SIDE-10,profileBottom()-profileTop()+4);
+        int end=Math.min(profiles.size(),profileScroll+profileRows());
+        for(int i=profileScroll;i<end;i++){
+            int yy=profileY(i);String name=profiles.get(i);
+            boolean active=name.equals(UtilitySettings.profile),hover=BedrockUi.hit(mx,my,x+5,yy,SIDE-10,PROFILE_ROW);
+            if(active)BedrockUi.menuSkin(11,x+6,yy,SIDE-11,PROFILE_ROW);
+            int max=SIDE-(hover?54:20);
+            String shown=name;
+            if(fontRendererObj.getStringWidth(name)>max){
+                if(active){
+                    int over=Math.max(0,name.length()-Math.max(1,max/6));
+                    int offset=(int)((System.currentTimeMillis()/430)%Math.max(1,2*over));
+                    shown=name.substring(Math.max(0,Math.min(over,offset>over?2*over-offset:offset)));
+                }
+                shown=fontRendererObj.trimStringToWidth(shown,max);
+            }
+            drawString(fontRendererObj,shown,x+12,yy+6,active?0xFFF4F1E8:0xFFBFC6BE);
             if(hover){
-                BedrockUi.pencil(renameX,ry+3,mx>=renameX&&mx<renameX+13);
-                BedrockUi.duplicate(copyX,ry+3,mx>=copyX&&mx<copyX+13);
-                BedrockUi.icon(fontRendererObj,deleteX,ry+3,"x",mx>=deleteX,
-                    !active&&!name.equals("Default"));
+                if(!name.equals("Default"))BedrockUi.menuIcon(2,x+SIDE-38,yy+1,mx>=x+SIDE-37&&mx<x+SIDE-21);
+                BedrockUi.menuIcon(1,x+SIDE-22,yy+1,mx>=x+SIDE-21);
             }
         }
-        if(profiles.size()>shown){
-            drawString(fontRendererObj,(profiles.size()-shown)+" more...",px+8,popupActionY(0)-10,BedrockUi.DIM);
+        if(profiles.size()>profileRows()){
+            int bar=profileBottom()-profileTop(),thumb=Math.max(10,bar*profileRows()/profiles.size());
+            int pos=profileTop()+(bar-thumb)*profileScroll/Math.max(1,profiles.size()-profileRows());
+            BedrockUi.rounded(x+SIDE-5,pos,2,thumb,1,0xFF87928A);
         }
-        BedrockUi.rounded(px+POPUP_PAD,popupActionY(0)-4,POPUP_W-POPUP_PAD*2,1,1,BedrockUi.EDGE);
-        int y0=popupActionY(0);
-        if(BedrockUi.hit(mx,my,px,y0,POPUP_W,POPUP_ROW))
-            BedrockUi.rounded(px+3,y0,POPUP_W-6,POPUP_ROW,2,BedrockTokens.STATE_HOVER);
-        drawString(fontRendererObj,"+ New profile",px+8,y0+5,BedrockUi.TEXT);
-        int y1=popupActionY(1);
-        if(BedrockUi.hit(mx,my,px,y1,POPUP_W,POPUP_ROW))
-            BedrockUi.rounded(px+3,y1,POPUP_W-6,POPUP_ROW,2,BedrockTokens.STATE_HOVER);
-        drawString(fontRendererObj,"Import profile",px+8,y1+5,BedrockUi.TEXT);
+        drawAction(x+5,y+h-48,"profile_new",mx,my);
+        drawAction(x+5,y+h-26,"profile_import",mx,my);
     }
-
-    private void drawTips(int mx,int my){
-        if(profileOpen){
-            int shown=Math.min(profiles.size(),popupRows());
-            for(int i=0;i<shown;i++){
-                String name=profiles.get(popupScroll+i);
-                if(BedrockUi.hit(mx,my,popupX(),popupRowY(popupScroll+i),POPUP_W,POPUP_ROW)&&name.equals(UtilitySettings.profile))
-                    drawHoveringText(Arrays.asList("Click to select","Pencil renames, pages copy","X deletes"),mx,my);
-            }
-            return;
+    private void drawTop(int mx,int my){
+        BedrockUi.menuSkin(6,bodyX()-3,y+4,bodyW()+5,28);
+        BedrockUi.menuText("nav_modules_active",7,bodyX()+27,y+19,49);
+        BedrockUi.menuText("nav_settings",8,bodyX()+97,y+19,56);
+        if(BedrockUi.hit(mx,my,serviceX()-3,y+4,fontRendererObj.getStringWidth(serviceLabel())+16,20))drawHoveringText(serviceTip(),mx,my);
+        drawService(mx,my);
+        BedrockUi.menuSkin(6,search.xPosition-17,y+8,106,20);
+        BedrockUi.menuIcon(4,search.xPosition-17,y+10,false);
+        if(query.isEmpty())drawString(fontRendererObj,"Search",search.xPosition,y+14,0xFFBFC6BE);
+        search.drawTextBox();
+        BedrockUi.menuSkin(6,x+w-22,y+6,16,16);
+        BedrockUi.menuIcon(3,x+w-22,y+6,BedrockUi.hit(mx,my,x+w-22,y+6,16,16));
+        for(int i=0;i<CATS.length;i++){
+            boolean hot=BedrockUi.hit(mx,my,tabX(i),y+37,tabW(i),17);
+            BedrockUi.menuSkin(tab==i?12:hot?7:6,tabX(i),y+37,tabW(i),17);
+            drawCenteredString(fontRendererObj,CATS[i],tabX(i)+tabW(i)/2,y+41,tab==i?0xFFFFFFFF:0xFFBFC6BE);
         }
-        if(BedrockUi.hit(mx,my,x+6,y+4,18,22)){drawHoveringText(Arrays.asList("Back"),mx,my);return;}
-        if(BedrockUi.hit(mx,my,gearX(),y+6,18,18)){
-            drawHoveringText(Arrays.asList("PGM settings","Client and server options"),mx,my);return;
-        }
-        if(BedrockUi.hit(mx,my,listX(),chipY(),searchW(),SEARCH_H)&&!search.isFocused()){
-            drawHoveringText(Arrays.asList("Type to search, ESC clears"),mx,my);return;
-        }
-        if(BedrockUi.hit(mx,my,pillX(),y+6,pillW(),18)){drawHoveringText(serviceTip(),mx,my);return;}
-        List<OtlModule> list=list();
-        for(int i=0;i<visibleRows();i++){
-            int index=scrollRow+i;
-            if(index>=list.size())break;
-            int ry=rowY(index);
-            if(!BedrockUi.hit(mx,my,listX(),ry,listW(),ROW_H))continue;
-            OtlModule m=list.get(index);
-            List<String> tip=new ArrayList<>();
-            tip.add(m.name);
-            String desc=DESC.get(m.id);
-            if(desc!=null)tip.addAll(fontRendererObj.listFormattedStringToWidth(desc,190));
-            tip.add(m.available()?"Click to configure":"Unavailable on this server");
-            drawHoveringText(tip,mx,my);
-            return;
-        }
+        drawString(fontRendererObj,list().size()+"/"+OtlModule.ALL.size(),bodyX()+bodyW()-27,y+43,0xFFBFC6BE);
     }
-
-    /** "Online" plus how many other OTL users are in this world, e.g. "Online · 3". */
+    /** "Online" plus how many other OTL users are in this world, e.g. "Online \u00b7 3". */
     private String serviceLabel(){
         int status=OtlService.status();
         String label=OtlService.statusLabel(status);
-        if(status==OtlService.ONLINE)label=label+" · "+OtlPresence.here().size();
+        if(status==OtlService.ONLINE)label=label+" \u00b7 "+OtlPresence.here().size();
         return label;
     }
+    /** The player list, as the tooltip behind the light: the other OTL users standing here. */
     private List<String> serviceTip(){
         List<String> tip=new ArrayList<>();
         int status=OtlService.status();
@@ -487,163 +266,51 @@ final class ModulesScreen extends GuiScreen {
         if(here.size()>shown)tip.add("  and "+(here.size()-shown)+" more");
         return tip;
     }
-
-    /** Original card glyphs, 10x10 in the module's category tint. */
-    private void drawIcon(String id,int gx,int gy,int c){
-        int bg=0xFF232832;
-        switch(id){
-            case "auto_gg": // speech bubble, three dots
-                BedrockUi.outline(gx,gy,10,7,c);
-                drawRect(gx+2,gy+7,gx+4,gy+9,c);
-                for(int i=0;i<3;i++)drawRect(gx+2+i*3,gy+3,gx+3+i*3,gy+4,c);
-                break;
-            case "bow_optimizer": // bow with a nocked arrow
-                drawRect(gx+1,gy,gx+2,gy+10,c);
-                drawRect(gx+2,gy,gx+4,gy+1,c);drawRect(gx+4,gy+1,gx+5,gy+3,c);
-                drawRect(gx+5,gy+3,gx+6,gy+7,c);drawRect(gx+4,gy+7,gx+5,gy+9,c);
-                drawRect(gx+2,gy+9,gx+4,gy+10,c);
-                drawRect(gx+3,gy+4,gx+9,gy+5,c);drawRect(gx+6,gy+2,gx+7,gy+8,c);
-                break;
-            case "face_rig": // pixel face
-                BedrockUi.outline(gx+1,gy+1,8,8,c);
-                drawRect(gx+3,gy+3,gx+4,gy+5,c);drawRect(gx+6,gy+3,gx+7,gy+5,c);
-                drawRect(gx+3,gy+7,gx+7,gy+8,c);
-                break;
-            case "player_animation": // figure with a raised arm
-                drawRect(gx+4,gy,gx+6,gy+2,c);drawRect(gx+4,gy+2,gx+6,gy+6,c);
-                drawRect(gx+2,gy+2,gx+4,gy+3,c);drawRect(gx+6,gy+1,gx+9,gy+2,c);
-                drawRect(gx+6,gy+2,gx+7,gy+3,c);
-                drawRect(gx+3,gy+6,gx+4,gy+10,c);drawRect(gx+5,gy+6,gx+6,gy+10,c);
-                break;
-            case "kill_confirm": // crosshair
-                drawRect(gx+4,gy+1,gx+6,gy+9,c);drawRect(gx+1,gy+4,gx+9,gy+6,c);
-                drawRect(gx+4,gy+4,gx+6,gy+6,bg);
-                break;
-            case "kill_feed": // feed lines with author dots
-                for(int i=0;i<3;i++){
-                    drawRect(gx,gy+1+i*3,gx+2,gy+3+i*3,c);
-                    drawRect(gx+3,gy+1+i*3,gx+10-(i==2?2:0),gy+3+i*3,c);
-                }
-                break;
-            case "left_hand": // hand, fingers up
-                drawRect(gx+2,gy+4,gx+8,gy+9,c);
-                drawRect(gx+2,gy+1,gx+3,gy+4,c);drawRect(gx+4,gy,gx+5,gy+4,c);drawRect(gx+6,gy+1,gx+7,gy+4,c);
-                drawRect(gx+1,gy+5,gx+2,gy+8,c);
-                break;
-            case "map_preview": // folded map sheet with a pin
-                BedrockUi.outline(gx+1,gy+1,8,8,c);
-                drawRect(gx+4,gy+1,gx+5,gy+9,c);
-                drawRect(gx+7,gy+2,gx+8,gy+4,c);
-                break;
-            case "minimap": // framed corner map
-                BedrockUi.outline(gx,gy,10,10,c);
-                drawRect(gx+2,gy+2,gx+5,gy+5,c);
-                drawRect(gx+6,gy+6,gx+8,gy+8,c);
-                break;
-            case "region_overlay": // corner brackets around a point
-                drawRect(gx,gy,gx+3,gy+1,c);drawRect(gx,gy,gx+1,gy+3,c);
-                drawRect(gx+7,gy,gx+10,gy+1,c);drawRect(gx+9,gy,gx+10,gy+3,c);
-                drawRect(gx,gy+9,gx+3,gy+10,c);drawRect(gx,gy+7,gx+1,gy+10,c);
-                drawRect(gx+7,gy+9,gx+10,gy+10,c);drawRect(gx+9,gy+7,gx+10,gy+10,c);
-                drawRect(gx+4,gy+4,gx+6,gy+6,c);
-                break;
-            case "reliable_chat": // bubble with a check
-                BedrockUi.outline(gx,gy,10,7,c);
-                drawRect(gx+2,gy+7,gx+4,gy+9,c);
-                drawRect(gx+3,gy+4,gx+4,gy+5,c);drawRect(gx+4,gy+3,gx+5,gy+4,c);
-                drawRect(gx+5,gy+3,gx+7,gy+4,c);drawRect(gx+6,gy+4,gx+7,gy+5,c);
-                break;
-            case "team_bar": // scoreboard panel
-                BedrockUi.outline(gx,gy,10,10,c);
-                drawRect(gx+2,gy+2,gx+8,gy+3,c);
-                drawRect(gx+2,gy+5,gx+7,gy+6,c);
-                drawRect(gx+2,gy+8,gx+8,gy+9,c);
-                break;
-            case "touchdown": // ball with laces
-                BedrockUi.rounded(gx,gy+2,10,6,2,c);
-                drawRect(gx+4,gy+2,gx+5,gy+8,bg);
-                drawRect(gx+3,gy+4,gx+6,gy+5,bg);
-                break;
-            case "custom_votebook": // check going into a ballot box
-                BedrockUi.outline(gx+1,gy+4,8,6,c);
-                drawRect(gx+3,gy+2,gx+4,gy+4,c);
-                drawRect(gx+4,gy+1,gx+6,gy+2,c);
-                drawRect(gx+6,gy+2,gx+7,gy+3,c);
-                break;
-            default:
-                BedrockUi.rounded(gx+3,gy+3,4,4,1,c);
+    private int serviceX(){return search.xPosition-12-fontRendererObj.getStringWidth(serviceLabel())-9;}
+    /** The service light: a dot plus the "Online \u00b7 N" word, just left of the search box. */
+    private void drawService(int mx,int my){
+        String label=serviceLabel();
+        int x=serviceX();
+        // A narrow window pushes the light into the nav strip, so it is simply not drawn.
+        if(x<bodyX()+fontRendererObj.getStringWidth("Modules")+6)return;
+        int status=OtlService.status();
+        boolean hover=BedrockUi.hit(mx,my,x-3,y+4,fontRendererObj.getStringWidth(label)+16,20);
+        BedrockUi.rounded(x,y+10,6,6,2,OtlService.statusColour(status));
+        drawString(fontRendererObj,label,x+10,y+9,status==OtlService.ONLINE?BedrockUi.TEXT:hover?BedrockUi.TEXT:BedrockUi.DIM);
+    }
+    private void drawCards(int mx,int my){
+        List<OtlModule> shown=list();
+        if(shown.isEmpty())drawString(fontRendererObj,"No matching modules",bodyX()+8,gridY()+12,0xFFE2E7DF);
+        for(int i=0;i<6&&scrollRow*3+i<shown.size();i++){
+            int[] b=rowBox(i);int cx=b[0],cy=b[1],cw=b[2],ch=b[3];OtlModule m=shown.get(scrollRow*3+i);
+            boolean hover=BedrockUi.hit(mx,my,cx,cy,cw,ch);
+            BedrockUi.menuSkin(hover?4:3,cx,cy,cw,ch);
+            int pictureY=cy+3;
+            BedrockUi.menuSkin(5,cx+3,pictureY,cw-6,Math.max(12,ch-40));
+            mc.getTextureManager().bindTexture(new ResourceLocation("otl","textures/modules/"+m.id+".png"));
+            float scale=ch<88?.75F:1F;
+            GlStateManager.pushMatrix();
+            GlStateManager.translate(cx+cw/2-32*scale,cy+Math.max(2,(ch-39-(int)(44*scale))/2),0);
+            GlStateManager.scale(scale,scale,1);
+            Gui.drawModalRectWithCustomSizedTexture(0,0,0,0,64,44,64,44);
+            GlStateManager.popMatrix();
+            BedrockUi.menuText(m.id,m.name.length(),cx+cw/2,cy+ch-30,cw-12);
+            BedrockUi.menuIcon(0,cx+cw-19,cy+3,hover);
+            BedrockUi.menuSkin(m.available()?(m.enabled()?8:9):10,cx+1,cy+ch-20,cw-2,19);
+            String state=m.available()?(m.enabled()?"enabled":"disabled"):"locked";
+            BedrockUi.menuText(state,state.length(),cx+cw/2,cy+ch-10,cw-10);
+        }
+        if(shown.size()>6){
+            int height=trackBottom()-trackTop();
+            BedrockUi.rounded(trackX(),trackTop(),3,height,1,0xA02B342E);
+            BedrockUi.rounded(trackX(),thumbY(),3,thumbH(),1,0xFF9AA9A0);
         }
     }
-    private void drawSearchIcon(int gx,int gy,int c){
-        BedrockUi.outline(gx,gy,6,6,c);
-        drawRect(gx+3,gy+3,gx+4,gy+4,BedrockTokens.SURFACE_PANEL);
-        drawRect(gx+5,gy+5,gx+7,gy+7,c);
+    private void drawAction(int ax,int ay,String texture,int mx,int my){
+        String suffix=BedrockUi.hit(mx,my,ax,ay,SIDE-10,20)?"_hover":"";
+        mc.getTextureManager().bindTexture(new ResourceLocation("otl","textures/menu/"+texture+suffix+".png"));
+        GlStateManager.color(1,1,1,1);
+        GlStateManager.enableBlend();
+        Gui.drawModalRectWithCustomSizedTexture(ax,ay,0,0,100,20,100,20);
     }
-
-    /** Small switch: track plus travelling knob, green when on. */
-    private void drawSwitch(int sx,int sy,int sw,int sh,boolean on){
-        BedrockUi.capsule(sx,sy,sw,sh,on?BedrockTokens.STATE_ENABLED:BedrockUi.SLOT);
-        int knob=sh-2;
-        BedrockUi.capsule(on?sx+sw-knob-1:sx+1,sy+1,knob,knob,on?0xFFFFFFFF:0xFF5B6069);
-    }
-
-    /** Accent pill for the one primary action in the panel. */
-    private static final class PillButton extends GuiButton {
-        PillButton(int id,int x,int y,int w,int h,String label){super(id,x,y,w,h,label);}
-        public void drawButton(Minecraft mc,int mx,int my){
-            if(!visible)return;
-            hovered=mx>=xPosition&&mx<xPosition+width&&my>=yPosition&&my<yPosition+height;
-            BedrockUi.rounded(xPosition,yPosition,width,height,2,
-                hovered?0xFF5A9BFF:BedrockTokens.STATE_SELECTED);
-            drawCenteredString(mc.fontRendererObj,displayString,
-                xPosition+width/2,yPosition+(height-8)/2,0xFFFFFFFF);
-        }
-    }
-
-    /** One-line subtitles, keyed by module id. Empty when a module has no copy yet. */
-    private static final Map<String,String> DESC=new HashMap<>();
-    static{
-        DESC.put("reliable_chat","Organize team, global and admin chat");
-        DESC.put("team_bar","See teams, scores and flags");
-        DESC.put("kill_feed","Recent kills without chat spam");
-        DESC.put("kill_confirm","Clear confirmation after a kill");
-        DESC.put("map_preview","Preview the next map before voting");
-        DESC.put("face_rig","Expressive face marks on your skin");
-        DESC.put("player_animation","Emotes and a pull-out skateboard");
-        DESC.put("minimap","Compact map in a screen corner");
-        DESC.put("left_hand","Choose what appears in your off-hand");
-        DESC.put("bow_optimizer","Better bow timing and accuracy");
-        DESC.put("auto_gg","Send a friendly GG when matches end");
-        DESC.put("region_overlay","Region borders and buildable areas");
-        DESC.put("touchdown","Player and ball details");
-        DESC.put("custom_votebook","Readable PGM voting");
-    }
-
-    /** Category accent, used by the row icon. */
-    private int categoryColour(OtlModule m){
-        if("HUD".equals(m.category))return BedrockTokens.STATE_ACCENT;
-        if("VISUAL".equals(m.category))return 0xFF7C3AED;
-        return BedrockTokens.STATE_ENABLED;
-    }
-
-    // smoke helpers: row geometry plus the module list's scrollbar
-    int visibleCount(){return list().size();}
-    /** Position of a module in the drawn list; the list is sorted, OtlModule.ALL is not. */
-    int visibleIndex(OtlModule m){return list().indexOf(m);}
-    /** Every row the list holds, not just the ones on screen. */
-    int rowCount(){return list().size();}
-    int firstRow(){return scrollRow;}
-    int[] rowBox(int index){
-        int row=scrollRow+index;
-        return new int[]{listX(),rowY(row),listW(),ROW_H};
-    }
-    int trackLeft(){return trackX();}
-    int trackTopY(){return trackTop();}
-    int trackBottomY(){return trackBottom();}
-    int settingsGearX(){return gearX();}
-    int headerY(){return y+4;}
-    int popupTopY(){return popupTop();}
-    boolean profileMenuOpen(){return profileOpen;}
-    int[] onOnlyBox(){return new int[]{filterX(),chipY(),filterW(),chipH()};}
-    int[] profileChipBox(){return new int[]{listX(),y+h-FOOTER+3,popupChipW(),20};}
 }
