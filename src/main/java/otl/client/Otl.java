@@ -14,9 +14,9 @@ import net.minecraftforge.client.event.RenderPlayerEvent;
 import net.minecraft.client.resources.*;
 import org.lwjgl.input.Keyboard;
 
-@Mod(modid="otl",name="Over The Limit",version="0.9.0",clientSideOnly=true,acceptedMinecraftVersions="[1.8.9]",acceptableRemoteVersions="*")
+@Mod(modid="otl",name="Over The Limit",version="0.9.1",clientSideOnly=true,acceptedMinecraftVersions="[1.8.9]",acceptableRemoteVersions="*")
 public final class Otl {
-    static final String VERSION="0.9.0";
+    static final String VERSION="0.9.1";
     private final KeyBinding modules=new KeyBinding("key.otl.modules",Keyboard.KEY_P,"key.categories.otl");
     private final KeyBinding teamChat=new KeyBinding("key.otl.team_chat",Keyboard.KEY_Y,"key.categories.otl");
     private final KeyBinding partyChat=new KeyBinding("key.otl.party_chat",Keyboard.KEY_NONE,"key.categories.otl");

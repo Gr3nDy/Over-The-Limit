@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.9.1-beta.1 - OTL menu redesign
+
+- Added the PNG-backed module grid, profile rail, and hosted settings layout.
+- Restored the OTL online status and player presence display.
+- Fixed module-menu scrollbar dragging and profile editing flow.
+
 ## v0.9.0 - 23/11/2026
 
 ### Added
