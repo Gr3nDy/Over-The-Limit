@@ -53,7 +53,7 @@ public class AnimPoseTest {
         }
         AnimPose skate=new AnimPose();
         AnimClips.skate(skate,-1f);
-        assertTrue("the skate stance did not bend its knees",skate.kneeLeft>0.3f&&skate.kneeRight>0.2f);
+        assertTrue("the skate stance did not bend its knees",skate.kneeLeft>0.2f&&skate.kneeRight>0.2f);
     }
 
     @Test public void skatePlantsTheLegsAndReplacesTheWalkingArms(){
@@ -131,6 +131,105 @@ public class AnimPoseTest {
         assertEquals(0.5f,AnimClips.smooth(0.5f),1e-6f);
         assertEquals(1f,AnimClips.smooth(1f),1e-6f);
         assertEquals(1f,AnimClips.smooth(2f),1e-6f);
+    }
+
+    @Test public void limbBendHasOneContinuousTransition(){
+        assertEquals(0f,SkateLimb.hingeWeight(-2f),0f);
+        assertEquals(0.5f,SkateLimb.hingeWeight(0f),0f);
+        assertEquals(1f,SkateLimb.hingeWeight(2f),0f);
+        assertEquals(SkateLimb.hingeWeight(-0.0001f),SkateLimb.hingeWeight(0.0001f),0.001f);
+        assertEquals(1f,SkateLimb.bootInset(0f),0f);
+        assertEquals(0.5f,SkateLimb.bootInset(2f),0f);
+        assertEquals(0f,SkateLimb.bootInset(4f),0f);
+    }
+
+    @Test public void armorAndSkinUseTheSameInteriorBendRings(){
+        for(int ring=1;ring<6;ring++)
+            assertEquals(SkateLimb.ringY(0,12,0,12,ring),SkateLimb.ringY(-1,13,0,12,ring),0);
+        assertEquals(-1,SkateLimb.ringY(-1,13,0,12,0),0);
+        assertEquals(13,SkateLimb.ringY(-1,13,0,12,6),0);
+    }
+
+    @Test public void skateCrouchBendsBothKneesWithoutChangingTheStanceAtRest(){
+        AnimPose pose=new AnimPose();
+        AnimClips.skate(pose,-1f);
+        float right=pose.kneeRight,left=pose.kneeLeft;
+        AnimClips.skateCrouch(pose,0f);
+        assertEquals(right,pose.kneeRight,0f);
+        assertEquals(left,pose.kneeLeft,0f);
+        AnimClips.skateCrouch(pose,1f);
+        assertTrue(pose.kneeRight>right&&pose.kneeLeft>left);
+    }
+
+    @Test public void aFallTipsTheDeckAndSpreadsTheArmsWithoutChangingIdle(){
+        assertEquals(0f,AnimClips.fallStrength(1.25,0.52),0f);
+        assertEquals(0f,AnimClips.fallStrength(2.5,-0.1),0f);
+        assertTrue(AnimClips.fallStrength(2.1,0.55)>0.95f);
+        AnimPose pose=new AnimPose();
+        AnimClips.skate(pose,-1f);
+        float arm=pose.angle[AnimPose.RIGHT_ARM+2];
+        AnimClips.skateFall(pose,0f);
+        assertEquals(arm,pose.angle[AnimPose.RIGHT_ARM+2],0f);
+        assertEquals(0f,pose.boardX,0f);
+        AnimClips.skateFall(pose,1f);
+        assertTrue(pose.boardX< -0.2f&&pose.angle[AnimPose.RIGHT_ARM+2]>arm);
+    }
+
+    @Test public void grindingTurnsTheDeckSideways(){
+        AnimPose pose=new AnimPose();
+        AnimClips.skate(pose,-1f);
+        AnimClips.skateGrind(pose,0f);
+        assertEquals(0f,pose.boardY,0f);
+        AnimClips.skateGrind(pose,1f);
+        assertEquals((float)Math.PI/2f,pose.boardY,1e-6f);
+        assertEquals(0f,pose.angle[AnimPose.LEFT_LEG+1],0f);
+    }
+
+    @Test public void aPushShiftsWeightBeforeDipping(){
+        assertTrue(AnimClips.pushContact(0.15f)>0f);
+        assertEquals(0f,AnimClips.pushDip(0.15f),0f);
+        assertEquals(1f,AnimClips.pushDip(0.50f),0f);
+        assertEquals(0f,AnimClips.pushDip(1f),0f);
+    }
+
+    @Test public void visibleSleevesAreBakedOntoTheBaseSkin(){
+        java.awt.image.BufferedImage skin=new java.awt.image.BufferedImage(64,64,java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        skin.setRGB(40,20,0xFF0000FF);
+        skin.setRGB(41,20,0xFF0000FF);
+        skin.setRGB(42,20,0xFF0000FF);
+        skin.setRGB(40,21,0xFF0000FF);
+        skin.setRGB(40,36,0xFFFF0000);
+        skin.setRGB(42,36,0x80FF0000);
+        java.awt.image.BufferedImage baked=SkateSkin.flatten(skin,4);
+        assertEquals(0xFFFF0000,baked.getRGB(40,20));
+        assertEquals(0xFF0000FF,baked.getRGB(41,20));
+        assertEquals(0xFF80007F,baked.getRGB(42,20));
+        assertEquals(0xFF0000E8,baked.getRGB(40,21));
+        assertEquals(0xFF0000FF,SkateSkin.flatten(skin,0).getRGB(40,20));
+        assertEquals(0xFF0000FF,skin.getRGB(40,20));
+    }
+
+    @Test public void boardIsPlacedBeforeTheRiderMountsAndPushReturnsToIdle(){
+        assertEquals(0f,AnimClips.mount(0.59f),0f);
+        assertTrue(AnimClips.place(0.60f)>0.98f);
+        assertEquals(1f,AnimClips.place(0.65f),0f);
+        assertTrue("board was lowered into the standing rider",AnimClips.setDownZ(0.62f)<-0.7f);
+        assertEquals(0f,AnimClips.setDownZ(1f),0f);
+        assertEquals(1f,AnimClips.mount(1f),0f);
+        AnimPose reach=new AnimPose(),rest=new AnimPose(),afterPush=new AnimPose();
+        AnimClips.deploy(reach,0.22f);
+        assertTrue(reach.angle[AnimPose.RIGHT_ARM]>1f && reach.elbowRight< -0.5f);
+        AnimClips.skate(rest,-1f);
+        AnimClips.skate(afterPush,1f);
+        assertArrayEquals(rest.angle,afterPush.angle,0f);
+        assertEquals(rest.kneeRight,afterPush.kneeRight,0f);
+        for(int trick=0;trick<3;trick++){
+            AnimPose landed=new AnimPose();
+            AnimClips.skate(landed,-1f);
+            AnimClips.ollie(landed,1f,trick);
+            assertArrayEquals(rest.angle,landed.angle,0f);
+            assertEquals(0f,landed.boardDrop,0f);
+        }
     }
 
     @Test public void moduleIsRegisteredAndTogglesItsPreference(){

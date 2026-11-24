@@ -738,7 +738,7 @@ final class TeamBar {
      * is translated per player, so on a non-English client this sound is the only end signal left.
      */
     @SubscribeEvent(priority=EventPriority.LOWEST) public void sound(PlaySoundEvent event){
-        if(MatchEnd.endedBySound(event.name))end();
+        if(MatchEnd.endedBySound(event))end();
     }
 
     /** A new map has loaded: nothing has carried a clock yet, so the middle starts again at 0:00. */

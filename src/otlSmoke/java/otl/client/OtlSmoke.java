@@ -745,6 +745,7 @@ public final class OtlSmoke {
             case "live":state=90;scopeEnd=110;UtilitySettings.teamBar=true;UtilitySettings.devHosts.add("localhost");return;
             case "touchdown":state=111;scopeEnd=116;UtilitySettings.touchdown=true;UtilitySettings.touchdownFootball3d=true;UtilitySettings.touchdownHideBallParticles=false;mc.gameSettings.thirdPersonView=0;return;
             case "uishot":state=130;scopeEnd=133;mc.displayGuiScreen(new ModulesScreen(null));return;
+            case "skateshot":state=164;return;
             case "tabmenu":state=134;scopeEnd=138;sniffPackets(mc);return;
             case "pgmlist":state=139;scopeEnd=144;UtilitySettings.tabPlayerMenu=true;
                 UtilitySettings.devHosts.add("localhost");return;
@@ -791,14 +792,24 @@ public final class OtlSmoke {
                 MapRemote.requestCatalog();state=15;serverStarted=System.currentTimeMillis();
                 System.out.println("OTL_SMOKE: targeted localhost checks; integrated fixtures SKIPPED");
                 mc.displayGuiScreen(new net.minecraft.client.multiplayer.GuiConnecting(new GuiMainMenu(),mc,new net.minecraft.client.multiplayer.ServerData("Local PGM","localhost:25565",false)));
-            }else mc.launchIntegratedServer("FacePortSmoke","Face Port Smoke",new WorldSettings(12345,WorldSettings.GameType.CREATIVE,true,false,WorldType.FLAT));
+            }else{
+                String world=scope.equals("skateshot")?"SkateRenderSmoke":"FacePortSmoke";
+                mc.launchIntegratedServer(world,world,new WorldSettings(12345,WorldSettings.GameType.CREATIVE,true,false,WorldType.FLAT));
+            }
             return;
         }
         if(state==15&&serverEnabled&&System.currentTimeMillis()-serverStarted>90000){System.err.println("OTL_SMOKE: FAIL - localhost connection timed out");FMLCommonHandler.instance().exitJava(1,false);return;}
-        if(mc.thePlayer==null||++ticks<120||ticks%25!=0)return;
+        if(mc.thePlayer==null||++ticks<120||(state!=164&&ticks%25!=0))return;
         try{
             mc.gameSettings.pauseOnLostFocus=false;
             if(state==0&&ticks<145)prepareScope(mc);
+            if(state==164){
+                if(checks.skateShots(mc,ticks-125)){
+                    System.out.println("OTL_SMOKE: PASS - skateshot");
+                    mc.shutdown();
+                }
+                return;
+            }
             if(state==0){
                 mc.setServerData(new net.minecraft.client.multiplayer.ServerData("OTL fixture","play.oc.tc",false));
                 net.minecraft.client.settings.KeyBinding teamBind=Arrays.stream(mc.gameSettings.keyBindings).filter(k->k.getKeyDescription().equals("key.otl.team_chat")).findFirst().get();
@@ -2848,11 +2859,31 @@ public final class OtlSmoke {
                 UtilitySettings.autoGg=true;
                 UtilitySettings.autoGgDelay=0;UtilitySettings.autoGgRandom=false; // the timing itself is covered by the dedicated Auto GG checks
                 line("Playing Allure");
+                // A start-of-match wither sound must not be mistaken for the end signal. PGM sends
+                // its copy from the player's own position, so the test does the same.
+                net.minecraftforge.client.event.sound.PlaySoundEvent startWither=
+                    new net.minecraftforge.client.event.sound.PlaySoundEvent(null,
+                        net.minecraft.client.audio.PositionedSoundRecord.create(
+                            new net.minecraft.util.ResourceLocation("minecraft","mob.wither.spawn"),
+                            (float)mc.thePlayer.posX,(float)mc.thePlayer.posY,(float)mc.thePlayer.posZ),
+                        net.minecraft.client.audio.SoundCategory.MASTER);
+                AutoGg.INSTANCE.sound(startWither);
                 line("Your team won!"); // PGM's leftover result right after the map loads
             }else if(state==88){
                 require(AutoGg.INSTANCE.sentCount==ggBaseline,"Auto GG said gg while the map was starting");
                 // Same match, well past the map-start window: this one is a real ending.
                 ReflectionHelper.setPrivateValue(AutoGg.class,AutoGg.INSTANCE,System.nanoTime()-10_000_000_000L,"startedAt");
+                // A wither the map itself spawns (a special item) plays the same sound from the
+                // mob, not from the player, and must not say gg.
+                net.minecraftforge.client.event.sound.PlaySoundEvent mobWither=
+                    new net.minecraftforge.client.event.sound.PlaySoundEvent(null,
+                        net.minecraft.client.audio.PositionedSoundRecord.create(
+                            new net.minecraft.util.ResourceLocation("minecraft","mob.wither.spawn"),
+                            (float)mc.thePlayer.posX+8F,(float)mc.thePlayer.posY,(float)mc.thePlayer.posZ),
+                        net.minecraft.client.audio.SoundCategory.MASTER);
+                AutoGg.INSTANCE.sound(mobWither);
+                require(ReflectionHelper.getPrivateValue(AutoGg.class,AutoGg.INSTANCE,"sendAt").equals(0L),
+                    "A wither the map spawned itself armed a gg");
                 line("Your team won!");
             }else if(state==89){
                 require(AutoGg.INSTANCE.sentCount==ggBaseline+1,"Auto GG did not say gg at the real match end: "+AutoGg.INSTANCE.sentCount);
@@ -3664,5 +3695,9 @@ public final class OtlSmoke {
             }
             state++;
         }catch(Throwable t){t.printStackTrace();System.out.println("OTL_SMOKE: FAIL - "+t);FMLCommonHandler.instance().exitJava(1,false);}
+    }
+
+    @SubscribeEvent public void skateCapture(TickEvent.RenderTickEvent event){
+        if(state==164)checks.skateArmorFrame(Minecraft.getMinecraft(),ticks-125,event.phase);
     }
 }

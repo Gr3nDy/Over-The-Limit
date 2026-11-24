@@ -1,7 +1,6 @@
 package otl.client;
 
 import com.google.gson.JsonObject;
-import net.minecraft.client.Minecraft;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -9,30 +8,35 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Shares the local skateboard over {@link OtlService} so other OTL players see it.
  *
- * <p>Only two facts travel: whether a board is out, and that an ollie just started. Where the
- * board sits and which way it points are already known to every client from the server, so a
- * remote board is drawn by exactly the same code as the local one. Board state is repeated every
- * couple of seconds because broadcast has no memory: someone who joins mid-match still sees a
- * rider instead of an empty world.
- *
- * <p>This is a cosmetic link, not a trust boundary: a name in the payload is only ever matched
- * against a player the server already sent, and a bad payload can at worst draw a board.
+ * Motion states and short animation cues travel here; positions still come from Minecraft.
  */
 final class BoardSync {
     private static final String EVENT="board";
     private static final long REPEAT_MS=2000;
     /** No word for this long and the rider is gone: fade the board out rather than freeze it. */
     private static final long EXPIRE_MS=7000;
+    private static final int GROUNDED=1,CROUCHING=2,GRINDING=4,FALL_SHIFT=3,MAX_LEVEL=7;
+    private static final int MAX_RIDERS=256;
 
     private static final Map<String,Remote> REMOTE=new ConcurrentHashMap<>();
     private static boolean subscribed,lastBoard;
     private static long lastSent;
+    private static int lastPose=-1;
 
     private static final class Remote {
-        volatile boolean board;
-        /** Ollie waiting to be applied, or -1. Read once by the render tick. */
-        volatile int trick=-1;
+        boolean board,push;
+        int pose=-1,trick=-1,landing;
         volatile long seen;
+    }
+
+    /** A single coherent network snapshot; short cues are consumed only once. */
+    static final class Ride {
+        final boolean board,push;
+        final int pose,trick,landing;
+
+        Ride(Remote remote){
+            board=remote.board;pose=remote.pose;trick=remote.trick;push=remote.push;landing=remote.landing;
+        }
     }
 
     private BoardSync(){}
@@ -43,9 +47,9 @@ final class BoardSync {
     }
 
     /** Once per client tick, while a world is loaded. */
-    static void tick(){
+    static void tick(String name,boolean board,int pose,int trick,boolean push,int landing){
         if(!enabled()){
-            REMOTE.clear();
+            reset();
             return;
         }
         subscribe();
@@ -53,37 +57,57 @@ final class BoardSync {
         long now=System.currentTimeMillis();
         for(Map.Entry<String,Remote> entry:REMOTE.entrySet())
             if(now-entry.getValue().seen>EXPIRE_MS)REMOTE.remove(entry.getKey());
-        publish(now);
+        if(OtlService.status()!=OtlService.ONLINE){lastBoard=false;lastPose=-1;lastSent=0;return;}
+        if(board==lastBoard&&(!board||pose==lastPose&&trick<0&&!push&&landing==0&&now-lastSent<REPEAT_MS))return;
+        lastBoard=board;lastPose=pose;lastSent=now;
+        OtlService.send(EVENT,packet(name,board,pose,trick,push,landing));
     }
 
     static boolean riding(String name){
         Remote remote=REMOTE.get(name);
-        return remote!=null&&remote.board;
+        if(remote==null)return false;
+        synchronized(remote){return remote.board;}
     }
 
-    /** The ollie this player started, delivered once; -1 when there is none. */
-    static int takeTrick(String name){
+    static Ride take(String name){
         Remote remote=REMOTE.get(name);
-        if(remote==null||remote.trick<0)return -1;
-        int trick=remote.trick;
-        remote.trick=-1;
-        return trick;
+        if(remote==null)return null;
+        synchronized(remote){
+            Ride ride=new Ride(remote);
+            remote.trick=-1;remote.push=false;remote.landing=0;
+            return ride;
+        }
     }
 
-    /** The local player's own ollie, sent the moment it starts. */
-    static void trick(int index){
-        if(index<0)return;
+    static JsonObject packet(String name,boolean board,int pose,int trick,boolean push,int landing){
         JsonObject payload=new JsonObject();
-        payload.addProperty("n",localName());
-        payload.addProperty("b",true);
-        payload.addProperty("k",index);
-        OtlService.send(EVENT,payload);
+        payload.addProperty("n",name);
+        payload.addProperty("b",board);
+        if(board){
+            payload.addProperty("m",pose);
+            if(trick>=0)payload.addProperty("k",trick);
+            if(push)payload.addProperty("p",true);
+            if(landing>0)payload.addProperty("l",landing);
+        }
+        return payload;
     }
+
+    static int pose(boolean grounded,boolean crouching,boolean grinding,float fall){
+        return (grounded?GROUNDED:0)|(crouching?CROUCHING:0)|(grinding?GRINDING:0)|(level(fall)<<FALL_SHIFT);
+    }
+
+    static int level(float amount){return Math.round(Math.max(0f,Math.min(1f,amount))*MAX_LEVEL);}
+    static float amount(int level){return level/(float)MAX_LEVEL;}
+    static boolean grounded(int pose){return (pose&GROUNDED)!=0;}
+    static boolean crouching(int pose){return (pose&CROUCHING)!=0;}
+    static boolean grinding(int pose){return (pose&GRINDING)!=0;}
+    static float falling(int pose){return amount(pose>>FALL_SHIFT);}
 
     /** World unload: forget every rider. The shared connection is closed by {@link OtlService}. */
     static void reset(){
         REMOTE.clear();
         lastBoard=false;
+        lastPose=-1;
         lastSent=0;
     }
 
@@ -100,28 +124,25 @@ final class BoardSync {
 
     static void receive(JsonObject payload){
         String name=string(payload,"n");
-        if(name.isEmpty())return;
-        Remote remote=REMOTE.computeIfAbsent(name,n->new Remote());
-        remote.board=bool(payload,"b");
-        int trick=integer(payload,"k");
-        if(trick>=0)remote.trick=trick;
-        remote.seen=System.currentTimeMillis();
-    }
-
-    private static void publish(long now){
-        boolean board=PlayerAnim.localWantsBoard();
-        if(board==lastBoard&&(!board||now-lastSent<REPEAT_MS))return;
-        lastBoard=board;
-        lastSent=now;
-        JsonObject payload=new JsonObject();
-        payload.addProperty("n",localName());
-        payload.addProperty("b",board);
-        OtlService.send(EVENT,payload);
-    }
-
-    private static String localName(){
-        Minecraft mc=MinecraftAccess.get();
-        return mc==null||mc.thePlayer==null?"":mc.thePlayer.getName();
+        if(!name.matches("[A-Za-z0-9_]{1,16}")||!payload.has("b"))return;
+        boolean board=bool(payload,"b");
+        if(!board){REMOTE.remove(name);return;}
+        Remote remote=REMOTE.get(name);
+        if(remote==null){
+            if(REMOTE.size()>=MAX_RIDERS)return;
+            remote=REMOTE.computeIfAbsent(name,n->new Remote());
+        }
+        synchronized(remote){
+            remote.board=true;
+            int pose=integer(payload,"m");
+            remote.pose=pose>=0&&pose<=((MAX_LEVEL<<FALL_SHIFT)|7)?pose:-1;
+            int trick=integer(payload,"k");
+            if(trick>=0&&trick<=2)remote.trick=trick;
+            if(bool(payload,"p"))remote.push=true;
+            int landing=integer(payload,"l");
+            if(landing>0&&landing<=MAX_LEVEL)remote.landing=landing;
+            remote.seen=System.currentTimeMillis();
+        }
     }
 
     private static String string(JsonObject payload,String key){
@@ -134,7 +155,8 @@ final class BoardSync {
 
     private static boolean bool(JsonObject payload,String key){
         try{
-            return payload.has(key)&&payload.get(key).isJsonPrimitive()&&payload.get(key).getAsBoolean();
+            return payload.has(key)&&payload.get(key).isJsonPrimitive()
+                &&payload.getAsJsonPrimitive(key).isBoolean()&&payload.get(key).getAsBoolean();
         }catch(RuntimeException bad){
             return false;
         }
@@ -142,7 +164,8 @@ final class BoardSync {
 
     private static int integer(JsonObject payload,String key){
         try{
-            return payload.has(key)&&payload.get(key).isJsonPrimitive()?payload.get(key).getAsInt():-1;
+            return payload.has(key)&&payload.get(key).isJsonPrimitive()&&payload.getAsJsonPrimitive(key).isNumber()
+                ?Integer.parseInt(payload.get(key).getAsString()):-1;
         }catch(RuntimeException bad){
             return -1;
         }

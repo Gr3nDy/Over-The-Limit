@@ -24,7 +24,7 @@ public class MatchEndTest {
         assertFalse(MatchEnd.endedBySound("minecraft:mob.wither.ambient"));
         assertFalse(MatchEnd.endedBySound("minecraft:note.pling"));
         assertFalse(MatchEnd.endedBySound(""));
-        assertFalse(MatchEnd.endedBySound(null));
+        assertFalse(MatchEnd.endedBySound((String)null));
     }
 
     @Test public void ignoresChatAndStartLines() {

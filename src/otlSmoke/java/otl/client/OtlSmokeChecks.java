@@ -1,6 +1,9 @@
 package otl.client;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.init.Items;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
 import net.minecraftforge.fml.relauncher.ReflectionHelper;
 
 /**
@@ -12,17 +15,335 @@ final class OtlSmokeChecks {
     OtlSmokeChecks(OtlSmoke smoke){this.smoke=smoke;}
 
     private void require(boolean ok,String message){if(!ok)throw new AssertionError(message);}
+    private ItemStack[] skateArmor;
+    private int armorFrame=-1,armorFrames;
+    private boolean fallShot,landShot;
+    private net.minecraft.util.ResourceLocation skateSkin;
+    private static final String[] GEAR={"layers","leather","chain","iron","gold","diamond","head-block","sneak","boot-push"};
+
+    void skateArmorFrame(Minecraft mc,int t,net.minecraftforge.fml.common.gameevent.TickEvent.Phase phase){
+        if(mc.thePlayer==null)return;
+        ItemStack[] armor=mc.thePlayer.inventory.armorInventory;
+        if(phase==net.minecraftforge.fml.common.gameevent.TickEvent.Phase.START){
+            if(skateSkin!=null){
+                net.minecraft.client.network.NetworkPlayerInfo info=mc.thePlayer.sendQueue.getPlayerInfo(mc.thePlayer.getUniqueID());
+                ReflectionHelper.setPrivateValue(net.minecraft.client.network.NetworkPlayerInfo.class,info,
+                    skateSkin,"locationSkin","field_178865_e");
+                mc.thePlayer.getDataWatcher().updateObject(10,(byte)127);
+            }
+            if(t<174)return;
+            int done=174+14*GEAR.length;
+            boolean flight=t>=done&&t<done+35;
+            int frame=flight?GEAR.length-2:(t-174)/14;
+            if(!flight&&(frame>=GEAR.length||(armorFrames&(1<<frame))!=0))return;
+            boolean sneak=frame==GEAR.length-2;
+            if(!flight&&sneak&&(!mc.thePlayer.isSneaking()||(t-174)%14<6))return;
+            if(frame==GEAR.length-1&&(t-174)%14<4)return;
+            armorFrame=flight?-1:frame;
+            skateArmor=armor.clone();
+            Item[][] gear={
+                {null,null,null,null},
+                {Items.leather_boots,Items.leather_leggings,Items.leather_chestplate,Items.leather_helmet},
+                {Items.chainmail_boots,Items.chainmail_leggings,Items.chainmail_chestplate,Items.chainmail_helmet},
+                {Items.iron_boots,Items.iron_leggings,Items.iron_chestplate,Items.iron_helmet},
+                {Items.golden_boots,Items.golden_leggings,Items.golden_chestplate,Items.golden_helmet},
+                {Items.diamond_boots,Items.diamond_leggings,Items.diamond_chestplate,Items.diamond_helmet},
+                {null,null,null,Item.getItemFromBlock(net.minecraft.init.Blocks.pumpkin)},
+                {Items.leather_boots,Items.chainmail_leggings,Items.leather_chestplate,Items.leather_helmet},
+                {Items.leather_boots,Items.chainmail_leggings,Items.leather_chestplate,Items.leather_helmet}
+            };
+            for(int slot=0;slot<armor.length;slot++){
+                Item item=gear[frame][slot];
+                armor[slot]=item==null?null:new ItemStack(item);
+                if(frame==1)((net.minecraft.item.ItemArmor)item).setColor(armor[slot],0xA926C5);
+                if(frame>=GEAR.length-2&&slot!=1)((net.minecraft.item.ItemArmor)item).setColor(armor[slot],0xBB2020);
+            }
+        }else if(skateArmor!=null){
+            try{
+                if(armorFrame>=0){
+                    net.minecraft.util.ScreenShotHelper.saveScreenshot(mc.mcDataDir,
+                        "otl-skate-"+GEAR[armorFrame]+".png",
+                        mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+                    armorFrames|=1<<armorFrame;
+                }
+            }finally{
+                System.arraycopy(skateArmor,0,armor,0,armor.length);
+                skateArmor=null;
+            }
+        }
+    }
+
+    boolean skateShots(Minecraft mc,int t) throws ReflectiveOperationException,java.io.IOException {
+        net.minecraft.client.entity.EntityPlayerSP p=mc.thePlayer;
+        if(t==0){
+            mc.setIngameFocus();
+            mc.displayGuiScreen(null);
+            UtilitySettings.load();
+            UtilitySettings.playerAnimation=true;
+            p.rotationPitch=p.prevRotationPitch=12f;
+            if(!PlayerAnim.localWantsBoard())PlayerAnim.skateKey(mc);
+            require(PlayerAnim.localWantsBoard(),"Could not deploy the board: screen="+mc.currentScreen
+                +", riding="+p.isRiding()+", health="+p.getHealth()+", enabled="+PlayerAnim.enabled());
+            java.awt.image.BufferedImage skin;
+            try(java.io.InputStream in=mc.getResourceManager().getResource(
+                new net.minecraft.util.ResourceLocation("textures/entity/steve.png")).getInputStream()){
+                skin=javax.imageio.ImageIO.read(in);
+            }
+            java.awt.Graphics2D g=skin.createGraphics();
+            g.setColor(new java.awt.Color(0xEB6954));g.fillRect(0,32,16,16);g.fillRect(0,48,16,16);
+            g.setColor(new java.awt.Color(0xFFE044));g.fillRect(40,32,16,16);g.fillRect(48,48,16,16);
+            g.setColor(new java.awt.Color(0x42CFEE));g.fillRect(16,32,24,16);
+            g.setColor(new java.awt.Color(0x8AD35D));g.fillRect(40,0,16,4);
+            g.setComposite(java.awt.AlphaComposite.Clear);
+            g.fillRect(40,44,16,4);g.fillRect(48,60,16,4);
+            g.dispose();
+            net.minecraft.client.network.NetworkPlayerInfo info=p.sendQueue.getPlayerInfo(p.getUniqueID());
+            skateSkin=mc.getTextureManager().getDynamicTextureLocation("otl-skate-test",
+                new net.minecraft.client.renderer.texture.DynamicTexture(skin));
+            ReflectionHelper.setPrivateValue(net.minecraft.client.network.NetworkPlayerInfo.class,info,
+                "default","skinType","field_178863_g");
+            p.getDataWatcher().updateObject(10,(byte)127);
+        }
+        if(t==27||t==48||t==69){
+            java.util.Map<Integer,Object> states=ReflectionHelper.getPrivateValue(PlayerAnim.class,null,"STATES");
+            Object state=states.get(p.getEntityId());
+            for(String name:new String[]{"ollieAt","trick"}){
+                java.lang.reflect.Field field=state.getClass().getDeclaredField(name);
+                field.setAccessible(true);
+                field.setInt(state,"trick".equals(name)?(t-27)/21:p.ticksExisted);
+            }
+            p.motionY=0.42;
+        }
+        if(t==94){
+            net.minecraft.client.settings.KeyBinding.setKeyBindState(mc.gameSettings.keyBindForward.getKeyCode(),true);
+        }
+        if(t==106)net.minecraft.client.settings.KeyBinding.setKeyBindState(mc.gameSettings.keyBindForward.getKeyCode(),false);
+        if(t>=110&&t<174){
+            float value=new float[]{0.12f,0.22f,0.32f,0.42f,0.52f,0.62f,0.78f,1f}[(t-110)/8];
+            java.util.Map<Integer,Object> states=ReflectionHelper.getPrivateValue(PlayerAnim.class,null,"STATES");
+            Object state=states.get(p.getEntityId());
+            for(String name:new String[]{"board","prevBoard"}){
+                java.lang.reflect.Field field=state.getClass().getDeclaredField(name);
+                field.setAccessible(true);
+                field.setFloat(state,value);
+            }
+        }
+        if(t<=24&&t%2==0||t>=28&&t<=82&&t%2==0||t>=96&&t<=106&&t%2==0
+            ||t>=110&&t<174&&(t-110)%8==7){
+            net.minecraft.util.ScreenShotHelper.saveScreenshot(mc.mcDataDir,String.format("otl-skate-%03d.png",t),
+                mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+        }
+        p.renderYawOffset=p.prevRenderYawOffset=p.rotationYaw+(t<27||t>=110&&t<174?-45f:65f);
+        int done=174+14*GEAR.length;
+        if(t==done-30)net.minecraft.client.settings.KeyBinding.setKeyBindState(mc.gameSettings.keyBindSneak.getKeyCode(),true);
+        if(t==done-14)net.minecraft.client.settings.KeyBinding.setKeyBindState(mc.gameSettings.keyBindSneak.getKeyCode(),false);
+        if(t>=done-14&&t<=done){
+            java.util.Map<Integer,Object> states=ReflectionHelper.getPrivateValue(PlayerAnim.class,null,"STATES");
+            Object state=states.get(p.getEntityId());
+            java.lang.reflect.Field pushAt=state.getClass().getDeclaredField("pushAt");
+            pushAt.setAccessible(true);
+            pushAt.setInt(state,t==done?-1:p.ticksExisted-5);
+        }
+        if(t==done){
+            require(armorFrames==(1<<GEAR.length)-1,"Missing skate gear captures: "+armorFrames);
+            require(PlayerAnim.localWantsBoard(),"The board was not out before the drop");
+            p.capabilities.isFlying=false;
+            p.setPosition(p.posX,p.posY+2.6,p.posZ);
+            p.motionY=0;
+            p.onGround=false;
+            p.fallDistance=0;
+        }
+        int stowAt=done+35;
+        if(t>done&&t<stowAt&&(!fallShot||!landShot)){
+            java.util.Map<Integer,Object> states=ReflectionHelper.getPrivateValue(PlayerAnim.class,null,"STATES");
+            Object state=states.get(p.getEntityId());
+            java.lang.reflect.Field fall=state.getClass().getDeclaredField("fall");
+            java.lang.reflect.Field land=state.getClass().getDeclaredField("landAt");
+            fall.setAccessible(true);land.setAccessible(true);
+            int landed=land.getInt(state);
+            if(!fallShot&&!p.onGround&&fall.getFloat(state)>0.25f){
+                net.minecraft.util.ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-skate-fall.png",
+                    mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+                fallShot=true;
+            }else if(fallShot&&!landShot&&landed>=0&&p.ticksExisted-landed>=2&&p.ticksExisted-landed<=8){
+                net.minecraft.util.ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-skate-land.png",
+                    mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+                landShot=true;
+            }
+        }
+        if(t==stowAt){
+            require(fallShot&&landShot,"Missing skate captures: fall="+fallShot+", landing="+landShot
+                +", grounded="+p.onGround+", board="+PlayerAnim.localWantsBoard());
+            PlayerAnim.skateKey(mc);
+            require(!PlayerAnim.localWantsBoard()&&PlayerAnim.posing(p),"Stowing snapped directly to vanilla");
+        }
+        if(t>stowAt&&t<=stowAt+23&&(t-stowAt)%4==0)
+            net.minecraft.util.ScreenShotHelper.saveScreenshot(mc.mcDataDir,String.format("otl-skate-stow-%02d.png",t-stowAt),
+                mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
+        if(t==stowAt+26)require(!PlayerAnim.posing(p),"The rider never returned to the vanilla model after stowing");
+        return t==stowAt+26;
+    }
 
     /**
      * The animated model is installed by reflection, so a wrong mapping would only show up as a
      * logged warning and a game that looks unchanged. Assert the swap really landed.
      */
     void animatedModel(Minecraft mc){
+        railContact(mc);
+        int labelWidth=mc.fontRendererObj.getStringWidth("Online \u00b7 999");
+        require(ModulesScreen.serviceLeft(260,labelWidth)+10+labelWidth<=252,
+            "The status label overlapped the search control");
         java.util.Map<String,net.minecraft.client.renderer.entity.RenderPlayer> skin=mc.getRenderManager().getSkinMap();
         require(skin.size()>=2,"Skin map lost a player renderer");
         for(net.minecraft.client.renderer.entity.RenderPlayer renderer:skin.values()){
             require(renderer.getMainModel() instanceof net.minecraft.client.model.ModelPlayer,
                 "Player renderer has no player model");
+        }
+        net.minecraft.client.entity.EntityPlayerSP p=mc.thePlayer;
+        java.util.Map<Integer,Object> states=ReflectionHelper.getPrivateValue(PlayerAnim.class,null,"STATES");
+        Object previous=states.remove(p.getEntityId());
+        boolean enabled=UtilitySettings.playerAnimation;
+        try{
+            UtilitySettings.playerAnimation=true;
+            java.lang.reflect.Constructor<?> ctor=Class.forName("otl.client.PlayerAnim$State").getDeclaredConstructor();
+            ctor.setAccessible(true);
+            Object state=ctor.newInstance();
+            states.put(p.getEntityId(),state);
+            for(String name:new String[]{"board","prevBoard"}){
+                java.lang.reflect.Field field=state.getClass().getDeclaredField(name);
+                field.setAccessible(true);
+                field.setFloat(state,1f);
+            }
+            net.minecraft.util.AxisAlignedBB hitbox=p.getEntityBoundingBox();
+            for(net.minecraft.client.renderer.entity.RenderPlayer renderer:skin.values()){
+                net.minecraft.client.model.ModelPlayer vanilla=renderer.getMainModel();
+                byte oldWear=p.getDataWatcher().getWatchableObjectByte(10);
+                int oldMask=SkateSkin.mask(p);
+                boolean cape=p.isWearing(net.minecraft.entity.player.EnumPlayerModelParts.CAPE);
+                net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(
+                    new net.minecraftforge.client.event.RenderPlayerEvent.Pre(p,renderer,0.5f,0,-100,0));
+                try{
+                    require(renderer.getMainModel() instanceof AnimatedModelPlayer,"Skater did not get a split-limb rig");
+                    AnimatedModelPlayer model=(AnimatedModelPlayer)renderer.getMainModel();
+                    model.bipedRightArmwear.showModel=true;
+                    model.setRotationAngles(0f,0f,p.ticksExisted+0.5f,20f,5f,1f/16f,p);
+                    require(model.bipedRightArmwear.cubeList.isEmpty()&&model.bipedRightArmwear.showModel,
+                        "The sleeve layer was hidden instead of baked");
+                    require(model.bipedLeftLegwear.cubeList.isEmpty()&&model.bipedLeftLegwear.isHidden,
+                        "The baked left pant leg still had a separate visible shell");
+                    require(model.bipedLeftLeg.cubeList.isEmpty()&&model.bipedLeftLeg.childModels.size()==1
+                        &&model.bipedLeftLeg.childModels.get(0)==model.lowerLegL,"The rider drew two left-leg meshes");
+                    require(SkateSkin.mask(p)==oldMask,"Baking lost the original skin toggles");
+                    require(p.isWearing(net.minecraft.entity.player.EnumPlayerModelParts.RIGHT_SLEEVE)
+                        ==(((oldWear&255)&net.minecraft.entity.player.EnumPlayerModelParts.RIGHT_SLEEVE.getPartMask())!=0)
+                        &&!p.isWearing(net.minecraft.entity.player.EnumPlayerModelParts.LEFT_PANTS_LEG)
+                        &&p.isWearing(net.minecraft.entity.player.EnumPlayerModelParts.CAPE)==cape,
+                        "Only the duplicated pants layers should be masked");
+                    require(model.lowerLegR.rotateAngleX>0.2f&&model.bipedHead.rotateAngleY>0.3f,
+                        "Skate stance did not bend its knee or preserve head aim");
+                    require(model.bipedHead.offsetY==0f&&model.bipedHead.rotationPointY<0f
+                        &&model.bipedHeadwear.rotationPointX==model.bipedHead.rotationPointX
+                        &&model.bipedHeadwear.rotationPointY==model.bipedHead.rotationPointY
+                        &&model.bipedHeadwear.rotationPointZ==model.bipedHead.rotationPointZ,
+                        "The animated head, outer skin and attachment pivot did not move together");
+                    require(model.bipedLeftLegwear.rotationPointZ==model.bipedLeftLeg.rotationPointZ,
+                        "Skate stance left its wear pivot behind");
+                    require(model.frontHipAttached(),"The skate thigh started below the waist");
+                    require(model.bipedLeftLeg.rotationPointZ!=model.bipedRightLeg.rotationPointZ,
+                        "The hips did not follow the torso turn");
+                    if(p.getCurrentArmor(0)==null)require(model.footDeckError(p)<0.65,
+                        "Both standing feet must sit on the deck");
+                    if(p.getCurrentArmor(0)==null){
+                        net.minecraft.util.Vec3 front=model.frontFoot();
+                        float knee=model.lowerLegL.rotateAngleX;
+                        float bodyRoll=model.bipedBody.rotateAngleZ,bodyY=model.bipedBody.rotationPointY;
+                        java.lang.reflect.Field pushAt=state.getClass().getDeclaredField("pushAt");
+                        pushAt.setAccessible(true);
+                        pushAt.setInt(state,p.ticksExisted-5);
+                        model.setRotationAngles(0f,0f,p.ticksExisted+0.5f,20f,5f,1f/16f,p);
+                        require(model.pushFootOnGround(p),"The push foot did not reach beside the deck and onto the ground");
+                        net.minecraft.util.Vec3 planted=model.frontFoot();
+                        require(Math.abs(front.xCoord-planted.xCoord)<0.001&&Math.abs(front.zCoord-planted.zCoord)<0.001,
+                            "The left boot slid across the deck");
+                        require(model.lowerLegL.rotateAngleX>knee&&model.bipedBody.rotateAngleZ<bodyRoll-0.10f
+                            &&model.bipedBody.rotationPointY>bodyY+0.10f,
+                            "The pushing rider did not lean right and dip over the planted boot");
+                        armorFollows(renderer,model,p);
+                        pushAt.setInt(state,-1);
+                    }
+                    for(String phase:new String[]{"fall","grind"}){
+                        java.lang.reflect.Field now=state.getClass().getDeclaredField(phase);
+                        java.lang.reflect.Field prev=state.getClass().getDeclaredField("prev"+Character.toUpperCase(phase.charAt(0))+phase.substring(1));
+                        now.setAccessible(true);prev.setAccessible(true);
+                        now.setFloat(state,1f);prev.setFloat(state,1f);
+                        model.setRotationAngles(0f,0f,p.ticksExisted+0.5f,20f,5f,1f/16f,p);
+                        armorFollows(renderer,model,p);
+                        now.setFloat(state,0f);prev.setFloat(state,0f);
+                    }
+                }finally{
+                    net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(
+                        new net.minecraftforge.client.event.RenderPlayerEvent.Post(p,renderer,0.5f,0,-100,0));
+                }
+                require(renderer.getMainModel()==vanilla,"Skate renderer did not restore the shared model");
+                require(p.getDataWatcher().getWatchableObjectByte(10)==oldWear,
+                    "The skate renderer did not restore the original skin settings");
+            }
+            require(p.getEntityBoundingBox()==hitbox,"Skate visuals changed the player hitbox");
+        }catch(ReflectiveOperationException e){throw new AssertionError("Could not simulate a skate pose",e);}
+        finally{
+            if(previous==null)states.remove(p.getEntityId());else states.put(p.getEntityId(),previous);
+            UtilitySettings.playerAnimation=enabled;
+        }
+    }
+
+    private void armorFollows(net.minecraft.client.renderer.entity.RenderPlayer renderer,AnimatedModelPlayer rider,
+        net.minecraft.client.entity.EntityPlayerSP p){
+        java.util.List<?> layers=ReflectionHelper.getPrivateValue(
+            net.minecraft.client.renderer.entity.RendererLivingEntity.class,renderer,"layerRenderers","field_177097_h");
+        SkateArmorLayer layer=(SkateArmorLayer)layers.stream().filter(SkateArmorLayer.class::isInstance).findFirst().orElse(null);
+        require(layer!=null,"Animated armor layer was not installed");
+        Item[] gear={Items.leather_boots,Items.chainmail_leggings,Items.iron_chestplate,Items.diamond_helmet};
+        for(int slot=1;slot<=gear.length;slot++){
+            net.minecraft.client.model.ModelBiped rest=layer.getArmorModel(slot);
+            net.minecraft.client.model.ModelBiped posed=layer.getArmorModelHook(p,new ItemStack(gear[slot-1]),slot,rest);
+            require(rest!=posed,"Armor slot "+slot+" bypassed the skate rig");
+            posed.setRotationAngles(0f,0f,p.ticksExisted+0.5f,20f,5f,1f/16f,p);
+            require(posed.bipedHead.rotationPointY==rider.bipedHead.rotationPointY
+                &&posed.bipedRightArm.rotationPointZ==rider.bipedRightArm.rotationPointZ
+                &&posed.bipedLeftLeg.rotationPointY==rider.bipedLeftLeg.rotationPointY,
+                "Armor slot "+slot+" did not follow the rider's pivots");
+            SkateLimb shin=(SkateLimb)posed.bipedRightLeg.childModels.get(0);
+            require(shin.rotateAngleX==rider.lowerLegR.rotateAngleX&&shin.reachScale==rider.lowerLegR.reachScale,
+                "Armor slot "+slot+" did not follow the moving leg");
+            SkateLimb left=(SkateLimb)posed.bipedLeftLeg.childModels.get(0);
+            require(posed.bipedLeftLeg.childModels.size()==1&&left.rotateAngleX==rider.lowerLegL.rotateAngleX
+                &&left.rotateAngleZ==rider.lowerLegL.rotateAngleZ,"Armor drew a different left knee than the rider");
+        }
+    }
+
+    private void railContact(Minecraft mc){
+        net.minecraft.client.entity.EntityPlayerSP p=mc.thePlayer;
+        net.minecraft.util.BlockPos pos=new net.minecraft.util.BlockPos(p.posX,p.posY+2,p.posZ);
+        net.minecraft.block.state.IBlockState original=mc.theWorld.getBlockState(pos);
+        double x=p.posX,y=p.posY,z=p.posZ,prevX=p.prevPosX,prevZ=p.prevPosZ;
+        boolean grounded=p.onGround;
+        try{
+            for(net.minecraft.block.Block rail:new net.minecraft.block.Block[]{net.minecraft.init.Blocks.iron_bars,
+                net.minecraft.init.Blocks.oak_fence,net.minecraft.init.Blocks.nether_brick_fence}){
+                mc.theWorld.setBlockState(pos,rail.getDefaultState(),2);
+                double top=rail==net.minecraft.init.Blocks.iron_bars?1:1.5;
+                p.setPosition(pos.getX()+0.5,pos.getY()+top,pos.getZ()+0.5);
+                p.onGround=true;p.prevPosX=p.posX-0.10;p.prevPosZ=p.posZ;
+                require(PlayerAnim.onRail(p),"Did not detect a moving rider on "+rail);
+                p.prevPosX=p.posX;
+                require(!PlayerAnim.onRail(p),"A stationary rider was grinding");
+                p.prevPosX=p.posX-0.1;p.onGround=false;
+                require(!PlayerAnim.onRail(p),"An airborne rider was grinding");
+            }
+        }finally{
+            mc.theWorld.setBlockState(pos,original,2);
+            p.setPosition(x,y,z);
+            p.prevPosX=prevX;p.prevPosZ=prevZ;p.onGround=grounded;
         }
     }
 
@@ -195,16 +516,22 @@ final class OtlSmokeChecks {
      */
     void matchEndSound(){
         // The event only reads the sound's own name, so it needs no live sound manager.
+        net.minecraft.client.Minecraft mc=MinecraftAccess.get();
+        // PGM plays its end sound at the player's own position, not at a mob.
         net.minecraftforge.client.event.sound.PlaySoundEvent event=
             new net.minecraftforge.client.event.sound.PlaySoundEvent(null,
                 net.minecraft.client.audio.PositionedSoundRecord.create(
-                    new net.minecraft.util.ResourceLocation("minecraft","mob.wither.death"),1F),
+                    new net.minecraft.util.ResourceLocation("minecraft","mob.wither.death"),
+                    (float)mc.thePlayer.posX,(float)mc.thePlayer.posY,(float)mc.thePlayer.posZ),
                 net.minecraft.client.audio.SoundCategory.MASTER);
         // On 1.8 the client names the sound without a namespace; modern servers send it prefixed.
-        require(MatchEnd.endedBySound(event.name),"The event did not carry the wither sound: "+event.name);
+        require(MatchEnd.endedBySound(event),"The event did not carry the wither sound: "+event.name);
         require(!(boolean)ReflectionHelper.getPrivateValue(TeamBar.class,TeamBar.INSTANCE,"ended"),
             "The bar was already stopped before the sound");
         UtilitySettings.autoGgDelay=0;UtilitySettings.autoGgRandom=false;
+        smoke.line("The match has started!");
+        ReflectionHelper.setPrivateValue(AutoGg.class,AutoGg.INSTANCE,
+            System.nanoTime()-10_000_000_000L,"startedAt");
         AutoGg.INSTANCE.sound(event);
         TeamBar.INSTANCE.sound(event);
         require((boolean)ReflectionHelper.getPrivateValue(TeamBar.class,TeamBar.INSTANCE,"ended"),

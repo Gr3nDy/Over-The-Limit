@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.9.2
+
+- Added client-side skate poses for board deployment, riding, pushing, and tricks without changing the hitbox.
+- Improved alignment of skin layers, vanilla armor, and head-slot items while skating.
+- Moved the OTL service light clear of Search.
+- Reduced false match-end triggers from map wither sounds.
+
 ## v0.9.1-beta.1 - OTL menu redesign
 
 - Added the PNG-backed module grid, profile rail, and hosted settings layout.

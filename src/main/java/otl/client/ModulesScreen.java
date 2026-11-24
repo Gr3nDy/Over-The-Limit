@@ -191,6 +191,7 @@ final class ModulesScreen extends GuiScreen {
         drawTop(mx,my);
         drawCards(mx,my);
         super.drawScreen(mx,my,partial);
+        drawService(mx,my);
     }
     void drawSidebar(int mx,int my){
         BedrockUi.menuSkin(1,x+1,y+1,SIDE-1,h-2);
@@ -230,8 +231,6 @@ final class ModulesScreen extends GuiScreen {
         BedrockUi.menuSkin(6,bodyX()-3,y+4,bodyW()+5,28);
         BedrockUi.menuText("nav_modules_active",7,bodyX()+27,y+19,49);
         BedrockUi.menuText("nav_settings",8,bodyX()+97,y+19,56);
-        if(BedrockUi.hit(mx,my,serviceX()-3,y+4,fontRendererObj.getStringWidth(serviceLabel())+16,20))drawHoveringText(serviceTip(),mx,my);
-        drawService(mx,my);
         BedrockUi.menuSkin(6,search.xPosition-17,y+8,106,20);
         BedrockUi.menuIcon(4,search.xPosition-17,y+10,false);
         if(query.isEmpty())drawString(fontRendererObj,"Search",search.xPosition,y+14,0xFFBFC6BE);
@@ -266,17 +265,21 @@ final class ModulesScreen extends GuiScreen {
         if(here.size()>shown)tip.add("  and "+(here.size()-shown)+" more");
         return tip;
     }
-    private int serviceX(){return search.xPosition-12-fontRendererObj.getStringWidth(serviceLabel())-9;}
-    /** The service light: a dot plus the "Online \u00b7 N" word, just left of the search box. */
+    static int serviceLeft(int searchLeft,int labelWidth){return searchLeft-8-10-labelWidth;}
+
     private void drawService(int mx,int my){
         String label=serviceLabel();
-        int x=serviceX();
-        // A narrow window pushes the light into the nav strip, so it is simply not drawn.
-        if(x<bodyX()+fontRendererObj.getStringWidth("Modules")+6)return;
+        int labelWidth=fontRendererObj.getStringWidth(label);
+        int left=serviceLeft(search.xPosition-17,labelWidth);
+        boolean compact=left<bodyX()+159;
+        int top=y+12;
+        if(compact){left=x+SIDE-16;top=y+46;}
         int status=OtlService.status();
-        boolean hover=BedrockUi.hit(mx,my,x-3,y+4,fontRendererObj.getStringWidth(label)+16,20);
-        BedrockUi.rounded(x,y+10,6,6,2,OtlService.statusColour(status));
-        drawString(fontRendererObj,label,x+10,y+9,status==OtlService.ONLINE?BedrockUi.TEXT:hover?BedrockUi.TEXT:BedrockUi.DIM);
+        boolean hover=BedrockUi.hit(mx,my,left-3,top-4,compact?12:labelWidth+16,15);
+        BedrockUi.rounded(left,top,6,6,2,OtlService.statusColour(status));
+        if(!compact)drawString(fontRendererObj,label,left+10,top-1,
+            status==OtlService.ONLINE||hover?BedrockUi.TEXT:BedrockUi.DIM);
+        if(hover)drawHoveringText(serviceTip(),mx,my);
     }
     private void drawCards(int mx,int my){
         List<OtlModule> shown=list();

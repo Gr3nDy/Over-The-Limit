@@ -17,7 +17,7 @@ public class BoardSyncTest {
         assertFalse(BoardSync.riding("Alex"));
         BoardSync.receive(payload("{\"n\":\"Alex\",\"b\":true}"));
         assertTrue(BoardSync.riding("Alex"));
-        assertFalse("a board is not a trick",BoardSync.takeTrick("Alex")>=0);
+        assertEquals("a board is not a trick",-1,BoardSync.take("Alex").trick);
         BoardSync.receive(payload("{\"n\":\"Alex\",\"b\":false}"));
         assertFalse(BoardSync.riding("Alex"));
         BoardSync.reset();
@@ -27,8 +27,8 @@ public class BoardSyncTest {
     @Test public void trickIsDeliveredOnce(){
         BoardSync.reset();
         BoardSync.receive(payload("{\"n\":\"Alex\",\"b\":true,\"k\":2}"));
-        assertEquals(2,BoardSync.takeTrick("Alex"));
-        assertEquals(-1,BoardSync.takeTrick("Alex"));
+        assertEquals(2,BoardSync.take("Alex").trick);
+        assertEquals(-1,BoardSync.take("Alex").trick);
         BoardSync.reset();
     }
 
@@ -50,7 +50,7 @@ public class BoardSyncTest {
         BoardSync.receive(payload("{\"n\":\"Alex\",\"b\":\"yes\"}"));
         BoardSync.receive(payload("{\"n\":\"Alex\",\"k\":\"two\"}"));
         assertFalse(BoardSync.riding("Alex"));
-        assertFalse(BoardSync.takeTrick("Alex")>=0);
+        assertNull(BoardSync.take("Alex"));
         BoardSync.reset();
     }
 
@@ -59,7 +59,46 @@ public class BoardSyncTest {
         BoardSync.receive(payload("{\"n\":\"Alex\",\"b\":true,\"k\":1}"));
         BoardSync.reset();
         assertFalse(BoardSync.riding("Alex"));
-        assertEquals(-1,BoardSync.takeTrick("Alex"));
+        assertNull(BoardSync.take("Alex"));
+    }
+
+    @Test public void fullPoseAndOneShotCuesSurviveAHeartbeat(){
+        BoardSync.reset();
+        int pose=BoardSync.pose(false,true,false,0.8f);
+        BoardSync.receive("board",BoardSync.packet("Alex",true,pose,1,true,5));
+        BoardSync.receive("board",BoardSync.packet("Alex",true,pose,-1,false,0));
+        BoardSync.Ride remote=BoardSync.take("Alex");
+        assertTrue(remote.board&&remote.push);
+        assertFalse(BoardSync.grounded(remote.pose));
+        assertTrue(BoardSync.crouching(remote.pose));
+        assertEquals(6f/7,BoardSync.falling(remote.pose),1e-6f);
+        assertEquals(1,remote.trick);
+        assertEquals(5,remote.landing);
+        remote=BoardSync.take("Alex");
+        assertFalse(remote.push);
+        assertEquals(-1,remote.trick);
+        assertEquals(0,remote.landing);
+        int grind=BoardSync.pose(true,false,true,0f);
+        BoardSync.receive("board",BoardSync.packet("Alex",true,grind,-1,false,0));
+        assertTrue(BoardSync.grinding(BoardSync.take("Alex").pose));
+        BoardSync.receive("board",BoardSync.packet("Alex",false,0,-1,false,0));
+        assertNull(BoardSync.take("Alex"));
+        BoardSync.reset();
+    }
+
+    @Test public void oldMessagesWorkAndInvalidCuesAreIgnored(){
+        BoardSync.reset();
+        BoardSync.receive(payload("{\"n\":\"Alex\",\"b\":true,\"k\":0}"));
+        BoardSync.Ride legacy=BoardSync.take("Alex");
+        assertEquals(-1,legacy.pose);
+        assertEquals(0,legacy.trick);
+        BoardSync.receive(payload("{\"n\":\"Alex\",\"b\":true,\"m\":99,\"p\":\"true\",\"k\":80,\"l\":12}"));
+        BoardSync.Ride invalid=BoardSync.take("Alex");
+        assertEquals(-1,invalid.pose);
+        assertFalse(invalid.push);
+        assertEquals(-1,invalid.trick);
+        assertEquals(0,invalid.landing);
+        BoardSync.reset();
     }
 
     /** Every state has its own word, so the light and the text can never disagree. */

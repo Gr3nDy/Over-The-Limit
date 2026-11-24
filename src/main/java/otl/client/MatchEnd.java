@@ -23,8 +23,21 @@ final class MatchEnd {
      * True for the sound PGM plays to every participant when a match finishes: the winners hear
      * the wither die, the losers hear one spawn. The chat lines above are translated per player,
      * so on a non-English client they never arrive in these words; the sound is the same in every
-     * language. A map that spawns a real wither would also match, which costs one wrong gg.
+     * language.
+     *
+     * PGM plays its copy at the player's own position, while a wither a map really spawns (or
+     * kills) plays the same sound from the mob. The horizontal offset is what tells them apart,
+     * so a map's own wither cannot stop the clock or say gg.
      */
+    static boolean endedBySound(net.minecraftforge.client.event.sound.PlaySoundEvent event){
+        if(event==null||event.sound==null||!endedBySound(event.name))return false;
+        net.minecraft.client.Minecraft mc=MinecraftAccess.get();
+        if(mc.thePlayer==null)return false;
+        double dx=event.sound.getXPosF()-mc.thePlayer.posX;
+        double dz=event.sound.getZPosF()-mc.thePlayer.posZ;
+        return dx*dx+dz*dz<=4.0; // 2 blocks: PGM sends it from where the player stood
+    }
+
     static boolean endedBySound(String name){
         if(name == null) return false;
         String sound = name.toLowerCase(java.util.Locale.ROOT);

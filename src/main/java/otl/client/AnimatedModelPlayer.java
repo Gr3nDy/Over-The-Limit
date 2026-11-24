@@ -1,78 +1,62 @@
 package otl.client;
 
-import net.minecraft.client.model.ModelBox;
+import net.minecraft.client.entity.AbstractClientPlayer;
+import net.minecraft.client.model.ModelBase;
 import net.minecraft.client.model.ModelPlayer;
 import net.minecraft.client.model.ModelRenderer;
-import net.minecraft.client.renderer.GlStateManager;
+import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.util.Vec3;
+import net.minecraft.util.ResourceLocation;
 
 /**
- * The vanilla player model with a single anatomical cut at each elbow and knee, plus a skateboard.
- *
- * <p>The split reuses the vanilla renderers instead of drawing replacements, because a child
- * renderer inherits the parent's transform: sneaking, a held item and the armour layer all keep
- * working, and the lower half follows the shoulder wherever the game puts it.
+ * The vanilla player model with continuous bends at the elbows and knees.
  */
 final class AnimatedModelPlayer extends ModelPlayer {
-    /** Skin atlas offsets, fixed by the skin format: the same for slim and classic. */
-    private static final int ARM_R_U=40,ARM_R_V=16,ARM_L_U=32,ARM_L_V=48;
-    private static final int LEG_R_U=0,LEG_R_V=16,LEG_L_U=16,LEG_L_V=48;
-    private static final int ARM_RW_U=40,ARM_RW_V=32,ARM_LW_U=48,ARM_LW_V=48;
-    private static final int LEG_RW_U=0,LEG_RW_V=32,LEG_LW_U=0,LEG_LW_V=48;
-
-    final ModelRenderer lowerArmR,lowerArmL,lowerLegR,lowerLegL;
-    final ModelRenderer lowerArmRw,lowerArmLw,lowerLegRw,lowerLegLw;
-
-    boolean boardOut;
-    float boardX,boardY,boardZ,boardDrop;
+    final SkateLimb lowerArmR,lowerArmL,lowerLegR,lowerLegL;
+    private final ModelRenderer[] poseParts;
+    private final Vec3[] defaultPivots;
+    boolean skatePose;
+    private float planted,push;
     float elbowRight,elbowLeft,kneeRight,kneeLeft;
     float elbowRightZ,elbowLeftZ,kneeRightZ,kneeLeftZ;
 
     AnimatedModelPlayer(boolean slim){
         super(0f,slim);
-        lowerArmR=split(bipedRightArm,ARM_R_U,ARM_R_V,0f);
-        lowerArmL=split(bipedLeftArm,ARM_L_U,ARM_L_V,0f);
-        lowerLegR=split(bipedRightLeg,LEG_R_U,LEG_R_V,0f);
-        lowerLegL=split(bipedLeftLeg,LEG_L_U,LEG_L_V,0f);
-        lowerArmRw=split(bipedRightArmwear,ARM_RW_U,ARM_RW_V,0.25f);
-        lowerArmLw=split(bipedLeftArmwear,ARM_LW_U,ARM_LW_V,0.25f);
-        lowerLegRw=split(bipedRightLegwear,LEG_RW_U,LEG_RW_V,0.25f);
-        lowerLegLw=split(bipedLeftLegwear,LEG_LW_U,LEG_LW_V,0.25f);
+        lowerArmR=new SkateLimb(this,bipedRightArm);
+        lowerArmL=new SkateLimb(this,bipedLeftArm);
+        lowerLegR=new SkateLimb(this,bipedRightLeg);
+        lowerLegL=new SkateLimb(this,bipedLeftLeg);
+        poseParts=new ModelRenderer[]{bipedHead,bipedHeadwear,bipedBody,bipedBodyWear,
+            bipedRightArm,bipedRightArmwear,bipedLeftArm,bipedLeftArmwear,
+            bipedRightLeg,bipedRightLegwear,bipedLeftLeg,bipedLeftLegwear};
+        defaultPivots=new Vec3[poseParts.length];
+        for(int i=0;i<poseParts.length;i++)defaultPivots[i]=pivot(poseParts[i]);
+        // Keep vanilla's visibility flags, but never draw a second surface over the base skin.
+        for(ModelRenderer shell:new ModelRenderer[]{bipedHeadwear,bipedBodyWear,bipedRightArmwear,bipedLeftArmwear,
+            bipedRightLegwear,bipedLeftLegwear})shell.cubeList.clear();
+        // ModelPlayer resets showModel, so hard-hide only the duplicated pants shells.
+        bipedRightLegwear.isHidden=bipedLeftLegwear.isHidden=true;
     }
 
-    /**
-     * Cuts a limb once at its real joint. Hands and feet remain attached to the forearm/shin;
-     * they are not separate artificial joints.
-     *
-     * <p>The geometry is read back from the box the vanilla model built, so slim arms and the
-     * inflated outer layer both come out right.
-     *
-     * shortcut: the end faces of the lower pieces sample the wrong texels (only the side faces are
-     * exact), which shows as a small patch on the palm and the sole; upgrade to a hand-built box
-     * with per-face UVs if that ever becomes visible in play.
-     */
-    private ModelRenderer split(ModelRenderer limb,int u,int v,float inflate){
-        ModelBox box=limb.cubeList.get(0);
-        // posX1..posZ2 already include the inflation, so it is taken back out before the halves
-        // are rebuilt with the same inflate; otherwise the outer layer grows twice.
-        float x=box.posX1+inflate,y=box.posY1+inflate,z=box.posZ1+inflate;
-        int w=Math.round(box.posX2-box.posX1-2f*inflate);
-        int h=Math.round(box.posY2-box.posY1-2f*inflate);
-        int d=Math.round(box.posZ2-box.posZ1-2f*inflate);
-        int half=h/2;
-        limb.cubeList.clear();
-        limb.cubeList.add(new ModelBox(limb,u,v,x,y,z,w,half,d,inflate));
-        // A bare renderer defaults to a 64x32 atlas; the player skin is 64x64, so copying the
-        // parent's size is what keeps the lower halves sampling the right texels.
-        ModelRenderer lower=new ModelRenderer(this);
-        lower.textureWidth=limb.textureWidth;
-        lower.textureHeight=limb.textureHeight;
-        lower.cubeList.add(new ModelBox(lower,u,v+half,x,0f,z,w,half,d,inflate));
-        // The joint sits half a limb down, so the child box starts exactly where the upper ends.
-        lower.setRotationPoint(0f,y+half,0f);
-        limb.addChild(lower);
-        return lower;
+    @Override public void render(Entity entity,float swing,float amount,float age,float yaw,float pitch,float scale){
+        if(!(entity instanceof AbstractClientPlayer)){
+            super.render(entity,swing,amount,age,yaw,pitch,scale);
+            return;
+        }
+        TextureManager textures=MinecraftAccess.get().getTextureManager();
+        ResourceLocation original=((AbstractClientPlayer)entity).getLocationSkin();
+        try{
+            textures.bindTexture(SkateSkin.get(textures,original,SkateSkin.mask((EntityPlayer)entity)));
+            super.render(entity,swing,amount,age,yaw,pitch,scale);
+        }finally{
+            textures.bindTexture(original);
+        }
+    }
+
+    static SkateLimb split(ModelBase model,ModelRenderer limb){
+        return new SkateLimb(model,limb);
     }
 
     @Override
@@ -82,27 +66,216 @@ final class AnimatedModelPlayer extends ModelPlayer {
         // them - including a plain sway - piles up frame after frame and the model spins. Player
         // Animator restores its defaults the same way, then assigns absolute values.
         resetAngles();
+        skatePose=false;
+        planted=0f;push=-1f;
         super.setRotationAngles(swing,amount,age,yaw,pitch,scale,entity);
-        boardOut=false;
+        // External renderers can recreate the old shells even when their vanilla geometry is empty.
+        bipedRightLegwear.showModel=bipedLeftLegwear.showModel=false;
         elbowRight=elbowLeft=kneeRight=kneeLeft=0f;
         elbowRightZ=elbowLeftZ=kneeRightZ=kneeLeftZ=0f;
         if(entity instanceof EntityPlayer&&PlayerAnim.enabled())
             PlayerAnim.apply(this,(EntityPlayer)entity,swing,amount,age);
-        bend(lowerArmR,lowerArmRw,elbowRight,elbowRightZ);
-        bend(lowerArmL,lowerArmLw,elbowLeft,elbowLeftZ);
-        bend(lowerLegR,lowerLegRw,kneeRight,kneeRightZ);
-        bend(lowerLegL,lowerLegLw,kneeLeft,kneeLeftZ);
+        bend(lowerArmR,elbowRight,elbowRightZ);
+        bend(lowerArmL,elbowLeft,elbowLeftZ);
+        bend(lowerLegR,kneeRight,kneeRightZ);
+        bend(lowerLegL,kneeLeft,kneeLeftZ);
+        lowerLegR.reachScale=1f;
+        net.minecraft.item.ItemStack boots=entity instanceof EntityPlayer?((EntityPlayer)entity).getCurrentArmor(0):null;
+        net.minecraft.item.ItemStack leggings=entity instanceof EntityPlayer?((EntityPlayer)entity).getCurrentArmor(1):null;
+        lowerLegR.insideBoot=lowerLegL.insideBoot=skatePose&&boots!=null&&boots.getItem() instanceof net.minecraft.item.ItemArmor;
+        lowerLegR.insideLeggings=lowerLegL.insideLeggings=skatePose&&leggings!=null
+            &&leggings.getItem() instanceof net.minecraft.item.ItemArmor;
+        if(planted>0f&&entity instanceof EntityPlayer)plantFeet((EntityPlayer)entity,lowerLegR.insideBoot?1f:0f);
     }
 
-    private static void bend(ModelRenderer lower,ModelRenderer lowerWear,float x,float z){
-        lower.rotateAngleX=lowerWear.rotateAngleX=x;
-        lower.rotateAngleZ=lowerWear.rotateAngleZ=z;
+    private static void bend(ModelRenderer lower,float x,float z){
+        lower.rotateAngleX=x;
+        lower.rotateAngleZ=z;
+    }
+
+    void skateOffsets(float mount,float hop,float step,float planted,float push){
+        skatePose=true;
+        this.planted=planted;
+        this.push=push;
+        float lift=-0.17f*mount-hop;
+        // Turn the chest around the waist so leaning never pulls it off the legs.
+        Vec3 waist=new Vec3(0,12,0);
+        Vec3 shift=waist.subtract(rotate(bipedBody,waist)).addVector(-16f*step,0,0);
+        Vec3 rightHip=rotate(bipedBody,hip(bipedRightLeg,mount)).add(shift).subtract(pivot(bipedRightLeg));
+        Vec3 leftHip=rotate(bipedBody,hip(bipedLeftLeg,mount)).add(shift).subtract(pivot(bipedLeftLeg));
+        // Tilt the chest around the waist, not the hips around the chest.
+        if(push>0f&&planted>0f){
+            bipedBody.rotateAngleZ-=0.19f*AnimClips.pushContact(push)*planted;
+            bipedBody.rotateAngleX+=0.09f*AnimClips.pushDip(push)*planted;
+            shift=waist.subtract(rotate(bipedBody,waist)).addVector(-16f*step,0,0);
+        }
+        move(bipedBody,bipedBodyWear,shift,lift);
+        attach(bipedRightArm,bipedRightArmwear,pivot(bipedRightArm),shift,lift);
+        attach(bipedLeftArm,bipedLeftArmwear,pivot(bipedLeftArm),shift,lift);
+        move(bipedRightLeg,bipedRightLegwear,rightHip,lift);
+        move(bipedLeftLeg,bipedLeftLegwear,leftHip,lift);
+        // Face overlays and head-slot items use postRender(), which only knows the head pivot.
+        Vec3 headAnchor=pivot(bipedHead);
+        Vec3 head=rotate(bipedBody,new Vec3(headAnchor.xCoord,headAnchor.yCoord*(1f-mount),headAnchor.zCoord)).add(shift);
+        bipedHead.rotationPointX=bipedHeadwear.rotationPointX=(float)head.xCoord;
+        bipedHead.rotationPointY=(float)head.yCoord+16f*lift;
+        bipedHeadwear.rotationPointY=bipedHead.rotationPointY;
+        bipedHead.rotationPointZ=bipedHeadwear.rotationPointZ=(float)head.zCoord;
+        bipedHead.offsetY=bipedHeadwear.offsetY=0f;
+    }
+
+    private void plantFeet(EntityPlayer rider,float inflate){
+        float pushing=AnimClips.pushContact(push);
+        if(pushing>0f)shiftWeight(pushing*planted,AnimClips.pushDip(push)*planted);
+        double support=sole(bipedLeftLeg,lowerLegL,inflate);
+        float delta=(float)(deckPlane(rider)-support)*planted;
+        for(ModelRenderer part:poseParts)part.rotationPointY+=delta;
+        if(pushing>0f)pushOff(rider,inflate,pushing*planted);
+    }
+
+    private void shiftWeight(float amount,float dip){
+        Vec3 anchor=frontFoot();
+        // The knee moves inward; the boot keeps its heading and its spot on the board.
+        float flex=0.28f*amount+0.16f*dip;
+        bipedLeftLeg.rotateAngleX-=flex;
+        bipedLeftLeg.rotateAngleZ+=0.12f*amount;
+        lowerLegL.rotateAngleX+=flex;
+        lowerLegL.rotateAngleZ-=0.10f*amount;
+        Vec3 shift=anchor.subtract(frontFoot());
+        for(ModelRenderer part:poseParts){
+            part.rotationPointX+=(float)shift.xCoord;
+            part.rotationPointZ+=(float)shift.zCoord;
+        }
+    }
+
+    private void pushOff(EntityPlayer rider,float inflate,float weight){
+        ModelRenderer hip=bipedRightLeg;
+        SkateLimb shin=lowerLegR;
+        float oldX=hip.rotateAngleX,oldY=hip.rotateAngleY,oldZ=hip.rotateAngleZ;
+        float oldKnee=shin.rotateAngleX,oldKneeZ=shin.rotateAngleZ;
+        double ground=deckPlane(rider)+PlayerAnim.DECK_TOP/0.9375*16;
+        double x=-5.85,z=-2.2+5.4*AnimClips.smooth((push-0.30f)/0.38f);
+        double y=ground-inflate;
+        solvePushLeg(x,y,z);
+        solvePushLeg(x,y+ground-sole(hip,shin,inflate),z);
+        hip.rotateAngleX=oldX+(hip.rotateAngleX-oldX)*weight;
+        hip.rotateAngleY=oldY*(1f-weight);
+        hip.rotateAngleZ=oldZ+(hip.rotateAngleZ-oldZ)*weight;
+        shin.rotateAngleX=oldKnee+(shin.rotateAngleX-oldKnee)*weight;
+        shin.rotateAngleZ=oldKneeZ*(1f-weight);
+        shin.reachScale=1f+(shin.reachScale-1f)*weight;
+    }
+
+    private void solvePushLeg(double x,double y,double z){
+        ModelRenderer hip=bipedRightLeg;
+        SkateLimb shin=lowerLegR;
+        double dx=x-hip.rotationPointX,dy=y-hip.rotationPointY,dz=z-hip.rotationPointZ;
+        double vertical=Math.sqrt(dx*dx+dy*dy);
+        double desired=Math.sqrt(vertical*vertical+dz*dz);
+        // shortcut: a small render-only reach compensates for the board height without dipping the planted leg.
+        shin.reachScale=(float)Math.max(1,Math.min(1.18,desired/(shin.bottom-0.05)));
+        double thigh=shin.rotationPointY*shin.reachScale,calf=shin.bottom*shin.reachScale-thigh;
+        double reach=Math.min(thigh+calf-0.05,desired);
+        // Use side lean to reach off the board, keeping the boot pointed along the swipe.
+        hip.rotateAngleY=0f;
+        hip.rotateAngleZ=(float)Math.atan2(-dx,dy);
+        shin.rotateAngleZ=0f;
+        hip.rotateAngleX=(float)(Math.atan2(dz,vertical)
+            -Math.acos((reach*reach+thigh*thigh-calf*calf)/(2*reach*thigh)));
+        shin.rotateAngleX=(float)Math.acos((reach*reach-thigh*thigh-calf*calf)/(2*thigh*calf));
+    }
+
+    Vec3 frontFoot(){
+        return transform(bipedLeftLeg,transform(lowerLegL,new Vec3(0,lowerLegL.bottom-lowerLegL.rotationPointY,0)));
+    }
+
+    boolean frontHipAttached(){
+        Vec3 waist=transform(bipedBody,new Vec3(0,12,0));
+        return pivot(bipedLeftLeg).subtract(waist).dotProduct(rotate(bipedBody,new Vec3(0,1,0)))<0;
+    }
+
+    private static double deckPlane(EntityPlayer rider){
+        boolean sneak=rider.isSneaking();
+        double drop=sneak&&!(rider instanceof net.minecraft.client.entity.EntityPlayerSP)?0.125:0;
+        return (1.5078125-(sneak?0.2:0)-(PlayerAnim.DECK_TOP+drop)/0.9375)*16;
+    }
+
+    double footDeckError(EntityPlayer rider){
+        double deck=deckPlane(rider);
+        return Math.max(Math.abs(sole(bipedLeftLeg,lowerLegL,0)-deck),
+            Math.abs(sole(bipedRightLeg,lowerLegR,0)-deck));
+    }
+
+    boolean pushFootOnGround(EntityPlayer rider){
+        SkateLimb shin=lowerLegR;
+        double ground=deckPlane(rider)+PlayerAnim.DECK_TOP/0.9375*16;
+        Vec3 foot=bootPoint(bipedRightLeg,shin,0,shin.bottom,0);
+        return foot.xCoord<-5.0&&Math.abs(sole(bipedRightLeg,shin,0)-ground)<0.75
+            &&Math.abs(sole(bipedLeftLeg,lowerLegL,0)-deckPlane(rider))<0.001;
+    }
+
+    private static double sole(ModelRenderer hip,SkateLimb shin,float inflate){
+        double result=Double.NEGATIVE_INFINITY;
+        for(int i=0;i<4;i++){
+            double x=(i&1)==0?shin.minX-inflate:shin.maxX+inflate;
+            double z=(i&2)==0?shin.minZ-inflate:shin.maxZ+inflate;
+            result=Math.max(result,bootPoint(hip,shin,x,shin.bottom+inflate,z).yCoord);
+        }
+        return result;
+    }
+
+    private static Vec3 bootPoint(ModelRenderer hip,SkateLimb shin,double x,double y,double z){
+        Vec3 foot=rotate(shin,new Vec3(x,(y-shin.rotationPointY)*shin.reachScale,z));
+        return transform(hip,foot.addVector(0,shin.rotationPointY*shin.reachScale,0));
+    }
+
+    private static Vec3 hip(ModelRenderer leg,float mount){
+        return new Vec3(leg.rotationPointX,leg.rotationPointY+(11.25f-leg.rotationPointY)*mount,
+            leg.rotationPointZ*(1f-mount));
+    }
+
+    private void attach(ModelRenderer part,ModelRenderer wear,Vec3 anchor,Vec3 shift,float lift){
+        move(part,wear,rotate(bipedBody,anchor).add(shift).subtract(pivot(part)),lift);
+    }
+
+    private static void move(ModelRenderer part,ModelRenderer wear,Vec3 delta,float lift){
+        wear.rotationPointX=part.rotationPointX+=(float)delta.xCoord;
+        wear.rotationPointY=part.rotationPointY+=16f*lift+(float)delta.yCoord;
+        wear.rotationPointZ=part.rotationPointZ+=(float)delta.zCoord;
+    }
+
+    private static Vec3 pivot(ModelRenderer part){
+        return new Vec3(part.rotationPointX,part.rotationPointY,part.rotationPointZ);
+    }
+
+    Vec3 skateHand(){
+        Vec3 palm=transform(lowerArmR,new Vec3(0,5.3,0));
+        Vec3 hand=transform(bipedRightArm,palm);
+        // Same scale and inverted axes as RendererLivingEntity's player-model pass.
+        double pixel=0.9375/16;
+        return new Vec3(-hand.xCoord*pixel,(1.5078125-(isSneak?0.2:0))*0.9375-hand.yCoord*pixel,
+            hand.zCoord*pixel);
+    }
+
+    private static Vec3 transform(ModelRenderer part,Vec3 point){
+        return rotate(part,point).addVector(part.rotationPointX+16*part.offsetX,
+            part.rotationPointY+16*part.offsetY,part.rotationPointZ+16*part.offsetZ);
+    }
+
+    private static Vec3 rotate(ModelRenderer part,Vec3 point){
+        Vec3 v=point.rotatePitch(-part.rotateAngleX).rotateYaw(part.rotateAngleY);
+        float c=(float)Math.cos(part.rotateAngleZ),s=(float)Math.sin(part.rotateAngleZ);
+        return new Vec3(c*v.xCoord-s*v.yCoord,s*v.xCoord+c*v.yCoord,v.zCoord);
     }
 
     /** Vanilla defaults for the pose angles, so a stale frame can never leak into the next. */
     private void resetAngles(){
-        for(ModelRenderer r:new ModelRenderer[]{bipedHead,bipedBody,bipedRightArm,bipedLeftArm,bipedRightLeg,bipedLeftLeg}){
+        for(int i=0;i<poseParts.length;i++){
+            ModelRenderer r=poseParts[i];
+            Vec3 rest=defaultPivots[i];
+            r.setRotationPoint((float)rest.xCoord,(float)rest.yCoord,(float)rest.zCoord);
             r.rotateAngleX=0f;r.rotateAngleY=0f;r.rotateAngleZ=0f;
+            r.offsetX=r.offsetY=r.offsetZ=0f;
         }
     }
 
@@ -113,17 +286,20 @@ final class AnimatedModelPlayer extends ModelPlayer {
      */
     @Override
     public void renderRightArm(){
-        straighten(bipedRightArm,bipedRightArmwear,lowerArmR,lowerArmRw);
+        straighten(bipedRightArm,bipedRightArmwear,lowerArmR);
         super.renderRightArm();
     }
 
     @Override
     public void renderLeftArm(){
-        straighten(bipedLeftArm,bipedLeftArmwear,lowerArmL,lowerArmLw);
+        straighten(bipedLeftArm,bipedLeftArmwear,lowerArmL);
         super.renderLeftArm();
     }
 
     private static void straighten(ModelRenderer... parts){
-        for(ModelRenderer r:parts)r.rotateAngleX=r.rotateAngleY=r.rotateAngleZ=0f;
+        for(ModelRenderer r:parts){
+            r.rotateAngleX=r.rotateAngleY=r.rotateAngleZ=0f;
+            r.offsetX=r.offsetY=r.offsetZ=0f;
+        }
     }
 }

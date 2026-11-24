@@ -14,9 +14,9 @@ import net.minecraftforge.client.event.RenderPlayerEvent;
 import net.minecraft.client.resources.*;
 import org.lwjgl.input.Keyboard;
 
-@Mod(modid="otl",name="Over The Limit",version="0.9.1",clientSideOnly=true,acceptedMinecraftVersions="[1.8.9]",acceptableRemoteVersions="*")
+@Mod(modid="otl",name="Over The Limit",version="0.9.2",clientSideOnly=true,acceptedMinecraftVersions="[1.8.9]",acceptableRemoteVersions="*")
 public final class Otl {
-    static final String VERSION="0.9.1";
+    static final String VERSION="0.9.2";
     private final KeyBinding modules=new KeyBinding("key.otl.modules",Keyboard.KEY_P,"key.categories.otl");
     private final KeyBinding teamChat=new KeyBinding("key.otl.team_chat",Keyboard.KEY_Y,"key.categories.otl");
     private final KeyBinding partyChat=new KeyBinding("key.otl.party_chat",Keyboard.KEY_NONE,"key.categories.otl");
@@ -81,10 +81,13 @@ public final class Otl {
             renderer.addLayer(new FaceOverlay(renderer));
             // RenderPlayer reads getMainModel() everywhere except the first-person arm, so swapping
             // this field animates every rendered player and leaves the held hand alone.
-            installSkateHeldLayer(renderer);
-            animatedPlayerModels.put(renderer,new AnimatedModelPlayer("slim".equals(entry.getKey())));
+            AnimatedModelPlayer animated=new AnimatedModelPlayer("slim".equals(entry.getKey()));
+            installSkateLayers(renderer,animated);
+            animatedPlayerModels.put(renderer,animated);
         }
-        ((IReloadableResourceManager)MinecraftAccess.get().getResourceManager()).registerReloadListener(resources->{SkinFace.clear();FaceMarks.clearCache();KillFeed.clearHeads();});
+        ((IReloadableResourceManager)MinecraftAccess.get().getResourceManager()).registerReloadListener(resources->{
+            SkateSkin.clear(MinecraftAccess.get().getTextureManager());SkinFace.clear();FaceMarks.clearCache();KillFeed.clearHeads();
+        });
     }
 
     /** Specials.Pre is the concrete subclass: the bus cannot instantiate the abstract Specials. */
@@ -101,11 +104,12 @@ public final class Otl {
         net.minecraft.client.model.ModelBase current=event.renderer.getMainModel();
         boolean ours=current instanceof AnimatedModelPlayer;
         if(!ours)vanillaPlayerModels.put(event.renderer,current);
-        // The split-limb rig exists only for emotes. Skateboarding leaves the player model
-        // completely vanilla: no swap, no resize, no reposition.
-        if(PlayerAnim.emoting(event.entityPlayer)){
+        if(PlayerAnim.posing(event.entityPlayer)){
             AnimatedModelPlayer model=animatedPlayerModels.get(event.renderer);
-            if(model!=null)setMainModel(event.renderer,model);
+            if(model!=null){
+                setMainModel(event.renderer,model);
+                if(event.renderer.getMainModel()==model)SkateSkin.beginRender(event.entityPlayer);
+            }
         }else if(ours){
             // A missed Post must never leave the custom model on the shared renderer, or every
             // other player would draw with the split-limb rig and broken armour.
@@ -116,9 +120,26 @@ public final class Otl {
 
     @SubscribeEvent(priority=net.minecraftforge.fml.common.eventhandler.EventPriority.LOWEST)
     public void restoreLocalSkateModel(RenderPlayerEvent.Post event){
-        PlayerAnim.renderBoard(event.entityPlayer,event.partialRenderTick,event.x,event.y,event.z);
+        net.minecraft.client.model.ModelBase vanilla=vanillaPlayerModels.get(event.renderer);
+        try{
+            PlayerAnim.renderBoard(event.entityPlayer,event.partialRenderTick,event.x,event.y,event.z,event.renderer.getMainModel());
+        }finally{
+            SkateSkin.endRender(event.entityPlayer);
+            if(vanilla!=null)setMainModel(event.renderer,vanilla);
+        }
+    }
+
+    @SubscribeEvent(priority=net.minecraftforge.fml.common.eventhandler.EventPriority.LOWEST,receiveCanceled=true)
+    public void restoreCanceledSkateModel(RenderPlayerEvent.Pre event){
+        if(!event.isCanceled()||!(event.renderer.getMainModel() instanceof AnimatedModelPlayer))return;
+        SkateSkin.endRender(event.entityPlayer);
         net.minecraft.client.model.ModelBase vanilla=vanillaPlayerModels.get(event.renderer);
         if(vanilla!=null)setMainModel(event.renderer,vanilla);
+    }
+
+    @SubscribeEvent
+    public void restoreSkateSkinAtFrameEnd(net.minecraftforge.fml.common.gameevent.TickEvent.RenderTickEvent event){
+        if(event.phase==net.minecraftforge.fml.common.gameevent.TickEvent.Phase.END)SkateSkin.endFrame();
     }
 
     private static void setMainModel(RenderPlayer renderer,net.minecraft.client.model.ModelBase model){
@@ -128,17 +149,26 @@ public final class Otl {
         }catch(RuntimeException ignored){/* a differing mapping just leaves vanilla rendering */}
     }
 
-    private static void installSkateHeldLayer(RenderPlayer renderer){
+    private static void installSkateLayers(RenderPlayer renderer,AnimatedModelPlayer animated){
         try{
             java.util.List<net.minecraft.client.renderer.entity.layers.LayerRenderer> layers=
                 net.minecraftforge.fml.relauncher.ReflectionHelper.getPrivateValue(
                     net.minecraft.client.renderer.entity.RendererLivingEntity.class,renderer,
                     "layerRenderers","field_177097_h");
             if(layers==null)return;
-            for(java.util.Iterator<net.minecraft.client.renderer.entity.layers.LayerRenderer> it=layers.iterator();it.hasNext();)
-                if(it.next() instanceof net.minecraft.client.renderer.entity.layers.LayerHeldItem)it.remove();
+            boolean firstArmor=true;
+            for(java.util.ListIterator<net.minecraft.client.renderer.entity.layers.LayerRenderer> it=layers.listIterator();it.hasNext();){
+                net.minecraft.client.renderer.entity.layers.LayerRenderer layer=it.next();
+                if(layer instanceof net.minecraft.client.renderer.entity.layers.LayerHeldItem)it.remove();
+                else if(layer instanceof net.minecraft.client.renderer.entity.layers.LayerBipedArmor){
+                    it.set(new SkateArmorLayer(renderer,(net.minecraft.client.renderer.entity.layers.LayerBipedArmor)layer,firstArmor));
+                    firstArmor=false;
+                }
+                else if(layer.getClass()==net.minecraft.client.renderer.entity.layers.LayerCustomHead.class)
+                    it.set(new SkateHeadLayer(renderer,animated,(net.minecraft.client.renderer.entity.layers.LayerCustomHead)layer));
+            }
             layers.add(new SkateHeldItemLayer(renderer));
-        }catch(RuntimeException fail){System.err.println("OTL: could not install skate held-item layer: "+fail);}
+        }catch(RuntimeException fail){System.err.println("OTL: could not install skate render layers: "+fail);}
     }
 
     /** Reliable Chat cancels the lines it absorbs, so this must still see them. */

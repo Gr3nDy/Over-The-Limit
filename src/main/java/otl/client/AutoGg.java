@@ -52,13 +52,11 @@ final class AutoGg {
         }
     }
 
-    /**
-     * The wither sound PGM plays at the end of a match. Unlike a chat line it cannot be a leftover
-     * from the previous match, so it needs no arming and works on a client whose chat is translated.
-     */
+    /** The wither sound is an end signal only after this client has seen a real match start. */
     @SubscribeEvent(priority=EventPriority.LOWEST) public void sound(PlaySoundEvent event){
-        if(!MatchEnd.endedBySound(event.name))return;
+        if(!MatchEnd.endedBySound(event))return;
         sync();
+        if(!armed||System.nanoTime()-startedAt<settle)return;
         if(sent)return;
         sent=true;sendAt=System.nanoTime()+delayNanos();
     }
