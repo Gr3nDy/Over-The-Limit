@@ -59,9 +59,10 @@ final class OtlPresence {
         Minecraft mc=MinecraftAccess.get();
         if(mc==null||mc.theWorld==null)return Collections.emptyList();
         List<String> names=new ArrayList<>();
+        String self=mc.thePlayer==null?"":mc.thePlayer.getName();
         for(EntityPlayer player:mc.theWorld.playerEntities){
             String name=player.getName();
-            if(SEEN.containsKey(name))names.add(name);
+            if(!name.equals(self)&&SEEN.containsKey(name))names.add(name);
         }
         Collections.sort(names,String.CASE_INSENSITIVE_ORDER);
         return names;

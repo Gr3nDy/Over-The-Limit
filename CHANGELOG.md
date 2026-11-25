@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.9.4
+
+- Replaced the skateboard mesh with the upgraded combined model.
+- Added the upgraded board materials and textures.
+- Hardened Supabase broadcast handling and accepted both supported broadcast payload shapes.
+
 ## v0.9.3
 
 - Fixed a render crash when arrows are stuck in a player using the animated skate model.

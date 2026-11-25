@@ -257,8 +257,10 @@ final class Realtime implements AutoCloseable {
                     ?message.getAsJsonObject("payload"):new JsonObject();
                 String inner=payload.has("event")?payload.get("event").getAsString():"";
                 if(inner.isEmpty())return new Incoming(Incoming.IGNORE,null,null,null);
+                // Supabase has emitted both {payload:{...}} and a direct event payload across
+                // Realtime protocol revisions. Accept either without weakening event validation.
                 JsonObject data=payload.has("payload")&&payload.get("payload").isJsonObject()
-                    ?payload.getAsJsonObject("payload"):new JsonObject();
+                    ?payload.getAsJsonObject("payload"):payload;
                 return new Incoming(Incoming.BROADCAST,null,inner,data);
             }
             if("phx_reply".equals(event)){

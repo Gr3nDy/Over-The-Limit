@@ -46,6 +46,13 @@ public class RealtimeTest {
         assertTrue(message.payload.get("b").getAsBoolean());
     }
 
+    @Test public void directBroadcastPayloadIsAccepted(){
+        Realtime.Incoming message=Realtime.parse("{\"event\":\"broadcast\","
+            +"\"payload\":{\"type\":\"broadcast\",\"event\":\"here\",\"n\":\"Alex\"}}");
+        assertEquals(Realtime.Incoming.BROADCAST,message.kind);
+        assertEquals("Alex",message.payload.get("n").getAsString());
+    }
+
     @Test public void repliesAndFailuresAreClassified(){
         Realtime.Incoming ok=Realtime.parse("{\"event\":\"phx_reply\",\"ref\":\"1\",\"payload\":{\"status\":\"ok\"}}");
         assertEquals(Realtime.Incoming.REPLY,ok.kind);

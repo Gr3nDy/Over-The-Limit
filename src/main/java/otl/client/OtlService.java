@@ -42,7 +42,12 @@ final class OtlService {
         if(link!=null||!available())return;
         link=Realtime.open(RealtimeConfig.url(),RealtimeConfig.key(),CHANNEL,new Realtime.Listener(){
             @Override public void onBroadcast(String event,JsonObject payload){
-                for(Handler handler:HANDLERS)handler.onBroadcast(event,payload);
+                for(Handler handler:HANDLERS){
+                    try{handler.onBroadcast(event,payload);}
+                    catch(RuntimeException bad){
+                        System.err.println("OTL: broadcast handler failed for "+event+": "+bad.getMessage());
+                    }
+                }
             }
             @Override public void onStatus(boolean joined,String detail){
                 online=joined;
