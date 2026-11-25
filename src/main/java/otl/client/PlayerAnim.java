@@ -127,6 +127,7 @@ final class PlayerAnim {
             ?((AnimatedModelPlayer)model).skateHand():new Vec3(0.23,0.92,0.38);
         net.minecraft.client.renderer.GlStateManager.pushMatrix();
         try{
+            float size=BOARD_SCALE*visible;
             // The x/y/z given to the renderer are already camera-relative: RendererLivingEntity
             // translates by exactly these before drawing the model. They are the player's feet.
             net.minecraft.client.renderer.GlStateManager.translate(x,y,z);
@@ -134,15 +135,16 @@ final class PlayerAnim {
             // pointing the same way no matter which direction the player rides.
             net.minecraft.client.renderer.GlStateManager.rotate(180f-bodyYaw(p,partial),0f,1f,0f);
             net.minecraft.client.renderer.GlStateManager.translate(hand.xCoord*carry,
-                hand.yCoord*carry+deck.boardDrop,hand.zCoord*carry+AnimClips.setDownZ(board));
+                hand.yCoord*carry+deck.boardDrop+0.087f*size,hand.zCoord*carry+AnimClips.setDownZ(board));
             // Rotate tricks around the deck, not around a point underneath its wheels.
             net.minecraft.client.renderer.GlStateManager.translate(0f,0.13f,0f);
+            // The upgraded OBJ's long axis is X; OTL's deck clips use Z as the board heading.
+            net.minecraft.client.renderer.GlStateManager.rotate(90f,0f,1f,0f);
             net.minecraft.client.renderer.GlStateManager.rotate((boardX+deck.boardX)*57.29578f,1f,0f,0f);
             net.minecraft.client.renderer.GlStateManager.rotate((boardY+deck.boardY)*57.29578f,0f,1f,0f);
             net.minecraft.client.renderer.GlStateManager.rotate((boardZ+deck.boardZ)*57.29578f,0f,0f,1f);
             net.minecraft.client.renderer.GlStateManager.translate(0f,-0.13f,0f);
             // Scaled about the wheels, which sit at Y=0, so the board grows upward and stays grounded.
-            float size=BOARD_SCALE*visible;
             net.minecraft.client.renderer.GlStateManager.scale(size,size,size);
             ObjSkateboard.render();
         }finally{
