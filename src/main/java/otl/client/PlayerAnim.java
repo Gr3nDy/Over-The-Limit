@@ -134,12 +134,13 @@ final class PlayerAnim {
             // Vanilla turns the model by 180 - bodyYaw; the board needs the same turn, or it keeps
             // pointing the same way no matter which direction the player rides.
             net.minecraft.client.renderer.GlStateManager.rotate(180f-bodyYaw(p,partial),0f,1f,0f);
+            // Convert the upgraded OBJ's local X heading to OTL's old board heading before applying
+            // the legacy trick rotations. This preserves the original kick-flip axes and timing.
+            net.minecraft.client.renderer.GlStateManager.rotate(90f,0f,1f,0f);
             net.minecraft.client.renderer.GlStateManager.translate(hand.xCoord*carry,
                 hand.yCoord*carry+deck.boardDrop+0.087f*size,hand.zCoord*carry+AnimClips.setDownZ(board));
             // Rotate tricks around the deck, not around a point underneath its wheels.
             net.minecraft.client.renderer.GlStateManager.translate(0f,0.13f,0f);
-            // The upgraded OBJ's long axis is X; OTL's deck clips use Z as the board heading.
-            net.minecraft.client.renderer.GlStateManager.rotate(90f,0f,1f,0f);
             net.minecraft.client.renderer.GlStateManager.rotate((boardX+deck.boardX)*57.29578f,1f,0f,0f);
             net.minecraft.client.renderer.GlStateManager.rotate((boardY+deck.boardY)*57.29578f,0f,1f,0f);
             net.minecraft.client.renderer.GlStateManager.rotate((boardZ+deck.boardZ)*57.29578f,0f,0f,1f);
