@@ -227,10 +227,10 @@ final class OtlSmokeChecks {
                     AnimatedModelPlayer model=(AnimatedModelPlayer)renderer.getMainModel();
                     model.bipedRightArmwear.showModel=true;
                     model.setRotationAngles(0f,0f,p.ticksExisted+0.5f,20f,5f,1f/16f,p);
-                    require(model.bipedRightArmwear.cubeList.isEmpty()&&model.bipedRightArmwear.showModel,
-                        "The sleeve layer was hidden instead of baked");
-                    require(model.bipedLeftLegwear.cubeList.isEmpty()&&model.bipedLeftLegwear.isHidden,
-                        "The baked left pant leg still had a separate visible shell");
+                    require(!model.bipedRightArmwear.cubeList.isEmpty()&&model.bipedRightArmwear.isHidden,
+                        "The sleeve layer was not safely hidden");
+                    require(!model.bipedLeftLegwear.cubeList.isEmpty()&&model.bipedLeftLegwear.isHidden,
+                        "The baked left pant leg was not safely hidden");
                     require(model.bipedLeftLeg.cubeList.isEmpty()&&model.bipedLeftLeg.childModels.size()==1
                         &&model.bipedLeftLeg.childModels.get(0)==model.lowerLegL,"The rider drew two left-leg meshes");
                     require(SkateSkin.mask(p)==oldMask,"Baking lost the original skin toggles");

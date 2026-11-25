@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.9.3
+
+- Fixed a render crash when arrows are stuck in a player using the animated skate model.
+- Kept hidden skin-layer model boxes available for Minecraft's arrow renderer while preventing duplicate layers.
+
 ## v0.9.2
 
 - Added client-side skate poses for board deployment, riding, pushing, and tricks without changing the hitbox.

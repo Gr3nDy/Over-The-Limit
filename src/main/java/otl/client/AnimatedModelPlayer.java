@@ -33,11 +33,10 @@ final class AnimatedModelPlayer extends ModelPlayer {
             bipedRightLeg,bipedRightLegwear,bipedLeftLeg,bipedLeftLegwear};
         defaultPivots=new Vec3[poseParts.length];
         for(int i=0;i<poseParts.length;i++)defaultPivots[i]=pivot(poseParts[i]);
-        // Keep vanilla's visibility flags, but never draw a second surface over the base skin.
+        // Keep the boxes registered: vanilla LayerArrow randomly chooses one when arrows hit a player.
+        // Emptying these lists makes that renderer call nextInt(0). Hide the old shells instead.
         for(ModelRenderer shell:new ModelRenderer[]{bipedHeadwear,bipedBodyWear,bipedRightArmwear,bipedLeftArmwear,
-            bipedRightLegwear,bipedLeftLegwear})shell.cubeList.clear();
-        // ModelPlayer resets showModel, so hard-hide only the duplicated pants shells.
-        bipedRightLegwear.isHidden=bipedLeftLegwear.isHidden=true;
+            bipedRightLegwear,bipedLeftLegwear})shell.isHidden=true;
     }
 
     @Override public void render(Entity entity,float swing,float amount,float age,float yaw,float pitch,float scale){
@@ -69,8 +68,9 @@ final class AnimatedModelPlayer extends ModelPlayer {
         skatePose=false;
         planted=0f;push=-1f;
         super.setRotationAngles(swing,amount,age,yaw,pitch,scale,entity);
-        // External renderers can recreate the old shells even when their vanilla geometry is empty.
-        bipedRightLegwear.showModel=bipedLeftLegwear.showModel=false;
+        // ModelPlayer resets showModel; isHidden remains the render-safe hard hide for old shells.
+        bipedHeadwear.isHidden=bipedBodyWear.isHidden=bipedRightArmwear.isHidden=bipedLeftArmwear.isHidden=true;
+        bipedRightLegwear.isHidden=bipedLeftLegwear.isHidden=true;
         elbowRight=elbowLeft=kneeRight=kneeLeft=0f;
         elbowRightZ=elbowLeftZ=kneeRightZ=kneeLeftZ=0f;
         if(entity instanceof EntityPlayer&&PlayerAnim.enabled())
