@@ -34,6 +34,7 @@ final class Realtime implements AutoCloseable {
     private final String url,topic;
     private final Listener listener;
     private final BlockingQueue<byte[]> outgoing=new LinkedBlockingQueue<>();
+    private final BlockingQueue<Pending> pending=new LinkedBlockingQueue<>();
     private final Random mask=new Random();
     private final AtomicInteger refs=new AtomicInteger();
     private final Thread worker;
@@ -41,6 +42,11 @@ final class Realtime implements AutoCloseable {
     private volatile boolean closed;
     private volatile boolean joined;
     private volatile String joinRef;
+
+    private static final class Pending {
+        final String event; final JsonObject payload;
+        Pending(String event,JsonObject payload){this.event=event;this.payload=payload;}
+    }
 
     private Realtime(String url,String channel,Listener listener){
         this.url=url;
@@ -78,7 +84,12 @@ final class Realtime implements AutoCloseable {
     /** Queued and never blocking: the caller is the game thread. Dropped until the join lands. */
     void send(String event,JsonObject payload){
         String ref=joinRef;
-        if(!joined||closed||ref==null)return;
+        if(closed)return;
+        if(!joined||ref==null){
+            if(pending.size()<32)pending.offer(new Pending(event,
+                new JsonParser().parse(payload.toString()).getAsJsonObject()));
+            return;
+        }
         outgoing.offer(WsFrames.text(broadcast(topic,ref,nextRef(),event,payload),mask));
     }
 
@@ -86,6 +97,7 @@ final class Realtime implements AutoCloseable {
         closed=true;
         joined=false;
         worker.interrupt();
+        pending.clear();
         // A blocked read ignores an interrupt; closing the socket is what wakes it.
         WsSocket socket=current;
         if(socket!=null)socket.close();
@@ -155,6 +167,9 @@ final class Realtime implements AutoCloseable {
             if(!joined&&message.ref!=null&&message.ref.equals(joinRef)){
                 joined=true;
                 listener.onStatus(true,"joined");
+                Pending next;
+                while((next=pending.poll())!=null)
+                    outgoing.offer(WsFrames.text(broadcast(topic,joinRef,nextRef(),next.event,next.payload),mask));
             }
             return;
         }
