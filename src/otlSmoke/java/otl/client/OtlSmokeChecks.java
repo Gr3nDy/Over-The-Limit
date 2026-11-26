@@ -38,7 +38,6 @@ final class OtlSmokeChecks {
             if(!flight&&(frame>=GEAR.length||(armorFrames&(1<<frame))!=0))return;
             boolean sneak=frame==GEAR.length-2;
             if(!flight&&sneak&&(!mc.thePlayer.isSneaking()||(t-174)%14<6))return;
-            if(frame==GEAR.length-1&&(t-174)%14<4)return;
             armorFrame=flight?-1:frame;
             skateArmor=armor.clone();
             Item[][] gear={

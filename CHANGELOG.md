@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.9.5
+
+- Queued Supabase presence and skateboard broadcasts until the channel finishes joining.
+- Preserved the original skateboard model and animation presentation.
+
 ## v0.9.4
 
 - Replaced the skateboard mesh with the upgraded combined model.
