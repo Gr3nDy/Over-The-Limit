@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.9.6
+
+- Fixed the crash when holding Tab on a Touchdown map: the Touchdown card now yields to the player list.
+- Hardened the clickable player list against zero-sized displays, unbound keys, missing objective scores and bad HUD frames.
+
 ## v0.9.5
 
 - Queued Supabase presence and skateboard broadcasts until the channel finishes joining.

@@ -3287,6 +3287,16 @@ public final class OtlSmoke {
                 require(org.lwjgl.opengl.GL11.glGetError()==0,"Football projectile rendering left a GL error");
                 ball.motionY=0;ball.noClip=true;
             }else if(state==115){
+                // Hold Tab while the Touchdown card is live: every overlay that draws behind the
+                // player list must survive the frame instead of taking the client down.
+                net.minecraft.client.settings.KeyBinding.setKeyBindState(mc.gameSettings.keyBindPlayerList.getKeyCode(),true);
+                net.minecraftforge.client.event.RenderGameOverlayEvent tabOverlay=new net.minecraftforge.client.event.RenderGameOverlayEvent(0,new ScaledResolution(mc));
+                net.minecraftforge.client.event.RenderGameOverlayEvent.Post tabChat=new net.minecraftforge.client.event.RenderGameOverlayEvent.Post(tabOverlay,net.minecraftforge.client.event.RenderGameOverlayEvent.ElementType.CHAT);
+                TouchdownCard.drawPreview();
+                TouchdownCard.INSTANCE.overlay(tabChat);
+                TeamBar.INSTANCE.overlay(tabChat);
+                TabListMenu.INSTANCE.draw(new net.minecraftforge.client.event.RenderGameOverlayEvent.Post(tabOverlay,net.minecraftforge.client.event.RenderGameOverlayEvent.ElementType.ALL));
+                net.minecraft.client.settings.KeyBinding.setKeyBindState(mc.gameSettings.keyBindPlayerList.getKeyCode(),false);
                 // The world renderer draws both, so the screenshot proves the real pipeline, not our manual calls.
                 ScreenShotHelper.saveScreenshot(mc.mcDataDir,"otl-touchdown.png",mc.displayWidth,mc.displayHeight,mc.getFramebuffer());
                 require(org.lwjgl.opengl.GL11.glGetError()==0,"Football world rendering left a GL error");

@@ -224,9 +224,10 @@ final class TabListMenu {
         int nameW=0,scoreW=0;
         for(NetworkPlayerInfo info:all){
             nameW=Math.max(nameW,mc.fontRendererObj.getStringWidth(drawnName(mc,info)));
-            if(objective!=null&&objective.getRenderType()!=IScoreObjectiveCriteria.EnumRenderType.HEARTS)
-                scoreW=Math.max(scoreW,mc.fontRendererObj.getStringWidth(" "
-                    +mc.theWorld.getScoreboard().getValueFromObjective(info.getGameProfile().getName(),objective).getScorePoints()));
+            if(objective!=null&&objective.getRenderType()!=IScoreObjectiveCriteria.EnumRenderType.HEARTS){
+                net.minecraft.scoreboard.Score score=mc.theWorld.getScoreboard().getValueFromObjective(info.getGameProfile().getName(),objective);
+                if(score!=null)scoreW=Math.max(scoreW,mc.fontRendererObj.getStringWidth(" "+score.getScorePoints()));
+            }
         }
         List<NetworkPlayerInfo> players=all.size()>80?new ArrayList<>(all.subList(0,80)):all;
         // Every account name the client actually knows: the real profiles, and the players in the
@@ -424,8 +425,9 @@ final class TabListMenu {
         // Clicked here for immediacy, and again from tick() so a press the event loop skips still
         // lands. Both share one edge detector, so a click can never fire twice.
         ScaledResolution sr=new ScaledResolution(mc);
-        poll(mc,event.x*sr.getScaledWidth()/mc.displayWidth,
-            sr.getScaledHeight()-event.y*sr.getScaledHeight()/mc.displayHeight-1,
+        int displayWidth=Math.max(1,mc.displayWidth),displayHeight=Math.max(1,mc.displayHeight);
+        poll(mc,event.x*sr.getScaledWidth()/displayWidth,
+            sr.getScaledHeight()-event.y*sr.getScaledHeight()/displayHeight-1,
             Mouse.isButtonDown(0),Mouse.isButtonDown(MIDDLE));
     }
 
@@ -576,21 +578,29 @@ final class TabListMenu {
             stop(mc,false);
             return;
         }
-        if(!org.lwjgl.opengl.Display.isActive()||Keyboard.isKeyDown(Keyboard.KEY_ESCAPE)){end(mc);return;}
-        int listKey=mc.gameSettings.keyBindPlayerList.getKeyCode();
-        if(listKey>0&&listKey<Keyboard.KEYBOARD_SIZE){
-            // Leaving the list hands the mouse straight back.
-            if(keyLeft(Keyboard.isKeyDown(listKey))){end(mc);return;}
-            // The cursor is free, so the list must be held up by hand or it would vanish with the key.
-            KeyBinding.setKeyBindState(listKey,true);
+        try{
+            if(!org.lwjgl.opengl.Display.isActive()||Keyboard.isKeyDown(Keyboard.KEY_ESCAPE)){end(mc);return;}
+            int listKey=mc.gameSettings.keyBindPlayerList.getKeyCode();
+            if(listKey>0&&listKey<Keyboard.KEYBOARD_SIZE){
+                // Leaving the list hands the mouse straight back.
+                if(keyLeft(Keyboard.isKeyDown(listKey))){end(mc);return;}
+                // The cursor is free, so the list must be held up by hand or it would vanish with the key.
+                KeyBinding.setKeyBindState(listKey,true);
+            }
+            int useKey=mc.gameSettings.keyBindUseItem.getKeyCode();
+            if(useKey>0&&useKey<Keyboard.KEYBOARD_SIZE)KeyBinding.setKeyBindState(useKey,false);
+            // Keys pressed while browsing would otherwise start a different walk under the cursor.
+            hold(mc);
+            ScaledResolution sr=new ScaledResolution(mc);
+            int displayWidth=Math.max(1,mc.displayWidth),displayHeight=Math.max(1,mc.displayHeight);
+            poll(mc,Mouse.getX()*sr.getScaledWidth()/displayWidth,
+                sr.getScaledHeight()-Mouse.getY()*sr.getScaledHeight()/displayHeight-1,
+                Mouse.isButtonDown(0),Mouse.isButtonDown(MIDDLE));
+        }catch(RuntimeException broken){
+            // A HUD element must never take the game down; drop the menu instead.
+            browsing=false;
+            menu=null;
         }
-        KeyBinding.setKeyBindState(mc.gameSettings.keyBindUseItem.getKeyCode(),false);
-        // Keys pressed while browsing would otherwise start a different walk under the cursor.
-        hold(mc);
-        ScaledResolution sr=new ScaledResolution(mc);
-        poll(mc,Mouse.getX()*sr.getScaledWidth()/mc.displayWidth,
-            sr.getScaledHeight()-Mouse.getY()*sr.getScaledHeight()/mc.displayHeight-1,
-            Mouse.isButtonDown(0),Mouse.isButtonDown(MIDDLE));
     }
 
     @SubscribeEvent public void screen(net.minecraftforge.client.event.GuiOpenEvent event){
@@ -618,7 +628,7 @@ final class TabListMenu {
     }
 
     private void paint(Minecraft mc,int sw,int sh){
-        int mx=Mouse.getX()*sw/mc.displayWidth,my=sh-Mouse.getY()*sh/mc.displayHeight-1;
+        int mx=Mouse.getX()*sw/Math.max(1,mc.displayWidth),my=sh-Mouse.getY()*sh/Math.max(1,mc.displayHeight)-1;
         if(menu==null){
             Layout layout=layout(mc,sw);
             int index=layout.indexAt(mx,my);

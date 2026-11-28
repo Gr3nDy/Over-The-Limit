@@ -231,6 +231,9 @@ final class TouchdownCard {
         if(!HudStage.due(event))return;
         Minecraft mc=MinecraftAccess.get();
         if(current==null||!UtilitySettings.touchdown||!UtilitySettings.touchdownCard||!Touchdown.active()||mc.thePlayer==null||mc.theWorld==null||mc.gameSettings.hideGUI||mc.currentScreen instanceof HudEditor)return;
+        // The card renders a second player model; the player list already draws every skin. Skip it
+        // while Tab is up so the two never paint the same GL state in one frame.
+        if(TeamBar.playerListVisible(mc))return;
         draw(current,(System.nanoTime()-started)/1_000_000_000F,false);
     }
     static void drawPreview(){
